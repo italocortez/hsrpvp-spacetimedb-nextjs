@@ -213,6 +213,15 @@ export const LobbyConfig = __t.object("LobbyConfig", {
 });
 export type LobbyConfig = __Infer<typeof LobbyConfig>;
 
+export const LobbyCursorEvent = __t.object("LobbyCursorEvent", {
+  lobbyId: __t.u32(),
+  sender: __t.identity(),
+  x: __t.f32(),
+  y: __t.f32(),
+  timestamp: __t.timestamp(),
+});
+export type LobbyCursorEvent = __Infer<typeof LobbyCursorEvent>;
+
 export const LobbyMember = __t.object("LobbyMember", {
   lobbyId: __t.u32(),
   userIdentity: __t.identity(),

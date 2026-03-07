@@ -1,5 +1,6 @@
 import spacetimedb from './schema';
 import { Role } from './types/enums';
+import './reducers/cursor';
 
 spacetimedb.clientConnected((ctx) => {
   // 1. Check if user exists (use Identity, not String ID)

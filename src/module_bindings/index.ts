@@ -44,6 +44,7 @@ import HsrLightconeRow from "./hsr_lightcone_table";
 import HsrLightconeCostRow from "./hsr_lightcone_cost_table";
 import HsrSynergyCostRow from "./hsr_synergy_cost_table";
 import LobbyRow from "./lobby_table";
+import LobbyCursorEventRow from "./lobby_cursor_event_table";
 import LobbyMemberRow from "./lobby_member_table";
 import MatchSessionRow from "./match_session_table";
 import MatchSessionHistoryRow from "./match_session_history_table";
@@ -117,6 +118,14 @@ const tablesSchema = __schema({
       { name: 'lobby_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, LobbyRow),
+  LobbyCursorEvent: __table({
+    name: 'lobby_cursor_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, LobbyCursorEventRow),
   LobbyMember: __table({
     name: 'lobby_member',
     indexes: [
