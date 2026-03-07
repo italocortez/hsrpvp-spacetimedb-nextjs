@@ -8,8 +8,18 @@ import {
   t as __t,
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
-} from 'spacetimedb';
+} from "spacetimedb";
+import {
+  GameMode,
+} from "./types";
+
 
 export default __t.row({
-  name: __t.string(),
+  id: __t.u32().primaryKey(),
+  sourceName: __t.string().name("source_name"),
+  targetName: __t.string().name("target_name"),
+  get gameMode() {
+    return GameMode.name("game_mode");
+  },
+  costModifier: __t.f32().name("cost_modifier"),
 });

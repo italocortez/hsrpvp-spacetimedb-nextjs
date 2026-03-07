@@ -8,6 +8,9 @@ import {
   t as __t,
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
-} from 'spacetimedb';
+} from "spacetimedb";
 
-export default {};
+export default __t.row({
+  matchId: __t.string().primaryKey().name("match_id"),
+  steps: __t.string(),
+});
