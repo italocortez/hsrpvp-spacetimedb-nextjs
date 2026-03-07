@@ -1,8 +1,7 @@
 {
   "dev": {
-    "run": "npm run dev"
+    "run": "pnpm run dev"
   },
-  "_source-config": "spacetime.local.json",
   "server": "maincloud",
   "module-path": "./spacetimedb",
   "database": "hsrpvp-spacetimedb-dxlnj"
