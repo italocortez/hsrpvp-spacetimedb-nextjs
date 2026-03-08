@@ -10,7 +10,4 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default {
-  discordId: __t.string(),
-  discordUsername: __t.string(),
-};
+export default {};

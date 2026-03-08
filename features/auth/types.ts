@@ -22,5 +22,7 @@ export interface AuthState {
     identity: Identity | null;
     user: User | null;
     isAuthenticated: boolean;
-    isInitializing: boolean;
+    isConnecting: boolean;
+    isLoadingData: boolean;
+    connectionError: Error | undefined;
 }

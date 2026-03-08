@@ -1,86 +1,80 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useTable, useSpacetimeDB } from 'spacetimedb/react';
 import { tables } from '@/src/module_bindings';
 import { AuthState, User } from '../types';
 
 export function useAuth() {
-    // 1. Get External States
+    // 1. External state: NextAuth session + SpacetimeDB connection
     const { data: session, status: nextAuthStatus } = useSession();
+    const { isActive, identity, getConnection, connectionError } = useSpacetimeDB();
 
-    const { isActive, identity, getConnection } = useSpacetimeDB();
-    const conn = getConnection();
-
-    // 2. Fetch Table Data
+    // 2. Subscribe to User table
     const [rows, isReady] = useTable(tables.User);
-
     const allUsers = (rows || []) as unknown as User[];
 
-    // 3. Define currentUser
+    // 3. Find current user by matching SpacetimeDB identity
     const currentUser = useMemo(() => {
-        // ✅ FIX: Logic inversion. We return null if NOT ready.
-        // If !isActive (connecting) OR !isReady (loading table) OR !identity (no wallet), we have no user.
         if (!isActive || !identity || !isReady) return null;
-
         return allUsers.find(u =>
             u.identity.toHexString() === identity.toHexString()
         ) || null;
     }, [allUsers, identity, isReady, isActive]);
 
-    // 4. Side Effect: Sync Discord Session
+    // 4. Side effect: when Discord session is authenticated, sync to SpacetimeDB
     useEffect(() => {
-        if (nextAuthStatus === "authenticated" && session?.user && conn && isActive) {
-            const discordUser = session.user as any;
+        if (nextAuthStatus !== "authenticated" || !session?.user) return;
+        const conn = getConnection();
+        if (!conn || !isActive || !isReady) return;
 
-            // Only attempt sync if table data is ready so we don't double-register
-            if (isReady) {
-                const needsSync = !currentUser || (currentUser.discordId !== discordUser.id);
+        const discordUser = session.user as any;
+        const needsSync = !currentUser || currentUser.isGuest || (currentUser.discordId !== discordUser.id);
 
-                if (needsSync) {
-                    try {
-                        conn.reducers.registerDiscordUser({
-                            discordId: discordUser.id,
-                            username: discordUser.name || "DiscordUser",
-                            displayName: discordUser.name || "DiscordUser",
-                        });
-                    } catch (e) {
-                        console.error("Failed to sync Discord user:", e);
-                    }
-                }
+        if (needsSync) {
+            try {
+                conn.reducers.registerDiscordUser({
+                    discordId: discordUser.id,
+                    discordUsername: discordUser.name || "DiscordUser",
+                });
+            } catch (e) {
+                console.error("Failed to sync Discord user:", e);
             }
         }
-    }, [nextAuthStatus, session, conn, isActive, currentUser, isReady]);
+    }, [nextAuthStatus, session, getConnection, isActive, currentUser, isReady]);
 
-    // 5. Build Final Auth State
-    // ✅ FIX: Define initialization as "Not connected OR Connected but table still loading"
-    const isInitializing = !isActive || (isActive && !isReady);
+    // 5. Auth state
+    const isConnecting = !isActive && !connectionError;
+    const isLoadingData = isActive && !isReady;
 
     const authState: AuthState = {
         identity: identity || null,
         user: currentUser,
         isAuthenticated: !!currentUser,
-        isInitializing,
+        isConnecting,
+        isLoadingData,
+        connectionError,
     };
 
-    const loginGuest = (alias: string) => {
-        if (!conn || !isActive) {
-            console.error("IPC Link not active. Cannot register guest.");
+    // 6. Actions
+    const loginGuest = useCallback(() => {
+        const conn = getConnection();
+        if (!conn) {
+            console.error("SpacetimeDB connection not active. Cannot login as guest.");
             return;
         }
         try {
-            conn.reducers.registerGuest({ displayName: alias });
+            conn.reducers.loginAsGuest({});
         } catch (err) {
-            console.error("Failed to call registerGuest reducer:", err);
+            console.error("Failed to call loginAsGuest reducer:", err);
         }
-    };
+    }, [getConnection]);
 
-    const loginDiscord = () => signIn("discord");
+    const loginDiscord = useCallback(() => signIn("discord"), []);
 
-    const logout = () => {
+    const logout = useCallback(() => {
         signOut();
-        // Clear token logic here if needed
         window.location.reload();
-    };
+    }, []);
 
     return {
         ...authState,
