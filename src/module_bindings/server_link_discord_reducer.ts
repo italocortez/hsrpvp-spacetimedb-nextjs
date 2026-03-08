@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 
 export default {
+  callerIdentityHex: __t.string(),
   discordId: __t.string(),
   discordUsername: __t.string(),
 };

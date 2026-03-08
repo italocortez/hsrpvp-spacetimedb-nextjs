@@ -375,6 +375,12 @@ export const Role = __t.enum("Role", {
 });
 export type Role = __Infer<typeof Role>;
 
+export const ServerIdentity = __t.object("ServerIdentity", {
+  identity: __t.identity(),
+  registeredAt: __t.timestamp(),
+});
+export type ServerIdentity = __Infer<typeof ServerIdentity>;
+
 // The tagged union or sum type for the algebraic type `StepPayload`.
 export const StepPayload = __t.enum("StepPayload", {
   get Pick() {

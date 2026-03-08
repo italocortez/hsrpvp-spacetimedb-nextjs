@@ -103,7 +103,7 @@ HSRPVP-SPACETIMEDB-NEXTJS/
 │   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 │   │   # ROUTE GROUP: (landing) — public, no auth
 │   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-│   ├── (landingPage)/
+│   ├── (landing-page)/
 │   │   ├── layout.tsx                  # (ALREADY BUILD) Frontpage shell: navbar, footer
 │   │   ├── layout.module.css           # (ALREADY BUILD)
 │   │   │
