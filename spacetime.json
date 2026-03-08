@@ -1,8 +1,8 @@
 {
   "dev": {
-    "run": "pnpm run dev"
+    "run": "npm run dev"
   },
+  "database": "hsrpvp-spacetimedb-nextjs-test1",
   "server": "maincloud",
-  "module-path": "./spacetimedb",
-  "database": "hsrpvp-spacetimedb-dxlnj"
+  "module-path": "./spacetimedb"
 }

@@ -5,12 +5,11 @@ export const User = table({
     name: 'user',
     public: true,
     indexes: [
-        { name: 'user_username', algorithm: 'btree', columns: ['username'], unique: true },
-        { name: 'user_discord_id', algorithm: 'btree', columns: ['discordId'], unique: true },
+        { name: 'user_discord_id', accessor: 'user_discord_id', algorithm: 'btree', columns: ['discordId'] },
     ]
 }, {
     identity: t.identity().primaryKey(),
-    username: t.string(),
+    username: t.string().unique(),
     displayName: t.string(),
     isGuest: t.bool(),
     lastLoginAt: t.timestamp(),

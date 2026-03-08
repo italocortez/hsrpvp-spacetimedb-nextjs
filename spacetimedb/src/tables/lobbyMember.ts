@@ -6,7 +6,7 @@ export const LobbyMember = table({
     public: true,
     primaryKey: ['lobbyId', 'userIdentity'],
     indexes: [
-        { name: 'lobby_member_lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        { name: 'lobby_member_lobby_id', accessor: 'lobby_member_lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
     ]
 }, {
     lobbyId: t.u32(),

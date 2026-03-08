@@ -34,6 +34,11 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import BroadcastCursorReducer from "./broadcast_cursor_reducer";
+import LoginAsGuestReducer from "./login_as_guest_reducer";
+import RegisterDiscordUserReducer from "./register_discord_user_reducer";
+import UpdateAvatarReducer from "./update_avatar_reducer";
+import UpdateDisplayNameReducer from "./update_display_name_reducer";
 
 // Import all procedure arg schemas
 
@@ -59,8 +64,17 @@ const tablesSchema = __schema({
   HsrCharacter: __table({
     name: 'hsr_character',
     indexes: [
+      { name: 'character_by_element', algorithm: 'btree', columns: [
+        'element',
+      ] },
       { name: 'name', algorithm: 'btree', columns: [
         'name',
+      ] },
+      { name: 'character_by_path', algorithm: 'btree', columns: [
+        'path',
+      ] },
+      { name: 'character_by_role', algorithm: 'btree', columns: [
+        'role',
       ] },
     ],
     constraints: [
@@ -79,6 +93,9 @@ const tablesSchema = __schema({
     indexes: [
       { name: 'name', algorithm: 'btree', columns: [
         'name',
+      ] },
+      { name: 'lightcone_by_path', algorithm: 'btree', columns: [
+        'path',
       ] },
     ],
     constraints: [
@@ -102,6 +119,13 @@ const tablesSchema = __schema({
       { name: 'id', algorithm: 'btree', columns: [
         'id',
       ] },
+      { name: 'synergy_source_mode', algorithm: 'btree', columns: [
+        'sourceName',
+        'gameMode',
+      ] },
+      { name: 'synergy_target', algorithm: 'btree', columns: [
+        'targetName',
+      ] },
     ],
     constraints: [
       { name: 'hsr_synergy_cost_id_key', constraint: 'unique', columns: ['id'] },
@@ -110,12 +134,19 @@ const tablesSchema = __schema({
   Lobby: __table({
     name: 'lobby',
     indexes: [
+      { name: 'lobby_host', algorithm: 'btree', columns: [
+        'hostIdentity',
+      ] },
       { name: 'id', algorithm: 'btree', columns: [
         'id',
+      ] },
+      { name: 'joinCode', algorithm: 'btree', columns: [
+        'joinCode',
       ] },
     ],
     constraints: [
       { name: 'lobby_id_key', constraint: 'unique', columns: ['id'] },
+      { name: 'lobby_join_code_key', constraint: 'unique', columns: ['joinCode'] },
     ],
   }, LobbyRow),
   LobbyCursorEvent: __table({
@@ -129,6 +160,9 @@ const tablesSchema = __schema({
   LobbyMember: __table({
     name: 'lobby_member',
     indexes: [
+      { name: 'lobby_member_lobby_id', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
     ],
     constraints: [
     ],
@@ -147,8 +181,14 @@ const tablesSchema = __schema({
   MatchSessionHistory: __table({
     name: 'match_session_history',
     indexes: [
+      { name: 'history_game_mode', algorithm: 'btree', columns: [
+        'gameMode',
+      ] },
       { name: 'id', algorithm: 'btree', columns: [
         'id',
+      ] },
+      { name: 'history_played_at', algorithm: 'btree', columns: [
+        'playedAt',
       ] },
     ],
     constraints: [
@@ -160,6 +200,9 @@ const tablesSchema = __schema({
     indexes: [
       { name: 'id', algorithm: 'btree', columns: [
         'id',
+      ] },
+      { name: 'match_history_lobby', algorithm: 'btree', columns: [
+        'lobbyId',
       ] },
     ],
     constraints: [
@@ -180,18 +223,30 @@ const tablesSchema = __schema({
   User: __table({
     name: 'user',
     indexes: [
+      { name: 'user_discord_id', algorithm: 'btree', columns: [
+        'discordId',
+      ] },
       { name: 'identity', algorithm: 'btree', columns: [
         'identity',
+      ] },
+      { name: 'username', algorithm: 'btree', columns: [
+        'username',
       ] },
     ],
     constraints: [
       { name: 'user_identity_key', constraint: 'unique', columns: ['identity'] },
+      { name: 'user_username_key', constraint: 'unique', columns: ['username'] },
     ],
   }, UserRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
+  __reducerSchema("login_as_guest", LoginAsGuestReducer),
+  __reducerSchema("register_discord_user", RegisterDiscordUserReducer),
+  __reducerSchema("update_avatar", UpdateAvatarReducer),
+  __reducerSchema("update_display_name", UpdateDisplayNameReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

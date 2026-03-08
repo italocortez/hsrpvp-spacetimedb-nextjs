@@ -1,0 +1,376 @@
+HSRPVP-SPACETIMEDB-NEXTJS/
+│
+│   # ──────────────────────────────────────────────
+│   # ROOT CONFIG
+│   # ──────────────────────────────────────────────
+├── .env.local                          # NEXT_PUBLIC_SPACETIMEDB_URI, NEXT_PUBLIC_MODULE_NAME
+├── .gitignore
+├── next.config.ts
+├── package.json                        # Next.js app dependencies (spacetimedb, react, etc.)
+├── tsconfig.json                       # Next.js tsconfig (paths aliases configured here)
+│
+│   # ──────────────────────────────────────────────
+│   # SPACETIMEDB SERVER MODULE (deployed independently)
+│   # This entire folder is the --module-path target.
+│   # Nothing in here runs in the browser.
+│   # ──────────────────────────────────────────────
+├── spacetimedb/
+│   ├── package.json                    
+│   ├── tsconfig.json                   # Server-side TS config
+│   │
+│   └── src/
+│       │
+│       │   # ── Schema: ALL table definitions ──
+│       │   # Single source of truth. Exports `spacetimedb` instance.
+│       │   # Reducers import from here (never the reverse).
+│       ├── schema.ts
+│       │
+│       │   # ── Entrypoint: re-exports all reducers + lifecycle ──
+│       │   # SpacetimeDB bundles from this file.
+│       ├── index.ts
+│       │
+│       ├── types/
+│       │   ├── enums.ts         		  # (ALREADY BUILD)        
+│       │   ├── structs.ts              # (ALREADY BUILD)
+│       │
+│       │   # ── Tables: grouped by domain for readability ──
+│       │   # schema.ts imports from these, composes them into schema()
+│       ├── tables/
+│       │   ├── user.ts					#  (ALREADY BUILD)  User table
+│       │   ├── hsrCharacter.ts			#  (ALREADY BUILD)  hsrCharacter table
+│       │   ├── hsrLightcone.ts			#  (ALREADY BUILD)  hsrLightcone table
+│       │   ├── hsrCharacterCost.ts		#  (ALREADY BUILD)  hsrCharacterCost table
+│       │   ├── hsrLightconeCost.ts		#  (ALREADY BUILD)  hsrLightconeCost table
+│       │   ├── hsrSynergyCost.ts			#  (ALREADY BUILD)  hsrSynergyCost table
+│       │   ├── lobby.ts					#  (ALREADY BUILD)  lobby table
+│       │   ├── lobbyMember.ts				#  (ALREADY BUILD)  lobbyMember table
+│       │   ├── lobbyCursorEvent.ts		#  (ALREADY BUILD)  lobbyCursorEvent table, Ephimeral table that inserts, broadcast and deletes
+│       │   ├── matchSession.ts			#  (ALREADY BUILD)  matchSession table
+│       │   ├── matchSessionStep.ts		#  (ALREADY BUILD)  matchSessionStep table
+│       │   ├── matchSessionHistory.ts		#  (ALREADY BUILD)  matchSessionHistory table
+│       │   ├── matchSessionStepHistory.ts	#  (ALREADY BUILD)  matchSessionStepHistory table
+│       │
+│       │   # ── Reducers: one file per domain ──
+│       │   # Each imports `spacetimedb` from ../schema
+│       ├── reducers/
+│       │   ├── cursor.ts               # (ALREADY BUILD) cursor event broadcasting
+│       │   ├── auth.ts                 # (ALREADY BUILD) clientConnected/Disconnected, register, login
+│       │   ├── admin.ts                # bulk_upload_characters, edit_costs, manage_sessions
+│       │   ├── lobby.ts                # create_match, join_match, configure settings, invite
+│       │   ├── draftClassic.ts         # pick_character, ban_character, confirm_pick
+│       │   ├── draftAuction.ts         # place_bid, resolve_auction, skip_bid
+│       │   ├── draftShared.ts          # advance_turn, end_draft, timeout_handler
+│       │   └── profile.ts              # update_profile, link_discord, upload_roster
+│       │
+│       │   # ── Views: server-side computed views ──
+│       ├── views/
+│       │   ├── tableCostsView.ts       # Anonymous view: character and lightcone cost tables
+│       │
+│       │   # ── Server-side helpers (pure, deterministic) ──
+│       └── helpers/
+│           ├── draftRules.ts           # Turn order logic, validation, ban limits
+│           ├── auctionRules.ts         # Bid validation, budget math
+│           └── costCalculator.ts       # Synergy cost lookups
+│           └── ensurePermissions.ts    # (ALREADY BUILD) Helper functions to check Roles, permissions 
+│
+│   # ──────────────────────────────────────────────
+│   # GENERATED BINDINGS (never hand-edit)
+│   # `spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb`
+│   # ──────────────────────────────────────────────
+├── src/
+│   └── module_bindings/
+│       ├── index.ts                    # DbConnection, tables, reducers exports
+│       └── ...                         # Auto-generated types
+│
+│   # ──────────────────────────────────────────────
+│   # NEXT.JS APP (Client + SSR)
+│   # ──────────────────────────────────────────────
+├── app/
+│   ├── layout.tsx                      # (ALREADY BUILD) Root <html>, global fonts, metadata
+│   ├── globals.css                     # (ALREADY BUILD) CSS reset, design tokens, CSS custom properties
+│   │
+│   │   # ── Providers: SpacetimeDB + any React context ──
+│   ├── providers.tsx                   # (ALREADY BUILD) SpacetimeDBProvider wrapper, memoized builder
+│   │
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   │   # API GROUP: AUTH API
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   ├── api/
+│   │   └── auth/
+│   │       └── [...nextauth]
+│   │             └── route.ts			  # (ALREADY BUILD)
+│   │
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   │   # ROUTE GROUP: (landing) — public, no auth
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   ├── (landingPage)/
+│   │   ├── layout.tsx                  # (ALREADY BUILD) Frontpage shell: navbar, footer
+│   │   ├── layout.module.css           # (ALREADY BUILD)
+│   │   │
+│   │   ├── page.tsx                    # (ALREADY BUILD) Landing page — "/" route
+│   │   ├── page.module.css             # (ALREADY BUILD)
+│   │   │
+│   │   └── costs/
+│   │       ├── page.tsx                # "/costs" — public cost table browser
+│   │       └── page.module.css
+│   │
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   │   # ROUTE GROUP: (app) — authenticated shell
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   ├── (lobby)/
+│   │   ├── layout.tsx                  # App shell: sidebar, top-bar, auth gate
+│   │   ├── layout.module.css
+│   │   │
+│   │   ├── lobby/
+│   │   │   ├── page.tsx                # "/lobby" — browse/create matches
+│   │   │   ├── page.module.css
+│   │   │   ├── [matchId]/
+│   │   │   │   ├── page.tsx            # "/lobby/[matchId]" — match config & waiting room
+│   │   │   │   └── page.module.css
+│   │   │   └── create/
+│   │   │       ├── page.tsx            # "/lobby/create" — match creation form
+│   │   │       └── page.module.css
+│   │   │
+│   │   ├── profile/
+│   │       ├── page.tsx                # "/profile" — own profile
+│   │       ├── page.module.css
+│   │       └── [userId]/
+│   │           ├── page.tsx            # "/profile/[userId]" — view other user
+│   │           └── page.module.css
+│   │
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   │   # ROUTE GROUP: (game) — active drafting session
+│   │   # Minimal chrome, full-bleed game UI
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   ├── (game)/
+│   │   ├── layout.tsx                  # Game shell: no sidebar, status bar only
+│   │   ├── layout.module.css
+│   │   │
+│   │   └── draft/
+│   │       └── [matchId]/
+│   │           ├── page.tsx            # "/draft/[matchId]" — resolves mode, renders DraftArena
+│   │           └── page.module.css
+│   │
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   │   # ROUTE GROUP: (admin) — admin-only
+│   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+│   └── (admin)/
+│       ├── layout.tsx                  # Admin shell: admin nav, role guard
+│       ├── layout.module.css
+│       │
+│       ├── dashboard/
+│       │   ├── page.tsx                # "/dashboard" — admin overview
+│       │   └── page.module.css
+│       │
+│       ├── characters/
+│       │   ├── page.tsx                # "/characters" — CRUD characters, bulk JSON upload
+│       │   └── page.module.css
+│       │
+│       ├── lightcones/
+│       │   ├── page.tsx                # "/lightcones" — CRUD lightcones
+│       │   └── page.module.css
+│       │
+│       └── sessions/
+│           ├── page.tsx                # "/sessions" — manage active/past matches
+│           └── page.module.css
+│
+│   # ──────────────────────────────────────────────
+│   # FEATURES (Feature-first architecture)
+│   # Each feature owns its components, hooks, types, utils
+│   # ──────────────────────────────────────────────
+├── features/
+│   │
+│   ├── auth/
+│   │   ├── components/
+│   │   │   ├── LoginForm.tsx           # (ALREADY BUILD)
+│   │   │   ├── LoginForm.module.css    # (ALREADY BUILD)
+│   │   │   ├── AuthGate.tsx            # (ALREADY BUILD) Wraps children, redirects if not authed
+│   │   │   └── AuthGate.module.css     # (ALREADY BUILD)
+│   │   ├── hooks/
+│   │   │   └── useAuth.ts              # (ALREADY BUILD) Identity state, token management
+│   │   └── types.ts                    # (ALREADY BUILD) AuthState, UserRole enum (UI-side)
+│   │
+│   ├── lobby/
+│   │   ├── components/
+│   │   │   ├── MatchList.tsx
+│   │   │   ├── MatchList.module.css
+│   │   │   ├── MatchCard.tsx
+│   │   │   ├── MatchCard.module.css
+│   │   │   ├── CreateMatchForm.tsx
+│   │   │   ├── CreateMatchForm.module.css
+│   │   │   ├── MatchSettings.tsx
+│   │   │   ├── MatchSettings.module.css
+│   │   │   ├── InviteLink.tsx
+│   │   │   ├── InviteLink.module.css
+│   │   │   ├── WaitingRoom.tsx
+│   │   │   └── WaitingRoom.module.css
+│   │   ├── hooks/
+│   │   │   ├── useLobby.ts            # Subscribe to match sessions, filter logic
+│   │   │   └── useMatchConfig.ts       # Match settings state
+│   │   └── types.ts                    # MatchMode, MatchSettings (UI-side)
+│   │
+│   ├── drafting/                       # ★ CORE COMPLEX FEATURE
+│   │   ├── components/
+│   │   │   │   # ── Shared across all modes ──
+│   │   │   ├── DraftArena.tsx          # Top-level orchestrator: resolves mode, composes panels
+│   │   │   ├── DraftArena.module.css
+│   │   │   ├── CharacterGrid.tsx       # Filterable character picker grid
+│   │   │   ├── CharacterGrid.module.css
+│   │   │   ├── CharacterCard.tsx       # Single character tile (cost badge, element icon)
+│   │   │   ├── CharacterCard.module.css
+│   │   │   ├── LightconeGrid.tsx       # Lightcone browser/picker
+│   │   │   ├── LightconeGrid.module.css
+│   │   │   ├── LightconeCard.tsx
+│   │   │   ├── LightconeCard.module.css
+│   │   │   ├── DraftTimer.tsx          # Countdown timer (reads scheduled table state)
+│   │   │   ├── DraftTimer.module.css
+│   │   │   ├── TeamPanel.tsx           # Shows picked/banned chars for one team
+│   │   │   ├── TeamPanel.module.css
+│   │   │   ├── TurnIndicator.tsx       # Whose turn, what action (pick/ban/bid)
+│   │   │   ├── TurnIndicator.module.css
+│   │   │   ├── DraftLog.tsx            # Scrollable action history
+│   │   │   ├── DraftLog.module.css
+│   │   │   ├── SpectatorBadge.tsx      # Role indicator overlay
+│   │   │   └── SpectatorBadge.module.css
+│   │   │   │
+│   │   │   │   # ── Classic mode specific ──
+│   │   │   ├── classic/
+│   │   │   │   ├── ClassicDraftView.tsx
+│   │   │   │   ├── ClassicDraftView.module.css
+│   │   │   │   ├── BanSlot.tsx
+│   │   │   │   └── BanSlot.module.css
+│   │   │   │
+│   │   │   │   # ── Auction mode specific ──
+│   │   │   ├── auction/
+│   │   │   │   ├── AuctionDraftView.tsx
+│   │   │   │   ├── AuctionDraftView.module.css
+│   │   │   │   ├── BidPanel.tsx
+│   │   │   │   ├── BidPanel.module.css
+│   │   │   │   ├── BudgetDisplay.tsx
+│   │   │   │   └── BudgetDisplay.module.css
+│   │   │   │
+│   │   │   │   # ── Sandbox/Test mode specific ──
+│   │   │   └── sandbox/
+│   │   │       ├── SandboxDraftView.tsx
+│   │   │       └── SandboxDraftView.module.css
+│   │   │
+│   │   ├── hooks/
+│   │   │   ├── useDraftState.ts        # Core: subscribes to MatchSessionStep, derives turn/phase
+│   │   │   ├── useDraftActions.ts       # Calls reducers: pick, ban, bid, confirm
+│   │   │   ├── useDraftTimer.ts         # Timer countdown logic from server timestamps
+│   │   │   ├── useCharacterFilter.ts    # Search, element filter, path filter
+│   │   │   └── usePlayerRole.ts         # Determines: player | referee | spectator
+│   │   │
+│   │   ├── utils/
+│   │   │   ├── draft-order.ts           # Client-side turn order display helpers
+│   │   │   ├── team-composition.ts      # UI grouping of picks/bans per team
+│   │   │   └── cost-display.ts          # Format costs, budget remaining
+│   │   │
+│   │   └── types.ts                     # DraftPhase, DraftAction, PlayerRole (UI enums)
+│   │
+│   ├── profile/
+│   │   ├── components/
+│   │   │   ├── ProfileCard.tsx
+│   │   │   ├── ProfileCard.module.css
+│   │   │   ├── ProfileEditor.tsx
+│   │   │   ├── ProfileEditor.module.css
+│   │   │   ├── DiscordLink.tsx
+│   │   │   ├── DiscordLink.module.css
+│   │   │   ├── RosterUpload.tsx
+│   │   │   └── RosterUpload.module.css
+│   │   ├── hooks/
+│   │   │   └── useProfile.ts
+│   │   └── types.ts
+│   │
+│   ├── history/
+│   │   ├── components/
+│   │   │   ├── MatchHistoryList.tsx
+│   │   │   ├── MatchHistoryList.module.css
+│   │   │   ├── ReplayViewer.tsx
+│   │   │   └── ReplayViewer.module.css
+│   │   ├── hooks/
+│   │   │   └── useMatchHistory.ts
+│   │   └── types.ts
+│   │
+│   └── admin/
+│       ├── components/
+│       │   ├── AdminGuard.tsx           # Role check, redirect non-admins
+│       │   ├── AdminGuard.module.css
+│       │   ├── CharacterEditor.tsx
+│       │   ├── CharacterEditor.module.css
+│       │   ├── BulkUploader.tsx         # JSON file upload → reducer call
+│       │   ├── BulkUploader.module.css
+│       │   ├── SessionManager.tsx
+│       │   └── SessionManager.module.css
+│       ├── hooks/
+│       │   └── useAdmin.ts
+│       └── types.ts
+│
+│   # ──────────────────────────────────────────────
+│   # SHARED UI COMPONENTS (truly global, design-system level)
+│   # Only components used by 3+ features belong here
+│   # ──────────────────────────────────────────────
+├── components/
+│   ├── ui/
+│   │   ├── Button.tsx
+│   │   ├── Button.module.css
+│   │   ├── Input.tsx
+│   │   ├── Input.module.css
+│   │   ├── Modal.tsx
+│   │   ├── Modal.module.css
+│   │   ├── Tooltip.tsx
+│   │   ├── Tooltip.module.css
+│   │   ├── Badge.tsx
+│   │   ├── Badge.module.css
+│   │   ├── Spinner.tsx
+│   │   ├── Spinner.module.css
+│   │   ├── DataTable.tsx               # Reusable sortable/filterable table
+│   │   └── DataTable.module.css
+│   │
+│   ├── layout/
+│   │   ├── Navbar.tsx
+│   │   ├── Navbar.module.css
+│   │   ├── Sidebar.tsx
+│   │   ├── Sidebar.module.css
+│   │   ├── Footer.tsx
+│   │   └── Footer.module.css
+│   │
+│   └── game/                           # Game-domain shared (used across drafting + history + costs)
+│       ├── ElementIcon.tsx             # HSR element badges (Fire, Ice, etc.)
+│       ├── ElementIcon.module.css
+│       ├── PathIcon.tsx                # HSR path badges (Hunt, Erudition, etc.)
+│       ├── PathIcon.module.css
+│       ├── CharacterPortrait.tsx       # Reusable portrait with rarity frame
+│       └── CharacterPortrait.module.css
+│
+│   # ──────────────────────────────────────────────
+│   # LIB — framework-level utilities, config, SpacetimeDB wiring
+│   # ──────────────────────────────────────────────
+├── lib/
+│   ├── spacetimedb.ts                  # Connection config: URI, module name, token helpers
+│   ├── constants.ts                    # Game constants: MAX_BANS, TIMER_DURATION, etc.
+│   └── utils.ts                        # Generic helpers: formatDate, classnames merger, bigint formatting
+│
+│   # ──────────────────────────────────────────────
+│   # TYPES — shared type definitions (UI-side only)
+│   # DB types come from module_bindings (generated, never edit)
+│   # ──────────────────────────────────────────────
+├── types/
+│   ├── game.ts                         # Shared game enums: Element, Path, DraftMode
+│   └── ui.ts                           # UI-only types: ToastMessage, ModalProps, etc.
+│
+│   # ──────────────────────────────────────────────
+│   # STATIC ASSETS
+│   # ──────────────────────────────────────────────
+├── public/
+│   ├── web_tab_icon.png
+│   ├── elements/                       # Element icons (fire.svg, ice.svg, etc.)
+│   │   └── ...
+│   ├── game_modes/                     
+│   │   └── ...
+│   ├── landing/                        
+│   │   └── ...
+│   ├── paths/                          # Path icons (hunt.svg, erudition.svg, etc.)
+│   │   └── ... 
+│   ├── roles/                          # Roles icons
+│   │   └── ... 
