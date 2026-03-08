@@ -52,8 +52,15 @@ export function useAuth() {
     };
 
     const loginGuest = (alias: string) => {
-        if (!conn) return;
-        conn.reducers.registerGuest({ displayName: alias });
+        if (!conn) {
+            console.error("IPC Link not active. Cannot register guest.");
+            return;
+        }
+        try {
+            conn.reducers.registerGuest({ displayName: alias });
+        } catch (err) {
+            console.error("Failed to call registerGuest reducer:", err);
+        }
     };
 
     const loginDiscord = () => signIn("discord");
