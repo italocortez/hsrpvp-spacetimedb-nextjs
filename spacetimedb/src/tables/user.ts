@@ -8,7 +8,7 @@ export const User = table({
         { name: 'user_discord_id', accessor: 'user_discord_id', algorithm: 'btree', columns: ['discordId'] },
     ]
 }, {
-    identity: t.identity().primaryKey(),
+    id: t.u32().primaryKey().autoInc(),
     username: t.string().unique(),
     displayName: t.string(),
     isGuest: t.bool(),

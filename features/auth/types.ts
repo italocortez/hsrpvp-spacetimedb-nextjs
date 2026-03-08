@@ -6,9 +6,9 @@ export type UserRole =
     | { tag: "Admin" }
     | { tag: "TournamentHost" };
 
-// Explicitly define the User row structure to match spacetimedb/tables/user.ts
+// Mirrors spacetimedb/tables/user.ts (id-based, not identity-based)
 export interface User {
-    identity: Identity;
+    id: number;
     username: string;
     displayName: string;
     isGuest: boolean;
@@ -16,6 +16,13 @@ export interface User {
     role: UserRole;
     discordId?: string;
     avatarCharacterName: string;
+}
+
+// Mirrors spacetimedb/tables/userIdentity.ts
+export interface UserIdentityRow {
+    identity: Identity;
+    userId: number;
+    lastSeenAt: Timestamp;
 }
 
 export interface AuthState {

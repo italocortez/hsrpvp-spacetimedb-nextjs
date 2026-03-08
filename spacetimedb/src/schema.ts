@@ -1,5 +1,6 @@
 import { schema } from 'spacetimedb/server';
 import { User } from './tables/user';
+import { UserIdentity } from './tables/userIdentity';
 import { HsrCharacter } from './tables/hsrCharacter';
 import { HsrLightcone } from './tables/hsrLightcone';
 import { HsrCharacterCost } from './tables/hsrCharacterCost';
@@ -16,6 +17,7 @@ import { MatchSessionStepHistory } from './tables/matchSessionStepHistory';
 const spacetimedb = schema({
     // User / Auth
     User,
+    UserIdentity,
 
     // Static Assets
     HsrCharacter,

@@ -11,7 +11,7 @@ interface AuthGateProps {
 }
 
 export default function AuthGate({ children, message }: AuthGateProps) {
-    const { isAuthenticated, isConnecting, isLoadingData, connectionError, loginGuest, loginDiscord } = useAuth();
+    const { isAuthenticated, isConnecting, connectionError, loginGuest, loginDiscord } = useAuth();
 
     if (connectionError) {
         return (
@@ -26,15 +26,6 @@ export default function AuthGate({ children, message }: AuthGateProps) {
             <div className={styles.loading_container}>
                 <div className={styles.spinner}></div>
                 <p>Connecting to IPC Program...</p>
-            </div>
-        );
-    }
-
-    if (isLoadingData) {
-        return (
-            <div className={styles.loading_container}>
-                <div className={styles.spinner}></div>
-                <p>Syncing data...</p>
             </div>
         );
     }

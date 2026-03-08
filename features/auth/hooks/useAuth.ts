@@ -2,30 +2,41 @@ import { useMemo, useEffect, useCallback } from 'react';
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useTable, useSpacetimeDB } from 'spacetimedb/react';
 import { tables } from '@/src/module_bindings';
-import { AuthState, User } from '../types';
+import { SPACETIMEDB_TOKEN_KEY } from '@/lib/spacetimedb';
+import { AuthState, User, UserIdentityRow } from '../types';
 
 export function useAuth() {
     // 1. External state: NextAuth session + SpacetimeDB connection
     const { data: session, status: nextAuthStatus } = useSession();
     const { isActive, identity, getConnection, connectionError } = useSpacetimeDB();
 
-    // 2. Subscribe to User table
-    const [rows, isReady] = useTable(tables.User);
-    const allUsers = (rows || []) as unknown as User[];
+    // 2. Subscribe to UserIdentity and User tables
+    // Note: tables.UserIdentity requires regenerated bindings after publish
+    const [identityRows] = useTable((tables as any).UserIdentity);
+    const allIdentities = (identityRows || []) as unknown as UserIdentityRow[];
 
-    // 3. Find current user by matching SpacetimeDB identity
+    const [userRows] = useTable(tables.User);
+    const allUsers = (userRows || []) as unknown as User[];
+
+    // 3. Resolve: identity → UserIdentity → User
     const currentUser = useMemo(() => {
-        if (!isActive || !identity || !isReady) return null;
-        return allUsers.find(u =>
-            u.identity.toHexString() === identity.toHexString()
-        ) || null;
-    }, [allUsers, identity, isReady, isActive]);
+        if (!isActive || !identity) return null;
+
+        // Find the UserIdentity mapping for this device's identity
+        const mapping = allIdentities.find(m =>
+            m.identity.toHexString() === identity.toHexString()
+        );
+        if (!mapping) return null;
+
+        // Find the User by userId
+        return allUsers.find(u => u.id === mapping.userId) || null;
+    }, [allIdentities, allUsers, identity, isActive]);
 
     // 4. Side effect: when Discord session is authenticated, sync to SpacetimeDB
     useEffect(() => {
         if (nextAuthStatus !== "authenticated" || !session?.user) return;
         const conn = getConnection();
-        if (!conn || !isActive || !isReady) return;
+        if (!conn || !isActive) return;
 
         const discordUser = session.user as any;
         const needsSync = !currentUser || currentUser.isGuest || (currentUser.discordId !== discordUser.id);
@@ -40,18 +51,17 @@ export function useAuth() {
                 console.error("Failed to sync Discord user:", e);
             }
         }
-    }, [nextAuthStatus, session, getConnection, isActive, currentUser, isReady]);
+    }, [nextAuthStatus, session, getConnection, isActive, currentUser]);
 
     // 5. Auth state
     const isConnecting = !isActive && !connectionError;
-    const isLoadingData = isActive && !isReady;
 
     const authState: AuthState = {
         identity: identity || null,
         user: currentUser,
         isAuthenticated: !!currentUser,
         isConnecting,
-        isLoadingData,
+        isLoadingData: false,
         connectionError,
     };
 
@@ -71,15 +81,32 @@ export function useAuth() {
 
     const loginDiscord = useCallback(() => signIn("discord"), []);
 
+    // Logout: clear SpacetimeDB token so a fresh identity is generated next time.
+    // For Discord users this is safe — they re-link via register_discord_user on next login.
     const logout = useCallback(() => {
-        signOut();
-        window.location.reload();
+        localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
+        signOut({ callbackUrl: '/' });
     }, []);
+
+    // Guest-only: delete the guest account before clearing credentials.
+    // The caller is responsible for showing a confirmation dialog before calling this.
+    const deleteGuestAccount = useCallback(() => {
+        const conn = getConnection();
+        if (!conn) return;
+        try {
+            conn.reducers.deleteGuestAccount({});
+        } catch (err) {
+            console.error("Failed to delete guest account:", err);
+        }
+        localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
+        signOut({ callbackUrl: '/' });
+    }, [getConnection]);
 
     return {
         ...authState,
         loginGuest,
         loginDiscord,
         logout,
+        deleteGuestAccount,
     };
 }

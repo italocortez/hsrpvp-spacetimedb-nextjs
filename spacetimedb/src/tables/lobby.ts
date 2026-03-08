@@ -6,12 +6,12 @@ export const Lobby = table({
     name: 'lobby',
     public: true,
     indexes: [
-        { name: 'lobby_host', accessor: 'lobby_host', algorithm: 'btree', columns: ['hostIdentity'] },
+        { name: 'lobby_host', accessor: 'lobby_host', algorithm: 'btree', columns: ['hostUserId'] },
     ]
 }, {
     id: t.u32().primaryKey().autoInc(),
     joinCode: t.string().unique(),
-    hostIdentity: t.identity(),
+    hostUserId: t.u32(),
     teamBlueAlias: t.string(),
     teamRedAlias: t.string(),
 

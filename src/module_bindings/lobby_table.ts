@@ -18,7 +18,7 @@ import {
 export default __t.row({
   id: __t.u32().primaryKey(),
   joinCode: __t.string().name("join_code"),
-  hostIdentity: __t.identity().name("host_identity"),
+  hostUserId: __t.u32().name("host_user_id"),
   teamBlueAlias: __t.string().name("team_blue_alias"),
   teamRedAlias: __t.string().name("team_red_alias"),
   hostDisconnectTime: __t.option(__t.timestamp()).name("host_disconnect_time"),

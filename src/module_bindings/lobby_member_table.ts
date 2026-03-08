@@ -17,7 +17,7 @@ import {
 
 export default __t.row({
   lobbyId: __t.u32().name("lobby_id"),
-  userIdentity: __t.identity().name("user_identity"),
+  userId: __t.u32().name("user_id"),
   isOnline: __t.bool().name("is_online"),
   get participationRole() {
     return ParticipationRole.name("participation_role");

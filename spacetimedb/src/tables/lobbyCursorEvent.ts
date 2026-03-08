@@ -6,7 +6,7 @@ export const LobbyCursorEvent = table({
     event: true, // Broadcasts onInsert, then deletes immediately.
 }, {
     lobbyId: t.u32(),
-    sender: t.identity(), // Who moved the mouse
+    senderUserId: t.u32(), // Who moved the mouse (persistent User ID)
     x: t.f32(),
     y: t.f32(),
     timestamp: t.timestamp(),

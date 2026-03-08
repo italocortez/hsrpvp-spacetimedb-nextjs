@@ -15,7 +15,7 @@ export const MatchSessionStep = table({
     lobbyId: t.u32(),      // FK to Lobby/MatchSession
     sequence: t.u32(),     // 1, 2, 3... (Strict ordering)
 
-    actor: t.identity(),   // Who performed the action
+    actorUserId: t.u32(), // Who performed the action (persistent User ID)
     actorSlot: TeamLabel,  // Blue/Red/Spectator
 
     action: ActionType,    // Pick, Ban, Bid...

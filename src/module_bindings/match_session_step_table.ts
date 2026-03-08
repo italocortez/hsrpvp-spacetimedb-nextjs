@@ -20,7 +20,7 @@ export default __t.row({
   id: __t.u32().primaryKey(),
   lobbyId: __t.u32().name("lobby_id"),
   sequence: __t.u32(),
-  actor: __t.identity(),
+  actorUserId: __t.u32().name("actor_user_id"),
   get actorSlot() {
     return TeamLabel.name("actor_slot");
   },

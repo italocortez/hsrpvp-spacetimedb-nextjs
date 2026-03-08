@@ -10,10 +10,4 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  lobbyId: __t.u32().name("lobby_id"),
-  senderUserId: __t.u32().name("sender_user_id"),
-  x: __t.f32(),
-  y: __t.f32(),
-  timestamp: __t.timestamp(),
-});
+export default {};
