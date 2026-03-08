@@ -3,10 +3,13 @@
 import React, { useState } from 'react';
 import LoginForm from '@/features/auth/components/LoginForm';
 import FeatureCards from '@/features/landing/components/FeatureCards';
+import { useAuth } from '@/features/auth/hooks/useAuth'; //
 import styles from './page.module.css';
 
 export default function LandingPage() {
     const [copied, setCopied] = useState(false);
+    // ✅ Use our centralized hook to manage UI visibility
+    const { isAuthenticated, isInitializing, user } = useAuth();
 
     const handleCopyUsername = async () => {
         try {
@@ -14,7 +17,7 @@ export default function LandingPage() {
             setCopied(true);
             setTimeout(() => { setCopied(false); }, 2000);
         } catch (err) {
-            // Fallback
+            // Fallback for older browsers
             const textArea = document.createElement("textarea");
             textArea.value = "nathyron";
             document.body.appendChild(textArea);
@@ -26,19 +29,8 @@ export default function LandingPage() {
         }
     };
 
-    const handleLoginGuest = (alias: string) => {
-        console.log(`[Home] Guest login initiated for alias: ${alias}`);
-        // Future step: Call SpacetimeDB reducer or update auth context here
-    };
-
-    const handleLoginDiscord = () => {
-        console.log(`[Home] Discord login initiated`);
-        // Future step: Redirect to Discord OAuth flow
-    };
-
     return (
         <div className={styles.landing_page}>
-            {/* Hero Section */}
             <section className={styles.welcome_section}>
                 <div className={styles.welcome_content}>
                     <h1 className={styles.welcome_title}>IPC Battlegrounds</h1>
@@ -46,12 +38,19 @@ export default function LandingPage() {
                         Drafting interface for Honkai Star Rail PvP matches
                     </p>
 
-                    {/* Login Form Component */}
                     <div className={styles.auth_wrapper}>
-                        <LoginForm
-                            onLoginGuest={handleLoginGuest}
-                            onLoginDiscord={handleLoginDiscord}
-                        />
+                        {isInitializing ? (
+                            <div className={styles.loading_state}>
+                                <p>Establishing IPC Link...</p>
+                            </div>
+                        ) : !isAuthenticated ? (
+                            <LoginForm />
+                        ) : (
+                            <div className={styles.logged_in_welcome}>
+                                <h2>Welcome back, {user?.displayName}</h2>
+                                <p>Select a destination from the navigation bar above.</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Feature Cards Component */}
@@ -61,7 +60,6 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Contact Section */}
             <section id="contact_section" className={styles.contact_section}>
                 <div className={styles.contact_content}>
                     <h2>Contact Us</h2>
@@ -84,6 +82,7 @@ export default function LandingPage() {
 
                         <div className={styles.contact_row}>
                             <code className={styles.username_code}>nathyron</code>
+                            {/* ✅ The usage of handleCopyUsername */}
                             <button onClick={handleCopyUsername} className={styles.copy_btn}>
                                 {copied ? <span>Copied!</span> : <span>Copy</span>}
                             </button>
