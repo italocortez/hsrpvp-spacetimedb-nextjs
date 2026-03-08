@@ -5,54 +5,65 @@ import { tables } from '@/src/module_bindings';
 import { AuthState, User } from '../types';
 
 export function useAuth() {
-    // 1. Get External States (Auth.js and SpacetimeDB)
+    // 1. Get External States
     const { data: session, status: nextAuthStatus } = useSession();
+
     const { isActive, identity, getConnection } = useSpacetimeDB();
     const conn = getConnection();
 
     // 2. Fetch Table Data
-    const [rows, isLoadingTable] = useTable(tables.User);
-    const allUsers = rows as unknown as User[];
+    const [rows, isReady] = useTable(tables.User);
 
-    // 3. Define currentUser FIRST
+    const allUsers = (rows || []) as unknown as User[];
+
+    // 3. Define currentUser
     const currentUser = useMemo(() => {
-        if (!identity || isLoadingTable) return null;
+        // ✅ FIX: Logic inversion. We return null if NOT ready.
+        // If !isActive (connecting) OR !isReady (loading table) OR !identity (no wallet), we have no user.
+        if (!isActive || !identity || !isReady) return null;
 
         return allUsers.find(u =>
             u.identity.toHexString() === identity.toHexString()
         ) || null;
-    }, [allUsers, identity, isLoadingTable]);
+    }, [allUsers, identity, isReady, isActive]);
 
-    // 4. Side Effect: Sync Discord Session to SpacetimeDB
+    // 4. Side Effect: Sync Discord Session
     useEffect(() => {
-        // Only attempt to sync if we have a valid Discord session and a SpacetimeDB connection
         if (nextAuthStatus === "authenticated" && session?.user && conn && isActive) {
             const discordUser = session.user as any;
 
-            // Check if we need to link this identity to a Discord ID
-            const needsSync = !currentUser || (currentUser.discordId !== discordUser.id);
+            // Only attempt sync if table data is ready so we don't double-register
+            if (isReady) {
+                const needsSync = !currentUser || (currentUser.discordId !== discordUser.id);
 
-            if (needsSync) {
-                // ✅ Use camelCase and object syntax for the reducer
-                conn.reducers.registerDiscordUser({
-                    discordId: discordUser.id,
-                    username: discordUser.name || "DiscordUser",
-                    displayName: discordUser.name || "DiscordUser",
-                });
+                if (needsSync) {
+                    try {
+                        conn.reducers.registerDiscordUser({
+                            discordId: discordUser.id,
+                            username: discordUser.name || "DiscordUser",
+                            displayName: discordUser.name || "DiscordUser",
+                        });
+                    } catch (e) {
+                        console.error("Failed to sync Discord user:", e);
+                    }
+                }
             }
         }
-    }, [nextAuthStatus, session, conn, isActive, currentUser]);
+    }, [nextAuthStatus, session, conn, isActive, currentUser, isReady]);
 
     // 5. Build Final Auth State
+    // ✅ FIX: Define initialization as "Not connected OR Connected but table still loading"
+    const isInitializing = !isActive || (isActive && !isReady);
+
     const authState: AuthState = {
         identity: identity || null,
         user: currentUser,
-        isAuthenticated: currentUser !== null,
-        isInitializing: !isActive,
+        isAuthenticated: !!currentUser,
+        isInitializing,
     };
 
     const loginGuest = (alias: string) => {
-        if (!conn) {
+        if (!conn || !isActive) {
             console.error("IPC Link not active. Cannot register guest.");
             return;
         }
@@ -67,12 +78,8 @@ export function useAuth() {
 
     const logout = () => {
         signOut();
-        if (typeof window !== 'undefined') {
-            const HOST = process.env.NEXT_PUBLIC_SPACETIMEDB_HOST;
-            const DB_NAME = process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME;
-            localStorage.removeItem(`${HOST}/${DB_NAME}/auth_token`);
-            window.location.reload();
-        }
+        // Clear token logic here if needed
+        window.location.reload();
     };
 
     return {
