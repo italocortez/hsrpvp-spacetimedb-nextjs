@@ -6,13 +6,11 @@ export const Lobby = table({
     name: 'lobby',
     public: true,
     indexes: [
-        // Unique index for the 6-char join code
-        { name: 'lobby_join_code', algorithm: 'btree', columns: ['joinCode'], unique: true },
-        { name: 'lobby_host', algorithm: 'btree', columns: ['hostIdentity'] },
+        { name: 'lobby_host', accessor: 'lobby_host', algorithm: 'btree', columns: ['hostIdentity'] },
     ]
 }, {
     id: t.u32().primaryKey().autoInc(),
-    joinCode: t.string(),
+    joinCode: t.string().unique(),
     hostIdentity: t.identity(),
     teamBlueAlias: t.string(),
     teamRedAlias: t.string(),
