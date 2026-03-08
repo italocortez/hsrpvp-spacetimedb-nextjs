@@ -12,7 +12,7 @@ To install dependancies:
 npnm install
 ```
 
-To very build
+To verify build
 ```bash
 pnpm build
 ```
@@ -20,6 +20,11 @@ pnpm build
 To clean up your current dependencies:
 ```bash
 pnpm store prune
+```
+
+Run project on dev
+```bash
+pnpm run dev
 ```
 
 # SpacetimeDB stuff
