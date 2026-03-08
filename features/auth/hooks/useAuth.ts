@@ -48,7 +48,7 @@ export function useAuth() {
         identity: identity || null,
         user: currentUser,
         isAuthenticated: currentUser !== null,
-        isInitializing: !isActive || isLoadingTable || nextAuthStatus === "loading",
+        isInitializing: !isActive,
     };
 
     const loginGuest = (alias: string) => {
