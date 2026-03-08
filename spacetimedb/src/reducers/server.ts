@@ -141,3 +141,35 @@ export const server_link_discord = spacetimedb.reducer({
     // Case 3: Same problem — can't create UserIdentity without the Identity object.
     throw new SenderError('Identity not registered. Call login_as_guest first.');
 });
+
+/**
+ * Server-only reducer: promote a user to Admin role.
+ * Called via: npx tsx scripts/promote-admin.ts <username>
+ */
+export const server_promote_admin = spacetimedb.reducer({
+    username: t.string(),
+}, (ctx, { username }) => {
+    requireServer(ctx);
+
+    if (!username || username.length === 0) {
+        throw new SenderError('username is required');
+    }
+
+    // Find user by iterating (username is unique but not indexed for filter)
+    let targetUser: any = null;
+    for (const row of ctx.db.User.iter()) {
+        if (row.username === username) {
+            targetUser = row;
+            break;
+        }
+    }
+
+    if (!targetUser) {
+        throw new SenderError(`User "${username}" not found`);
+    }
+
+    ctx.db.User.id.update({
+        ...targetUser,
+        role: { tag: 'Admin' },
+    });
+});

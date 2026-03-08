@@ -11,6 +11,7 @@ import DeleteGuestAccountReducer from "../delete_guest_account_reducer";
 import LoginAsGuestReducer from "../login_as_guest_reducer";
 import RegisterServerReducer from "../register_server_reducer";
 import ServerLinkDiscordReducer from "../server_link_discord_reducer";
+import ServerPromoteAdminReducer from "../server_promote_admin_reducer";
 import UpdateAvatarReducer from "../update_avatar_reducer";
 import UpdateDisplayNameReducer from "../update_display_name_reducer";
 import UpdateUsernameReducer from "../update_username_reducer";
@@ -20,6 +21,7 @@ export type DeleteGuestAccountParams = __Infer<typeof DeleteGuestAccountReducer>
 export type LoginAsGuestParams = __Infer<typeof LoginAsGuestReducer>;
 export type RegisterServerParams = __Infer<typeof RegisterServerReducer>;
 export type ServerLinkDiscordParams = __Infer<typeof ServerLinkDiscordReducer>;
+export type ServerPromoteAdminParams = __Infer<typeof ServerPromoteAdminReducer>;
 export type UpdateAvatarParams = __Infer<typeof UpdateAvatarReducer>;
 export type UpdateDisplayNameParams = __Infer<typeof UpdateDisplayNameReducer>;
 export type UpdateUsernameParams = __Infer<typeof UpdateUsernameReducer>;
