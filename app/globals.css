@@ -1,3 +1,8 @@
+:root {
+  /* Tells the browser to use dark scrollbars and native inputs */
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;
@@ -8,11 +13,11 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-}
-
-body {
-  color: #333;
-  background: #fafafa;
+  background-color: rgb(17, 24, 39);
+  color: #ffffff;
+  /* Font smoothing for dark backgrounds */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -20,9 +25,11 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    color: #eee;
-    background: #111;
-  }
+button {
+  font-family: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
 }
