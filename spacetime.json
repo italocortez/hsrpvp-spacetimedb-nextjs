@@ -1,8 +1,4 @@
 {
-  "dev": {
-    "run": "pnpm run dev"
-  },
   "server": "maincloud",
-  "module-path": "./spacetimedb",
-  "database": "hsrpvp-spacetimedb-test"
+  "module-path": "./spacetimedb"
 }
