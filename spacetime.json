@@ -4,5 +4,5 @@
   },
   "server": "maincloud",
   "module-path": "./spacetimedb",
-  "database": "hsrpvp-spacetimedb-dxlnj"
+  "database": "hsrpvp-spacetimedb-test"
 }
