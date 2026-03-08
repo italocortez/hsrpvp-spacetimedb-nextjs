@@ -6,6 +6,7 @@ import { SpacetimeDBProvider } from 'spacetimedb/react';
 import { DbConnection, ErrorContext } from '../src/module_bindings';
 import { Identity } from 'spacetimedb';
 import { SPACETIMEDB_HOST as HOST, SPACETIMEDB_DB_NAME as DB_NAME, SPACETIMEDB_TOKEN_KEY as TOKEN_KEY } from '@/lib/spacetimedb';
+import { AuthProvider } from '@/features/auth/components/AuthProvider';
 
 const onConnect = (_conn: DbConnection, identity: Identity, token: string) => {
   if (typeof window !== 'undefined') {
@@ -45,7 +46,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </SpacetimeDBProvider>
     </SessionProvider>
   );

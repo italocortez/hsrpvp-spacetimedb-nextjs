@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthContext } from './AuthProvider';
 import LoginForm from './LoginForm';
 import styles from './AuthGate.module.css';
 
@@ -11,7 +11,7 @@ interface AuthGateProps {
 }
 
 export default function AuthGate({ children, message }: AuthGateProps) {
-    const { isAuthenticated, isConnecting, connectionError, loginGuest, loginDiscord } = useAuth();
+    const { isAuthenticated, isConnecting, isLoadingData, connectionError, loginGuest, loginDiscord } = useAuthContext();
 
     if (connectionError) {
         return (
@@ -21,7 +21,7 @@ export default function AuthGate({ children, message }: AuthGateProps) {
         );
     }
 
-    if (isConnecting) {
+    if (isConnecting || isLoadingData) {
         return (
             <div className={styles.loading_container}>
                 <div className={styles.spinner}></div>

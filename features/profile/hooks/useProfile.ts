@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useTable } from 'spacetimedb/react';
 import { tables } from '@/src/module_bindings';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuthContext } from '@/features/auth/components/AuthProvider';
 
 export interface HsrCharacterRow {
     name: string;
@@ -14,7 +14,7 @@ export interface HsrCharacterRow {
 }
 
 export function useProfile() {
-    const auth = useAuth();
+    const auth = useAuthContext();
 
     const [characterRows, charsReady] = useTable(tables.HsrCharacter);
     const allCharacters = (characterRows || []) as unknown as HsrCharacterRow[];

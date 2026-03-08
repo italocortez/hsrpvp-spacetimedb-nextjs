@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuthContext } from '@/features/auth/components/AuthProvider';
 import styles from './layout.module.css';
 
 export default function LandingLayout({
@@ -10,7 +10,7 @@ export default function LandingLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated } = useAuthContext();
 
     return (
         <div className={styles.layout_wrapper}>

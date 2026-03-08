@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
 import { getServerConnection } from '@/lib/spacetimedb-server';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 /**
  * POST /api/auth/link-discord
@@ -13,7 +14,7 @@ import { getServerConnection } from '@/lib/spacetimedb-server';
  */
 export async function POST(request: Request) {
     // 1. Verify the Discord session server-side
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user) {
         return NextResponse.json({ error: 'Not authenticated with Discord' }, { status: 401 });
     }

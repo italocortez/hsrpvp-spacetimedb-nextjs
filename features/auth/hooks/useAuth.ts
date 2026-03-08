@@ -38,35 +38,32 @@ export function useAuth() {
         return allUsers.find(u => u.id === mapping.userId) || null;
     }, [allIdentities, allUsers, identity, isActive]);
 
-    // 5. Auto-register: when connected but no mapping exists, call loginAsGuest
-    //    to ensure a UserIdentity row is created. This enables direct Discord login
-    //    (the server_link_discord reducer requires an existing mapping).
-    const autoRegisterRef = useRef(false);
+    // 5. Discord linking: when Discord session is authenticated, ensure a
+    //    UserIdentity mapping exists (call loginAsGuest if needed), then link.
+    const linkingRef = useRef(false);
+    const autoRegisteredRef = useRef(false);
     useEffect(() => {
-        if (!isActive || !identity || hasMapping) return;
-        if (autoRegisterRef.current) return;
+        if (nextAuthStatus !== "authenticated" || !session?.user) return;
+        if (!isActive || !identity) return;
 
         const conn = getConnection();
         if (!conn) return;
 
-        autoRegisterRef.current = true;
-        try {
-            conn.reducers.loginAsGuest({});
-        } catch (err) {
-            console.error("Auto-register loginAsGuest failed:", err);
+        // Step A: No mapping yet — call loginAsGuest to create one, then wait
+        // for the subscription to deliver the mapping (next render).
+        if (!hasMapping && !autoRegisteredRef.current) {
+            autoRegisteredRef.current = true;
+            try {
+                conn.reducers.loginAsGuest({});
+            } catch (err) {
+                console.error("Auto-register loginAsGuest failed:", err);
+                autoRegisteredRef.current = false;
+            }
+            return; // Wait for mapping to appear via subscription
         }
-        // Reset after a delay so it can retry if the mapping doesn't appear
-        const timer = setTimeout(() => { autoRegisterRef.current = false; }, 5000);
-        return () => clearTimeout(timer);
-    }, [isActive, identity, hasMapping, getConnection]);
 
-    // 6. Side effect: when Discord session is authenticated AND a user exists,
-    //    call the server-side API route to link the Discord account.
-    //    Waits for currentUser (meaning loginAsGuest has completed) before linking.
-    const linkingRef = useRef(false);
-    useEffect(() => {
-        if (nextAuthStatus !== "authenticated" || !session?.user) return;
-        if (!isActive || !identity || !currentUser) return;
+        // Step B: Mapping exists, now link Discord if needed
+        if (!currentUser) return;
 
         const discordUser = session.user as any;
         const needsSync = currentUser.isGuest || (currentUser.discordId !== discordUser.id);
@@ -84,17 +81,26 @@ export function useAuth() {
                 .catch(e => console.error("Failed to link Discord:", e))
                 .finally(() => { linkingRef.current = false; });
         }
-    }, [nextAuthStatus, session, isActive, identity, currentUser]);
+    }, [nextAuthStatus, session, isActive, identity, hasMapping, currentUser, getConnection]);
 
-    // 5. Auth state
+    // Discord linking is in progress when we have a Discord session but the
+    // user is still a guest (or doesn't exist yet). Prevents flash of "Welcome Guest_xxx".
+    const isLinkingDiscord = nextAuthStatus === "authenticated" && (!currentUser || currentUser.isGuest);
+
+    // If we have a stored token but no user yet, we're still loading subscription data.
+    // This prevents the AuthGate login form from flashing during page transitions.
+    const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem(SPACETIMEDB_TOKEN_KEY);
+    const isWaitingForData = isActive && !currentUser && hasStoredToken;
+
+    // Auth state
     const isConnecting = !isActive && !connectionError;
 
     const authState: AuthState = {
         identity: identity || null,
         user: currentUser,
-        isAuthenticated: !!currentUser,
+        isAuthenticated: !!currentUser && !isLinkingDiscord,
         isConnecting,
-        isLoadingData: false,
+        isLoadingData: isLinkingDiscord || isWaitingForData,
         connectionError,
     };
 

@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import LoginForm from '@/features/auth/components/LoginForm';
 import FeatureCards from '@/features/landing/components/FeatureCards';
-import { useAuth } from '@/features/auth/hooks/useAuth'; //
+import { useAuthContext } from '@/features/auth/components/AuthProvider';
 import styles from './page.module.css';
 
 export default function LandingPage() {
     const [copied, setCopied] = useState(false);
-    const { isAuthenticated, isConnecting, isLoadingData, connectionError, user, loginGuest, loginDiscord } = useAuth();
+    const { isAuthenticated, isConnecting, isLoadingData, connectionError, user, loginGuest, loginDiscord } = useAuthContext();
 
     const handleCopyUsername = async () => {
         try {
