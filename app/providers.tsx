@@ -1,5 +1,6 @@
 'use client';
 
+import { SessionProvider } from "next-auth/react";
 import { useMemo } from 'react';
 import { SpacetimeDBProvider } from 'spacetimedb/react';
 import { DbConnection, ErrorContext } from '../src/module_bindings';
@@ -44,10 +45,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         .onConnectError(onConnectError),
     []
   );
-
+  // we wrap everything inside the session provider so that the session is available to the client
   return (
-    <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
-      {children}
-    </SpacetimeDBProvider>
+    <SessionProvider>
+      <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
+        {children}
+      </SpacetimeDBProvider>
+    </SessionProvider>
   );
 }
