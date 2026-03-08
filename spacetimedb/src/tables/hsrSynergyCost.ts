@@ -5,8 +5,8 @@ export const HsrSynergyCost = table({
     name: 'hsr_synergy_cost',
     public: true,
     indexes: [
-        { name: 'synergy_source_mode', algorithm: 'btree', columns: ['sourceName', 'gameMode'] },
-        { name: 'synergy_target', algorithm: 'btree', columns: ['targetName'] },
+        { name: 'synergy_source_mode', accessor: 'synergy_source_mode', algorithm: 'btree', columns: ['sourceName', 'gameMode'] },
+        { name: 'synergy_target', accessor: 'synergy_target', algorithm: 'btree', columns: ['targetName'] },
     ]
 }, {
     id: t.u32().primaryKey().autoInc(),

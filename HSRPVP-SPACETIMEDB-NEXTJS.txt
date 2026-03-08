@@ -110,7 +110,7 @@ HSRPVP-SPACETIMEDB-NEXTJS/
 │   │   ├── page.tsx                    # (ALREADY BUILD) Landing page — "/" route
 │   │   ├── page.module.css             # (ALREADY BUILD)
 │   │   │
-│   │   └── costsTables/
+│   │   └── costs/
 │   │       ├── page.tsx                # "/costs" — public cost table browser
 │   │       └── page.module.css
 │   │

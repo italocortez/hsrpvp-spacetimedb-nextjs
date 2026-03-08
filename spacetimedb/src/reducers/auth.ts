@@ -30,7 +30,7 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
         lastLoginAt: ctx.timestamp,
         role: { tag: 'User' },
         discordId: undefined,
-        avatarCharacterName: '',
+        avatarCharacterName: 'march7th',
     });
 });
 
@@ -77,7 +77,7 @@ export const register_discord_user = spacetimedb.reducer({
             lastLoginAt: ctx.timestamp,
             role: { tag: 'User' },
             discordId,
-            avatarCharacterName: '',
+            avatarCharacterName: 'march7th',
         });
     }
 });

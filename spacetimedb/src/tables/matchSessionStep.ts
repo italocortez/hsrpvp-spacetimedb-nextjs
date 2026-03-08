@@ -7,7 +7,7 @@ export const MatchSessionStep = table({
     public: true,
     indexes: [
         // Fast lookup: "Get full history for Lobby 123"
-        { name: 'match_history_lobby', algorithm: 'btree', columns: ['lobbyId'] },
+        { name: 'match_history_lobby', accessor: 'match_history_lobby', algorithm: 'btree', columns: ['lobbyId'] },
     ]
 }, {
     id: t.u32().primaryKey().autoInc(),
