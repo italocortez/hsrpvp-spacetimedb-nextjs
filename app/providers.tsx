@@ -7,6 +7,7 @@ import { DbConnection, ErrorContext } from '../src/module_bindings';
 import { Identity } from 'spacetimedb';
 import { SPACETIMEDB_HOST as HOST, SPACETIMEDB_DB_NAME as DB_NAME, SPACETIMEDB_TOKEN_KEY as TOKEN_KEY } from '@/lib/spacetimedb';
 import { AuthProvider } from '@/features/auth/components/AuthProvider';
+import { GameDataProvider } from '@/features/game-data/components/GameDataProvider';
 
 const onConnect = (_conn: DbConnection, identity: Identity, token: string) => {
   if (typeof window !== 'undefined') {
@@ -47,7 +48,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
         <AuthProvider>
-          {children}
+          <GameDataProvider>
+            {children}
+          </GameDataProvider>
         </AuthProvider>
       </SpacetimeDBProvider>
     </SessionProvider>
