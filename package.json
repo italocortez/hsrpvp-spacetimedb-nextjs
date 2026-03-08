@@ -20,7 +20,9 @@
     "spacetime:publish": "spacetime publish --module-path spacetimedb --server maincloud"
   },
   "dependencies": {
+    "@auth/core": "^0.34.3",
     "next": "^15.0.0",
+    "next-auth": "^4.24.13",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "spacetimedb": "^2.0.1"
