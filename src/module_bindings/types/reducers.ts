@@ -6,5 +6,11 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import BroadcastCursorReducer from "../broadcast_cursor_reducer";
+import RegisterDiscordUserReducer from "../register_discord_user_reducer";
+import RegisterGuestReducer from "../register_guest_reducer";
 
+export type BroadcastCursorParams = __Infer<typeof BroadcastCursorReducer>;
+export type RegisterDiscordUserParams = __Infer<typeof RegisterDiscordUserReducer>;
+export type RegisterGuestParams = __Infer<typeof RegisterGuestReducer>;
 

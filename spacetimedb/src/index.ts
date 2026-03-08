@@ -1,7 +1,6 @@
 import spacetimedb from './schema';
-
-import './reducers/cursor';
-import './reducers/auth';
+export { register_guest, register_discord_user } from './reducers/auth';
+export { broadcast_cursor } from './reducers/cursor';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);
