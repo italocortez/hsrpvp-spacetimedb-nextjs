@@ -11,10 +11,17 @@ interface AuthGateProps {
 }
 
 export default function AuthGate({ children, message }: AuthGateProps) {
-    const { isAuthenticated, isInitializing } = useAuth();
+    const { isAuthenticated, isConnecting, isLoadingData, connectionError, loginGuest, loginDiscord } = useAuth();
 
-    // 1. Wait for SpacetimeDB websocket connection and user table sync
-    if (isInitializing) {
+    if (connectionError) {
+        return (
+            <div className={styles.loading_container}>
+                <p>IPC Link failed: {connectionError.message}</p>
+            </div>
+        );
+    }
+
+    if (isConnecting) {
         return (
             <div className={styles.loading_container}>
                 <div className={styles.spinner}></div>
@@ -23,16 +30,23 @@ export default function AuthGate({ children, message }: AuthGateProps) {
         );
     }
 
-    // 2. If no user row exists for this identity, show the login form
-    if (!isAuthenticated) {
+    if (isLoadingData) {
         return (
-            <div className={styles.gate_wrapper}>
-                {message && <h2 className={styles.gate_message}>{message}</h2>}
-                <LoginForm />
+            <div className={styles.loading_container}>
+                <div className={styles.spinner}></div>
+                <p>Syncing data...</p>
             </div>
         );
     }
 
-    // 3. Render protected content once user is verified in the DB
+    if (!isAuthenticated) {
+        return (
+            <div className={styles.gate_wrapper}>
+                {message && <h2 className={styles.gate_message}>{message}</h2>}
+                <LoginForm loginGuest={loginGuest} loginDiscord={loginDiscord} />
+            </div>
+        );
+    }
+
     return <>{children}</>;
 }

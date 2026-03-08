@@ -7,10 +7,14 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
 import BroadcastCursorReducer from "../broadcast_cursor_reducer";
+import LoginAsGuestReducer from "../login_as_guest_reducer";
 import RegisterDiscordUserReducer from "../register_discord_user_reducer";
-import RegisterGuestReducer from "../register_guest_reducer";
+import UpdateAvatarReducer from "../update_avatar_reducer";
+import UpdateDisplayNameReducer from "../update_display_name_reducer";
 
 export type BroadcastCursorParams = __Infer<typeof BroadcastCursorReducer>;
+export type LoginAsGuestParams = __Infer<typeof LoginAsGuestReducer>;
 export type RegisterDiscordUserParams = __Infer<typeof RegisterDiscordUserReducer>;
-export type RegisterGuestParams = __Infer<typeof RegisterGuestReducer>;
+export type UpdateAvatarParams = __Infer<typeof UpdateAvatarReducer>;
+export type UpdateDisplayNameParams = __Infer<typeof UpdateDisplayNameReducer>;
 

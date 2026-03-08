@@ -35,8 +35,10 @@ import {
 
 // Import all reducer arg schemas
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
+import LoginAsGuestReducer from "./login_as_guest_reducer";
 import RegisterDiscordUserReducer from "./register_discord_user_reducer";
-import RegisterGuestReducer from "./register_guest_reducer";
+import UpdateAvatarReducer from "./update_avatar_reducer";
+import UpdateDisplayNameReducer from "./update_display_name_reducer";
 
 // Import all procedure arg schemas
 
@@ -196,8 +198,10 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
+  __reducerSchema("login_as_guest", LoginAsGuestReducer),
   __reducerSchema("register_discord_user", RegisterDiscordUserReducer),
-  __reducerSchema("register_guest", RegisterGuestReducer),
+  __reducerSchema("update_avatar", UpdateAvatarReducer),
+  __reducerSchema("update_display_name", UpdateDisplayNameReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

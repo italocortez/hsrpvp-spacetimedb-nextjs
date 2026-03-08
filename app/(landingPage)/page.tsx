@@ -8,8 +8,7 @@ import styles from './page.module.css';
 
 export default function LandingPage() {
     const [copied, setCopied] = useState(false);
-    // ✅ Use our centralized hook to manage UI visibility
-    const { isAuthenticated, isInitializing, user } = useAuth();
+    const { isAuthenticated, isConnecting, isLoadingData, connectionError, user, loginGuest, loginDiscord } = useAuth();
 
     const handleCopyUsername = async () => {
         try {
@@ -39,17 +38,25 @@ export default function LandingPage() {
                     </p>
 
                     <div className={styles.auth_wrapper}>
-                        {isInitializing ? (
+                        {connectionError ? (
+                            <div className={styles.loading_state}>
+                                <p>IPC Link failed: {connectionError.message}</p>
+                            </div>
+                        ) : isConnecting ? (
                             <div className={styles.loading_state}>
                                 <p>Establishing IPC Link...</p>
                             </div>
-                        ) : !isAuthenticated ? (
-                            <LoginForm />
-                        ) : (
+                        ) : isLoadingData ? (
+                            <div className={styles.loading_state}>
+                                <p>Syncing data...</p>
+                            </div>
+                        ) : isAuthenticated ? (
                             <div className={styles.logged_in_welcome}>
                                 <h2>Welcome back, {user?.displayName}</h2>
                                 <p>Select a destination from the navigation bar above.</p>
                             </div>
+                        ) : (
+                            <LoginForm loginGuest={loginGuest} loginDiscord={loginDiscord} />
                         )}
                     </div>
 

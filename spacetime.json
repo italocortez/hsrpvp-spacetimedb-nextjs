@@ -1,4 +1,8 @@
 {
+  "dev": {
+    "run": "npm run dev"
+  },
+  "database": "hsrpvp-spacetimedb-nextjs-test1",
   "server": "maincloud",
   "module-path": "./spacetimedb"
 }

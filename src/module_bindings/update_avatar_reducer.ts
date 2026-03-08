@@ -11,5 +11,5 @@ import {
 } from "spacetimedb";
 
 export default {
-  displayName: __t.string(),
+  characterName: __t.string(),
 };
