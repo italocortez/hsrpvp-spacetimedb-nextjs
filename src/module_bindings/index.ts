@@ -41,8 +41,9 @@ import BroadcastCursorReducer from "./broadcast_cursor_reducer";
 import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
 import LoginAsGuestReducer from "./login_as_guest_reducer";
 import RegisterServerReducer from "./register_server_reducer";
+import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkDiscordReducer from "./server_link_discord_reducer";
-import ServerPromoteAdminReducer from "./server_promote_admin_reducer";
+import ServerSetRoleReducer from "./server_set_role_reducer";
 import UpdateAvatarReducer from "./update_avatar_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
 import UpdateUsernameReducer from "./update_username_reducer";
@@ -271,8 +272,9 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
   __reducerSchema("login_as_guest", LoginAsGuestReducer),
   __reducerSchema("register_server", RegisterServerReducer),
+  __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
-  __reducerSchema("server_promote_admin", ServerPromoteAdminReducer),
+  __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("update_avatar", UpdateAvatarReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
   __reducerSchema("update_username", UpdateUsernameReducer),

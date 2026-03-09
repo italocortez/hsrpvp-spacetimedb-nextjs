@@ -2,7 +2,7 @@
 
 import React from 'react';
 import DeletionBanner from '@/features/auth/components/DeletionBanner';
-import Header from '@/components/Header';
+import Header from '@/components/layout/Header';
 import styles from './layout.module.css';
 
 export default function LandingLayout({

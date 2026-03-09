@@ -5,7 +5,12 @@ import { useTable, useSpacetimeDB } from 'spacetimedb/react';
 import { tables } from '@/src/module_bindings';
 import { useAuthContext } from '@/features/auth/components/AuthProvider';
 import { PUBLIC_TABLES, PublicTableName } from '../types';
-import styles from './TableExplorer.module.css';
+import DeleteConfirmModal from '@/components/modals/DeleteConfirmModal';
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/table';
+import { Input } from '@heroui/input';
+import { Button } from '@heroui/button';
+import { Select, SelectItem } from '@heroui/select';
+import { Chip } from '@heroui/chip';
 
 // Map display name → tables accessor
 const TABLE_MAP: Record<PublicTableName, any> = {
@@ -86,6 +91,12 @@ export default function TableExplorer() {
         return Object.keys(allRows[0]).filter(k => !k.startsWith('_'));
     }, [allRows]);
 
+    // Build HeroUI column definitions (data columns + actions)
+    const tableColumns = useMemo(() => [
+        ...columns.map(col => ({ key: col, label: col })),
+        { key: '_actions', label: 'Actions' },
+    ], [columns]);
+
     // Filter rows by search query
     const filteredRows = useMemo(() => {
         if (!searchQuery.trim()) return allRows;
@@ -102,6 +113,11 @@ export default function TableExplorer() {
         // Prevent admin from deleting themselves
         if (selectedTable === 'User' && currentUser && row.id === currentUser.id) {
             setMessage({ type: 'error', text: 'You cannot delete your own account.' });
+            return;
+        }
+        // Prevent admin from deleting other admins
+        if (selectedTable === 'User' && row.role?.tag === 'Admin') {
+            setMessage({ type: 'error', text: 'Cannot delete an Admin user.' });
             return;
         }
         const pkJson = getPrimaryKeyJson(selectedTable, row);
@@ -122,9 +138,6 @@ export default function TableExplorer() {
                 tableName: deleteConfirm.tableName,
                 primaryKeyJson: deleteConfirm.pkJson,
             });
-            // Don't show success yet — the reducer is fire-and-forget.
-            // The subscription will update the table automatically if the delete succeeds.
-            // Server errors will appear in SpacetimeDB logs.
             setMessage({ type: 'success', text: `Delete requested for ${deleteConfirm.tableName} row` });
         } catch (e: any) {
             setMessage({ type: 'error', text: `Delete failed: ${e.message || e}` });
@@ -132,109 +145,128 @@ export default function TableExplorer() {
         setDeleteConfirm(null);
     }, [deleteConfirm, getConnection]);
 
+    const renderCell = useCallback((row: any, columnKey: React.Key) => {
+        if (columnKey === '_actions') {
+            return (
+                <Button
+                    size="sm"
+                    color="danger"
+                    variant="light"
+                    isIconOnly
+                    onPress={() => handleDelete(row)}
+                    aria-label="Delete row"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                </Button>
+            );
+        }
+        const value = formatCellValue(row[columnKey as string]);
+        return (
+            <span className="block max-w-[200px] truncate" title={value}>
+                {value}
+            </span>
+        );
+    }, [handleDelete]);
+
     return (
-        <div className={styles.panel}>
+        <div className="flex flex-col gap-4 p-4">
             {message && (
-                <div className={`${styles.message} ${message.type === 'success' ? styles.message_success : styles.message_error}`}>
+                <Chip
+                    color={message.type === 'success' ? 'success' : 'danger'}
+                    variant="flat"
+                    onClose={() => setMessage(null)}
+                    classNames={{ base: 'max-w-full' }}
+                >
                     {message.text}
-                    <button
-                        onClick={() => setMessage(null)}
-                        style={{ float: 'right', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}
-                    >
-                        x
-                    </button>
-                </div>
+                </Chip>
             )}
 
-            <div className={styles.explorer_controls}>
-                <select
-                    className={styles.select}
-                    value={selectedTable}
-                    onChange={(e) => {
-                        setSelectedTable(e.target.value as PublicTableName);
-                        setSearchQuery('');
-                        setMessage(null);
+            <div className="flex items-end gap-3 flex-wrap">
+                <Select
+                    placeholder="Select table"
+                    aria-label="Table"
+                    selectedKeys={new Set([selectedTable])}
+                    onSelectionChange={(keys) => {
+                        const val = [...keys][0] as PublicTableName;
+                        if (val) {
+                            setSelectedTable(val);
+                            setSearchQuery('');
+                            setMessage(null);
+                        }
+                    }}
+                    className="w-[220px]"
+                    size="sm"
+                    variant="bordered"
+                    classNames={{
+                        value: 'text-default-100',
+                        trigger: 'border-content3',
                     }}
                 >
                     {PUBLIC_TABLES.map(t => (
-                        <option key={t} value={t}>{t}</option>
+                        <SelectItem key={t}>{t}</SelectItem>
                     ))}
-                </select>
+                </Select>
 
-                <input
-                    type="text"
-                    className={styles.search_input}
+                <Input
                     placeholder="Search rows..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onValueChange={setSearchQuery}
+                    isClearable
+                    onClear={() => setSearchQuery('')}
+                    className="w-[300px]"
+                    size="sm"
+                    variant="bordered"
+                    classNames={{
+                        inputWrapper: 'border-content3',
+                    }}
                 />
 
-                <span className={styles.row_count}>
+                <span className="text-sm text-default-300">
                     {filteredRows.length}{searchQuery ? ` / ${allRows.length}` : ''} rows
                 </span>
             </div>
 
-            {allRows.length === 0 ? (
-                <div className={styles.empty_state}>No rows in {selectedTable}</div>
-            ) : (
-                <div className={styles.table_wrapper}>
-                    <table className={styles.data_table}>
-                        <thead>
-                            <tr>
-                                {columns.map(col => (
-                                    <th key={col}>{col}</th>
-                                ))}
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredRows.map((row, i) => (
-                                <tr key={i}>
-                                    {columns.map(col => (
-                                        <td key={col}>
-                                            <span className={styles.cell_truncate} title={formatCellValue(row[col])}>
-                                                {formatCellValue(row[col])}
-                                            </span>
-                                        </td>
-                                    ))}
-                                    <td>
-                                        <button
-                                            className={styles.btn_delete}
-                                            onClick={() => handleDelete(row)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            <Table
+                aria-label={`${selectedTable} table`}
+                isHeaderSticky
+                removeWrapper
+                classNames={{
+                    base: 'max-h-[600px] overflow-auto rounded-xl border border-content3 bg-content1',
+                    table: 'min-w-full',
+                    thead: '[&>tr]:border-b [&>tr]:border-content3',
+                    th: 'bg-transparent text-default-300 text-xs uppercase tracking-wider font-semibold py-3 px-4 first:rounded-tl-xl last:rounded-tr-xl',
+                    td: 'py-3 px-4 text-default-100 text-sm',
+                    tr: 'border-b border-content3 last:border-b-0 hover:bg-content2 transition-colors',
+                }}
+            >
+                <TableHeader columns={tableColumns}>
+                    {(col) => (
+                        <TableColumn key={col.key} align={col.key === '_actions' ? 'center' : 'start'}>
+                            {col.label}
+                        </TableColumn>
+                    )}
+                </TableHeader>
+                <TableBody items={filteredRows} emptyContent={`No rows in ${selectedTable}`}>
+                    {(row: any) => (
+                        <TableRow key={filteredRows.indexOf(row)}>
+                            {(columnKey) => (
+                                <TableCell>{renderCell(row, columnKey)}</TableCell>
+                            )}
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
 
-            {/* Delete Confirmation Dialog */}
-            {deleteConfirm && (
-                <div className={styles.confirm_overlay} onClick={() => setDeleteConfirm(null)}>
-                    <div className={styles.confirm_dialog} onClick={e => e.stopPropagation()}>
-                        <h3>Confirm Delete</h3>
-                        <p>
-                            Delete row from <strong>{deleteConfirm.tableName}</strong>?
-                            <br />
-                            <span style={{ fontSize: '0.8rem', color: 'rgb(107, 114, 128)' }}>
-                                {deleteConfirm.label}
-                            </span>
-                        </p>
-                        <div className={styles.confirm_actions}>
-                            <button className={styles.btn_cancel_inline} onClick={() => setDeleteConfirm(null)}>
-                                Cancel
-                            </button>
-                            <button className={styles.btn_delete} onClick={confirmDelete}>
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DeleteConfirmModal
+                isOpen={deleteConfirm !== null}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={confirmDelete}
+                tableName={deleteConfirm?.tableName ?? ''}
+                rowLabel={deleteConfirm?.label ?? ''}
+            />
         </div>
     );
 }
