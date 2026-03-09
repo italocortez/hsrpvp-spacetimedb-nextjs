@@ -2,16 +2,10 @@ import { table, t } from 'spacetimedb/server';
 import { LobbyStage } from '../types/enums';
 import { LobbyConfig } from '../types/structs';
 
-export const Lobby = table({
-    name: 'lobby',
-    public: true,
-    indexes: [
-        { name: 'lobby_host', accessor: 'lobby_host', algorithm: 'btree', columns: ['hostIdentity'] },
-    ]
-}, {
+export const lobbyColumns = {
     id: t.u32().primaryKey().autoInc(),
     joinCode: t.string().unique(),
-    hostIdentity: t.identity(),
+    hostUserId: t.u32(),
     teamBlueAlias: t.string(),
     teamRedAlias: t.string(),
 
@@ -21,4 +15,12 @@ export const Lobby = table({
 
     stage: LobbyStage,
     config: LobbyConfig,
-});
+};
+
+export const Lobby = table({
+    name: 'lobby',
+    public: true,
+    indexes: [
+        { name: 'lobby_host', accessor: 'lobby_host', algorithm: 'btree', columns: ['hostUserId'] },
+    ]
+}, lobbyColumns);

@@ -103,7 +103,7 @@ HSRPVP-SPACETIMEDB-NEXTJS/
 │   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 │   │   # ROUTE GROUP: (landing) — public, no auth
 │   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-│   ├── (landingPage)/
+│   ├── (landing-page)/
 │   │   ├── layout.tsx                  # (ALREADY BUILD) Frontpage shell: navbar, footer
 │   │   ├── layout.module.css           # (ALREADY BUILD)
 │   │   │
@@ -272,8 +272,6 @@ HSRPVP-SPACETIMEDB-NEXTJS/
 │   │   ├── components/
 │   │   │   ├── ProfileCard.tsx
 │   │   │   ├── ProfileCard.module.css
-│   │   │   ├── ProfileEditor.tsx
-│   │   │   ├── ProfileEditor.module.css
 │   │   │   ├── DiscordLink.tsx
 │   │   │   ├── DiscordLink.module.css
 │   │   │   ├── RosterUpload.tsx

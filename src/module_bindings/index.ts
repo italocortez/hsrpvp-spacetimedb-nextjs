@@ -34,11 +34,18 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdminBulkUpsertReducer from "./admin_bulk_upsert_reducer";
+import AdminDeleteRowReducer from "./admin_delete_row_reducer";
+import AdminUpdateUserReducer from "./admin_update_user_reducer";
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
+import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
 import LoginAsGuestReducer from "./login_as_guest_reducer";
-import RegisterDiscordUserReducer from "./register_discord_user_reducer";
+import RegisterServerReducer from "./register_server_reducer";
+import ServerLinkDiscordReducer from "./server_link_discord_reducer";
+import ServerPromoteAdminReducer from "./server_promote_admin_reducer";
 import UpdateAvatarReducer from "./update_avatar_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
+import UpdateUsernameReducer from "./update_username_reducer";
 
 // Import all procedure arg schemas
 
@@ -56,6 +63,7 @@ import MatchSessionHistoryRow from "./match_session_history_table";
 import MatchSessionStepRow from "./match_session_step_table";
 import MatchSessionStepHistoryRow from "./match_session_step_history_table";
 import UserRow from "./user_table";
+import UserIdentityRow from "./user_identity_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -135,7 +143,7 @@ const tablesSchema = __schema({
     name: 'lobby',
     indexes: [
       { name: 'lobby_host', algorithm: 'btree', columns: [
-        'hostIdentity',
+        'hostUserId',
       ] },
       { name: 'id', algorithm: 'btree', columns: [
         'id',
@@ -226,27 +234,48 @@ const tablesSchema = __schema({
       { name: 'user_discord_id', algorithm: 'btree', columns: [
         'discordId',
       ] },
-      { name: 'identity', algorithm: 'btree', columns: [
-        'identity',
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
       ] },
       { name: 'username', algorithm: 'btree', columns: [
         'username',
       ] },
     ],
     constraints: [
-      { name: 'user_identity_key', constraint: 'unique', columns: ['identity'] },
+      { name: 'user_id_key', constraint: 'unique', columns: ['id'] },
       { name: 'user_username_key', constraint: 'unique', columns: ['username'] },
     ],
   }, UserRow),
+  UserIdentity: __table({
+    name: 'user_identity',
+    indexes: [
+      { name: 'identity', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { name: 'user_identity_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'user_identity_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, UserIdentityRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("admin_bulk_upsert", AdminBulkUpsertReducer),
+  __reducerSchema("admin_delete_row", AdminDeleteRowReducer),
+  __reducerSchema("admin_update_user", AdminUpdateUserReducer),
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
+  __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
   __reducerSchema("login_as_guest", LoginAsGuestReducer),
-  __reducerSchema("register_discord_user", RegisterDiscordUserReducer),
+  __reducerSchema("register_server", RegisterServerReducer),
+  __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
+  __reducerSchema("server_promote_admin", ServerPromoteAdminReducer),
   __reducerSchema("update_avatar", UpdateAvatarReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
+  __reducerSchema("update_username", UpdateUsernameReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

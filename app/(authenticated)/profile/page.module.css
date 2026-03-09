@@ -1,0 +1,123 @@
+.container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: 'Inter', sans-serif;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-bottom: 1.5rem;
+}
+
+.loading {
+    color: rgb(156, 163, 175);
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.panels {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.btn_logout {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: rgb(248, 113, 113);
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(248, 113, 113);
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+}
+
+.btn_logout:hover {
+    background: rgba(248, 113, 113, 0.1);
+}
+
+/* Guest logout warning card */
+.warning_card {
+    background: rgba(127, 29, 29, 0.3);
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    border-radius: 1rem;
+    padding: 1.25rem;
+}
+
+.warning_title {
+    color: rgb(248, 113, 113);
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.warning_text {
+    color: rgb(209, 213, 219);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.warning_actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn_cancel {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background: rgba(31, 41, 55, 0.5);
+    color: rgb(209, 213, 219);
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(75, 85, 99, 0.5);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn_cancel:hover {
+    background: rgba(55, 65, 81, 0.5);
+}
+
+.btn_delete {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background: rgba(220, 38, 38, 0.8);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn_delete:hover {
+    background: rgba(185, 28, 28, 0.9);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

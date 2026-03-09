@@ -25,7 +25,7 @@ export const LobbyConfig = t.object('LobbyConfig', {
 });
 
 export const PlayerSnapshot = t.object('PlayerSnapshot', {
-    identity: t.identity(),
+    userId: t.u32(),
     display_name: t.string(),
     avatar_url: t.string(),
 });

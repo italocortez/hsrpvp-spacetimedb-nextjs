@@ -15,7 +15,7 @@ import {
 
 
 export default __t.row({
-  identity: __t.identity().primaryKey(),
+  id: __t.u32().primaryKey(),
   username: __t.string(),
   displayName: __t.string().name("display_name"),
   isGuest: __t.bool().name("is_guest"),

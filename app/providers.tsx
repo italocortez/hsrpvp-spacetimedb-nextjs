@@ -5,11 +5,9 @@ import { useMemo } from 'react';
 import { SpacetimeDBProvider } from 'spacetimedb/react';
 import { DbConnection, ErrorContext } from '../src/module_bindings';
 import { Identity } from 'spacetimedb';
-
-const HOST =
-  process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ?? 'wss://maincloud.spacetimedb.com';
-const DB_NAME = process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ?? 'nextjs-ts';
-const TOKEN_KEY = `${HOST}/${DB_NAME}/auth_token`;
+import { SPACETIMEDB_HOST as HOST, SPACETIMEDB_DB_NAME as DB_NAME, SPACETIMEDB_TOKEN_KEY as TOKEN_KEY } from '@/lib/spacetimedb';
+import { AuthProvider } from '@/features/auth/components/AuthProvider';
+import { GameDataProvider } from '@/features/game-data/components/GameDataProvider';
 
 const onConnect = (_conn: DbConnection, identity: Identity, token: string) => {
   if (typeof window !== 'undefined') {
@@ -49,7 +47,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
-        {children}
+        <AuthProvider>
+          <GameDataProvider>
+            {children}
+          </GameDataProvider>
+        </AuthProvider>
       </SpacetimeDBProvider>
     </SessionProvider>
   );

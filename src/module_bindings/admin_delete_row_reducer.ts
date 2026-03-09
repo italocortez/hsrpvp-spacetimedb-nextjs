@@ -11,6 +11,6 @@ import {
 } from "spacetimedb";
 
 export default {
-  discordId: __t.string(),
-  discordUsername: __t.string(),
+  tableName: __t.string(),
+  primaryKeyJson: __t.string(),
 };

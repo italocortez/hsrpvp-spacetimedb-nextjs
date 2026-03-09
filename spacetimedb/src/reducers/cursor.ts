@@ -6,12 +6,15 @@ export const broadcast_cursor = spacetimedb.reducer({
     x: t.f32(),
     y: t.f32(),
 }, (ctx, { lobbyId, x, y }) => {
-    // 1. Validation: Use the Composite Primary Key for an O(1) instant lookup
-    // We pass an object matching the PK structure { lobbyId, userIdentity }
-    const memberTable = ctx.db.LobbyMember as any; // this is almost necessary for any filter on any table due to typescript sdf conflicts
+    // Resolve identity → userId
+    const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+    if (!mapping) return; // Not registered, ignore
+
+    // Validate membership via composite PK
+    const memberTable = ctx.db.LobbyMember as any;
     const membership = memberTable.primaryKey.find({
         lobbyId,
-        userIdentity: ctx.sender
+        userId: mapping.userId,
     });
 
     if (!membership) {
@@ -19,10 +22,10 @@ export const broadcast_cursor = spacetimedb.reducer({
         return;
     }
 
-    // 2. Broadcast
+    // Broadcast
     ctx.db.LobbyCursorEvent.insert({
         lobbyId,
-        sender: ctx.sender,
+        senderUserId: mapping.userId,
         x,
         y,
         timestamp: ctx.timestamp,

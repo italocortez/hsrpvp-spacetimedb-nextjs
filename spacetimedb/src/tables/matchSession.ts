@@ -1,11 +1,7 @@
 import { table, t } from 'spacetimedb/server';
 import { DraftStep, TimerState } from '../types/structs';
 
-export const MatchSession = table({
-    name: 'match_session',
-    public: true,
-    // 1-to-1 relationship with Lobby: The Lobby ID is the Primary Key
-}, {
+export const matchSessionColumns = {
     lobbyId: t.u32().primaryKey(),
 
     // The current index into the 'draftSequence' array (0-based)
@@ -20,4 +16,10 @@ export const MatchSession = table({
     // Auction Mode Budgets (Ignored in Classic)
     teamBlueBudget: t.f32(),
     teamRedBudget: t.f32(),
-});
+};
+
+export const MatchSession = table({
+    name: 'match_session',
+    public: true,
+    // 1-to-1 relationship with Lobby: The Lobby ID is the Primary Key
+}, matchSessionColumns);

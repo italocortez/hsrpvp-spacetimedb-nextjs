@@ -1,13 +1,7 @@
 import { table, t } from 'spacetimedb/server';
 import { Path } from '../types/enums';
 
-export const HsrLightcone = table({
-    name: 'hsr_lightcone',
-    public: true,
-    indexes: [
-        { name: 'lightcone_by_path', accessor: 'lightcone_by_path', algorithm: 'btree', columns: ['path'] },
-    ]
-}, {
+export const hsrLightconeColumns = {
     name: t.string().primaryKey(),
     displayName: t.string(),
     aliases: t.array(t.string()),
@@ -19,4 +13,12 @@ export const HsrLightcone = table({
     posX: t.i32(),
     posY: t.i32(),
     width: t.i32(),
-});
+};
+
+export const HsrLightcone = table({
+    name: 'hsr_lightcone',
+    public: true,
+    indexes: [
+        { name: 'lightcone_by_path', accessor: 'lightcone_by_path', algorithm: 'btree', columns: ['path'] },
+    ]
+}, hsrLightconeColumns);

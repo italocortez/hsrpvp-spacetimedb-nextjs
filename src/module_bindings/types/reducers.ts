@@ -6,15 +6,29 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdminBulkUpsertReducer from "../admin_bulk_upsert_reducer";
+import AdminDeleteRowReducer from "../admin_delete_row_reducer";
+import AdminUpdateUserReducer from "../admin_update_user_reducer";
 import BroadcastCursorReducer from "../broadcast_cursor_reducer";
+import DeleteGuestAccountReducer from "../delete_guest_account_reducer";
 import LoginAsGuestReducer from "../login_as_guest_reducer";
-import RegisterDiscordUserReducer from "../register_discord_user_reducer";
+import RegisterServerReducer from "../register_server_reducer";
+import ServerLinkDiscordReducer from "../server_link_discord_reducer";
+import ServerPromoteAdminReducer from "../server_promote_admin_reducer";
 import UpdateAvatarReducer from "../update_avatar_reducer";
 import UpdateDisplayNameReducer from "../update_display_name_reducer";
+import UpdateUsernameReducer from "../update_username_reducer";
 
+export type AdminBulkUpsertParams = __Infer<typeof AdminBulkUpsertReducer>;
+export type AdminDeleteRowParams = __Infer<typeof AdminDeleteRowReducer>;
+export type AdminUpdateUserParams = __Infer<typeof AdminUpdateUserReducer>;
 export type BroadcastCursorParams = __Infer<typeof BroadcastCursorReducer>;
+export type DeleteGuestAccountParams = __Infer<typeof DeleteGuestAccountReducer>;
 export type LoginAsGuestParams = __Infer<typeof LoginAsGuestReducer>;
-export type RegisterDiscordUserParams = __Infer<typeof RegisterDiscordUserReducer>;
+export type RegisterServerParams = __Infer<typeof RegisterServerReducer>;
+export type ServerLinkDiscordParams = __Infer<typeof ServerLinkDiscordReducer>;
+export type ServerPromoteAdminParams = __Infer<typeof ServerPromoteAdminReducer>;
 export type UpdateAvatarParams = __Infer<typeof UpdateAvatarReducer>;
 export type UpdateDisplayNameParams = __Infer<typeof UpdateDisplayNameReducer>;
+export type UpdateUsernameParams = __Infer<typeof UpdateUsernameReducer>;
 

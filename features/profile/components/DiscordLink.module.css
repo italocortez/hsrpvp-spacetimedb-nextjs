@@ -1,0 +1,56 @@
+.container {
+    padding: 1.5rem;
+    background: rgba(31, 41, 55, 0.5);
+    border: 1px solid rgb(55, 65, 81);
+    border-radius: 1rem;
+}
+
+.description {
+    font-size: 0.875rem;
+    color: rgb(156, 163, 175);
+    margin: 0 0 1rem 0;
+    line-height: 1.4;
+}
+
+.btn_discord {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: #5865F2;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn_discord:hover {
+    background: #4752c4;
+}
+
+.icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.linked {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgb(52, 211, 153);
+}
+
+.linked_text {
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.check {
+    margin-left: auto;
+    font-size: 1.1rem;
+}

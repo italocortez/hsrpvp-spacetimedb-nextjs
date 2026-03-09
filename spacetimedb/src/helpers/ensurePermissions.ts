@@ -1,15 +1,20 @@
 import { SenderError } from 'spacetimedb/server';
 
 /**
- * Retrieves the User record for the sender. Throws if not registered.
+ * Resolves ctx.sender (identity) → UserIdentity → User.
+ * Returns both the mapping row and the User row.
+ * Throws if the identity is not linked to any user.
  */
 export function getAuthenticatedUser(ctx: any) {
-    // We access the database directly through the runtime context object
-    const userQuery = ctx.db.User.identity.find(ctx.sender);
-    if (!userQuery) {
-        throw new SenderError("Unauthorized: User not found for this identity.");
+    const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+    if (!mapping) {
+        throw new SenderError("Unauthorized: No user linked to this identity.");
     }
-    return userQuery;
+    const user = ctx.db.User.id.find(mapping.userId);
+    if (!user) {
+        throw new SenderError("Unauthorized: User record not found.");
+    }
+    return user;
 }
 
 /**
@@ -17,7 +22,7 @@ export function getAuthenticatedUser(ctx: any) {
  */
 export function ensureAdmin(ctx: any) {
     const user = getAuthenticatedUser(ctx);
-    if (!('Admin' in user.role)) {
+    if (user.role.tag !== 'Admin') {
         throw new SenderError("Forbidden: Requires Admin privileges.");
     }
     return user;
@@ -28,7 +33,7 @@ export function ensureAdmin(ctx: any) {
  */
 export function ensureTournamentHost(ctx: any) {
     const user = getAuthenticatedUser(ctx);
-    if (!('TournamentHost' in user.role) && !('Admin' in user.role)) {
+    if (user.role.tag !== 'TournamentHost' && user.role.tag !== 'Admin') {
         throw new SenderError("Forbidden: Requires Tournament Host or Admin privileges.");
     }
     return user;

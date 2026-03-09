@@ -180,7 +180,7 @@ export type HsrSynergyCost = __Infer<typeof HsrSynergyCost>;
 export const Lobby = __t.object("Lobby", {
   id: __t.u32(),
   joinCode: __t.string(),
-  hostIdentity: __t.identity(),
+  hostUserId: __t.u32(),
   teamBlueAlias: __t.string(),
   teamRedAlias: __t.string(),
   hostDisconnectTime: __t.option(__t.timestamp()),
@@ -215,7 +215,7 @@ export type LobbyConfig = __Infer<typeof LobbyConfig>;
 
 export const LobbyCursorEvent = __t.object("LobbyCursorEvent", {
   lobbyId: __t.u32(),
-  sender: __t.identity(),
+  senderUserId: __t.u32(),
   x: __t.f32(),
   y: __t.f32(),
   timestamp: __t.timestamp(),
@@ -224,7 +224,7 @@ export type LobbyCursorEvent = __Infer<typeof LobbyCursorEvent>;
 
 export const LobbyMember = __t.object("LobbyMember", {
   lobbyId: __t.u32(),
-  userIdentity: __t.identity(),
+  userId: __t.u32(),
   isOnline: __t.bool(),
   get participationRole() {
     return ParticipationRole;
@@ -300,7 +300,7 @@ export const MatchSessionStep = __t.object("MatchSessionStep", {
   id: __t.u32(),
   lobbyId: __t.u32(),
   sequence: __t.u32(),
-  actor: __t.identity(),
+  actorUserId: __t.u32(),
   get actorSlot() {
     return TeamLabel;
   },
@@ -361,7 +361,7 @@ export const PickPayload = __t.object("PickPayload", {
 export type PickPayload = __Infer<typeof PickPayload>;
 
 export const PlayerSnapshot = __t.object("PlayerSnapshot", {
-  identity: __t.identity(),
+  userId: __t.u32(),
   displayName: __t.string(),
   avatarUrl: __t.string(),
 });
@@ -374,6 +374,12 @@ export const Role = __t.enum("Role", {
   User: __t.unit(),
 });
 export type Role = __Infer<typeof Role>;
+
+export const ServerIdentity = __t.object("ServerIdentity", {
+  identity: __t.identity(),
+  registeredAt: __t.timestamp(),
+});
+export type ServerIdentity = __Infer<typeof ServerIdentity>;
 
 // The tagged union or sum type for the algebraic type `StepPayload`.
 export const StepPayload = __t.enum("StepPayload", {
@@ -433,7 +439,7 @@ export const UndoPayload = __t.object("UndoPayload", {
 export type UndoPayload = __Infer<typeof UndoPayload>;
 
 export const User = __t.object("User", {
-  identity: __t.identity(),
+  id: __t.u32(),
   username: __t.string(),
   displayName: __t.string(),
   isGuest: __t.bool(),
@@ -445,4 +451,11 @@ export const User = __t.object("User", {
   avatarCharacterName: __t.string(),
 });
 export type User = __Infer<typeof User>;
+
+export const UserIdentity = __t.object("UserIdentity", {
+  identity: __t.identity(),
+  userId: __t.u32(),
+  lastSeenAt: __t.timestamp(),
+});
+export type UserIdentity = __Infer<typeof UserIdentity>;
 

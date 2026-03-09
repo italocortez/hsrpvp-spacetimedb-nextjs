@@ -1,14 +1,12 @@
 import { Identity, Timestamp } from 'spacetimedb';
+import { USER_ROLE_VARIANTS } from '../types/enums';
 
-// Mirror the Role enum from your backend enums.ts
-export type UserRole =
-    | { tag: "User" }
-    | { tag: "Admin" }
-    | { tag: "TournamentHost" };
+// Derived from the shared enum variants — stays in sync automatically
+export type UserRole = { tag: typeof USER_ROLE_VARIANTS[number] };
 
-// Explicitly define the User row structure to match spacetimedb/tables/user.ts
+// Mirrors spacetimedb/tables/user.ts (id-based, not identity-based)
 export interface User {
-    identity: Identity;
+    id: number;
     username: string;
     displayName: string;
     isGuest: boolean;
@@ -16,6 +14,13 @@ export interface User {
     role: UserRole;
     discordId?: string;
     avatarCharacterName: string;
+}
+
+// Mirrors spacetimedb/tables/userIdentity.ts
+export interface UserIdentityRow {
+    identity: Identity;
+    userId: number;
+    lastSeenAt: Timestamp;
 }
 
 export interface AuthState {
