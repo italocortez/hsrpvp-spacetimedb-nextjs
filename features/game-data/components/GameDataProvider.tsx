@@ -5,8 +5,8 @@ import { useTable } from 'spacetimedb/react';
 import { tables } from '@/src/module_bindings';
 
 export interface HsrCharacterRow {
-    name: string;
-    displayName: string;
+    name: string; // ruanmei
+    displayName: string; // Ruan Mei
     aliases: string[];
     rarity: number;
     path: { tag: string };
@@ -16,8 +16,8 @@ export interface HsrCharacterRow {
 }
 
 export interface HsrLightconeRow {
-    name: string;
-    displayName: string;
+    name: string; // agroundascent
+    displayName: string; // A Ground Ascent
     aliases: string[];
     path: { tag: string };
     rarity: number;

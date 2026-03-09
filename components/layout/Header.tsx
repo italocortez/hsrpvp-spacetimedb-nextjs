@@ -10,7 +10,7 @@ export default function Header() {
     const isAdmin = user?.role?.tag === 'Admin';
 
     return (
-        <nav className={styles.navbar}>
+        <header className={styles.navbar}>
             <Link href="/" className={styles.nav_brand}>
                 IPC Battlegrounds
             </Link>
@@ -49,6 +49,6 @@ export default function Header() {
                     </Link>
                 )}
             </div>
-        </nav>
+        </header>
     );
 }

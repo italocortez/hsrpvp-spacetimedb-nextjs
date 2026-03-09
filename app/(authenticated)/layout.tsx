@@ -11,15 +11,8 @@ export default function LobbyLayout({ children }: { children: React.ReactNode })
         <div className={styles.layout_wrapper}>
             <AuthRequired>
                 <DeletionBanner />
-                <Header />
 
-                <main className={styles.main_content}>
-                    {children}
-                </main>
-
-                <footer className={styles.footer}>
-                    <p>&copy; {new Date().getFullYear()} The Genius Society. All rights reserved.</p>
-                </footer>
+                {children}
             </AuthRequired>
         </div>
     );

@@ -1,17 +1,27 @@
 // Frontend mirror of spacetimedb/src/types/enums.ts
 // Keep in sync when server enum variants change.
 
-export const PATH_VARIANTS = [
-    'Abundance', 'Destruction', 'Erudition', 'Harmony',
-    'Hunt', 'Nihility', 'Preservation', 'Remembrance', 'Elation',
-] as const;
+export const PATH_VARIANTS = [ 'Abundance', 'Destruction', 'Erudition', 'Harmony', 'Hunt', 'Nihility', 'Preservation', 'Remembrance', 'Elation' ] as const;
+export type PathTag = typeof PATH_VARIANTS[number];
 
-export const ELEMENT_VARIANTS = [
-    'Fire', 'Ice', 'Imaginary', 'Lightning',
-    'Physical', 'Quantum', 'Wind',
-] as const;
+export const ELEMENT_VARIANTS = [ 'Fire', 'Ice', 'Imaginary', 'Lightning', 'Physical', 'Quantum', 'Wind' ] as const;
+export type ElementTag = typeof ELEMENT_VARIANTS[number];
 
-export const CHAR_ROLE_VARIANTS = ['Dps', 'Sustain', 'Support'] as const;
+export const CHAR_ROLE_VARIANTS = [ 'Dps', 'Support', 'Sustain' ] as const;
+export type RoleTag = typeof CHAR_ROLE_VARIANTS[number];
+
+export type Rarity = 3 | 4 | 5;
+
+export interface Character {
+  name: string;
+  displayName: string;
+  aliases: string[];
+  element: ElementTag;
+  path: PathTag;
+  rarity: Rarity;
+  role: RoleTag;
+  imageUrl?: string;
+}
 
 export const GAME_MODE_VARIANTS = [
     'MemoryOfChaos', 'ApocalypticShadow', 'AnomalyArbitration',

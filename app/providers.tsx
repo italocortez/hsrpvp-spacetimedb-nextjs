@@ -9,7 +9,6 @@ import { SPACETIMEDB_HOST as HOST, SPACETIMEDB_DB_NAME as DB_NAME, SPACETIMEDB_T
 import { AuthProvider } from '@/features/auth/components/AuthProvider';
 import { GameDataProvider } from '@/features/game-data/components/GameDataProvider';
 import { HeroUIProvider } from '@heroui/system';
-
 const onConnect = (_conn: DbConnection, identity: Identity, token: string) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem(TOKEN_KEY, token);
