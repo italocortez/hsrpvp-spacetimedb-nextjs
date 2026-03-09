@@ -8,6 +8,7 @@ import { Identity } from 'spacetimedb';
 import { SPACETIMEDB_HOST as HOST, SPACETIMEDB_DB_NAME as DB_NAME, SPACETIMEDB_TOKEN_KEY as TOKEN_KEY } from '@/lib/spacetimedb';
 import { AuthProvider } from '@/features/auth/components/AuthProvider';
 import { GameDataProvider } from '@/features/game-data/components/GameDataProvider';
+import { HeroUIProvider } from '@heroui/system';
 
 const onConnect = (_conn: DbConnection, identity: Identity, token: string) => {
   if (typeof window !== 'undefined') {
@@ -46,13 +47,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // we wrap everything inside the session provider so that the session is available to the client
   return (
     <SessionProvider>
-      <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
-        <AuthProvider>
-          <GameDataProvider>
-            {children}
-          </GameDataProvider>
-        </AuthProvider>
-      </SpacetimeDBProvider>
+      <HeroUIProvider>
+        <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
+          <AuthProvider>
+            <GameDataProvider>
+              {children}
+            </GameDataProvider>
+          </AuthProvider>
+        </SpacetimeDBProvider>
+      </HeroUIProvider>
     </SessionProvider>
   );
 }

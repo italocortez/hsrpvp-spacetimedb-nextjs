@@ -81,7 +81,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb` | Regenerate client bindings |
 | `spacetime logs <db-name>` | View server-side logs |
 | `npx tsx scripts/register-server.ts` | Register server identity (once per database) |
-| `npx tsx scripts/promote-admin.ts <username>` | Promote a user to Admin role |
+| `npx tsx scripts/manage-user.ts set-role <username> <role>` | Change a user's role (Admin, TournamentHost, User) |
+| `npx tsx scripts/manage-user.ts delete <username>` | Delete a user |
 
 ## Project Structure
 
@@ -98,6 +99,6 @@ Open [http://localhost:3000](http://localhost:3000).
 │       ├── reducers/       # Reducers (auth, profile, server, lobby, cursor, etc.)
 │       ├── helpers/        # Shared helpers (permissions, etc.)
 │       └── types/          # Shared types (enums, structs)
-├── scripts/                # Setup scripts (register-server.ts, promote-admin.ts)
+├── scripts/                # Setup & admin scripts (register-server, manage-user)
 └── .env.example            # Template for environment variables
 ```
