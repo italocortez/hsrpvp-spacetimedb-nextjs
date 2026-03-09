@@ -21,7 +21,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html lang="en">
+		<html lang="en" className="dark">
 			<body className={inter.className}>
 				{/* 3. Apply the font class globally to the body */}
 				{/* Providers wrapper for SpacetimeDB connection and context */}

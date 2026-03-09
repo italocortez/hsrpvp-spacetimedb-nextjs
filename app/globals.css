@@ -1,12 +1,10 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+
 :root {
   /* Tells the browser to use dark scrollbars and native inputs */
   color-scheme: dark;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
 }
 
 html,

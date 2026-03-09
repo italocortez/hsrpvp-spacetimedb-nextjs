@@ -1,8 +1,11 @@
 /**
- * Promote a user to Admin role via the server identity.
+ * Manage users via the server identity: change roles or delete any user.
  *
  * Usage:
- *   npx tsx scripts/promote-admin.ts <username>
+ *   npx tsx scripts/manage-user.ts set-role <username> <newRole>
+ *   npx tsx scripts/manage-user.ts delete <username>
+ *
+ * Roles: Admin, TournamentHost, User
  *
  * Requires SPACETIMEDB_SERVER_TOKEN in .env.local (from register-server.ts).
  */
@@ -11,7 +14,6 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { DbConnection } from '../src/module_bindings';
 
-// Manually load .env.local (tsx doesn't auto-load it)
 function loadEnvFile(filename: string) {
     try {
         const content = readFileSync(resolve(process.cwd(), filename), 'utf-8');
@@ -34,10 +36,27 @@ function loadEnvFile(filename: string) {
 loadEnvFile('.env.local');
 loadEnvFile('.env');
 
-const username = process.argv[2];
-if (!username) {
-    console.error('Usage: npx tsx scripts/promote-admin.ts <username>');
+const VALID_ROLES = ['Admin', 'TournamentHost', 'User'];
+
+const action = process.argv[2];
+const username = process.argv[3];
+
+if (!action || !username || !['set-role', 'delete'].includes(action)) {
+    console.error(`Usage:
+  npx tsx scripts/manage-user.ts set-role <username> <newRole>
+  npx tsx scripts/manage-user.ts delete <username>
+
+Roles: ${VALID_ROLES.join(', ')}`);
     process.exit(1);
+}
+
+let newRole: string | undefined;
+if (action === 'set-role') {
+    newRole = process.argv[4];
+    if (!newRole || !VALID_ROLES.includes(newRole)) {
+        console.error(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
+        process.exit(1);
+    }
 }
 
 const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN;
@@ -46,7 +65,6 @@ if (!serverToken) {
     process.exit(1);
 }
 
-// Resolve host — ensure wss:// protocol for WebSocket
 let host = process.env.SPACETIMEDB_HOST ?? process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ?? 'wss://maincloud.spacetimedb.com';
 if (host.startsWith('https://')) {
     host = host.replace('https://', 'wss://');
@@ -57,20 +75,24 @@ if (host.startsWith('https://')) {
 const dbName = process.env.SPACETIMEDB_DB_NAME ?? process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ?? 'nextjs-ts';
 
 console.log(`Connecting to ${host} / ${dbName} ...`);
-console.log(`Promoting "${username}" to Admin...`);
 
 const _conn = DbConnection.builder()
     .withUri(host)
     .withDatabaseName(dbName)
     .withToken(serverToken)
     .onConnect((connection, identity) => {
-        console.log(`\nConnected as server identity: ${identity.toHexString()}`);
+        console.log(`Connected as server identity: ${identity.toHexString()}`);
 
         try {
-            connection.reducers.serverPromoteAdmin({ username });
-            console.log(`\nUser "${username}" has been promoted to Admin.`);
+            if (action === 'set-role') {
+                connection.reducers.serverSetRole({ username, roleTag: newRole! });
+                console.log(`\nUser "${username}" role set to ${newRole}.`);
+            } else if (action === 'delete') {
+                connection.reducers.serverDeleteUser({ username });
+                console.log(`\nUser "${username}" has been deleted.`);
+            }
         } catch (err) {
-            console.error(`\nFailed to promote:`, err);
+            console.error(`\nFailed to ${action}:`, err);
         }
 
         setTimeout(() => process.exit(0), 2000);

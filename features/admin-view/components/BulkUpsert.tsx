@@ -5,11 +5,14 @@ import { useSpacetimeDB } from 'spacetimedb/react';
 import { UPSERT_TABLES, UpsertTableName } from '../types';
 import { UPSERT_TABLE_COLUMNS, TABLE_ENUM_COLUMNS } from '../../types/tableColumns';
 import { ENUM_VALUES } from '../../types/enums';
-import styles from './BulkUpsert.module.css';
+import { Select, SelectItem } from '@heroui/select';
+import { Button } from '@heroui/button';
+import { Textarea } from '@heroui/input';
+import { Chip } from '@heroui/chip';
 
 const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
     HsrCharacter: `[{
-  "name": "march-7th",
+  "name": "march7th",
   "displayName": "March 7th",
   "aliases": ["march"],
   "rarity": 4,
@@ -19,7 +22,7 @@ const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
   "imageUrl": "https://..."
 }]`,
     HsrLightcone: `[{
-  "name": "moment-of-victory",
+  "name": "momentofvictory",
   "displayName": "Moment of Victory",
   "aliases": [],
   "path": "Preservation",
@@ -30,19 +33,19 @@ const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
   "width": 0
 }]`,
     HsrCharacterCost: `[{
-  "characterName": "march-7th",
+  "characterName": "march7th",
   "gameMode": "MemoryOfChaos",
   "classicCosts": { "e0": 5, "e1": 7, "e2": 9, "e3": 11, "e4": 13, "e5": 15, "e6": 17 },
   "auctionBaseBid": { "e0": 3, "e1": 5, "e2": 7, "e3": 9, "e4": 11, "e5": 13, "e6": 15 }
 }]`,
     HsrLightconeCost: `[{
-  "lightconeName": "moment-of-victory",
+  "lightconeName": "momentofvictory",
   "classicCosts": { "s1": 2, "s2": 3, "s3": 4, "s4": 5, "s5": 6 },
   "auctionBaseBid": { "s1": 1, "s2": 2, "s3": 3, "s4": 4, "s5": 5 }
 }]`,
     HsrSynergyCost: `[{
-  "sourceName": "march-7th",
-  "targetName": "moment-of-victory",
+  "sourceName": "cerydra",
+  "targetName": "anaxa",
   "gameMode": "MemoryOfChaos",
   "costModifier": 1.5
 }]`,
@@ -219,96 +222,122 @@ export default function BulkUpsert() {
     }, [getConnection, selectedTable, validation]);
 
     return (
-        <div className={styles.panel}>
+        <div className="flex flex-col gap-4 p-4">
             {message && (
-                <div className={`${styles.message} ${message.type === 'success' ? styles.message_success : styles.message_error}`}>
+                <Chip
+                    color={message.type === 'success' ? 'success' : 'danger'}
+                    variant="flat"
+                    onClose={() => setMessage(null)}
+                    classNames={{ base: 'max-w-full' }}
+                >
                     {message.text}
-                </div>
+                </Chip>
             )}
 
-            <div className={styles.upsert_layout}>
-                <div className={styles.explorer_controls}>
-                    <select
-                        className={styles.select}
-                        value={selectedTable}
-                        onChange={(e) => {
-                            setSelectedTable(e.target.value as UpsertTableName);
+            <div className="flex items-end gap-3 flex-wrap">
+                <Select
+                    placeholder="Select table"
+                    aria-label="Table"
+                    selectedKeys={new Set([selectedTable])}
+                    onSelectionChange={(keys) => {
+                        const val = [...keys][0] as UpsertTableName;
+                        if (val) {
+                            setSelectedTable(val);
                             setMessage(null);
-                        }}
-                    >
-                        {UPSERT_TABLES.map(t => (
-                            <option key={t} value={t}>{t}</option>
-                        ))}
-                    </select>
-
-                    <button
-                        className={styles.btn_primary}
-                        onClick={() => setJsonText(TABLE_TEMPLATES[selectedTable])}
-                    >
-                        Show Template
-                    </button>
-
-                    <span style={{ color: 'rgb(107, 114, 128)', fontSize: '0.8rem' }}>
-                        Expected: [{UPSERT_TABLE_COLUMNS[selectedTable].join(', ')}]
-                    </span>
-                </div>
-
-                {/* File drop zone */}
-                <div
-                    className={`${styles.file_drop} ${isDragging ? styles.file_drop_active : ''}`}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
+                        }
+                    }}
+                    className="w-[220px]"
+                    size="sm"
+                    variant="bordered"
+                    classNames={{
+                        value: 'text-default-100',
+                        trigger: 'border-content3',
+                    }}
                 >
+                    {UPSERT_TABLES.map(t => (
+                        <SelectItem key={t}>{t}</SelectItem>
+                    ))}
+                </Select>
+
+                <Button
+                    variant="solid"
+                    color="primary"
+                    size="sm"
+                    onPress={() => setJsonText(TABLE_TEMPLATES[selectedTable])}
+                >
+                    Show Template
+                </Button>
+
+                <span className="text-xs text-default-300">
+                    Expected: [{UPSERT_TABLE_COLUMNS[selectedTable].join(', ')}]
+                </span>
+            </div>
+
+            {/* File drop zone */}
+            <div
+                className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors ${
+                    isDragging
+                        ? 'border-primary bg-primary/10'
+                        : 'border-default-300 hover:border-default-400'
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+            >
+                <span className="text-sm text-default-500">
                     Drop a .json file here or click to browse
-                    <br />
-                    <span style={{ fontSize: '0.8rem' }}>
-                        snake_case keys are auto-converted to camelCase
-                    </span>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".json"
-                        className={styles.file_input}
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFileRead(file);
-                        }}
-                    />
-                </div>
-
-                {/* JSON editor */}
-                <textarea
-                    className={styles.json_preview}
-                    value={jsonText}
-                    onChange={(e) => setJsonText(e.target.value)}
-                    placeholder="Paste or drop JSON array here..."
-                    rows={12}
-                    style={{ resize: 'vertical', width: '100%' }}
+                </span>
+                <span className="text-xs text-default-300">
+                    snake_case keys are auto-converted to camelCase
+                </span>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileRead(file);
+                    }}
                 />
+            </div>
 
-                {validation.error && jsonText.trim() && (
-                    <div className={`${styles.message} ${styles.message_error}`}>
-                        {validation.error}
-                    </div>
-                )}
+            {/* JSON editor */}
+            <Textarea
+                value={jsonText}
+                onValueChange={setJsonText}
+                placeholder="Paste or drop JSON array here..."
+                minRows={12}
+                maxRows={24}
+                variant="bordered"
+                classNames={{
+                    inputWrapper: 'border-content3 bg-content1',
+                    input: 'text-default-100 font-mono text-sm',
+                }}
+            />
 
-                {validation.valid && (
-                    <div className={`${styles.message} ${styles.message_success}`}>
-                        {validation.rowCount} row{validation.rowCount !== 1 ? 's' : ''} validated — all keys match {selectedTable} columns
-                    </div>
-                )}
+            {validation.error && jsonText.trim() && (
+                <Chip color="danger" variant="flat" classNames={{ base: 'max-w-full h-auto py-1' }}>
+                    {validation.error}
+                </Chip>
+            )}
 
-                <div className={styles.upsert_status}>
-                    <button
-                        className={styles.btn_primary}
-                        onClick={handleSubmit}
-                        disabled={!validation.valid || isSubmitting}
-                    >
-                        {isSubmitting ? 'Uploading...' : `Upsert ${validation.rowCount} rows into ${selectedTable}`}
-                    </button>
-                </div>
+            {validation.valid && (
+                <Chip color="success" variant="flat" classNames={{ base: 'max-w-full' }}>
+                    {validation.rowCount} row{validation.rowCount !== 1 ? 's' : ''} validated — all keys match {selectedTable} columns
+                </Chip>
+            )}
+
+            <div>
+                <Button
+                    color="primary"
+                    onPress={handleSubmit}
+                    isDisabled={!validation.valid || isSubmitting}
+                    isLoading={isSubmitting}
+                >
+                    {isSubmitting ? 'Uploading...' : `Upsert ${validation.rowCount} rows into ${selectedTable}`}
+                </Button>
             </div>
         </div>
     );

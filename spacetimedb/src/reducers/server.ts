@@ -143,19 +143,24 @@ export const server_link_discord = spacetimedb.reducer({
 });
 
 /**
- * Server-only reducer: promote a user to Admin role.
- * Called via: npx tsx scripts/promote-admin.ts <username>
+ * Server-only reducer: set a user's role.
+ * Called via: npx tsx scripts/manage-user.ts set-role <username> <role>
  */
-export const server_promote_admin = spacetimedb.reducer({
+export const server_set_role = spacetimedb.reducer({
     username: t.string(),
-}, (ctx, { username }) => {
+    roleTag: t.string(),
+}, (ctx, { username, roleTag }) => {
     requireServer(ctx);
 
     if (!username || username.length === 0) {
         throw new SenderError('username is required');
     }
 
-    // Find user by iterating (username is unique but not indexed for filter)
+    const validRoles = ['Admin', 'TournamentHost', 'User'];
+    if (!validRoles.includes(roleTag)) {
+        throw new SenderError(`Invalid role "${roleTag}". Must be one of: ${validRoles.join(', ')}`);
+    }
+
     let targetUser: any = null;
     for (const row of ctx.db.User.iter()) {
         if (row.username === username) {
@@ -170,6 +175,39 @@ export const server_promote_admin = spacetimedb.reducer({
 
     ctx.db.User.id.update({
         ...targetUser,
-        role: { tag: 'Admin' },
+        role: { tag: roleTag },
     });
+});
+
+/**
+ * Server-only reducer: delete a user by username.
+ * Called via: npx tsx scripts/manage-user.ts delete <username>
+ */
+export const server_delete_user = spacetimedb.reducer({
+    username: t.string(),
+}, (ctx, { username }) => {
+    requireServer(ctx);
+
+    if (!username || username.length === 0) {
+        throw new SenderError('username is required');
+    }
+
+    let targetUser: any = null;
+    for (const row of ctx.db.User.iter()) {
+        if (row.username === username) {
+            targetUser = row;
+            break;
+        }
+    }
+
+    if (!targetUser) {
+        throw new SenderError(`User "${username}" not found`);
+    }
+
+    // Delete associated UserIdentity rows
+    for (const mapping of ctx.db.UserIdentity.user_identity_user_id.filter(targetUser.id)) {
+        ctx.db.UserIdentity.identity.delete(mapping.identity);
+    }
+
+    ctx.db.User.id.delete(targetUser.id);
 });
