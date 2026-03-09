@@ -3,49 +3,6 @@
     flex-direction: column;
     min-height: 100vh;
     background-color: rgb(17, 24, 39);
-    /* Gray 900 */
-}
-
-/* Navbar */
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 2rem;
-    background-color: rgb(31, 41, 55);
-    /* Gray 800 */
-    border-bottom: 1px solid rgb(55, 65, 81);
-    /* Gray 700 */
-    position: sticky;
-    top: 0;
-    z-index: 50;
-}
-
-.nav_brand {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: white;
-    text-decoration: none;
-    letter-spacing: 0.05em;
-}
-
-.nav_links {
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
-}
-
-.nav_link {
-    color: rgb(209, 213, 219);
-    /* Gray 300 */
-    text-decoration: none;
-    font-size: 0.95rem;
-    font-weight: 500;
-    transition: color 0.2s ease;
-}
-
-.nav_link:hover {
-    color: white;
 }
 
 /* Main Content */
@@ -63,30 +20,4 @@
     border-top: 1px solid rgb(31, 41, 55);
     color: rgb(107, 114, 128);
     font-size: 0.875rem;
-}
-
-.profile_icon_link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: rgb(55, 65, 81);
-    /* Gray 700 */
-    color: rgb(209, 213, 219);
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-}
-
-.profile_icon_link:hover {
-    background-color: rgb(75, 85, 99);
-    color: white;
-    border-color: #00f2ff;
-    /* Optional HSR accent color */
-}
-
-.profile_svg {
-    width: 20px;
-    height: 20px;
 }
