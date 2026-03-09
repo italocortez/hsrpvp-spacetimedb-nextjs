@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useTable, useSpacetimeDB } from 'spacetimedb/react';
 import { tables } from '@/src/module_bindings';
+import { useAuthContext } from '@/features/auth/components/AuthProvider';
 import { PUBLIC_TABLES, PublicTableName } from '../types';
 import styles from './TableExplorer.module.css';
 
@@ -70,14 +71,13 @@ function formatCellValue(value: any): string {
 
 export default function TableExplorer() {
     const { getConnection } = useSpacetimeDB();
+    const { user: currentUser } = useAuthContext();
     const [selectedTable, setSelectedTable] = useState<PublicTableName>('User');
     const [searchQuery, setSearchQuery] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<{ tableName: PublicTableName; pkJson: string; label: string } | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    // Subscribe to the selected table — useTable returns [rows, isReady]
-    const [rows, isReady] = useTable(TABLE_MAP[selectedTable]);
-    const isLoading = !isReady;
+    const [rows] = useTable(TABLE_MAP[selectedTable]);
     const allRows = (rows || []) as any[];
 
     // Get column names from the first row
@@ -99,11 +99,16 @@ export default function TableExplorer() {
     }, [allRows, searchQuery, columns]);
 
     const handleDelete = useCallback((row: any) => {
+        // Prevent admin from deleting themselves
+        if (selectedTable === 'User' && currentUser && row.id === currentUser.id) {
+            setMessage({ type: 'error', text: 'You cannot delete your own account.' });
+            return;
+        }
         const pkJson = getPrimaryKeyJson(selectedTable, row);
         // Build a human-readable label for the confirmation
         const label = columns.slice(0, 2).map(c => `${c}: ${formatCellValue(row[c])}`).join(', ');
         setDeleteConfirm({ tableName: selectedTable, pkJson, label });
-    }, [selectedTable, columns]);
+    }, [selectedTable, columns, currentUser]);
 
     const confirmDelete = useCallback(() => {
         if (!deleteConfirm) return;
@@ -117,7 +122,10 @@ export default function TableExplorer() {
                 tableName: deleteConfirm.tableName,
                 primaryKeyJson: deleteConfirm.pkJson,
             });
-            setMessage({ type: 'success', text: `Row deleted from ${deleteConfirm.tableName}` });
+            // Don't show success yet — the reducer is fire-and-forget.
+            // The subscription will update the table automatically if the delete succeeds.
+            // Server errors will appear in SpacetimeDB logs.
+            setMessage({ type: 'success', text: `Delete requested for ${deleteConfirm.tableName} row` });
         } catch (e: any) {
             setMessage({ type: 'error', text: `Delete failed: ${e.message || e}` });
         }
@@ -166,9 +174,7 @@ export default function TableExplorer() {
                 </span>
             </div>
 
-            {isLoading ? (
-                <div className={styles.loading}>Loading table data...</div>
-            ) : allRows.length === 0 ? (
+            {allRows.length === 0 ? (
                 <div className={styles.empty_state}>No rows in {selectedTable}</div>
             ) : (
                 <div className={styles.table_wrapper}>

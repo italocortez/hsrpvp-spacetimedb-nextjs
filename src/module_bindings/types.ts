@@ -449,8 +449,16 @@ export const User = __t.object("User", {
   },
   discordId: __t.option(__t.string()),
   avatarCharacterName: __t.string(),
+  deletedAt: __t.option(__t.timestamp()),
 });
 export type User = __Infer<typeof User>;
+
+export const UserDeletionJob = __t.object("UserDeletionJob", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  userId: __t.u32(),
+});
+export type UserDeletionJob = __Infer<typeof UserDeletionJob>;
 
 export const UserIdentity = __t.object("UserIdentity", {
   identity: __t.identity(),

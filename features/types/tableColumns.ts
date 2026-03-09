@@ -1,5 +1,32 @@
-// Frontend mirror of upsert-eligible table columns.
-// Derived from spacetimedb/src/tables/*.ts — keep in sync when columns change.
+// Frontend mirror of table metadata from spacetimedb/src/tables/*.ts.
+// Keep in sync when tables change.
+
+// Tables with event: true — ephemeral, auto-deleted after insert.
+// Add any new event tables here. Absence from this set means event: false (the default).
+export const EVENT_TABLES: ReadonlySet<string> = new Set([
+    'LobbyCursorEvent',
+]);
+
+// All public, non-event tables (browsable in admin Table Explorer).
+// Derived by listing all tables where public: true and event is not true.
+export const PUBLIC_TABLES = [
+    'User',
+    'UserIdentity',
+    'HsrCharacter',
+    'HsrLightcone',
+    'HsrCharacterCost',
+    'HsrLightconeCost',
+    'HsrSynergyCost',
+    'Lobby',
+    'LobbyMember',
+    'MatchSession',
+    'MatchSessionStep',
+    'MatchSessionHistory',
+    'MatchSessionStepHistory',
+] as const;
+
+export type PublicTableName = typeof PUBLIC_TABLES[number];
+
 // Auto-inc columns (e.g. HsrSynergyCost.id) are excluded since upsert payloads don't include them.
 
 export const UPSERT_TABLE_COLUMNS = {

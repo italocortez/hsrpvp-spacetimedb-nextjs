@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuthContext } from '@/features/auth/components/AuthProvider';
+import DeletionBanner from '@/features/auth/components/DeletionBanner';
 import styles from './layout.module.css';
 
 export default function LandingLayout({
@@ -14,6 +15,7 @@ export default function LandingLayout({
 
     return (
         <div className={styles.layout_wrapper}>
+            <DeletionBanner />
             <nav className={styles.navbar}>
                 <Link href="/" className={styles.nav_brand}>
                     IPC Battlegrounds

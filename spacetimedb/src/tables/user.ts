@@ -10,6 +10,7 @@ export const userColumns = {
     role: Role,
     discordId: t.string().optional(),
     avatarCharacterName: t.string(), // FK reference to HsrCharacter name
+    deletedAt: t.timestamp().optional(), // Set by admin soft-delete; scheduled job hard-deletes after 5s
 };
 
 export const User = table({

@@ -14,6 +14,7 @@ import { MatchSession } from './tables/matchSession';
 import { MatchSessionStep } from './tables/matchSessionStep';
 import { MatchSessionHistory } from './tables/matchSessionHistory';
 import { MatchSessionStepHistory } from './tables/matchSessionStepHistory';
+import { UserDeletionJob } from './tables/userDeletionJob';
 
 const spacetimedb = schema({
     // User / Auth
@@ -42,6 +43,9 @@ const spacetimedb = schema({
     // History
     MatchSessionHistory,
     MatchSessionStepHistory,
+
+    // Scheduled Jobs
+    UserDeletionJob,
 });
 
 export default spacetimedb;

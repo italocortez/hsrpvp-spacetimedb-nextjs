@@ -25,4 +25,5 @@ export default __t.row({
   },
   discordId: __t.option(__t.string()).name("discord_id"),
   avatarCharacterName: __t.string().name("avatar_character_name"),
+  deletedAt: __t.option(__t.timestamp()).name("deleted_at"),
 });

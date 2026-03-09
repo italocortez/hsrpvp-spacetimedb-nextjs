@@ -24,9 +24,7 @@ function formatTimestamp(ts: any): string {
 
 export default function UserManager() {
     const { getConnection } = useSpacetimeDB();
-    // useTable returns [rows, isReady]
-    const [userRows, isReady] = useTable(tables.User);
-    const isLoading = !isReady;
+    const [userRows] = useTable(tables.User);
     const allUsers = (userRows || []) as any[];
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -109,9 +107,7 @@ export default function UserManager() {
                 </span>
             </div>
 
-            {isLoading ? (
-                <div className={styles.loading}>Loading users...</div>
-            ) : sortedUsers.length === 0 ? (
+            {sortedUsers.length === 0 ? (
                 <div className={styles.empty_state}>No users found</div>
             ) : (
                 <div className={styles.table_wrapper}>
@@ -130,7 +126,7 @@ export default function UserManager() {
                         </thead>
                         <tbody>
                             {sortedUsers.map((user) => (
-                                <tr key={user.id}>
+                                <tr key={user.id} style={user.deletedAt ? { opacity: 0.5, textDecoration: 'line-through' } : undefined}>
                                     <td>{user.id}</td>
                                     <td>
                                         {isEditing(user.id) ? (
@@ -198,8 +194,14 @@ export default function UserManager() {
                                                     </button>
                                                 </>
                                             ) : (
-                                                <button className={styles.btn_primary} onClick={() => startEdit(user)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
-                                                    Edit
+                                                <button
+                                                    className={styles.btn_primary}
+                                                    onClick={() => startEdit(user)}
+                                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                                    disabled={!!user.deletedAt}
+                                                    title={user.deletedAt ? 'Pending deletion' : 'Edit user'}
+                                                >
+                                                    {user.deletedAt ? 'Deleting...' : 'Edit'}
                                                 </button>
                                             )}
                                         </div>

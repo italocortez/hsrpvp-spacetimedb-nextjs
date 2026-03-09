@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
+import { ScheduleAt } from 'spacetimedb';
 import { ensureAdmin } from '../helpers/ensurePermissions';
 import { Path, Element, CharRole, GameMode, Role } from '../types/enums';
 import { hsrCharacterColumns } from '../tables/hsrCharacter';
@@ -72,7 +73,11 @@ export const admin_delete_row = spacetimedb.reducer(
         switch (tableName) {
             case 'User': {
                 const id = Number(primaryKeyJson);
-                if (!ctx.db.User.id.find(id)) throw new SenderError('Row not found');
+                const user = ctx.db.User.id.find(id);
+                if (!user) throw new SenderError('Row not found');
+
+                // Already pending deletion
+                if (user.deletedAt) throw new SenderError(`User #${id} is already pending deletion.`);
 
                 // Block deletion if user is hosting an active lobby
                 for (const lobby of ctx.db.Lobby.iter()) {
@@ -101,19 +106,18 @@ export const admin_delete_row = spacetimedb.reducer(
                     }
                 }
 
-                // Cascade: delete all UserIdentity rows for this user
-                const identitiesToDelete = [];
-                for (const ui of ctx.db.UserIdentity.iter()) {
-                    if (ui.userId === id) {
-                        identitiesToDelete.push(ui.identity);
-                    }
-                }
-                for (const identity of identitiesToDelete) {
-                    ctx.db.UserIdentity.identity.delete(identity);
-                }
+                // Soft-delete: set deletedAt so the client can show a notification
+                ctx.db.User.id.update({ ...user, deletedAt: ctx.timestamp });
 
-                // Safe to delete the user (history tables are preserved)
-                ctx.db.User.id.delete(id);
+                // Schedule hard-delete in 5 seconds (5_000_000 microseconds)
+                const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
+                ctx.db.UserDeletionJob.insert({
+                    scheduledId: 0n,
+                    scheduledAt: ScheduleAt.time(deleteAt),
+                    userId: id,
+                });
+
+                console.log(`[ADMIN] User #${id} soft-deleted. Hard-delete scheduled in 5s.`);
                 break;
             }
             case 'UserIdentity': {
