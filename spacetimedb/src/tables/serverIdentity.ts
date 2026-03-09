@@ -7,10 +7,12 @@ import { table, t } from 'spacetimedb/server';
  *
  * Bootstrap: call register_server when the table is empty.
  */
+export const serverIdentityColumns = {
+    identity: t.identity().primaryKey(),
+    registeredAt: t.timestamp(),
+};
+
 export const ServerIdentity = table({
     name: 'server_identity',
     public: false, // No client needs to read this
-}, {
-    identity: t.identity().primaryKey(),
-    registeredAt: t.timestamp(),
-});
+}, serverIdentityColumns);

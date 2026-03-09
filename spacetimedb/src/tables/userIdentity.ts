@@ -5,14 +5,16 @@ import { table, t } from 'spacetimedb/server';
  * Each device/browser generates a unique identity; this table links them all
  * back to a single User record.
  */
+export const userIdentityColumns = {
+    identity: t.identity().primaryKey(),
+    userId: t.u32(),
+    lastSeenAt: t.timestamp(), // For future cleanup of stale identity mappings
+};
+
 export const UserIdentity = table({
     name: 'user_identity',
     public: true,
     indexes: [
         { name: 'user_identity_user_id', accessor: 'user_identity_user_id', algorithm: 'btree', columns: ['userId'] },
     ]
-}, {
-    identity: t.identity().primaryKey(),
-    userId: t.u32(),
-    lastSeenAt: t.timestamp(), // For future cleanup of stale identity mappings
-});
+}, userIdentityColumns);

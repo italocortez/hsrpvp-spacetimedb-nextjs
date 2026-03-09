@@ -6,6 +6,9 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdminBulkUpsertReducer from "../admin_bulk_upsert_reducer";
+import AdminDeleteRowReducer from "../admin_delete_row_reducer";
+import AdminUpdateUserReducer from "../admin_update_user_reducer";
 import BroadcastCursorReducer from "../broadcast_cursor_reducer";
 import DeleteGuestAccountReducer from "../delete_guest_account_reducer";
 import LoginAsGuestReducer from "../login_as_guest_reducer";
@@ -16,6 +19,9 @@ import UpdateAvatarReducer from "../update_avatar_reducer";
 import UpdateDisplayNameReducer from "../update_display_name_reducer";
 import UpdateUsernameReducer from "../update_username_reducer";
 
+export type AdminBulkUpsertParams = __Infer<typeof AdminBulkUpsertReducer>;
+export type AdminDeleteRowParams = __Infer<typeof AdminDeleteRowReducer>;
+export type AdminUpdateUserParams = __Infer<typeof AdminUpdateUserReducer>;
 export type BroadcastCursorParams = __Infer<typeof BroadcastCursorReducer>;
 export type DeleteGuestAccountParams = __Infer<typeof DeleteGuestAccountReducer>;
 export type LoginAsGuestParams = __Infer<typeof LoginAsGuestReducer>;

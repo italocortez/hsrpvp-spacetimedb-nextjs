@@ -2,14 +2,7 @@ import { table, t } from 'spacetimedb/server';
 import { DraftMode, GameMode, MatchResult } from '../types/enums';
 import { PlayerSnapshot, LobbyConfig } from '../types/structs';
 
-export const MatchSessionHistory = table({
-    name: 'match_session_history',
-    public: true,
-    indexes: [
-        { name: 'history_played_at', accessor: 'history_played_at', algorithm: 'btree', columns: ['playedAt'] },
-        { name: 'history_game_mode', accessor: 'history_game_mode', algorithm: 'btree', columns: ['gameMode'] },
-    ]
-}, {
+export const matchSessionHistoryColumns = {
     id: t.string().primaryKey(), // UUID generated at game end
     lobbyCode: t.string(),       // Kept for reference (e.g. "X7K9P2")
     playedAt: t.timestamp(),
@@ -32,4 +25,13 @@ export const MatchSessionHistory = table({
     // (Character Name, Eidolon, Cost Paid, etc.)
     rosterBlue: t.string(),
     rosterRed: t.string(),
-});
+};
+
+export const MatchSessionHistory = table({
+    name: 'match_session_history',
+    public: true,
+    indexes: [
+        { name: 'history_played_at', accessor: 'history_played_at', algorithm: 'btree', columns: ['playedAt'] },
+        { name: 'history_game_mode', accessor: 'history_game_mode', algorithm: 'btree', columns: ['gameMode'] },
+    ]
+}, matchSessionHistoryColumns);

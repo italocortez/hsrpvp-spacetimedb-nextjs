@@ -1,0 +1,199 @@
+.panel {
+    padding: 1.5rem;
+    flex: 1;
+}
+
+.explorer_controls {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.select {
+    padding: 0.5rem 0.75rem;
+    background-color: rgb(31, 41, 55);
+    border: 1px solid rgb(55, 65, 81);
+    border-radius: 6px;
+    color: rgb(209, 213, 219);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.select:focus {
+    outline: none;
+    border-color: #00f2ff;
+}
+
+.search_input {
+    padding: 0.5rem 0.75rem;
+    background-color: rgb(31, 41, 55);
+    border: 1px solid rgb(55, 65, 81);
+    border-radius: 6px;
+    color: rgb(209, 213, 219);
+    font-size: 0.875rem;
+    flex: 1;
+    min-width: 200px;
+}
+
+.search_input::placeholder {
+    color: rgb(107, 114, 128);
+}
+
+.search_input:focus {
+    outline: none;
+    border-color: #00f2ff;
+}
+
+.row_count {
+    color: rgb(107, 114, 128);
+    font-size: 0.8rem;
+    margin-left: auto;
+}
+
+.table_wrapper {
+    overflow-x: auto;
+    border: 1px solid rgb(55, 65, 81);
+    border-radius: 8px;
+}
+
+.data_table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.825rem;
+}
+
+.data_table th {
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    background-color: rgb(31, 41, 55);
+    color: rgb(156, 163, 175);
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom: 1px solid rgb(55, 65, 81);
+    position: sticky;
+    top: 0;
+}
+
+.data_table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgb(38, 47, 61);
+    color: rgb(209, 213, 219);
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.data_table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.cell_truncate {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+.btn_delete {
+    padding: 0.25rem 0.5rem;
+    background-color: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    color: rgb(248, 113, 113);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn_delete:hover {
+    background-color: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.message {
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.message_success {
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: rgb(74, 222, 128);
+}
+
+.message_error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: rgb(248, 113, 113);
+}
+
+.empty_state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: rgb(107, 114, 128);
+    font-size: 0.9rem;
+}
+
+.loading {
+    text-align: center;
+    padding: 2rem;
+    color: rgb(107, 114, 128);
+}
+
+.confirm_overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.confirm_dialog {
+    background-color: rgb(31, 41, 55);
+    border: 1px solid rgb(55, 65, 81);
+    border-radius: 8px;
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 90%;
+}
+
+.confirm_dialog h3 {
+    margin: 0 0 0.75rem;
+    color: white;
+    font-size: 1rem;
+}
+
+.confirm_dialog p {
+    margin: 0 0 1.25rem;
+    color: rgb(156, 163, 175);
+    font-size: 0.875rem;
+}
+
+.confirm_actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.btn_cancel_inline {
+    padding: 0.2rem 0.5rem;
+    background-color: rgba(107, 114, 128, 0.15);
+    border: 1px solid rgba(107, 114, 128, 0.3);
+    border-radius: 4px;
+    color: rgb(156, 163, 175);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn_cancel_inline:hover {
+    background-color: rgba(107, 114, 128, 0.3);
+}

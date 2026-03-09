@@ -34,6 +34,9 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdminBulkUpsertReducer from "./admin_bulk_upsert_reducer";
+import AdminDeleteRowReducer from "./admin_delete_row_reducer";
+import AdminUpdateUserReducer from "./admin_update_user_reducer";
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
 import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
 import LoginAsGuestReducer from "./login_as_guest_reducer";
@@ -261,6 +264,9 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("admin_bulk_upsert", AdminBulkUpsertReducer),
+  __reducerSchema("admin_delete_row", AdminDeleteRowReducer),
+  __reducerSchema("admin_update_user", AdminUpdateUserReducer),
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
   __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
   __reducerSchema("login_as_guest", LoginAsGuestReducer),

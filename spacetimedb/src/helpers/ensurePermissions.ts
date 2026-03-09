@@ -22,7 +22,7 @@ export function getAuthenticatedUser(ctx: any) {
  */
 export function ensureAdmin(ctx: any) {
     const user = getAuthenticatedUser(ctx);
-    if (!('Admin' in user.role)) {
+    if (user.role.tag !== 'Admin') {
         throw new SenderError("Forbidden: Requires Admin privileges.");
     }
     return user;
@@ -33,7 +33,7 @@ export function ensureAdmin(ctx: any) {
  */
 export function ensureTournamentHost(ctx: any) {
     const user = getAuthenticatedUser(ctx);
-    if (!('TournamentHost' in user.role) && !('Admin' in user.role)) {
+    if (user.role.tag !== 'TournamentHost' && user.role.tag !== 'Admin') {
         throw new SenderError("Forbidden: Requires Tournament Host or Admin privileges.");
     }
     return user;

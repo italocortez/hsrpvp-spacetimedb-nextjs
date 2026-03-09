@@ -1,14 +1,7 @@
 import { table, t } from 'spacetimedb/server';
 import { ParticipationRole, TeamLabel } from '../types/enums';
 
-export const LobbyMember = table({
-    name: 'lobby_member',
-    public: true,
-    primaryKey: ['lobbyId', 'userId'],
-    indexes: [
-        { name: 'lobby_member_lobby_id', accessor: 'lobby_member_lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
-    ]
-}, {
+export const lobbyMemberColumns = {
     lobbyId: t.u32(),
     userId: t.u32(),
 
@@ -16,4 +9,13 @@ export const LobbyMember = table({
     participationRole: ParticipationRole, // Player vs Spectator
     isReferee: t.bool(),    // Admin powers within this lobby
     teamSlot: TeamLabel,    // Blue, Red, or Spectator
-});
+};
+
+export const LobbyMember = table({
+    name: 'lobby_member',
+    public: true,
+    primaryKey: ['lobbyId', 'userId'],
+    indexes: [
+        { name: 'lobby_member_lobby_id', accessor: 'lobby_member_lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+    ]
+}, lobbyMemberColumns);

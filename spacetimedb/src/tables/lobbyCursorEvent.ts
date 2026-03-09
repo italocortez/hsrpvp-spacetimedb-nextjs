@@ -1,13 +1,15 @@
 import { table, t } from 'spacetimedb/server';
 
-export const LobbyCursorEvent = table({
-    name: 'lobby_cursor_event',
-    public: true,
-    event: true, // Broadcasts onInsert, then deletes immediately.
-}, {
+export const lobbyCursorEventColumns = {
     lobbyId: t.u32(),
     senderUserId: t.u32(), // Who moved the mouse (persistent User ID)
     x: t.f32(),
     y: t.f32(),
     timestamp: t.timestamp(),
-});
+};
+
+export const LobbyCursorEvent = table({
+    name: 'lobby_cursor_event',
+    public: true,
+    event: true, // Broadcasts onInsert, then deletes immediately.
+}, lobbyCursorEventColumns);

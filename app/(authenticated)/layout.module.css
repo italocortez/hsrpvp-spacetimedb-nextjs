@@ -84,3 +84,22 @@
     width: 20px;
     height: 20px;
 }
+
+.admin_icon_link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgb(55, 65, 81);
+    color: rgb(209, 213, 219);
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.admin_icon_link:hover {
+    background-color: rgb(75, 85, 99);
+    color: white;
+    border-color: #f59e0b;
+}

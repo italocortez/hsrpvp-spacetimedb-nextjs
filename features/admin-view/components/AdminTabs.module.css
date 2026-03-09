@@ -1,0 +1,30 @@
+.tab_bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid rgb(55, 65, 81);
+    background-color: rgb(31, 41, 55);
+    padding: 0 1.5rem;
+}
+
+.tab {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: rgb(156, 163, 175);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab:hover {
+    color: rgb(209, 213, 219);
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.tab_active {
+    composes: tab;
+    color: #00f2ff;
+    border-bottom-color: #00f2ff;
+}

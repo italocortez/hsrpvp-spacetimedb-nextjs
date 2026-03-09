@@ -2,14 +2,7 @@ import { table, t } from 'spacetimedb/server';
 import { ActionType, TeamLabel } from '../types/enums';
 import { StepPayload } from '../types/structs';
 
-export const MatchSessionStep = table({
-    name: 'match_session_step',
-    public: true,
-    indexes: [
-        // Fast lookup: "Get full history for Lobby 123"
-        { name: 'match_history_lobby', accessor: 'match_history_lobby', algorithm: 'btree', columns: ['lobbyId'] },
-    ]
-}, {
+export const matchSessionStepColumns = {
     id: t.u32().primaryKey().autoInc(),
 
     lobbyId: t.u32(),      // FK to Lobby/MatchSession
@@ -22,4 +15,13 @@ export const MatchSessionStep = table({
 
     payload: StepPayload,
     timestamp: t.timestamp(),
-});
+};
+
+export const MatchSessionStep = table({
+    name: 'match_session_step',
+    public: true,
+    indexes: [
+        // Fast lookup: "Get full history for Lobby 123"
+        { name: 'match_history_lobby', accessor: 'match_history_lobby', algorithm: 'btree', columns: ['lobbyId'] },
+    ]
+}, matchSessionStepColumns);
