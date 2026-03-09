@@ -209,6 +209,8 @@ export default function BulkUpsert() {
                 jsonData: JSON.stringify(validation.convertedRows),
             });
             setMessage({ type: 'success', text: `Bulk upsert sent for ${validation.rowCount} rows into ${selectedTable}` });
+            setJsonText('');
+            if (fileInputRef.current) fileInputRef.current.value = '';
         } catch (e: any) {
             setMessage({ type: 'error', text: `Upsert failed: ${e.message || e}` });
         } finally {
