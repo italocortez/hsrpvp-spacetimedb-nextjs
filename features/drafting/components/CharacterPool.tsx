@@ -1,16 +1,12 @@
-import {
-	HsrCharacterRow,
-	useGameData,
-} from "@/features/game-data/components/GameDataProvider";
+import { useGameData } from "@/features/game-data/components/GameDataProvider";
 import styles from "./CharacterPool.module.css";
-import { useCharacters } from "@/app/providers";
 import { useCharacterFilters } from "@/features/hooks/useCharacterFilters";
 import { CharacterFilterBar } from "../CharacterFilterBar";
 import { Character } from "@/features/types/enums";
-import { CharacterCard } from "../CharacterCard";
+import { CharacterCard } from "./CharacterCard";
 
 export default function CharacterPool() {
-	const { characters, isReady } = useGameData();
+	const { characters } = useGameData();
 	const filters = useCharacterFilters(
 		characters.map((c) => {
 			return {

@@ -84,6 +84,52 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npx tsx scripts/manage-user.ts set-role <username> <role>` | Change a user's role (Admin, TournamentHost, User) |
 | `npx tsx scripts/manage-user.ts delete <username>` | Delete a user |
 
+## Using Game Data
+
+`GameDataProvider` (in `features/game-data/components/GameDataProvider.tsx`) subscribes to the following SpacetimeDB tables globally via `useTable()`:
+
+| Table | Field in context | Type |
+|-------|-----------------|------|
+| `HsrCharacter` | `characters` | `HsrCharacterRow[]` |
+| `HsrLightcone` | `lightcones` | `HsrLightconeRow[]` |
+| `HsrCharacterCost` | `characterCosts` | `HsrCharacterCostRow[]` |
+| `HsrLightconeCost` | `lightconeCosts` | `HsrLightconeCostRow[]` |
+| `HsrSynergyCost` | `synergyCosts` | `HsrSynergyCostRow[]` |
+
+Since the provider wraps the entire app (in `app/providers.tsx`), the data is available on every page. The arrays are kept in sync with the server in real-time — whenever a row is inserted, updated, or deleted on the backend, the corresponding array updates automatically and the component re-renders with the new data. **Do not gate rendering behind a loading flag**, as that would flash a loading state on every server update. Instead, just render the data directly and let empty arrays handle the initial state naturally:
+
+```tsx
+import { useGameData } from '@/features/game-data/components/GameDataProvider';
+
+export default function MyComponent() {
+  const { characters } = useGameData();
+
+  // No loading gate — renders an empty list initially,
+  // then fills in automatically as data arrives and stays in sync.
+  return (
+    <ul>
+      {characters.map((c) => (
+        <li key={c.name}>{c.displayName} — {c.element.tag} / {c.path.tag}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+You can destructure only the tables you need:
+
+```tsx
+// Only need lightcones
+const { lightcones } = useGameData();
+
+// Only need costs
+const { characterCosts, synergyCosts } = useGameData();
+```
+
+> `isReady` is still available if you need to distinguish "no data yet" from "genuinely empty table" (e.g. showing a skeleton on first load). But most components should just render the arrays directly.
+
+> **Note:** Do NOT call `useTable(tables.HsrCharacter)` directly in components — use `useGameData()` instead to avoid duplicate subscriptions.
+
 ## Project Structure
 
 ```

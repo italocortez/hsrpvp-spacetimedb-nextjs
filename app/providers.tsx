@@ -2,23 +2,13 @@
 
 import { SessionProvider } from "next-auth/react";
 import { useMemo } from 'react';
-import { SpacetimeDBProvider, useTable } from 'spacetimedb/react';
-import { DbConnection, ErrorContext, tables } from '../src/module_bindings';
+import { SpacetimeDBProvider } from 'spacetimedb/react';
+import { DbConnection, ErrorContext } from '../src/module_bindings';
 import { Identity } from 'spacetimedb';
 import { SPACETIMEDB_HOST as HOST, SPACETIMEDB_DB_NAME as DB_NAME, SPACETIMEDB_TOKEN_KEY as TOKEN_KEY } from '@/lib/spacetimedb';
 import { AuthProvider } from '@/features/auth/components/AuthProvider';
 import { GameDataProvider } from '@/features/game-data/components/GameDataProvider';
 import { HeroUIProvider } from '@heroui/system';
-import type { HsrCharacterRow } from '@/features/game-data/components/GameDataProvider';
-
-export function useCharacters(): { characters: HsrCharacterRow[]; isLoading: boolean } {
-  const [rows, isLoading] = useTable(tables.HsrCharacter);
-  return {
-    characters: (rows || []) as unknown as HsrCharacterRow[],
-    isLoading,
-  };
-}
-
 const onConnect = (_conn: DbConnection, identity: Identity, token: string) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem(TOKEN_KEY, token);
