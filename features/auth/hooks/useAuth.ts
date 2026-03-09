@@ -1,4 +1,5 @@
-import { useMemo, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useEffect, useCallback, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useTable, useSpacetimeDB } from 'spacetimedb/react';
 import { tables } from '@/src/module_bindings';
@@ -6,17 +7,20 @@ import { SPACETIMEDB_TOKEN_KEY } from '@/lib/spacetimedb';
 import { AuthState, User, UserIdentityRow } from '../types';
 
 export function useAuth() {
-    // 1. External state: NextAuth session + SpacetimeDB connection
+    // 1. External state: NextAuth session + SpacetimeDB connection + router
+    const router = useRouter();
     const { data: session, status: nextAuthStatus } = useSession();
     const { isActive, identity, getConnection, connectionError } = useSpacetimeDB();
 
     // 2. Subscribe to UserIdentity and User tables
     // Note: tables.UserIdentity requires regenerated bindings after publish
-    const [identityRows] = useTable((tables as any).UserIdentity);
+    const [identityRows, identitiesReady] = useTable((tables as any).UserIdentity);
     const allIdentities = (identityRows || []) as unknown as UserIdentityRow[];
 
-    const [userRows] = useTable(tables.User);
+    const [userRows, usersReady] = useTable(tables.User);
     const allUsers = (userRows || []) as unknown as User[];
+
+    const subscriptionsReady = identitiesReady && usersReady;
 
     // 3. Check if this identity has a UserIdentity mapping
     const hasMapping = useMemo(() => {
@@ -38,13 +42,21 @@ export function useAuth() {
         return allUsers.find(u => u.id === mapping.userId) || null;
     }, [allIdentities, allUsers, identity, isActive]);
 
-    // 5. Discord linking: when Discord session is authenticated, ensure a
-    //    UserIdentity mapping exists (call loginAsGuest if needed), then link.
+    // 5. Discord linking: only runs when the user explicitly clicked "Connect with Discord"
+    //    in this tab session. A sessionStorage flag tracks intent (survives OAuth redirect).
+    //    If the user already has a mapping + linked Discord, the flag is cleared and
+    //    subsequent visits with a stale NextAuth cookie won't auto-register.
+    const DISCORD_INTENT_KEY = 'discord_login_intent';
     const linkingRef = useRef(false);
     const autoRegisteredRef = useRef(false);
+    const hasDiscordIntent = typeof window !== 'undefined' && !!sessionStorage.getItem(DISCORD_INTENT_KEY);
+
     useEffect(() => {
         if (nextAuthStatus !== "authenticated" || !session?.user) return;
         if (!isActive || !identity) return;
+        // Only proceed if user explicitly initiated Discord login, OR
+        // if they already have a mapping (returning user on authenticated page).
+        if (!hasDiscordIntent && !hasMapping) return;
 
         const conn = getConnection();
         if (!conn) return;
@@ -81,16 +93,48 @@ export function useAuth() {
                 .catch(e => console.error("Failed to link Discord:", e))
                 .finally(() => { linkingRef.current = false; });
         }
-    }, [nextAuthStatus, session, isActive, identity, hasMapping, currentUser, getConnection]);
 
-    // Discord linking is in progress when we have a Discord session but the
-    // user is still a guest (or doesn't exist yet). Prevents flash of "Welcome Guest_xxx".
-    const isLinkingDiscord = nextAuthStatus === "authenticated" && (!currentUser || currentUser.isGuest);
+        // Linking complete (or not needed) — clear the intent flag
+        if (!needsSync) {
+            sessionStorage.removeItem(DISCORD_INTENT_KEY);
+        }
+    }, [nextAuthStatus, session, isActive, identity, hasMapping, hasDiscordIntent, currentUser, getConnection]);
 
-    // If we have a stored token but no user yet, we're still loading subscription data.
-    // This prevents the AuthGate login form from flashing during page transitions.
-    const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem(SPACETIMEDB_TOKEN_KEY);
-    const isWaitingForData = isActive && !currentUser && hasStoredToken;
+    // 5b. Detect soft-delete: if admin set deletedAt, notify user and auto-logout.
+    // Navigate to landing page (client-side, preserves React state) so the banner
+    // is visible, then sign out after 4 seconds.
+    const [isDeleted, setIsDeleted] = useState(false);
+    const deletionHandledRef = useRef(false);
+    useEffect(() => {
+        if (!currentUser?.deletedAt || deletionHandledRef.current) return;
+        deletionHandledRef.current = true;
+        setIsDeleted(true);
+
+        // Navigate to landing page so user can't interact with authenticated pages
+        router.push('/');
+
+        // Sign out after delay so user can read the banner.
+        // Use signOut with redirect:false then force a hard reload to ensure
+        // the SpacetimeDB connection is fully reset (no stale subscriptions).
+        const timer = setTimeout(async () => {
+            localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
+            await signOut({ redirect: false });
+            window.location.replace('/');
+        }, 4000);
+        return () => clearTimeout(timer);
+    }, [currentUser?.deletedAt, router]);
+
+    // Discord linking is in progress when the user explicitly initiated Discord login
+    // and the link hasn't completed yet. Prevents flash of "Welcome Guest_xxx".
+    const isLinkingDiscord = hasDiscordIntent && nextAuthStatus === "authenticated" && (!currentUser || currentUser.isGuest);
+
+    // If a token existed at mount time, the user likely has an account — wait for
+    // subscriptions before showing the login form (prevents flash during page transitions).
+    // We use a ref so that tokens saved by onConnect AFTER mount don't trigger waiting.
+    // Once subscriptions load and there's no mapping (orphaned identity), stop waiting.
+    const hadTokenOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem(SPACETIMEDB_TOKEN_KEY));
+    const isOrphanedIdentity = subscriptionsReady && !hasMapping;
+    const isWaitingForData = isActive && !currentUser && hadTokenOnMount.current && !isOrphanedIdentity;
 
     // Auth state
     const isConnecting = !isActive && !connectionError;
@@ -118,7 +162,10 @@ export function useAuth() {
         }
     }, [getConnection]);
 
-    const loginDiscord = useCallback(() => signIn("discord"), []);
+    const loginDiscord = useCallback(() => {
+        sessionStorage.setItem(DISCORD_INTENT_KEY, '1');
+        signIn("discord");
+    }, []);
 
     // Logout: clear SpacetimeDB token so a fresh identity is generated next time.
     // For Discord users this is safe — they re-link via server_link_discord on next login.
@@ -143,6 +190,7 @@ export function useAuth() {
 
     return {
         ...authState,
+        isDeleted,
         loginGuest,
         loginDiscord,
         logout,

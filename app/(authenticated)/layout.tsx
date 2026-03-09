@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import AuthGate from '@/features/auth/components/AuthGate';
+import AuthRequired from '@/features/auth/components/AuthRequired';
+import DeletionBanner from '@/features/auth/components/DeletionBanner';
 import { useAuthContext } from '@/features/auth/components/AuthProvider';
 import styles from './layout.module.css';
 
@@ -55,7 +56,8 @@ function Navbar() {
 export default function LobbyLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className={styles.layout_wrapper}>
-            <AuthGate message="Please login to access the Battlegrounds">
+            <AuthRequired>
+                <DeletionBanner />
                 <Navbar />
 
                 <main className={styles.main_content}>
@@ -65,7 +67,7 @@ export default function LobbyLayout({ children }: { children: React.ReactNode })
                 <footer className={styles.footer}>
                     <p>&copy; {new Date().getFullYear()} The Genius Society. All rights reserved.</p>
                 </footer>
-            </AuthGate>
+            </AuthRequired>
         </div>
     );
 }

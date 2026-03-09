@@ -14,6 +14,7 @@ export interface User {
     role: UserRole;
     discordId?: string;
     avatarCharacterName: string;
+    deletedAt?: Timestamp; // Set when admin soft-deletes; hard-delete follows after 5s
 }
 
 // Mirrors spacetimedb/tables/userIdentity.ts

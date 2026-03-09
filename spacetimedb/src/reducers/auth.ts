@@ -37,6 +37,7 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
         role: { tag: 'User' },
         discordId: undefined,
         avatarCharacterName: 'march7th',
+        deletedAt: undefined,
     });
 
     // Link this identity to the new user
