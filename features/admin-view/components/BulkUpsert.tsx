@@ -9,7 +9,7 @@ import styles from './BulkUpsert.module.css';
 
 const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
     HsrCharacter: `[{
-  "name": "march-7th",
+  "name": "march7th",
   "displayName": "March 7th",
   "aliases": ["march"],
   "rarity": 4,
@@ -19,7 +19,7 @@ const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
   "imageUrl": "https://..."
 }]`,
     HsrLightcone: `[{
-  "name": "moment-of-victory",
+  "name": "momentofvictory",
   "displayName": "Moment of Victory",
   "aliases": [],
   "path": "Preservation",
@@ -30,19 +30,19 @@ const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
   "width": 0
 }]`,
     HsrCharacterCost: `[{
-  "characterName": "march-7th",
+  "characterName": "march7th",
   "gameMode": "MemoryOfChaos",
   "classicCosts": { "e0": 5, "e1": 7, "e2": 9, "e3": 11, "e4": 13, "e5": 15, "e6": 17 },
   "auctionBaseBid": { "e0": 3, "e1": 5, "e2": 7, "e3": 9, "e4": 11, "e5": 13, "e6": 15 }
 }]`,
     HsrLightconeCost: `[{
-  "lightconeName": "moment-of-victory",
+  "lightconeName": "momentofvictory",
   "classicCosts": { "s1": 2, "s2": 3, "s3": 4, "s4": 5, "s5": 6 },
   "auctionBaseBid": { "s1": 1, "s2": 2, "s3": 3, "s4": 4, "s5": 5 }
 }]`,
     HsrSynergyCost: `[{
-  "sourceName": "march-7th",
-  "targetName": "moment-of-victory",
+  "sourceName": "cerydra",
+  "targetName": "anaxa",
   "gameMode": "MemoryOfChaos",
   "costModifier": 1.5
 }]`,
