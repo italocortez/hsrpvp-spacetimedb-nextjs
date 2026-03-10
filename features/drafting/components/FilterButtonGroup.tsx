@@ -1,6 +1,6 @@
 "use client";
 
-import styles from "./character-pool/CharacterPool.module.css";
+import styles from "./CharacterPool.module.css";
 
 interface FilterButtonGroupProps<T extends string> {
   /** CSS class for the group container (e.g. styles.roles, styles.elements) */

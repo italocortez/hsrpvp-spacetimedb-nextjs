@@ -1,0 +1,91 @@
+/* ---- Scrollbar hidden ---- */
+.tableWrapper {
+    scrollbar-width: none; /* Firefox */
+}
+
+.tableWrapper::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
+/* ---- Main character rows ---- */
+.characterRow {
+    cursor: default;
+}
+
+/* ---- Rarity badge ---- */
+.rarityBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+/* ---- Expand chevron ---- */
+.expandButton {
+    background: none;
+    border: none;
+    color: rgb(156, 163, 175);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.15s;
+}
+
+.expandButton:hover {
+    color: #fff;
+}
+
+/* ---- Synergy count badge ---- */
+.synergyBadge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #c084fc;
+    background: rgba(192, 132, 252, 0.12);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.4rem;
+    white-space: nowrap;
+}
+
+/* ---- Synergy sub-rows: header ---- */
+.synergyHeaderRow {
+    background: rgba(17, 24, 39, 0.6) !important;
+}
+
+.synergyHeaderRow:hover {
+    background: rgba(17, 24, 39, 0.6) !important;
+}
+
+.synergyLabel {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgb(156, 163, 175);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ---- Synergy sub-rows: data ---- */
+.synergyDataRow {
+    background: rgba(17, 24, 39, 0.4) !important;
+}
+
+.synergyDataRow:hover {
+    background: rgba(31, 41, 55, 0.5) !important;
+}
+
+.synergyTarget {
+    font-size: 0.8rem;
+    color: rgb(156, 163, 175);
+    padding-left: 1.25rem;
+}
+
+.synergyCost {
+    font-size: 0.8rem;
+    color: #c084fc;
+    font-weight: 500;
+}

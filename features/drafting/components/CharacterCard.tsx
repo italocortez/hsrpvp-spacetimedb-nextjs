@@ -1,7 +1,7 @@
 "use client";
 
 import { Character } from "../../types/enums";
-import styles from "./character-pool/CharacterPool.module.css";
+import styles from "./CharacterPool.module.css";
 
 interface CharacterCardProps {
   character: Character;

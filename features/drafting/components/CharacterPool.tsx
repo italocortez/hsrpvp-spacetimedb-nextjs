@@ -1,7 +1,7 @@
 import { useGameData } from "@/features/game-data/components/GameDataProvider";
 import styles from "./CharacterPool.module.css";
 import { useCharacterFilters } from "@/features/hooks/useCharacterFilters";
-import { CharacterFilterBar } from "../CharacterFilterBar";
+import { CharacterFilterBar } from "./CharacterFilterBar";
 import { Character } from "@/features/types/enums";
 import { CharacterCard } from "./CharacterCard";
 

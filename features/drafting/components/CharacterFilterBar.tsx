@@ -1,11 +1,11 @@
 "use client";
 
 import { FilterButtonGroup } from "./FilterButtonGroup";
-import styles from "./character-pool/CharacterPool.module.css";
-import { iconMaps } from "../hooks/useIconMaps";
-import { CHAR_ROLE_VARIANTS, ELEMENT_VARIANTS, PATH_VARIANTS } from "../types/enums";
+import styles from "./CharacterPool.module.css";
+import { iconMaps } from "@/features/hooks/useIconMaps";
+import { CHAR_ROLE_VARIANTS, ELEMENT_VARIANTS, PATH_VARIANTS } from "@/features/types/enums";
 import { ClearIcon } from "@/components/icons";
-import { CharacterFilterActions, CharacterFilterState } from "../hooks/useCharacterFilters";
+import { CharacterFilterActions, CharacterFilterState } from "@/features/hooks/useCharacterFilters";
 
 interface CharacterFilterBarProps {
   filterState: CharacterFilterState;
