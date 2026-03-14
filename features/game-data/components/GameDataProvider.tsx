@@ -3,6 +3,8 @@
 import React, { createContext, useContext } from 'react';
 import { useTable } from 'spacetimedb/react';
 import { tables } from '@/src/module_bindings';
+import { Character, Lightcone, Synergy } from '@/features/types/enums';
+import { mapToCharacterData, mapToLightconeData, mapToSynergyData } from './DataHelpers';
 
 export interface HsrCharacterRow {
     name: string; // ruanmei
@@ -49,11 +51,10 @@ export interface HsrSynergyCostRow {
 }
 
 interface GameDataContextType {
-    characters: HsrCharacterRow[];
-    lightcones: HsrLightconeRow[];
-    characterCosts: HsrCharacterCostRow[];
-    lightconeCosts: HsrLightconeCostRow[];
-    synergyCosts: HsrSynergyCostRow[];
+    charactersData: Character[];
+    lightconesData: Lightcone[];
+    synergiesData: Synergy[];
+
     isReady: boolean;
 }
 
@@ -67,12 +68,11 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
     const [synergyCostRows] = useTable(tables.HsrSynergyCost);
 
     const value: GameDataContextType = {
-        characters: (characterRows || []) as unknown as HsrCharacterRow[],
-        lightcones: (lightconeRows || []) as unknown as HsrLightconeRow[],
-        characterCosts: (characterCostRows || []) as unknown as HsrCharacterCostRow[],
-        lightconeCosts: (lightconeCostRows || []) as unknown as HsrLightconeCostRow[],
-        synergyCosts: (synergyCostRows || []) as unknown as HsrSynergyCostRow[],
-        isReady: !!characterRows && !!lightconeRows,
+        charactersData: (characterRows.map(r => mapToCharacterData(characterCostRows, r)) || []) as unknown as Character[],
+        lightconesData: (lightconeRows.map(r => mapToLightconeData(lightconeCostRows, r)) || []) as unknown as Lightcone[],
+        synergiesData: (synergyCostRows.map(mapToSynergyData) || []) as unknown as Synergy[],
+        
+        isReady: !!characterRows && !!lightconeRows
     };
 
     return <GameDataContext.Provider value={value}>{children}</GameDataContext.Provider>;

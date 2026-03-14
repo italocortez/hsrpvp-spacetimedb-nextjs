@@ -1,79 +1,107 @@
-import { useGameData } from "@/features/game-data/components/GameDataProvider";
-import styles from "./CharacterPool.module.css";
-import { useCharacterFilters } from "@/features/hooks/useCharacterFilters";
-import { CharacterFilterBar } from "../CharacterFilterBar";
-import { Character } from "@/features/types/enums";
-import { CharacterCard } from "./CharacterCard";
+"use client";
 
-export default function CharacterPool() {
-	const { characters } = useGameData();
-	const filters = useCharacterFilters(
-		characters.map((c) => {
-			return {
-				name: c.name,
-				displayName: c.displayName,
-				aliases: c.aliases,
-				element: c.element.tag,
-				path: c.path.tag,
-				rarity: c.rarity,
-				role: c.role.tag,
-				imageUrl: c.imageUrl,
-			} as Character;
-		}),
+import { useCallback } from "react";
+import { CharacterFilterBar } from "./CharacterFilterBar";
+import { CharacterCard } from "./CharacterCard";
+import styles from "./CharacterPool.module.css";
+import { Character, SelectedCharacter, Team, Turn } from "@/features/types/enums";
+import { useCharacterFilters } from "@/features/hooks/useCharacterFilters";
+
+interface CharacterPoolProps {
+	characters: Character[];
+	selectedCharacters: SelectedCharacter[];
+	onCharacterSelect: (character: Character) => void;
+	currentPhase?: Turn;
+	isDraftComplete: boolean;
+	isDraftStarted: boolean;
+	canBanCharacter?: (characterName: string, team: Team) => boolean;
+}
+
+export function CharacterPool({
+	characters,
+	selectedCharacters,
+	onCharacterSelect,
+	currentPhase,
+	isDraftComplete,
+	isDraftStarted,
+	canBanCharacter,
+}: CharacterPoolProps) {
+	const filters = useCharacterFilters(characters);
+
+	const isCharacterSelectable = useCallback(
+		(characterName: string): boolean => {
+			if (
+				selectedCharacters.some((s) => s.characterName === characterName) ||
+				isDraftComplete ||
+				!currentPhase ||
+				!isDraftStarted
+			) {
+				return false;
+			}
+
+			if (currentPhase.action === "Ban" && canBanCharacter) {
+				return canBanCharacter(characterName, currentPhase.team);
+			}
+
+			return true;
+		},
+		[
+			selectedCharacters,
+			isDraftComplete,
+			isDraftStarted,
+			currentPhase,
+			canBanCharacter,
+		],
 	);
 
-    // ── Team-based border colour ──────────────────────────────────────
-    const teamColorClass = (() => {
-        // if (!currentPhase || !isDraftStarted || isDraftComplete) return "";
-        // if (currentPhase.team === "blue") return styles.blue;
-        // if (currentPhase.team === "red") return styles.red;
-        return "";
-    })();
+	const handleSelect = useCallback(
+		(character: Character) => {
+			if (!isCharacterSelectable(character.name)) return;
+			filters.clearAll();
+			onCharacterSelect(character);
+		},
+		[isCharacterSelectable, filters.clearAll, onCharacterSelect],
+	);
+
+	const teamColorClass = (() => {
+		if (!currentPhase || !isDraftStarted || isDraftComplete) return "";
+		if (currentPhase.team === "Blue") return styles.blue;
+		if (currentPhase.team === "Red") return styles.red;
+		return "";
+	})();
 
 	return (
 		<div className={`${styles.pool} ${teamColorClass} Box`.trim()}>
-			{/* Filters */}
 			<CharacterFilterBar filterState={filters.filterState} actions={filters} />
 
-			{/* Draft status banner */}
-			{/* <DraftStatusBanner
-				currentPhase={currentPhase}
-				isDraftStarted={isDraftStarted}
-				isDraftComplete={isDraftComplete}
-			/> */}
+            <div className={styles.statusContainer}>
+                {/* Text wrapper */}
+                <div style={{ display: (currentPhase?.team === "Spectator") ? `none` : `` }}>
+                    {!isDraftStarted && (
+                        <h3 className={styles.beginDraft}>Press &quot;Start Draft&quot; to begin</h3>
+                    )}
+                    {isDraftComplete && (
+                        <h3 className={styles.draftComplete}>Complete!</h3>
+                    )}
+                </div>
+            </div>
 
-            <div className="status-container"
-                style={{
-                    position: `relative`,
-                    width: `100%`,
-                    height: `1px`,
-                    backgroundColor: `#4b5563`
-                }}
-            ></div>
-
-			{/* Character grid */}
 			<div className={styles.charactersContainer}>
 				{filters.filteredCharacters.map((character) => {
-					// const selection = selectedCharacters.find(
-					const selection = characters.find(
-						(s) => s.name === character.name,
-					);
+					const selection = selectedCharacters.find(s => s.characterName === character.name);
 
 					return (
 						<CharacterCard
 							key={character.name}
 							character={character}
-							// selection={selection}
-							// isSelectable={isCharacterSelectable(character.id)}
-							isSelectable={true}
-							// onSelect={handleSelect}
-							onSelect={() => {}}
+							selection={selection}
+							isSelectable={isCharacterSelectable(character.name)}
+							onSelect={handleSelect}
 						/>
 					);
 				})}
 			</div>
 
-			{/* Empty state */}
 			{filters.filteredCharacters.length === 0 && (
 				<h3 className={styles.info}>
 					{filters.hasActiveFilters

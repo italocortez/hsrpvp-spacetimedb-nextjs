@@ -15,9 +15,9 @@ export default function LandingLayout({
         <div className={styles.layout_wrapper}>
             <DeletionBanner />
 
-            <main className={styles.main_content}>
-                {children}
-            </main>
+            {/* <main className={styles.main_content}>
+            </main> */}
+            {children}
         </div>
     );
 }
