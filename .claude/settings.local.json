@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/GitsWork/hsrpvp-spacetimedb-nextjs/$HOME/.claude/**)",
+      "Read(//d/GitsWork/hsrpvp-spacetimedb-nextjs/$HOME/**)",
+      "Read(//c/Users/Admin/.claude/**)",
+      "Bash(find:*)",
+      "WebFetch(domain:lw7sh.itch.io)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(find /d/GitsWork/hsrpvp-spacetimedb-nextjs -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.md \\\\\\) ! -path */node_modules/* ! -path */.next/*)",
+      "Bash(xargs grep:*)"
+    ]
+  },
+  "enabledPlugins": {}
+}
