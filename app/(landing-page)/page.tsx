@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import LoginForm from '@/features/auth/components/LoginForm';
-import FeatureCards from '@/features/landing/components/FeatureCards';
-import { useAuthContext } from '@/features/auth/components/AuthProvider';
+import LoginForm from '@/components/features/auth/components/LoginForm';
+import FeatureCards from '@/components/features/landing/components/FeatureCards';
+import { useAuthContext } from '@/components/features/auth/components/AuthProvider';
 import styles from './page.module.css';
 
 export default function LandingPage() {

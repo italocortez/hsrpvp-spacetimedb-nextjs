@@ -1,16 +1,16 @@
 'use client';
 
-import { CharacterPool } from "@/features/drafting/components/CharacterPool";
+import { CharacterPool } from "@/components/features/drafting/components/CharacterPool";
 import styles from "./page.module.css"
-import { useLoadouts } from "@/features/hooks/useLoadouts";
-import { useGameData } from "@/features/game-data/components/GameDataProvider";
-import { useAuth } from "@/features/auth/hooks/useAuth";
-import { Character, CharacterRank, SelectedCharacter } from "@/features/types/enums";
-import { TEAM_SIZE, TeamMember } from "@/features/team-builder/LoadoutManager";
+import { useLoadouts } from "@/components/features/hooks/useLoadouts";
+import { useGameData } from "@/components/features/game-data/components/GameDataProvider";
+import { useAuth } from "@/components/features/auth/hooks/useAuth";
+import { Character, CharacterRank, SelectedCharacter } from "@/components/features/types/enums";
+import { TEAM_SIZE, TeamMember } from "@/components/features/team-builder/LoadoutManager";
 import { useCallback } from "react";
-import { TeamRoster } from "@/features/team-builder/TeamRoster";
-import { LoadoutControls } from "@/features/team-builder/LoadoutControls";
-import { CostBreakdownChart } from "@/features/team-builder/cost-breakdown-chart/CostBreakdownChart";
+import { TeamRoster } from "@/components/features/team-builder/TeamRoster";
+import { LoadoutControls } from "@/components/features/team-builder/LoadoutControls";
+import { CostBreakdownChart } from "@/components/features/team-builder/cost-breakdown-chart/CostBreakdownChart";
 
 export default function TeamBuilder() {
     const { isAuthenticated, user } = useAuth();
