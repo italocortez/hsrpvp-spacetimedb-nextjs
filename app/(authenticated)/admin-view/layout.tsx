@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useAuthContext } from '@/features/auth/components/AuthProvider';
+import { useAuthContext } from '@/components/features/auth/components/AuthProvider';
 import styles from './layout.module.css';
 
 export default function AdminViewLayout({ children }: { children: React.ReactNode }) {

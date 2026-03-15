@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { Tabs, Tab } from '@heroui/tabs';
-import GlobalFilterBar from '@/features/costs/components/GlobalFilterBar';
-import CharacterCostTable from '@/features/costs/components/CharacterCostTable';
-import LightconeCostTable from '@/features/costs/components/LightconeCostTable';
+import GlobalFilterBar from '@/components/features/costs/components/GlobalFilterBar';
+import CharacterCostTable from '@/components/features/costs/components/CharacterCostTable';
+import LightconeCostTable from '@/components/features/costs/components/LightconeCostTable';
 import styles from './page.module.css';
 
 type CostTab = 'characters' | 'lightcones';

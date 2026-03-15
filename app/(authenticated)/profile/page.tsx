@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import ProfileCard from '@/features/profile/components/ProfileCard';
-import DiscordLink from '@/features/profile/components/DiscordLink';
-import { useProfile } from '@/features/profile/hooks/useProfile';
+import ProfileCard from '@/components/features/profile/components/ProfileCard';
+import DiscordLink from '@/components/features/profile/components/DiscordLink';
+import { useProfile } from '@/components/features/profile/hooks/useProfile';
 import styles from './page.module.css';
 
 function ProfileContent() {
