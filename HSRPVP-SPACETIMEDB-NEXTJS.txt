@@ -113,7 +113,7 @@ HSRPVP-SPACETIMEDB-NEXTJS/
 │   │   └── costs/
 │   │       ├── page.tsx                # "/costs" — public cost table browser
 │   │       └── page.module.css
-│   │
+│   │t
 │   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 │   │   # ROUTE GROUP: (app) — authenticated shell
 │   │   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
