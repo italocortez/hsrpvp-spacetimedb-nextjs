@@ -6,13 +6,13 @@ import { useGameData } from '@/features/game-data/components/GameDataProvider';
 
 export function useProfile() {
     const auth = useAuthContext();
-    const { characters, isReady: gameDataReady } = useGameData();
+    const { charactersData, isReady: gameDataReady } = useGameData();
 
     const avatarImageUrl = useMemo(() => {
         if (!auth.user || !gameDataReady) return null;
-        const char = characters.find(c => c.name === auth.user!.avatarCharacterName);
+        const char = charactersData.find(c => c.name === auth.user!.avatarCharacterName);
         return char?.imageUrl ?? null;
-    }, [auth.user, characters, gameDataReady]);
+    }, [auth.user, charactersData, gameDataReady]);
 
     return {
         ...auth,
