@@ -1,20 +1,13 @@
 
 # SpacetimeDB Rules (All Languages)
 
-## Migrating from 1.0 to 2.0?
-
-**If you are migrating existing SpacetimeDB 1.0 code to 2.0, apply `spacetimedb-migration-2.0.mdc` first.** It documents breaking changes (reducer callbacks → event tables, `name`→`accessor`, `sender()` method, etc.) and should be considered before other rules.
-
 ---
 
 ## Language-Specific Rules
 
 | Language | Rule File |
 |----------|-----------|
-| **TypeScript/React** | `spacetimedb-typescript.mdc` (MANDATORY) |
-| **Rust** | `spacetimedb-rust.mdc` (MANDATORY) |
-| **C#** | `spacetimedb-csharp.mdc` (MANDATORY) |
-| **Migrating 1.0 → 2.0** | `spacetimedb-migration-2.0.mdc` |
+| **TypeScript/React** | `spacetimedb-typescript.mdc` (MANDATORY, lives on .claude/spacetimedb/) |
 
 ---
 
@@ -110,8 +103,6 @@ spacetime logs <db-name>
 - Do NOT touch unrelated files, configs, or dependencies
 - Do NOT invent new SpacetimeDB APIs — use only what exists in docs or this repo
 - Do NOT add restrictions the prompt didn't ask for — if "users can do X", implement X for all users
-
-
 
 
 # SpacetimeDB TypeScript SDK

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" width="54" height="54">
+    <defs>
+        <style>
+            .icon-svg {
+                animation: pulse-glow 4s infinite alternate;
+            }
+            .diamond-top {
+                animation: float-top 2.5s ease-in-out infinite alternate;
+            }
+            .diamond-bottom {
+                animation: float-bottom 2.5s ease-in-out infinite alternate;
+            }
+            @keyframes pulse-glow {
+                0% { filter: drop-shadow(0px 2px 8px rgba(242, 78, 78, 0.4)); }
+                100% { filter: drop-shadow(0px 2px 8px rgba(78, 140, 242, 0.4)); }
+            }
+            @keyframes float-top {
+                0% { transform: translateY(0px); }
+                100% { transform: translateY(-2px); }
+            }
+            @keyframes float-bottom {
+                0% { transform: translateY(0px); }
+                100% { transform: translateY(2px); }
+            }
+        </style>
+        <linearGradient id="pvpGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F24E4E">
+                <animate attributeName="stop-color" values="#F24E4E;#4E8CF2;#F24E4E" dur="6s" repeatCount="indefinite" />
+            </stop>
+            <stop offset="50%" stop-color="#A64EF2">
+                <animate attributeName="stop-color" values="#A64EF2;#8A4EF2;#A64EF2" dur="6s" repeatCount="indefinite" />
+            </stop>
+            <stop offset="100%" stop-color="#4E8CF2">
+                <animate attributeName="stop-color" values="#4E8CF2;#F24E4E;#4E8CF2" dur="6s" repeatCount="indefinite" />
+            </stop>
+        </linearGradient>
+    </defs>
+
+    <g class="icon-svg">
+        <path fill="url(#pvpGradient)" fill-rule="evenodd" clip-rule="evenodd"
+              d="M 16 4 L 48 4 L 60 16 L 60 48 L 48 60 L 16 60 L 4 48 L 4 16 Z 
+                 M 32 10 L 50 28 L 50 50 L 14 50 L 14 28 Z" />
+        <path class="diamond-top" fill="url(#pvpGradient)" d="M 32 22 L 41 31 L 23 31 Z" />
+        <path class="diamond-bottom" fill="url(#pvpGradient)" d="M 23 33 L 41 33 L 32 42 Z" />
+    </g>
+</svg>
