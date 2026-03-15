@@ -22,13 +22,17 @@ export default function RootLayout({
 }) {
 	return (
 		<html lang="en" className="dark">
-			<body className={inter.className}>
+			<body 
+                // className={inter.className}
+                >
 				{/* 3. Apply the font class globally to the body */}
 				{/* Providers wrapper for SpacetimeDB connection and context */}
 				<Providers>
 					<Header />
 
-					<main>{children}</main>
+					<main>
+                        {children}
+                    </main>
 
 					<Footer />
 				</Providers>
