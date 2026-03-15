@@ -25,6 +25,10 @@ export const matchSessionHistoryColumns = {
     // (Character Name, Eidolon, Cost Paid, etc.)
     rosterBlue: t.string(),
     rosterRed: t.string(),
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const MatchSessionHistory = table({

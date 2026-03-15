@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
 import { t } from 'spacetimedb/server';
+import { auditInsert } from '../helpers/auditColumns';
 
 export const broadcast_cursor = spacetimedb.reducer({
     lobbyId: t.u32(),
@@ -22,12 +23,13 @@ export const broadcast_cursor = spacetimedb.reducer({
         return;
     }
 
-    // Broadcast
+    // Broadcast (event table — ephemeral, but audit columns still applied per policy)
     ctx.db.LobbyCursorEvent.insert({
         lobbyId,
         senderUserId: mapping.userId,
         x,
         y,
         timestamp: ctx.timestamp,
+        ...auditInsert(ctx, mapping.userId),
     });
 });

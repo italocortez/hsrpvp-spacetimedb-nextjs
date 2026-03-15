@@ -304,6 +304,74 @@ lib/                    -> Shared utilities and configuration
 - **New enums/structs** go in `spacetimedb/src/types/enums.ts` or `structs.ts`
 - **New frontend features** go in `components/features/<feature-name>/` with `components/` and `hooks/` subdirs
 
+## Naming conventions (this repo — ENFORCED)
+
+| Layer | Convention | Examples |
+|-------|-----------|----------|
+| Table columns | `camelCase` | `hostUserId`, `avatarCharacterName`, `createdById` |
+| Struct/object fields | `camelCase` | `teamSize`, `characterName`, `isPaused` |
+| Enum variants | `PascalCase` | `MemoryOfChaos`, `BlueWins`, `TournamentHost` |
+| Reducer export names | `snake_case` | `login_as_guest`, `server_link_discord` |
+| Index names & accessors | `snake_case` | `lobby_host`, `user_discord_id` |
+| Table names (in `table()`) | `snake_case` | `'user'`, `'hsr_character'`, `'lobby_member'` |
+| Helper functions | `camelCase` | `resolveUser`, `ensureAdmin`, `auditInsert` |
+| Constants | `UPPER_SNAKE_CASE` | `SYSTEM_USER_ID`, `DISCORD_INTENT_KEY` |
+
+**Never mix conventions within a layer.** All struct fields and table columns MUST be camelCase. Enum variants MUST be PascalCase (standard TypeScript enum convention).
+
+## Audit columns policy (this repo — ENFORCED)
+
+Every table MUST have these 4 columns at the end of its column definition (exception: `ServerIdentity`):
+
+```typescript
+createdById: t.u32(),
+createdDate: t.timestamp(),
+lastModifiedById: t.u32(),
+lastModifiedDate: t.timestamp(),
+```
+
+**Rules:**
+- Each table defines its own audit columns inline — do NOT import/spread a shared object. Tables must not be coupled through column definitions.
+- Use `auditInsert(ctx, userId)` from `helpers/auditColumns.ts` when inserting a new row
+- Use `auditUpdate(ctx, existingRow, userId)` from `helpers/auditColumns.ts` when updating a row — this preserves original `createdById`/`createdDate`
+- `SYSTEM_USER_ID = 0` is used for bootstrap operations (e.g. `register_server` creating the SYSTEM user) and scheduled reducers
+- The SYSTEM user (discordId = `"1"`, role = Admin) is created during `register_server` as the first user
+- When upserting (delete + re-insert for composite PK tables), preserve audit fields from the deleted row: `...(existing ? auditUpdate(ctx, existing, userId) : auditInsert(ctx, userId))`
+- Admin reducers should capture `const admin = ensureAdmin(ctx)` once at the top and use `admin.id` for all audit fields
+
+## Data access best practices (this repo — ENFORCED)
+
+**Always prefer indexed lookups over `.iter()`:**
+
+| Scenario | Use | NOT |
+|----------|-----|-----|
+| Lookup by PK | `ctx.db.Table.pkColumn.find(value)` | `for (const r of ctx.db.Table.iter())` |
+| Lookup by unique column | `ctx.db.Table.uniqueCol.find(value)` | `.iter()` + manual filter |
+| Lookup by indexed column | `[...ctx.db.Table.index_name.filter(value)]` | `.iter()` + manual filter |
+| Composite PK lookup | `(ctx.db.Table as any).primaryKey.find({...})` | `.iter()` + manual match |
+| Identity hex string match | `.iter()` (no hex→Identity conversion exists) | N/A — iter is the only option |
+| Composite key upsert (no PK accessor) | `.iter()` + match | N/A — iter is the only option |
+
+**When `.iter()` is unavoidable**, add a comment explaining why (e.g. "identity is an object, we only have the hex string").
+
+## TypeScript patterns in SpacetimeDB (SDK limitations)
+
+**`ctx: any` in helper functions** — The SpacetimeDB SDK exports `ReducerCtx` but it's generic and requires the full schema type parameter. Using `any` for `ctx` in standalone helper functions (`ensureAdmin`, `resolveUser`, `auditInsert`) is the accepted pattern. Do NOT try to import or construct the generic context type.
+
+**`as any` on enum values** — When constructing enum values from runtime strings (e.g. `{ tag: roleTag, value: {} } as any`), the `as any` cast is necessary because TypeScript can't narrow a `string` variable to the specific literal union the enum type expects. This is expected.
+
+**`export let` for scheduled table reducers** — The `userDeletionJob.ts` pattern (`export let _reducer: any` + setter function) is the documented way to avoid circular dependencies between scheduled tables and their reducers. Do not refactor this.
+
+## User table special fields
+
+- `isOnline: t.bool()` — set `true` in `clientConnected`, `false` in `clientDisconnected`
+- `isPrivate: t.bool()` — defaults to `false`, for future privacy features
+- `deletedAt: t.timestamp().optional()` — soft-delete pattern, triggers scheduled hard-delete after 5s
+
+## Foreign keys
+
+SpacetimeDB does NOT support FK constraints. Referential integrity must be enforced in reducer code. This is expected — not a bug or missing feature.
+
 ## Updating docs from SpacetimeDB GitHub
 
 When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"):

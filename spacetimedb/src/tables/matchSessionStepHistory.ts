@@ -6,6 +6,10 @@ export const matchSessionStepHistoryColumns = {
     // A single massive JSON string containing the full array of steps.
     // Clients fetch this only when "Watch Replay" is clicked.
     steps: t.string(),
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const MatchSessionStepHistory = table({

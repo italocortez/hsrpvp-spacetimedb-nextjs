@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
+import { auditUpdate } from '../helpers/auditColumns';
 
 /**
  * Helper: resolve ctx.sender → UserIdentity → User.
@@ -61,6 +62,7 @@ export const update_display_name = spacetimedb.reducer({
     ctx.db.User.id.update({
         ...resolved.user,
         displayName: trimmed,
+        ...auditUpdate(ctx, resolved.user, resolved.user.id),
     });
 });
 
@@ -91,12 +93,13 @@ export const update_username = spacetimedb.reducer({
     ctx.db.User.id.update({
         ...resolved.user,
         username: trimmed,
+        ...auditUpdate(ctx, resolved.user, resolved.user.id),
     });
 });
 
 /**
  * Update the caller's avatar character.
- * The characterName should reference an existing HsrCharacter name.
+ * Validates that the characterName exists in the HsrCharacter table.
  */
 export const update_avatar = spacetimedb.reducer({
     characterName: t.string(),
@@ -106,8 +109,15 @@ export const update_avatar = spacetimedb.reducer({
         throw new SenderError('User not found — login first');
     }
 
+    // Validate character exists in the HsrCharacter table
+    const character = ctx.db.HsrCharacter.name.find(characterName);
+    if (!character) {
+        throw new SenderError(`Character "${characterName}" not found. Please select a valid character.`);
+    }
+
     ctx.db.User.id.update({
         ...resolved.user,
         avatarCharacterName: characterName,
+        ...auditUpdate(ctx, resolved.user, resolved.user.id),
     });
 });

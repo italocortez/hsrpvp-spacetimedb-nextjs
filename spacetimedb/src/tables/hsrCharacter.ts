@@ -10,6 +10,10 @@ export const hsrCharacterColumns = {
     element: Element,
     role: CharRole,
     imageUrl: t.string(),
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 // People from the forums say we dont need "name": XXXXXXXXX on indexes anymore

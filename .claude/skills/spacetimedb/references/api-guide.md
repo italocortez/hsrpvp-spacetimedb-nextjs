@@ -181,6 +181,13 @@ const [items, isReady] = useTable(tables.item);
 | `.iter()` in views | Use index lookups | Severe performance issues (re-evaluates on any change) |
 | `ctx.db` in procedures | `ctx.withTx(tx => tx.db...)` | Procedures need explicit transactions |
 | `ctx.myTable` in procedure tx | `tx.db.myTable` | Wrong context variable |
+| `.iter()` when index exists | Use `.find()` / `.filter()` on index | Unnecessary full table scan |
+| `snake_case` struct fields | Use `camelCase` for all struct fields | Convention mismatch with table columns |
+| Shared audit column import | Define audit columns inline per table | Unwanted coupling between table files |
+| Missing `auditInsert`/`auditUpdate` | Every insert/update must set audit fields | Missing audit trail |
+| Double `ensureAdmin(ctx)` | Capture once: `const admin = ensureAdmin(ctx)` | Redundant permission check + DB lookup |
+| Missing character validation in `update_avatar` | Check `ctx.db.HsrCharacter.name.find(name)` | Invalid avatar reference |
+| Insert without `isOnline`/`isPrivate` | Include `isOnline: false, isPrivate: false` | Missing required User fields |
 
 ### Client-side errors
 

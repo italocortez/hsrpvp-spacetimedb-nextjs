@@ -172,6 +172,9 @@ const tablesSchema = __schema({
       { name: 'lobby_member_lobby_id', algorithm: 'btree', columns: [
         'lobbyId',
       ] },
+      { name: 'lobby_member_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
     ],
     constraints: [
     ],

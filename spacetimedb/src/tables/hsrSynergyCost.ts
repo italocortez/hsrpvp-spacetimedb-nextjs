@@ -7,10 +7,15 @@ export const hsrSynergyCostColumns = {
     targetName: t.string(),
     gameMode: GameMode,
     costModifier: t.f32(),
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
-// Columns expected in upsert payloads (excludes auto-inc id)
-export const hsrSynergyCostUpsertKeys = Object.keys(hsrSynergyCostColumns).filter(k => k !== 'id');
+// Columns expected in upsert payloads (excludes auto-inc id and audit columns)
+const AUDIT_KEYS = ['createdById', 'createdDate', 'lastModifiedById', 'lastModifiedDate'];
+export const hsrSynergyCostUpsertKeys = Object.keys(hsrSynergyCostColumns).filter(k => k !== 'id' && !AUDIT_KEYS.includes(k));
 
 export const HsrSynergyCost = table({
     name: 'hsr_synergy_cost',

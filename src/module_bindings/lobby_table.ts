@@ -29,4 +29,8 @@ export default __t.row({
   get config() {
     return LobbyConfig;
   },
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

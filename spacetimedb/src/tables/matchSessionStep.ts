@@ -15,6 +15,10 @@ export const matchSessionStepColumns = {
 
     payload: StepPayload,
     timestamp: t.timestamp(),
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const MatchSessionStep = table({

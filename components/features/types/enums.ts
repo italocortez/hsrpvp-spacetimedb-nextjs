@@ -1,8 +1,8 @@
 // Frontend mirror of spacetimedb/src/types/enums.ts
 // Keep in sync when server enum variants change.
 
-// export type Team = "blue" | "red" | "test";
-// export type Action = "pick" | "ban" | "test";
+// export type Team = "Blue" | "Red" | "test";
+// export type Action = "Pick" | "Ban" | "test";
 
 // -- Eidolons and Impositions are declared here AGAIN because the db fields are lowercased, which looks bad on UI.
 export const Eidolons = ["E0", "E1", "E2", "E3", "E4", "E5", "E6"] as const;
@@ -74,7 +74,7 @@ export interface Lightcone {
     rarity: number;
     imageUrl?: string;
 
-    // For centering lc's image 
+    // For centering lc's image
     anchor: LightconeAnchor;
 
     cost: LightconeCost;

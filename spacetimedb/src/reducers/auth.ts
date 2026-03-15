@@ -1,4 +1,5 @@
 import spacetimedb from '../schema';
+import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
 
 /**
  * Login as a guest user.
@@ -14,10 +15,13 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
             ctx.db.User.id.update({
                 ...user,
                 lastLoginAt: ctx.timestamp,
+                isOnline: true,
+                ...auditUpdate(ctx, user, user.id),
             });
             ctx.db.UserIdentity.identity.update({
                 ...mapping,
                 lastSeenAt: ctx.timestamp,
+                ...auditUpdate(ctx, mapping, user.id),
             });
             return;
         }
@@ -33,11 +37,14 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
         username: guestUsername,
         displayName: guestUsername,
         isGuest: true,
+        isOnline: true,
+        isPrivate: false,
         lastLoginAt: ctx.timestamp,
         role: { tag: 'User' },
         discordId: undefined,
         avatarCharacterName: 'march7th',
         deletedAt: undefined,
+        ...auditInsert(ctx, SYSTEM_USER_ID),
     });
 
     // Link this identity to the new user
@@ -45,5 +52,6 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
         identity: ctx.sender,
         userId: newUser.id,
         lastSeenAt: ctx.timestamp,
+        ...auditInsert(ctx, newUser.id),
     });
 });

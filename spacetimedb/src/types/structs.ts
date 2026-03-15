@@ -9,38 +9,38 @@ import {
 // -------------------- STRUCTS --------------------
 
 export const LobbyConfig = t.object('LobbyConfig', {
-    team_size: t.u8(),               // 1, 2, or 3
-    draft_mode: DraftMode,
-    ban_mode: BanMode,
-    standard_turn_seconds: t.u32(),
-    reserve_bank_seconds: t.u32(),
-    auction_budget: t.f32().optional(),
+    teamSize: t.u8(),               // 1, 2, or 3
+    draftMode: DraftMode,
+    banMode: BanMode,
+    standardTurnSeconds: t.u32(),
+    reserveBankSeconds: t.u32(),
+    auctionBudget: t.f32().optional(),
 
     // Balance Math
-    roster_diff_advantage: t.f32(),
-    roster_threshold: t.f32(),
-    under_threshold_advantage: t.f32(),
-    above_threshold_penalty: t.f32(),
-    death_penalty: t.f32(),
+    rosterDiffAdvantage: t.f32(),
+    rosterThreshold: t.f32(),
+    underThresholdAdvantage: t.f32(),
+    aboveThresholdPenalty: t.f32(),
+    deathPenalty: t.f32(),
 });
 
 export const PlayerSnapshot = t.object('PlayerSnapshot', {
     userId: t.u32(),
-    display_name: t.string(),
-    avatar_url: t.string(),
+    displayName: t.string(),
+    avatarUrl: t.string(),
 });
 
 export const TimerState = t.object('TimerState', {
-    turn_start_at: t.timestamp(),
-    team_blue_reserve_ms: t.u32(),
-    team_red_reserve_ms: t.u32(),
-    is_paused: t.bool(),
-    accumulated_pause_ms: t.u32(),
+    turnStartAt: t.timestamp(),
+    teamBlueReserveMs: t.u32(),
+    teamRedReserveMs: t.u32(),
+    isPaused: t.bool(),
+    accumulatedPauseMs: t.u32(),
 });
 
 export const DraftStep = t.object('DraftStep', {
-    action_required: ActionType,
-    team_turn: TeamLabel,
+    actionRequired: ActionType,
+    teamTurn: TeamLabel,
 });
 
 export const EidolonCost = t.object('EidolonCost', {
@@ -66,39 +66,39 @@ export const SuperimpositionCost = t.object('SuperimpositionCost', {
 // This replaces the "JSON" column with a type-safe structure.
 
 export const PickPayload = t.object('PickPayload', {
-    character_name: t.string(),
+    characterName: t.string(),
     eidolon: t.u8(),
-    cost_paid: t.f32(),
+    costPaid: t.f32(),
 });
 
 export const BanPayload = t.object('BanPayload', {
-    character_name: t.string(),
+    characterName: t.string(),
 });
 
 export const BidPayload = t.object('BidPayload', {
     amount: t.f32(),
-    target_character: t.string(),
+    targetCharacter: t.string(),
 });
 
 export const AuctionSoldPayload = t.object('AuctionSoldPayload', {
-    character_name: t.string(),
-    winning_amount: t.f32(),
-    winning_team: TeamLabel,    // Who actually got it
+    characterName: t.string(),
+    winningAmount: t.f32(),
+    winningTeam: TeamLabel,    // Who actually got it
     eidolon: t.u8(),
 });
 
 export const NominatePayload = t.object('NominatePayload', {
-    character_name: t.string(),
+    characterName: t.string(),
     eidolon: t.u8(),
 });
 
 export const UndoPayload = t.object('UndoPayload', {
-    original_sequence_id: t.u32(), // The ID of the step we are reverting
+    originalSequenceId: t.u32(), // The ID of the step we are reverting
 });
 
 export const PausePayload = t.object('PausePayload', {
-    time_remaining_ms: t.u32(),        // Snapshot of the clock when paused
-    is_auto_pause: t.bool(),           // True if system paused (disconnect), False if manual
+    timeRemainingMs: t.u32(),        // Snapshot of the clock when paused
+    isAutoPause: t.bool(),           // True if system paused (disconnect), False if manual
 });
 
 // The "Polymorphic" Enum containing the specific payloads

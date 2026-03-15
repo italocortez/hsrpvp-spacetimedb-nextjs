@@ -9,6 +9,10 @@ export const userIdentityColumns = {
     identity: t.identity().primaryKey(),
     userId: t.u32(),
     lastSeenAt: t.timestamp(), // For future cleanup of stale identity mappings
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const UserIdentity = table({

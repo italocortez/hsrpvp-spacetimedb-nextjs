@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
+import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
 
 /**
  * Helper: verify the caller is the registered server identity.
@@ -13,9 +14,17 @@ function requireServer(ctx: any) {
 }
 
 /**
+ * Helper: get the system user (discordId = "1"). Created during register_server.
+ */
+function getSystemUserId(ctx: any): number {
+    const results = [...ctx.db.User.user_discord_id.filter('1')];
+    return results.length > 0 ? results[0].id : SYSTEM_USER_ID;
+}
+
+/**
  * Bootstrap reducer: register the calling identity as the trusted server.
  * Only works when no server identity exists yet (first-come-first-served).
- * To re-register, clear-publish the database first.
+ * Also creates a SYSTEM user (discordId = "1") for audit trail purposes.
  *
  * Run via: npx tsx scripts/register-server.ts
  */
@@ -25,9 +34,27 @@ export const register_server = spacetimedb.reducer((ctx) => {
         throw new SenderError('Server identity already registered. To re-register, clear the database first.');
     }
 
+    // Register the server identity (no audit columns on this table)
     ctx.db.ServerIdentity.insert({
         identity: ctx.sender,
         registeredAt: ctx.timestamp,
+    });
+
+    // Create the SYSTEM user — the first user in the database.
+    // discordId = "1" is the sentinel for the system account.
+    ctx.db.User.insert({
+        id: 0,
+        username: 'SYSTEM',
+        displayName: 'SYSTEM',
+        isGuest: false,
+        isOnline: false,
+        isPrivate: false,
+        lastLoginAt: ctx.timestamp,
+        role: { tag: 'Admin' },
+        discordId: '1',
+        avatarCharacterName: 'march7th',
+        deletedAt: undefined,
+        ...auditInsert(ctx, SYSTEM_USER_ID),
     });
 });
 
@@ -46,6 +73,7 @@ export const server_link_discord = spacetimedb.reducer({
 }, (ctx, { callerIdentityHex, discordId, discordUsername }) => {
     // 1. Verify caller is the trusted server
     requireServer(ctx);
+    const systemUserId = getSystemUserId(ctx);
 
     // 2. Validate inputs
     if (!discordId || discordId.length === 0) {
@@ -90,11 +118,13 @@ export const server_link_discord = spacetimedb.reducer({
                 ...userMapping,
                 userId: discordOwner.id,
                 lastSeenAt: ctx.timestamp,
+                ...auditUpdate(ctx, userMapping, systemUserId),
             });
 
             ctx.db.User.id.update({
                 ...discordOwner,
                 lastLoginAt: ctx.timestamp,
+                ...auditUpdate(ctx, discordOwner, systemUserId),
             });
 
             if (wasGuest) {
@@ -114,27 +144,19 @@ export const server_link_discord = spacetimedb.reducer({
             isGuest: false,
             discordId,
             lastLoginAt: ctx.timestamp,
+            ...auditUpdate(ctx, currentUser, systemUserId),
         });
         ctx.db.UserIdentity.identity.update({
             ...userMapping,
             lastSeenAt: ctx.timestamp,
+            ...auditUpdate(ctx, userMapping, systemUserId),
         });
         return;
     }
 
     // No UserIdentity mapping exists for this identity yet
     if (discordOwner) {
-        // Case 2: Cross-device login — we need to create a UserIdentity for this hex.
-        // But we only have the hex string, not the Identity object. We can't insert
-        // a UserIdentity without the Identity type. So instead, we'll store the
-        // discordId on a pending basis and let the client call login_as_guest first,
-        // which creates the UserIdentity. Then this reducer upgrades it.
-        //
-        // For this to work, the client flow must be:
-        //   1. Client connects → login_as_guest (creates UserIdentity + guest User)
-        //   2. Client authenticates Discord → API route calls server_link_discord
-        //
-        // Since login_as_guest always runs first (AuthGate), the mapping will exist.
+        // Case 2: Cross-device login — client must call login_as_guest first.
         throw new SenderError('Identity not registered. Call login_as_guest first.');
     }
 
@@ -151,6 +173,7 @@ export const server_set_role = spacetimedb.reducer({
     roleTag: t.string(),
 }, (ctx, { username, roleTag }) => {
     requireServer(ctx);
+    const systemUserId = getSystemUserId(ctx);
 
     if (!username || username.length === 0) {
         throw new SenderError('username is required');
@@ -161,21 +184,16 @@ export const server_set_role = spacetimedb.reducer({
         throw new SenderError(`Invalid role "${roleTag}". Must be one of: ${validRoles.join(', ')}`);
     }
 
-    let targetUser: any = null;
-    for (const row of ctx.db.User.iter()) {
-        if (row.username === username) {
-            targetUser = row;
-            break;
-        }
-    }
-
+    // Use unique index instead of .iter()
+    const targetUser = ctx.db.User.username.find(username);
     if (!targetUser) {
         throw new SenderError(`User "${username}" not found`);
     }
 
     ctx.db.User.id.update({
         ...targetUser,
-        role: { tag: roleTag },
+        role: { tag: roleTag, value: {} } as any,
+        ...auditUpdate(ctx, targetUser, systemUserId),
     });
 });
 
@@ -192,20 +210,15 @@ export const server_delete_user = spacetimedb.reducer({
         throw new SenderError('username is required');
     }
 
-    let targetUser: any = null;
-    for (const row of ctx.db.User.iter()) {
-        if (row.username === username) {
-            targetUser = row;
-            break;
-        }
-    }
-
+    // Use unique index instead of .iter()
+    const targetUser = ctx.db.User.username.find(username);
     if (!targetUser) {
         throw new SenderError(`User "${username}" not found`);
     }
 
-    // Delete associated UserIdentity rows
-    for (const mapping of ctx.db.UserIdentity.user_identity_user_id.filter(targetUser.id)) {
+    // Delete associated UserIdentity rows using btree index
+    const mappings = [...ctx.db.UserIdentity.user_identity_user_id.filter(targetUser.id)];
+    for (const mapping of mappings) {
         ctx.db.UserIdentity.identity.delete(mapping.identity);
     }
 

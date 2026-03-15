@@ -123,6 +123,10 @@ export const HsrCharacter = __t.object("HsrCharacter", {
     return CharRole;
   },
   imageUrl: __t.string(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type HsrCharacter = __Infer<typeof HsrCharacter>;
 
@@ -137,6 +141,10 @@ export const HsrCharacterCost = __t.object("HsrCharacterCost", {
   get auctionBaseBid() {
     return EidolonCost;
   },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type HsrCharacterCost = __Infer<typeof HsrCharacterCost>;
 
@@ -152,6 +160,10 @@ export const HsrLightcone = __t.object("HsrLightcone", {
   posX: __t.i32(),
   posY: __t.i32(),
   width: __t.i32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type HsrLightcone = __Infer<typeof HsrLightcone>;
 
@@ -163,6 +175,10 @@ export const HsrLightconeCost = __t.object("HsrLightconeCost", {
   get auctionBaseBid() {
     return SuperimpositionCost;
   },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type HsrLightconeCost = __Infer<typeof HsrLightconeCost>;
 
@@ -174,6 +190,10 @@ export const HsrSynergyCost = __t.object("HsrSynergyCost", {
     return GameMode;
   },
   costModifier: __t.f32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type HsrSynergyCost = __Infer<typeof HsrSynergyCost>;
 
@@ -191,6 +211,10 @@ export const Lobby = __t.object("Lobby", {
   get config() {
     return LobbyConfig;
   },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type Lobby = __Infer<typeof Lobby>;
 
@@ -219,6 +243,10 @@ export const LobbyCursorEvent = __t.object("LobbyCursorEvent", {
   x: __t.f32(),
   y: __t.f32(),
   timestamp: __t.timestamp(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type LobbyCursorEvent = __Infer<typeof LobbyCursorEvent>;
 
@@ -233,6 +261,10 @@ export const LobbyMember = __t.object("LobbyMember", {
   get teamSlot() {
     return TeamLabel;
   },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type LobbyMember = __Infer<typeof LobbyMember>;
 
@@ -264,6 +296,10 @@ export const MatchSession = __t.object("MatchSession", {
   },
   teamBlueBudget: __t.f32(),
   teamRedBudget: __t.f32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type MatchSession = __Infer<typeof MatchSession>;
 
@@ -293,6 +329,10 @@ export const MatchSessionHistory = __t.object("MatchSessionHistory", {
   },
   rosterBlue: __t.string(),
   rosterRed: __t.string(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type MatchSessionHistory = __Infer<typeof MatchSessionHistory>;
 
@@ -311,12 +351,20 @@ export const MatchSessionStep = __t.object("MatchSessionStep", {
     return StepPayload;
   },
   timestamp: __t.timestamp(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type MatchSessionStep = __Infer<typeof MatchSessionStep>;
 
 export const MatchSessionStepHistory = __t.object("MatchSessionStepHistory", {
   matchId: __t.string(),
   steps: __t.string(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type MatchSessionStepHistory = __Infer<typeof MatchSessionStepHistory>;
 
@@ -443,6 +491,8 @@ export const User = __t.object("User", {
   username: __t.string(),
   displayName: __t.string(),
   isGuest: __t.bool(),
+  isOnline: __t.bool(),
+  isPrivate: __t.bool(),
   lastLoginAt: __t.timestamp(),
   get role() {
     return Role;
@@ -450,6 +500,10 @@ export const User = __t.object("User", {
   discordId: __t.option(__t.string()),
   avatarCharacterName: __t.string(),
   deletedAt: __t.option(__t.timestamp()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type User = __Infer<typeof User>;
 
@@ -457,6 +511,10 @@ export const UserDeletionJob = __t.object("UserDeletionJob", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
   userId: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type UserDeletionJob = __Infer<typeof UserDeletionJob>;
 
@@ -464,6 +522,10 @@ export const UserIdentity = __t.object("UserIdentity", {
   identity: __t.identity(),
   userId: __t.u32(),
   lastSeenAt: __t.timestamp(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
 });
 export type UserIdentity = __Infer<typeof UserIdentity>;
 

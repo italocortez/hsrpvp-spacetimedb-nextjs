@@ -2,6 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ScheduleAt } from 'spacetimedb';
 import { ensureAdmin } from '../helpers/ensurePermissions';
+import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { Path, Element, CharRole, GameMode, Role } from '../types/enums';
 import { hsrCharacterColumns } from '../tables/hsrCharacter';
 import { hsrLightconeColumns } from '../tables/hsrLightcone';
@@ -32,12 +33,15 @@ function validateEnum(field: string, value: string, ctx: any, tableName: string)
 
 // ─── Strict key validator ────────────────────────────────────────────────────
 // Every row must have exactly the expected keys — no more, no less.
+// Audit columns are excluded from validation (they are set server-side).
+
+const AUDIT_KEYS = new Set(['createdById', 'createdDate', 'lastModifiedById', 'lastModifiedDate']);
 
 const EXPECTED_KEYS: Record<string, string[]> = {
-    HsrCharacter: Object.keys(hsrCharacterColumns),
-    HsrLightcone: Object.keys(hsrLightconeColumns),
-    HsrCharacterCost: Object.keys(hsrCharacterCostColumns),
-    HsrLightconeCost: Object.keys(hsrLightconeCostColumns),
+    HsrCharacter: Object.keys(hsrCharacterColumns).filter(k => !AUDIT_KEYS.has(k)),
+    HsrLightcone: Object.keys(hsrLightconeColumns).filter(k => !AUDIT_KEYS.has(k)),
+    HsrCharacterCost: Object.keys(hsrCharacterCostColumns).filter(k => !AUDIT_KEYS.has(k)),
+    HsrLightconeCost: Object.keys(hsrLightconeCostColumns).filter(k => !AUDIT_KEYS.has(k)),
     HsrSynergyCost: hsrSynergyCostUpsertKeys,
 };
 
@@ -68,7 +72,7 @@ function validateKeys(rows: any[], tableName: string, ctx: any): void {
 export const admin_delete_row = spacetimedb.reducer(
     { tableName: t.string(), primaryKeyJson: t.string() },
     (ctx, { tableName, primaryKeyJson }) => {
-        ensureAdmin(ctx);
+        const admin = ensureAdmin(ctx);
 
         switch (tableName) {
             case 'User': {
@@ -79,22 +83,20 @@ export const admin_delete_row = spacetimedb.reducer(
                 // Already pending deletion
                 if (user.deletedAt) throw new SenderError(`User #${id} is already pending deletion.`);
 
-                // Block deletion if user is hosting an active lobby
-                for (const lobby of ctx.db.Lobby.iter()) {
-                    if (lobby.hostUserId === id) {
-                        throw new SenderError(
-                            `Cannot delete user #${id}: they are hosting lobby "${lobby.joinCode}". Remove the lobby first.`
-                        );
-                    }
+                // Block deletion if user is hosting an active lobby (use btree index)
+                const hostedLobbies = [...ctx.db.Lobby.lobby_host.filter(id)];
+                if (hostedLobbies.length > 0) {
+                    throw new SenderError(
+                        `Cannot delete user #${id}: they are hosting lobby "${hostedLobbies[0].joinCode}". Remove the lobby first.`
+                    );
                 }
 
-                // Block deletion if user is a member of an active lobby
-                for (const member of ctx.db.LobbyMember.iter()) {
-                    if (member.userId === id) {
-                        throw new SenderError(
-                            `Cannot delete user #${id}: they are in active lobby #${member.lobbyId}. Remove them from the lobby first.`
-                        );
-                    }
+                // Block deletion if user is a member of an active lobby (use btree index)
+                const memberships = [...ctx.db.LobbyMember.lobby_member_user_id.filter(id)];
+                if (memberships.length > 0) {
+                    throw new SenderError(
+                        `Cannot delete user #${id}: they are in active lobby #${memberships[0].lobbyId}. Remove them from the lobby first.`
+                    );
                 }
 
                 // Block deletion if user is in an active match step
@@ -107,7 +109,11 @@ export const admin_delete_row = spacetimedb.reducer(
                 }
 
                 // Soft-delete: set deletedAt so the client can show a notification
-                ctx.db.User.id.update({ ...user, deletedAt: ctx.timestamp });
+                ctx.db.User.id.update({
+                    ...user,
+                    deletedAt: ctx.timestamp,
+                    ...auditUpdate(ctx, user, admin.id),
+                });
 
                 // Schedule hard-delete in 5 seconds (5_000_000 microseconds)
                 const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
@@ -115,13 +121,14 @@ export const admin_delete_row = spacetimedb.reducer(
                     scheduledId: 0n,
                     scheduledAt: ScheduleAt.time(deleteAt),
                     userId: id,
+                    ...auditInsert(ctx, admin.id),
                 });
 
                 console.log(`[ADMIN] User #${id} soft-deleted. Hard-delete scheduled in 5s.`);
                 break;
             }
             case 'UserIdentity': {
-                // Identity PKs are hex strings — find via iter
+                // Identity PKs are hex strings — must iterate (no hex→Identity conversion)
                 let found = false;
                 for (const row of ctx.db.UserIdentity.iter()) {
                     if (row.identity.toHexString() === primaryKeyJson) {
@@ -175,15 +182,13 @@ export const admin_delete_row = spacetimedb.reducer(
             }
             case 'LobbyMember': {
                 const key = JSON.parse(primaryKeyJson);
-                let found = false;
-                for (const row of ctx.db.LobbyMember.iter()) {
-                    if (row.lobbyId === key.lobbyId && row.userId === key.userId) {
-                        ctx.db.LobbyMember.delete(row);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) throw new SenderError('Row not found');
+                const memberTable = ctx.db.LobbyMember as any;
+                const row = memberTable.primaryKey.find({
+                    lobbyId: key.lobbyId,
+                    userId: key.userId,
+                });
+                if (!row) throw new SenderError('Row not found');
+                ctx.db.LobbyMember.delete(row);
                 break;
             }
             case 'MatchSession': {
@@ -219,7 +224,7 @@ export const admin_delete_row = spacetimedb.reducer(
 export const admin_bulk_upsert = spacetimedb.reducer(
     { tableName: t.string(), jsonData: t.string() },
     (ctx, { tableName, jsonData }) => {
-        ensureAdmin(ctx);
+        const admin = ensureAdmin(ctx);
 
         const rows: any[] = JSON.parse(jsonData);
         if (!Array.isArray(rows)) throw new SenderError('jsonData must be a JSON array');
@@ -244,9 +249,9 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         imageUrl: r.imageUrl || '',
                     };
                     if (existing) {
-                        ctx.db.HsrCharacter.name.update({ ...existing, ...row } as any);
+                        ctx.db.HsrCharacter.name.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
                     } else {
-                        ctx.db.HsrCharacter.insert(row as any);
+                        ctx.db.HsrCharacter.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
                 break;
@@ -267,9 +272,9 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         width: r.width || 0,
                     };
                     if (existing) {
-                        ctx.db.HsrLightcone.name.update({ ...existing, ...row } as any);
+                        ctx.db.HsrLightcone.name.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
                     } else {
-                        ctx.db.HsrLightcone.insert(row as any);
+                        ctx.db.HsrLightcone.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
                 break;
@@ -294,7 +299,10 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                     if (existing) {
                         ctx.db.HsrCharacterCost.delete(existing);
                     }
-                    ctx.db.HsrCharacterCost.insert(row as any);
+                    ctx.db.HsrCharacterCost.insert({
+                        ...row,
+                        ...(existing ? auditUpdate(ctx, existing, admin.id) : auditInsert(ctx, admin.id)),
+                    } as any);
                 }
                 break;
             }
@@ -307,9 +315,16 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         auctionBaseBid: r.auctionBaseBid,
                     };
                     if (existing) {
-                        ctx.db.HsrLightconeCost.lightconeName.update({ ...existing, ...row });
+                        ctx.db.HsrLightconeCost.lightconeName.update({
+                            ...existing,
+                            ...row,
+                            ...auditUpdate(ctx, existing, admin.id),
+                        });
                     } else {
-                        ctx.db.HsrLightconeCost.insert(row as any);
+                        ctx.db.HsrLightconeCost.insert({
+                            ...row,
+                            ...auditInsert(ctx, admin.id),
+                        } as any);
                     }
                 }
                 break;
@@ -333,9 +348,16 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         }
                     }
                     if (existing) {
-                        ctx.db.HsrSynergyCost.id.update({ ...existing, costModifier: r.costModifier });
+                        ctx.db.HsrSynergyCost.id.update({
+                            ...existing,
+                            costModifier: r.costModifier,
+                            ...auditUpdate(ctx, existing, admin.id),
+                        });
                     } else {
-                        ctx.db.HsrSynergyCost.insert(row as any);
+                        ctx.db.HsrSynergyCost.insert({
+                            ...row,
+                            ...auditInsert(ctx, admin.id),
+                        } as any);
                     }
                 }
                 break;
@@ -351,7 +373,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
 export const admin_update_user = spacetimedb.reducer(
     { userId: t.u32(), displayName: t.string(), username: t.string(), roleTag: t.string() },
     (ctx, { userId, displayName, username, roleTag }) => {
-        ensureAdmin(ctx);
+        const admin = ensureAdmin(ctx);
 
         const user = ctx.db.User.id.find(userId);
         if (!user) throw new SenderError('User not found');
@@ -370,6 +392,7 @@ export const admin_update_user = spacetimedb.reducer(
             displayName,
             username,
             role: { tag: roleTag, value: {} } as any,
+            ...auditUpdate(ctx, user, admin.id),
         });
     }
 );

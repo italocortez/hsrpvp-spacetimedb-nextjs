@@ -7,6 +7,10 @@ export const hsrCharacterCostColumns = {
     gameMode: GameMode,
     classicCosts: EidolonCost,
     auctionBaseBid: EidolonCost,
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const HsrCharacterCost = table({

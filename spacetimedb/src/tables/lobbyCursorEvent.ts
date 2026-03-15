@@ -6,6 +6,10 @@ export const lobbyCursorEventColumns = {
     x: t.f32(),
     y: t.f32(),
     timestamp: t.timestamp(),
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const LobbyCursorEvent = table({
