@@ -36,5 +36,6 @@ yarn-error.log*
 next-env.d.ts
 
 #claude context
-
+.claude/settings.local.json
 .planning
+test/
