@@ -85,3 +85,96 @@ export const ActionType = t.enum('ActionType', {
     Pause: t.unit(),
     Undo: t.unit(),
 });
+
+export const TournamentStage = t.enum('TournamentStage', {
+    Draft: t.unit(),
+    Registration: t.unit(),
+    Seeding: t.unit(),
+    InProgress: t.unit(),
+    Paused: t.unit(),
+    Completed: t.unit(),
+    Cancelled: t.unit(),
+});
+
+export const TournamentFormat = t.enum('TournamentFormat', {
+    SingleElimination: t.unit(),
+    DoubleElimination: t.unit(),
+    GroupOnly: t.unit(),
+    GroupIntoSingleElim: t.unit(),
+    GroupIntoDoubleElim: t.unit(),
+});
+
+export const MatchResultStatus = t.enum('MatchResultStatus', {
+    Pending: t.unit(),
+    Submitted: t.unit(),
+    Disputed: t.unit(),
+    Validated: t.unit(),
+    Rejected: t.unit(),
+});
+
+export const ValidationStatus = t.enum('ValidationStatus', {
+    Pending: t.unit(),
+    Confirmed: t.unit(),
+    Disputed: t.unit(),
+    Overridden: t.unit(),
+});
+
+export const DisconnectPolicy = t.enum('DisconnectPolicy', {
+    Pause: t.unit(),
+    TimerThenForfeit: t.unit(),
+    NoAction: t.unit(),
+});
+
+export const RecurrenceType = t.enum('RecurrenceType', {
+    Daily: t.unit(),
+    Weekly: t.unit(),
+    Monthly: t.unit(),
+});
+
+export const RosterVisibility = t.enum('RosterVisibility', {
+    Public: t.unit(),
+    Private: t.unit(),
+});
+
+export const ParticipantStatus = t.enum('ParticipantStatus', {
+    Registered: t.unit(),
+    CheckedIn: t.unit(),
+    Active: t.unit(),
+    Eliminated: t.unit(),
+    Disqualified: t.unit(),
+    Withdrawn: t.unit(),
+});
+
+export const ParticipantType = t.enum('ParticipantType', {
+    Individual: t.unit(),
+    Team: t.unit(),
+});
+
+export const AchievementRarity = t.enum('AchievementRarity', {
+    Common: t.unit(),
+    Rare: t.unit(),
+    Epic: t.unit(),
+    Legendary: t.unit(),
+});
+
+export const AchievementTriggerType = t.enum('AchievementTriggerType', {
+    StatThreshold: t.unit(),
+    CharacterSpecific: t.unit(),
+    Manual: t.unit(),
+});
+
+export const ChatSenderType = t.enum('ChatSenderType', {
+    Player: t.unit(),
+    System: t.unit(),
+});
+
+export const TeamMemberRole = t.enum('TeamMemberRole', {
+    Owner: t.unit(),
+    Player: t.unit(),
+    Coach: t.unit(),
+});
+
+export const GroupAssignmentMode = t.enum('GroupAssignmentMode', {
+    Auto: t.unit(),
+    Manual: t.unit(),
+});

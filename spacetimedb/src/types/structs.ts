@@ -3,12 +3,13 @@ import {
     DraftMode,
     BanMode,
     ActionType,
-    TeamLabel
+    TeamLabel,
+    RecurrenceType,
 } from './enums';
 
 // -------------------- STRUCTS --------------------
 
-export const LobbyConfig = t.object('LobbyConfig', {
+export const LobbyConfigSnapshot = t.object('LobbyConfigSnapshot', {
     teamSize: t.u8(),               // 1, 2, or 3
     draftMode: DraftMode,
     banMode: BanMode,
@@ -110,4 +111,30 @@ export const StepPayload = t.enum('StepPayload', {
     Nominate: NominatePayload,
     Undo: UndoPayload,
     Pause: PausePayload,
+});
+
+// -------------------- NEW STRUCTS --------------------
+
+export const GameScore = t.object('GameScore', {
+    cyclesUsed: t.u32().optional(),
+    scorePoints: t.u64().optional(),
+    boss1Score: t.u64().optional(),
+    boss2Score: t.u64().optional(),
+});
+
+export const RecurrenceRule = t.object('RecurrenceRule', {
+    recurrenceType: RecurrenceType,
+    interval: t.u8(),
+    dayOfWeek: t.u8().optional(),
+    dayOfMonth: t.u8().optional(),
+    endDate: t.timestamp().optional(),
+});
+
+export const EloConfig = t.object('EloConfig', {
+    kFactorNew: t.u8(),
+    kFactorMid: t.u8(),
+    kFactorVet: t.u8(),
+    newThreshold: t.u32(),
+    midThreshold: t.u32(),
+    initialRating: t.u32(),
 });
