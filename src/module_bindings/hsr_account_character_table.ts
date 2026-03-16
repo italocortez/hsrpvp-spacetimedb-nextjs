@@ -11,7 +11,7 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  accountId: __t.u32().name("account_id"),
+  hsrAccountId: __t.u32().name("hsr_account_id"),
   characterName: __t.string().name("character_name"),
   eidolonLevel: __t.u8().name("eidolon_level"),
   createdById: __t.u32().name("created_by_id"),

@@ -22,6 +22,7 @@ export default __t.row({
     return GameMode.name("game_mode");
   },
   costModifier: __t.f32().name("cost_modifier"),
+  costSetId: __t.u32().name("cost_set_id"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

@@ -11,9 +11,9 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  hsrAccountId: __t.u32().name("hsr_account_id"),
-  lightconeName: __t.string().name("lightcone_name"),
-  superimpositionLevel: __t.u8().name("superimposition_level"),
+  id: __t.u32().primaryKey(),
+  name: __t.string(),
+  description: __t.string(),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

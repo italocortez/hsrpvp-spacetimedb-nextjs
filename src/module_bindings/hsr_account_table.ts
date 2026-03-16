@@ -9,20 +9,17 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  RosterVisibility,
-} from "./types";
-
 
 export default __t.row({
   id: __t.u32().primaryKey(),
   userId: __t.u32().name("user_id"),
   uid: __t.string(),
+  region: __t.string(),
   displayLabel: __t.string().name("display_label"),
   isActive: __t.bool().name("is_active"),
-  get rosterVisibility() {
-    return RosterVisibility.name("roster_visibility");
-  },
+  isRosterPublic: __t.bool().name("is_roster_public"),
+  isRatingPublic: __t.bool().name("is_rating_public"),
+  isDuplicateUid: __t.bool().name("is_duplicate_uid"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

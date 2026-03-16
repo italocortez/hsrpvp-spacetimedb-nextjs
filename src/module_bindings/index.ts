@@ -34,24 +34,41 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdminAssignCharacterArchetypesReducer from "./admin_assign_character_archetypes_reducer";
+import AdminBatchRemoveCharactersReducer from "./admin_batch_remove_characters_reducer";
+import AdminBatchUpsertCharactersReducer from "./admin_batch_upsert_characters_reducer";
 import AdminBulkUpsertReducer from "./admin_bulk_upsert_reducer";
+import AdminCreateHsrAccountReducer from "./admin_create_hsr_account_reducer";
+import AdminDeleteArchetypeReducer from "./admin_delete_archetype_reducer";
+import AdminDeleteHsrAccountReducer from "./admin_delete_hsr_account_reducer";
 import AdminDeleteRowReducer from "./admin_delete_row_reducer";
+import AdminRemoveCharacterArchetypesReducer from "./admin_remove_character_archetypes_reducer";
+import AdminUpdateHsrAccountReducer from "./admin_update_hsr_account_reducer";
 import AdminUpdateUserReducer from "./admin_update_user_reducer";
+import AdminUpsertArchetypeReducer from "./admin_upsert_archetype_reducer";
+import BatchRemoveCharactersReducer from "./batch_remove_characters_reducer";
+import BatchUpsertCharactersReducer from "./batch_upsert_characters_reducer";
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
+import CreateHsrAccountReducer from "./create_hsr_account_reducer";
 import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
+import DeleteHsrAccountReducer from "./delete_hsr_account_reducer";
 import LoginAsGuestReducer from "./login_as_guest_reducer";
+import MigrateRosterReducer from "./migrate_roster_reducer";
 import RegisterServerReducer from "./register_server_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkDiscordReducer from "./server_link_discord_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
+import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
 import UpdateAvatarReducer from "./update_avatar_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
+import UpdateHsrAccountReducer from "./update_hsr_account_reducer";
 import UpdateUsernameReducer from "./update_username_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
 import AchievementRow from "./achievement_table";
+import ArchetypeRow from "./archetype_table";
 import AvailabilitySlotRow from "./availability_slot_table";
 import BracketMatchRow from "./bracket_match_table";
 import CalendarEventRow from "./calendar_event_table";
@@ -63,6 +80,7 @@ import HsrAccountRow from "./hsr_account_table";
 import HsrAccountCharacterRow from "./hsr_account_character_table";
 import HsrAccountLightconeRow from "./hsr_account_lightcone_table";
 import HsrCharacterRow from "./hsr_character_table";
+import HsrCharacterArchetypeRow from "./hsr_character_archetype_table";
 import HsrCharacterCostRow from "./hsr_character_cost_table";
 import HsrLightconeRow from "./hsr_lightcone_table";
 import HsrLightconeCostRow from "./hsr_lightcone_cost_table";
@@ -109,6 +127,21 @@ const tablesSchema = __schema({
       { name: 'achievement_name_key', constraint: 'unique', columns: ['name'] },
     ],
   }, AchievementRow),
+  Archetype: __table({
+    name: 'archetype',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'name', algorithm: 'btree', columns: [
+        'name',
+      ] },
+    ],
+    constraints: [
+      { name: 'archetype_id_key', constraint: 'unique', columns: ['id'] },
+      { name: 'archetype_name_key', constraint: 'unique', columns: ['name'] },
+    ],
+  }, ArchetypeRow),
   AvailabilitySlot: __table({
     name: 'availability_slot',
     indexes: [
@@ -228,7 +261,7 @@ const tablesSchema = __schema({
     name: 'hsr_account_character',
     indexes: [
       { name: 'hsr_acc_char_account_id', algorithm: 'btree', columns: [
-        'accountId',
+        'hsrAccountId',
       ] },
     ],
     constraints: [
@@ -238,7 +271,7 @@ const tablesSchema = __schema({
     name: 'hsr_account_lightcone',
     indexes: [
       { name: 'hsr_acc_lc_account_id', algorithm: 'btree', columns: [
-        'accountId',
+        'hsrAccountId',
       ] },
     ],
     constraints: [
@@ -264,9 +297,25 @@ const tablesSchema = __schema({
       { name: 'hsr_character_name_key', constraint: 'unique', columns: ['name'] },
     ],
   }, HsrCharacterRow),
+  HsrCharacterArchetype: __table({
+    name: 'hsr_character_archetype',
+    indexes: [
+      { name: 'hsr_char_arch_arch', algorithm: 'btree', columns: [
+        'archetypeId',
+      ] },
+      { name: 'hsr_char_arch_char', algorithm: 'btree', columns: [
+        'characterName',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, HsrCharacterArchetypeRow),
   HsrCharacterCost: __table({
     name: 'hsr_character_cost',
     indexes: [
+      { name: 'char_cost_set_id', algorithm: 'btree', columns: [
+        'costSetId',
+      ] },
     ],
     constraints: [
     ],
@@ -288,6 +337,9 @@ const tablesSchema = __schema({
   HsrLightconeCost: __table({
     name: 'hsr_lightcone_cost',
     indexes: [
+      { name: 'lc_cost_set_id', algorithm: 'btree', columns: [
+        'costSetId',
+      ] },
     ],
     constraints: [
     ],
@@ -295,6 +347,9 @@ const tablesSchema = __schema({
   HsrSynergyCost: __table({
     name: 'hsr_synergy_cost',
     indexes: [
+      { name: 'synergy_cost_set_id', algorithm: 'btree', columns: [
+        'costSetId',
+      ] },
       { name: 'id', algorithm: 'btree', columns: [
         'id',
       ] },
@@ -636,18 +691,34 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("admin_assign_character_archetypes", AdminAssignCharacterArchetypesReducer),
+  __reducerSchema("admin_batch_remove_characters", AdminBatchRemoveCharactersReducer),
+  __reducerSchema("admin_batch_upsert_characters", AdminBatchUpsertCharactersReducer),
   __reducerSchema("admin_bulk_upsert", AdminBulkUpsertReducer),
+  __reducerSchema("admin_create_hsr_account", AdminCreateHsrAccountReducer),
+  __reducerSchema("admin_delete_archetype", AdminDeleteArchetypeReducer),
+  __reducerSchema("admin_delete_hsr_account", AdminDeleteHsrAccountReducer),
   __reducerSchema("admin_delete_row", AdminDeleteRowReducer),
+  __reducerSchema("admin_remove_character_archetypes", AdminRemoveCharacterArchetypesReducer),
+  __reducerSchema("admin_update_hsr_account", AdminUpdateHsrAccountReducer),
   __reducerSchema("admin_update_user", AdminUpdateUserReducer),
+  __reducerSchema("admin_upsert_archetype", AdminUpsertArchetypeReducer),
+  __reducerSchema("batch_remove_characters", BatchRemoveCharactersReducer),
+  __reducerSchema("batch_upsert_characters", BatchUpsertCharactersReducer),
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
+  __reducerSchema("create_hsr_account", CreateHsrAccountReducer),
   __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
+  __reducerSchema("delete_hsr_account", DeleteHsrAccountReducer),
   __reducerSchema("login_as_guest", LoginAsGuestReducer),
+  __reducerSchema("migrate_roster", MigrateRosterReducer),
   __reducerSchema("register_server", RegisterServerReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
   __reducerSchema("server_set_role", ServerSetRoleReducer),
+  __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
   __reducerSchema("update_avatar", UpdateAvatarReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
+  __reducerSchema("update_hsr_account", UpdateHsrAccountReducer),
   __reducerSchema("update_username", UpdateUsernameReducer),
 );
 

@@ -32,7 +32,6 @@ export type Achievement = __Infer<typeof Achievement>;
 
 // The tagged union or sum type for the algebraic type `AchievementRarity`.
 export const AchievementRarity = __t.enum("AchievementRarity", {
-  Common: __t.unit(),
   Rare: __t.unit(),
   Epic: __t.unit(),
   Legendary: __t.unit(),
@@ -58,6 +57,17 @@ export const ActionType = __t.enum("ActionType", {
   Undo: __t.unit(),
 });
 export type ActionType = __Infer<typeof ActionType>;
+
+export const Archetype = __t.object("Archetype", {
+  id: __t.u32(),
+  name: __t.string(),
+  description: __t.string(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type Archetype = __Infer<typeof Archetype>;
 
 export const AuctionSoldPayload = __t.object("AuctionSoldPayload", {
   characterName: __t.string(),
@@ -288,11 +298,12 @@ export const HsrAccount = __t.object("HsrAccount", {
   id: __t.u32(),
   userId: __t.u32(),
   uid: __t.string(),
+  region: __t.string(),
   displayLabel: __t.string(),
   isActive: __t.bool(),
-  get rosterVisibility() {
-    return RosterVisibility;
-  },
+  isRosterPublic: __t.bool(),
+  isRatingPublic: __t.bool(),
+  isDuplicateUid: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -301,7 +312,7 @@ export const HsrAccount = __t.object("HsrAccount", {
 export type HsrAccount = __Infer<typeof HsrAccount>;
 
 export const HsrAccountCharacter = __t.object("HsrAccountCharacter", {
-  accountId: __t.u32(),
+  hsrAccountId: __t.u32(),
   characterName: __t.string(),
   eidolonLevel: __t.u8(),
   createdById: __t.u32(),
@@ -312,7 +323,7 @@ export const HsrAccountCharacter = __t.object("HsrAccountCharacter", {
 export type HsrAccountCharacter = __Infer<typeof HsrAccountCharacter>;
 
 export const HsrAccountLightcone = __t.object("HsrAccountLightcone", {
-  accountId: __t.u32(),
+  hsrAccountId: __t.u32(),
   lightconeName: __t.string(),
   superimpositionLevel: __t.u8(),
   createdById: __t.u32(),
@@ -344,6 +355,16 @@ export const HsrCharacter = __t.object("HsrCharacter", {
 });
 export type HsrCharacter = __Infer<typeof HsrCharacter>;
 
+export const HsrCharacterArchetype = __t.object("HsrCharacterArchetype", {
+  characterName: __t.string(),
+  archetypeId: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type HsrCharacterArchetype = __Infer<typeof HsrCharacterArchetype>;
+
 export const HsrCharacterCost = __t.object("HsrCharacterCost", {
   characterName: __t.string(),
   get gameMode() {
@@ -355,6 +376,7 @@ export const HsrCharacterCost = __t.object("HsrCharacterCost", {
   get auctionBaseBid() {
     return EidolonCost;
   },
+  costSetId: __t.u32(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -392,6 +414,7 @@ export const HsrLightconeCost = __t.object("HsrLightconeCost", {
   get auctionBaseBid() {
     return SuperimpositionCost;
   },
+  costSetId: __t.u32(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -407,6 +430,7 @@ export const HsrSynergyCost = __t.object("HsrSynergyCost", {
     return GameMode;
   },
   costModifier: __t.f32(),
+  costSetId: __t.u32(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -441,7 +465,6 @@ export const Lobby = __t.object("Lobby", {
   isAnonymousSpectators: __t.bool(),
   isOpenRoster: __t.bool(),
   isPublic: __t.bool(),
-  passwordHash: __t.option(__t.string()),
   get disconnectPolicy() {
     return DisconnectPolicy;
   },
@@ -510,6 +533,16 @@ export const LobbyMember = __t.object("LobbyMember", {
   lastModifiedDate: __t.timestamp(),
 });
 export type LobbyMember = __Infer<typeof LobbyMember>;
+
+export const LobbyPassword = __t.object("LobbyPassword", {
+  lobbyId: __t.u32(),
+  passwordHash: __t.string(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type LobbyPassword = __Infer<typeof LobbyPassword>;
 
 // The tagged union or sum type for the algebraic type `LobbyStage`.
 export const LobbyStage = __t.enum("LobbyStage", {
@@ -808,13 +841,6 @@ export const Role = __t.enum("Role", {
 });
 export type Role = __Infer<typeof Role>;
 
-// The tagged union or sum type for the algebraic type `RosterVisibility`.
-export const RosterVisibility = __t.enum("RosterVisibility", {
-  Public: __t.unit(),
-  Private: __t.unit(),
-});
-export type RosterVisibility = __Infer<typeof RosterVisibility>;
-
 export const SavedCalendar = __t.object("SavedCalendar", {
   userId: __t.u32(),
   targetUserId: __t.u32(),
@@ -1020,7 +1046,6 @@ export type TournamentParticipant = __Infer<typeof TournamentParticipant>;
 export const TournamentStage = __t.enum("TournamentStage", {
   Draft: __t.unit(),
   Registration: __t.unit(),
-  Seeding: __t.unit(),
   InProgress: __t.unit(),
   Paused: __t.unit(),
   Completed: __t.unit(),
@@ -1094,7 +1119,6 @@ export const ValidationStatus = __t.enum("ValidationStatus", {
   Pending: __t.unit(),
   Confirmed: __t.unit(),
   Disputed: __t.unit(),
-  Overridden: __t.unit(),
 });
 export type ValidationStatus = __Infer<typeof ValidationStatus>;
 

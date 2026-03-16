@@ -45,7 +45,6 @@ export default __t.row({
   isAnonymousSpectators: __t.bool().name("is_anonymous_spectators"),
   isOpenRoster: __t.bool().name("is_open_roster"),
   isPublic: __t.bool().name("is_public"),
-  passwordHash: __t.option(__t.string()).name("password_hash"),
   get disconnectPolicy() {
     return DisconnectPolicy.name("disconnect_policy");
   },
