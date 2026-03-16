@@ -130,6 +130,25 @@ const { characterCosts, synergyCosts } = useGameData();
 
 > **Note:** Do NOT call `useTable(tables.HsrCharacter)` directly in components — use `useGameData()` instead to avoid duplicate subscriptions.
 
+## v0.5 Roadmap — Backend Milestone
+
+Backend-only milestone: all SpacetimeDB tables, reducers, helpers, and edge case handling. No frontend UI in scope — that's v1.
+
+| # | Phase | Goal | Key Requirements |
+|---|-------|------|------------------|
+| 1 | **Schema Foundation** | All enums, structs, and table schemas defined before any reducer | TournamentStage, TournamentFormat, MatchResultStatus, ValidationStatus, DisconnectPolicy, RecurrenceType, RosterVisibility enums; Score, RecurrenceRule, EloConfig structs |
+| 2 | **Roster Management** | Players record owned characters/lightcones with server-enforced visibility | Multi-account support, eidolon/superimposition levels, public/private visibility (overridden by tournament settings), account rating |
+| 3 | **Tournament System** | Tournament lifecycle, teams, registration, referees | TO role approval, single/double elim + group phase formats, self-signup + team signup, referee assignment, coach role, anonymous/roster/disconnect settings |
+| 4 | **Bracket Generation** | Pre-generated bracket rows with FK advancement | Single elim, double elim (winners + losers brackets), group phase round-robin, auto-advance on confirmed result, manual + MMR seeding |
+| 5 | **Match Results & MMR** | Score submission, screenshot verification, ELO in one transaction | Game-mode-specific scoring (cycles/score), Imgur screenshots, mutual confirm (casual) / ref validation (tournament), tiered K-factor ELO, per-mode + global MMR, leaderboard |
+| 6 | **Anonymous Play & Stats** | Server-enforced anonymous mode + full player statistics | Anonymous labels at write layer (not UI), per-player win/loss/character stats, Best Ally/Nemesis, match replay support |
+| 7 | **Achievements & Titles** | Achievement definitions, auto-award, profile titles | Admin-defined criteria, auto-trigger on match validation, manual award by admin/TO, selectable profile title |
+| 8 | **Calendar & Scheduling** | Recurring availability, shared calendars, auto-sync | Daily/weekly/monthly recurrence, 5-player calendar view, common availability finder, event invites, TO scheduling |
+| 9 | **Mouse/Chat/Lobby** | Cursor broadcast, ephemeral chat, lobby browser | Full XY cursor for all roles (coach can view only), event-table chat with cleanup, lobby filtering by mode/status |
+| 10 | **Disconnect & Cost** | Configurable disconnect behavior + cost table parity | Pause/timer/forfeit policy, rejoin logic, liveness guards in every pick/ban reducer, lightcone gameMode composite key |
+
+**Execution order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+
 ## Project Structure
 
 ```
