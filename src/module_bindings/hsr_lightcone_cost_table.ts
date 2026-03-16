@@ -10,12 +10,16 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
+  GameMode,
   SuperimpositionCost,
 } from "./types";
 
 
 export default __t.row({
-  lightconeName: __t.string().primaryKey().name("lightcone_name"),
+  lightconeName: __t.string().name("lightcone_name"),
+  get gameMode() {
+    return GameMode.name("game_mode");
+  },
   get classicCosts() {
     return SuperimpositionCost.name("classic_costs");
   },

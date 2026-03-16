@@ -10,23 +10,20 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  ParticipationRole,
-  TeamLabel,
+  RecurrenceRule,
 } from "./types";
 
 
 export default __t.row({
-  lobbyId: __t.u32().name("lobby_id"),
+  id: __t.u32().primaryKey(),
   userId: __t.u32().name("user_id"),
-  isOnline: __t.bool().name("is_online"),
-  get participationRole() {
-    return ParticipationRole.name("participation_role");
+  startAt: __t.timestamp().name("start_at"),
+  endAt: __t.timestamp().name("end_at"),
+  isRecurring: __t.bool().name("is_recurring"),
+  get recurrenceRule() {
+    return RecurrenceRule.name("recurrence_rule");
   },
-  isReferee: __t.bool().name("is_referee"),
-  isCoach: __t.bool().name("is_coach"),
-  get teamSlot() {
-    return TeamLabel.name("team_slot");
-  },
+  expiresAt: __t.timestamp().name("expires_at"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

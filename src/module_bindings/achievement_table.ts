@@ -10,23 +10,24 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  ParticipationRole,
-  TeamLabel,
+  AchievementTriggerType,
+  AchievementRarity,
 } from "./types";
 
 
 export default __t.row({
-  lobbyId: __t.u32().name("lobby_id"),
-  userId: __t.u32().name("user_id"),
-  isOnline: __t.bool().name("is_online"),
-  get participationRole() {
-    return ParticipationRole.name("participation_role");
+  id: __t.u32().primaryKey(),
+  name: __t.string(),
+  description: __t.string(),
+  get triggerType() {
+    return AchievementTriggerType.name("trigger_type");
   },
-  isReferee: __t.bool().name("is_referee"),
-  isCoach: __t.bool().name("is_coach"),
-  get teamSlot() {
-    return TeamLabel.name("team_slot");
+  get rarity() {
+    return AchievementRarity;
   },
+  isOneTime: __t.bool().name("is_one_time"),
+  thresholdValue: __t.option(__t.u32()).name("threshold_value"),
+  characterName: __t.option(__t.string()).name("character_name"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

@@ -11,9 +11,9 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
-  LobbyConfig,
   DraftMode,
   PlayerSnapshot,
+  LobbyConfigSnapshot,
   MatchResult,
 } from "./types";
 
@@ -37,7 +37,7 @@ export default __t.row({
     return __t.array(PlayerSnapshot).name("red_team_members");
   },
   get snapshotConfig() {
-    return LobbyConfig.name("snapshot_config");
+    return LobbyConfigSnapshot.name("snapshot_config");
   },
   get result() {
     return MatchResult;

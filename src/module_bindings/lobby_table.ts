@@ -10,8 +10,11 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
+  GameMode,
+  DisconnectPolicy,
+  DraftMode,
+  BanMode,
   LobbyStage,
-  LobbyConfig,
 } from "./types";
 
 
@@ -21,13 +24,38 @@ export default __t.row({
   hostUserId: __t.u32().name("host_user_id"),
   teamBlueAlias: __t.string().name("team_blue_alias"),
   teamRedAlias: __t.string().name("team_red_alias"),
+  teamSize: __t.u8().name("team_size"),
+  get draftMode() {
+    return DraftMode.name("draft_mode");
+  },
+  get banMode() {
+    return BanMode.name("ban_mode");
+  },
+  standardTurnSeconds: __t.u32().name("standard_turn_seconds"),
+  reserveBankSeconds: __t.u32().name("reserve_bank_seconds"),
+  auctionBudget: __t.option(__t.f32()).name("auction_budget"),
+  rosterDiffAdvantage: __t.f32().name("roster_diff_advantage"),
+  rosterThreshold: __t.f32().name("roster_threshold"),
+  underThresholdAdvantage: __t.f32().name("under_threshold_advantage"),
+  aboveThresholdPenalty: __t.f32().name("above_threshold_penalty"),
+  deathPenalty: __t.f32().name("death_penalty"),
+  tournamentId: __t.option(__t.u32()).name("tournament_id"),
+  bracketMatchId: __t.option(__t.u32()).name("bracket_match_id"),
+  isAnonymousPlayers: __t.bool().name("is_anonymous_players"),
+  isAnonymousSpectators: __t.bool().name("is_anonymous_spectators"),
+  isOpenRoster: __t.bool().name("is_open_roster"),
+  isPublic: __t.bool().name("is_public"),
+  passwordHash: __t.option(__t.string()).name("password_hash"),
+  get disconnectPolicy() {
+    return DisconnectPolicy.name("disconnect_policy");
+  },
+  get gameMode() {
+    return GameMode.name("game_mode");
+  },
   hostDisconnectTime: __t.option(__t.timestamp()).name("host_disconnect_time"),
   lastActivityAt: __t.timestamp().name("last_activity_at"),
   get stage() {
     return LobbyStage;
-  },
-  get config() {
-    return LobbyConfig;
   },
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),

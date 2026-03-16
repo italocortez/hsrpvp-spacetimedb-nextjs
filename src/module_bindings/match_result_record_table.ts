@@ -10,23 +10,22 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  ParticipationRole,
-  TeamLabel,
+  MatchResultStatus,
 } from "./types";
 
 
 export default __t.row({
+  id: __t.u32().primaryKey(),
+  bracketMatchId: __t.option(__t.u32()).name("bracket_match_id"),
   lobbyId: __t.u32().name("lobby_id"),
-  userId: __t.u32().name("user_id"),
-  isOnline: __t.bool().name("is_online"),
-  get participationRole() {
-    return ParticipationRole.name("participation_role");
+  player1Id: __t.u32().name("player_1_id"),
+  player2Id: __t.u32().name("player_2_id"),
+  isTournamentMatch: __t.bool().name("is_tournament_match"),
+  get status() {
+    return MatchResultStatus;
   },
-  isReferee: __t.bool().name("is_referee"),
-  isCoach: __t.bool().name("is_coach"),
-  get teamSlot() {
-    return TeamLabel.name("team_slot");
-  },
+  winnerId: __t.option(__t.u32()).name("winner_id"),
+  mmrProcessedAt: __t.option(__t.timestamp()).name("mmr_processed_at"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

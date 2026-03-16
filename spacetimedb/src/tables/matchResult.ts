@@ -17,8 +17,8 @@ export const matchResultColumns = {
     lastModifiedDate: t.timestamp(),
 };
 
-export const MatchResult = table({
-    name: 'match_result',
+export const MatchResultRecord = table({
+    name: 'match_result_record',
     public: true,
     indexes: [
         { name: 'mr_lobby', accessor: 'mr_lobby', algorithm: 'btree', columns: ['lobbyId'] },

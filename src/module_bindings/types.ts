@@ -10,6 +10,43 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const Achievement = __t.object("Achievement", {
+  id: __t.u32(),
+  name: __t.string(),
+  description: __t.string(),
+  get triggerType() {
+    return AchievementTriggerType;
+  },
+  get rarity() {
+    return AchievementRarity;
+  },
+  isOneTime: __t.bool(),
+  thresholdValue: __t.option(__t.u32()),
+  characterName: __t.option(__t.string()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type Achievement = __Infer<typeof Achievement>;
+
+// The tagged union or sum type for the algebraic type `AchievementRarity`.
+export const AchievementRarity = __t.enum("AchievementRarity", {
+  Common: __t.unit(),
+  Rare: __t.unit(),
+  Epic: __t.unit(),
+  Legendary: __t.unit(),
+});
+export type AchievementRarity = __Infer<typeof AchievementRarity>;
+
+// The tagged union or sum type for the algebraic type `AchievementTriggerType`.
+export const AchievementTriggerType = __t.enum("AchievementTriggerType", {
+  StatThreshold: __t.unit(),
+  CharacterSpecific: __t.unit(),
+  Manual: __t.unit(),
+});
+export type AchievementTriggerType = __Infer<typeof AchievementTriggerType>;
+
 // The tagged union or sum type for the algebraic type `ActionType`.
 export const ActionType = __t.enum("ActionType", {
   Pick: __t.unit(),
@@ -32,6 +69,23 @@ export const AuctionSoldPayload = __t.object("AuctionSoldPayload", {
 });
 export type AuctionSoldPayload = __Infer<typeof AuctionSoldPayload>;
 
+export const AvailabilitySlot = __t.object("AvailabilitySlot", {
+  id: __t.u32(),
+  userId: __t.u32(),
+  startAt: __t.timestamp(),
+  endAt: __t.timestamp(),
+  isRecurring: __t.bool(),
+  get recurrenceRule() {
+    return RecurrenceRule;
+  },
+  expiresAt: __t.timestamp(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type AvailabilitySlot = __Infer<typeof AvailabilitySlot>;
+
 // The tagged union or sum type for the algebraic type `BanMode`.
 export const BanMode = __t.enum("BanMode", {
   None: __t.unit(),
@@ -52,6 +106,61 @@ export const BidPayload = __t.object("BidPayload", {
 });
 export type BidPayload = __Infer<typeof BidPayload>;
 
+export const BracketMatch = __t.object("BracketMatch", {
+  id: __t.u32(),
+  tournamentId: __t.u32(),
+  roundNumber: __t.u32(),
+  matchNumber: __t.u32(),
+  isLosersBracket: __t.bool(),
+  groupId: __t.option(__t.u32()),
+  participant1Id: __t.option(__t.u32()),
+  participant2Id: __t.option(__t.u32()),
+  nextWinnerMatchId: __t.option(__t.u32()),
+  nextLoserMatchId: __t.option(__t.u32()),
+  bestOf: __t.u8(),
+  get gameMode() {
+    return GameMode;
+  },
+  winnerAdvantage: __t.u8(),
+  scheduledAt: __t.option(__t.timestamp()),
+  lobbyId: __t.option(__t.u32()),
+  checkInRequired: __t.bool(),
+  winnerId: __t.option(__t.u32()),
+  get resultStatus() {
+    return MatchResultStatus;
+  },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type BracketMatch = __Infer<typeof BracketMatch>;
+
+export const CalendarEvent = __t.object("CalendarEvent", {
+  id: __t.u32(),
+  organizerId: __t.u32(),
+  title: __t.string(),
+  startAt: __t.timestamp(),
+  endAt: __t.timestamp(),
+  bracketMatchId: __t.option(__t.u32()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type CalendarEvent = __Infer<typeof CalendarEvent>;
+
+export const CalendarEventInvite = __t.object("CalendarEventInvite", {
+  eventId: __t.u32(),
+  inviteeUserId: __t.u32(),
+  isAccepted: __t.option(__t.bool()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type CalendarEventInvite = __Infer<typeof CalendarEventInvite>;
+
 // The tagged union or sum type for the algebraic type `CharRole`.
 export const CharRole = __t.enum("CharRole", {
   Dps: __t.unit(),
@@ -59,6 +168,51 @@ export const CharRole = __t.enum("CharRole", {
   Support: __t.unit(),
 });
 export type CharRole = __Infer<typeof CharRole>;
+
+export const CharacterStats = __t.object("CharacterStats", {
+  userId: __t.u32(),
+  characterName: __t.string(),
+  wins: __t.u32(),
+  losses: __t.u32(),
+  matchesPlayed: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type CharacterStats = __Infer<typeof CharacterStats>;
+
+export const ChatMessage = __t.object("ChatMessage", {
+  id: __t.u32(),
+  lobbyId: __t.u32(),
+  senderUserId: __t.u32(),
+  get senderType() {
+    return ChatSenderType;
+  },
+  content: __t.string(),
+  metadata: __t.option(__t.string()),
+  anonymousLabel: __t.option(__t.string()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type ChatMessage = __Infer<typeof ChatMessage>;
+
+// The tagged union or sum type for the algebraic type `ChatSenderType`.
+export const ChatSenderType = __t.enum("ChatSenderType", {
+  Player: __t.unit(),
+  System: __t.unit(),
+});
+export type ChatSenderType = __Infer<typeof ChatSenderType>;
+
+// The tagged union or sum type for the algebraic type `DisconnectPolicy`.
+export const DisconnectPolicy = __t.enum("DisconnectPolicy", {
+  Pause: __t.unit(),
+  TimerThenForfeit: __t.unit(),
+  NoAction: __t.unit(),
+});
+export type DisconnectPolicy = __Infer<typeof DisconnectPolicy>;
 
 // The tagged union or sum type for the algebraic type `DraftMode`.
 export const DraftMode = __t.enum("DraftMode", {
@@ -107,6 +261,66 @@ export const GameMode = __t.enum("GameMode", {
   AnomalyArbitration: __t.unit(),
 });
 export type GameMode = __Infer<typeof GameMode>;
+
+// The tagged union or sum type for the algebraic type `GroupAssignmentMode`.
+export const GroupAssignmentMode = __t.enum("GroupAssignmentMode", {
+  Auto: __t.unit(),
+  Manual: __t.unit(),
+});
+export type GroupAssignmentMode = __Infer<typeof GroupAssignmentMode>;
+
+export const GroupStanding = __t.object("GroupStanding", {
+  tournamentId: __t.u32(),
+  groupId: __t.u32(),
+  participantUserId: __t.u32(),
+  wins: __t.u32(),
+  losses: __t.u32(),
+  draws: __t.u32(),
+  points: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type GroupStanding = __Infer<typeof GroupStanding>;
+
+export const HsrAccount = __t.object("HsrAccount", {
+  id: __t.u32(),
+  userId: __t.u32(),
+  uid: __t.string(),
+  displayLabel: __t.string(),
+  isActive: __t.bool(),
+  get rosterVisibility() {
+    return RosterVisibility;
+  },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type HsrAccount = __Infer<typeof HsrAccount>;
+
+export const HsrAccountCharacter = __t.object("HsrAccountCharacter", {
+  accountId: __t.u32(),
+  characterName: __t.string(),
+  eidolonLevel: __t.u8(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type HsrAccountCharacter = __Infer<typeof HsrAccountCharacter>;
+
+export const HsrAccountLightcone = __t.object("HsrAccountLightcone", {
+  accountId: __t.u32(),
+  lightconeName: __t.string(),
+  superimpositionLevel: __t.u8(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type HsrAccountLightcone = __Infer<typeof HsrAccountLightcone>;
 
 export const HsrCharacter = __t.object("HsrCharacter", {
   name: __t.string(),
@@ -169,6 +383,9 @@ export type HsrLightcone = __Infer<typeof HsrLightcone>;
 
 export const HsrLightconeCost = __t.object("HsrLightconeCost", {
   lightconeName: __t.string(),
+  get gameMode() {
+    return GameMode;
+  },
   get classicCosts() {
     return SuperimpositionCost;
   },
@@ -203,13 +420,38 @@ export const Lobby = __t.object("Lobby", {
   hostUserId: __t.u32(),
   teamBlueAlias: __t.string(),
   teamRedAlias: __t.string(),
+  teamSize: __t.u8(),
+  get draftMode() {
+    return DraftMode;
+  },
+  get banMode() {
+    return BanMode;
+  },
+  standardTurnSeconds: __t.u32(),
+  reserveBankSeconds: __t.u32(),
+  auctionBudget: __t.option(__t.f32()),
+  rosterDiffAdvantage: __t.f32(),
+  rosterThreshold: __t.f32(),
+  underThresholdAdvantage: __t.f32(),
+  aboveThresholdPenalty: __t.f32(),
+  deathPenalty: __t.f32(),
+  tournamentId: __t.option(__t.u32()),
+  bracketMatchId: __t.option(__t.u32()),
+  isAnonymousPlayers: __t.bool(),
+  isAnonymousSpectators: __t.bool(),
+  isOpenRoster: __t.bool(),
+  isPublic: __t.bool(),
+  passwordHash: __t.option(__t.string()),
+  get disconnectPolicy() {
+    return DisconnectPolicy;
+  },
+  get gameMode() {
+    return GameMode;
+  },
   hostDisconnectTime: __t.option(__t.timestamp()),
   lastActivityAt: __t.timestamp(),
   get stage() {
     return LobbyStage;
-  },
-  get config() {
-    return LobbyConfig;
   },
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
@@ -218,7 +460,7 @@ export const Lobby = __t.object("Lobby", {
 });
 export type Lobby = __Infer<typeof Lobby>;
 
-export const LobbyConfig = __t.object("LobbyConfig", {
+export const LobbyConfigSnapshot = __t.object("LobbyConfigSnapshot", {
   teamSize: __t.u8(),
   get draftMode() {
     return DraftMode;
@@ -235,7 +477,7 @@ export const LobbyConfig = __t.object("LobbyConfig", {
   aboveThresholdPenalty: __t.f32(),
   deathPenalty: __t.f32(),
 });
-export type LobbyConfig = __Infer<typeof LobbyConfig>;
+export type LobbyConfigSnapshot = __Infer<typeof LobbyConfigSnapshot>;
 
 export const LobbyCursorEvent = __t.object("LobbyCursorEvent", {
   lobbyId: __t.u32(),
@@ -258,6 +500,7 @@ export const LobbyMember = __t.object("LobbyMember", {
     return ParticipationRole;
   },
   isReferee: __t.bool(),
+  isCoach: __t.bool(),
   get teamSlot() {
     return TeamLabel;
   },
@@ -284,6 +527,63 @@ export const MatchResult = __t.enum("MatchResult", {
   Aborted: __t.unit(),
 });
 export type MatchResult = __Infer<typeof MatchResult>;
+
+export const MatchResultGame = __t.object("MatchResultGame", {
+  matchResultId: __t.u32(),
+  gameNumber: __t.u8(),
+  get gameMode() {
+    return GameMode;
+  },
+  player1ScreenshotUrl: __t.option(__t.string()),
+  player2ScreenshotUrl: __t.option(__t.string()),
+  player1CyclesUsed: __t.option(__t.u32()),
+  player2CyclesUsed: __t.option(__t.u32()),
+  player1Score: __t.option(__t.u64()),
+  player2Score: __t.option(__t.u64()),
+  player1Boss1Score: __t.option(__t.u64()),
+  player1Boss2Score: __t.option(__t.u64()),
+  player2Boss1Score: __t.option(__t.u64()),
+  player2Boss2Score: __t.option(__t.u64()),
+  winnerId: __t.option(__t.u32()),
+  get validationStatus() {
+    return ValidationStatus;
+  },
+  validatedById: __t.option(__t.u32()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type MatchResultGame = __Infer<typeof MatchResultGame>;
+
+export const MatchResultRecord = __t.object("MatchResultRecord", {
+  id: __t.u32(),
+  bracketMatchId: __t.option(__t.u32()),
+  lobbyId: __t.u32(),
+  player1Id: __t.u32(),
+  player2Id: __t.u32(),
+  isTournamentMatch: __t.bool(),
+  get status() {
+    return MatchResultStatus;
+  },
+  winnerId: __t.option(__t.u32()),
+  mmrProcessedAt: __t.option(__t.timestamp()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type MatchResultRecord = __Infer<typeof MatchResultRecord>;
+
+// The tagged union or sum type for the algebraic type `MatchResultStatus`.
+export const MatchResultStatus = __t.enum("MatchResultStatus", {
+  Pending: __t.unit(),
+  Submitted: __t.unit(),
+  Disputed: __t.unit(),
+  Validated: __t.unit(),
+  Rejected: __t.unit(),
+});
+export type MatchResultStatus = __Infer<typeof MatchResultStatus>;
 
 export const MatchSession = __t.object("MatchSession", {
   lobbyId: __t.u32(),
@@ -322,7 +622,7 @@ export const MatchSessionHistory = __t.object("MatchSessionHistory", {
     return __t.array(PlayerSnapshot);
   },
   get snapshotConfig() {
-    return LobbyConfig;
+    return LobbyConfigSnapshot;
   },
   get result() {
     return MatchResult;
@@ -368,11 +668,63 @@ export const MatchSessionStepHistory = __t.object("MatchSessionStepHistory", {
 });
 export type MatchSessionStepHistory = __Infer<typeof MatchSessionStepHistory>;
 
+export const MmrHistory = __t.object("MmrHistory", {
+  id: __t.u32(),
+  userId: __t.u32(),
+  get gameMode() {
+    return GameMode;
+  },
+  matchResultId: __t.u32(),
+  previousRating: __t.u32(),
+  newRating: __t.u32(),
+  delta: __t.i32(),
+  seasonId: __t.option(__t.u32()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type MmrHistory = __Infer<typeof MmrHistory>;
+
+export const MmrRating = __t.object("MmrRating", {
+  userId: __t.u32(),
+  get gameMode() {
+    return GameMode;
+  },
+  rating: __t.u32(),
+  matchesPlayed: __t.u32(),
+  globalCompositeRating: __t.option(__t.u32()),
+  seasonId: __t.option(__t.u32()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type MmrRating = __Infer<typeof MmrRating>;
+
 export const NominatePayload = __t.object("NominatePayload", {
   characterName: __t.string(),
   eidolon: __t.u8(),
 });
 export type NominatePayload = __Infer<typeof NominatePayload>;
+
+// The tagged union or sum type for the algebraic type `ParticipantStatus`.
+export const ParticipantStatus = __t.enum("ParticipantStatus", {
+  Registered: __t.unit(),
+  CheckedIn: __t.unit(),
+  Active: __t.unit(),
+  Eliminated: __t.unit(),
+  Disqualified: __t.unit(),
+  Withdrawn: __t.unit(),
+});
+export type ParticipantStatus = __Infer<typeof ParticipantStatus>;
+
+// The tagged union or sum type for the algebraic type `ParticipantType`.
+export const ParticipantType = __t.enum("ParticipantType", {
+  Individual: __t.unit(),
+  Team: __t.unit(),
+});
+export type ParticipantType = __Infer<typeof ParticipantType>;
 
 // The tagged union or sum type for the algebraic type `ParticipationRole`.
 export const ParticipationRole = __t.enum("ParticipationRole", {
@@ -415,6 +767,39 @@ export const PlayerSnapshot = __t.object("PlayerSnapshot", {
 });
 export type PlayerSnapshot = __Infer<typeof PlayerSnapshot>;
 
+export const PlayerStats = __t.object("PlayerStats", {
+  userId: __t.u32(),
+  matchesPlayed: __t.u32(),
+  wins: __t.u32(),
+  losses: __t.u32(),
+  draws: __t.u32(),
+  matchesSpectated: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type PlayerStats = __Infer<typeof PlayerStats>;
+
+export const RecurrenceRule = __t.object("RecurrenceRule", {
+  get recurrenceType() {
+    return RecurrenceType;
+  },
+  interval: __t.u8(),
+  dayOfWeek: __t.option(__t.u8()),
+  dayOfMonth: __t.option(__t.u8()),
+  endDate: __t.option(__t.timestamp()),
+});
+export type RecurrenceRule = __Infer<typeof RecurrenceRule>;
+
+// The tagged union or sum type for the algebraic type `RecurrenceType`.
+export const RecurrenceType = __t.enum("RecurrenceType", {
+  Daily: __t.unit(),
+  Weekly: __t.unit(),
+  Monthly: __t.unit(),
+});
+export type RecurrenceType = __Infer<typeof RecurrenceType>;
+
 // The tagged union or sum type for the algebraic type `Role`.
 export const Role = __t.enum("Role", {
   Admin: __t.unit(),
@@ -422,6 +807,24 @@ export const Role = __t.enum("Role", {
   User: __t.unit(),
 });
 export type Role = __Infer<typeof Role>;
+
+// The tagged union or sum type for the algebraic type `RosterVisibility`.
+export const RosterVisibility = __t.enum("RosterVisibility", {
+  Public: __t.unit(),
+  Private: __t.unit(),
+});
+export type RosterVisibility = __Infer<typeof RosterVisibility>;
+
+export const SavedCalendar = __t.object("SavedCalendar", {
+  userId: __t.u32(),
+  targetUserId: __t.u32(),
+  isVisible: __t.bool(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type SavedCalendar = __Infer<typeof SavedCalendar>;
 
 export const ServerIdentity = __t.object("ServerIdentity", {
   identity: __t.identity(),
@@ -464,6 +867,32 @@ export const SuperimpositionCost = __t.object("SuperimpositionCost", {
 });
 export type SuperimpositionCost = __Infer<typeof SuperimpositionCost>;
 
+export const Team = __t.object("Team", {
+  id: __t.u32(),
+  name: __t.string(),
+  ownerId: __t.u32(),
+  isAdHoc: __t.bool(),
+  tournamentId: __t.option(__t.u32()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type Team = __Infer<typeof Team>;
+
+export const TeamInvite = __t.object("TeamInvite", {
+  id: __t.u32(),
+  teamId: __t.u32(),
+  inviteeUserId: __t.u32(),
+  inviterUserId: __t.u32(),
+  isPending: __t.bool(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type TeamInvite = __Infer<typeof TeamInvite>;
+
 // The tagged union or sum type for the algebraic type `TeamLabel`.
 export const TeamLabel = __t.enum("TeamLabel", {
   Spectator: __t.unit(),
@@ -471,6 +900,27 @@ export const TeamLabel = __t.enum("TeamLabel", {
   Red: __t.unit(),
 });
 export type TeamLabel = __Infer<typeof TeamLabel>;
+
+export const TeamMember = __t.object("TeamMember", {
+  teamId: __t.u32(),
+  userId: __t.u32(),
+  get memberRole() {
+    return TeamMemberRole;
+  },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type TeamMember = __Infer<typeof TeamMember>;
+
+// The tagged union or sum type for the algebraic type `TeamMemberRole`.
+export const TeamMemberRole = __t.enum("TeamMemberRole", {
+  Owner: __t.unit(),
+  Player: __t.unit(),
+  Coach: __t.unit(),
+});
+export type TeamMemberRole = __Infer<typeof TeamMemberRole>;
 
 export const TimerState = __t.object("TimerState", {
   turnStartAt: __t.timestamp(),
@@ -480,6 +930,103 @@ export const TimerState = __t.object("TimerState", {
   accumulatedPauseMs: __t.u32(),
 });
 export type TimerState = __Infer<typeof TimerState>;
+
+export const Tournament = __t.object("Tournament", {
+  id: __t.u32(),
+  name: __t.string(),
+  description: __t.string(),
+  organizerId: __t.u32(),
+  get format() {
+    return TournamentFormat;
+  },
+  get stage() {
+    return TournamentStage;
+  },
+  get defaultGameMode() {
+    return GameMode;
+  },
+  maxParticipants: __t.u32(),
+  isAnonymousDefault: __t.bool(),
+  isAnonymousSpectators: __t.bool(),
+  isOpenRoster: __t.bool(),
+  get disconnectPolicy() {
+    return DisconnectPolicy;
+  },
+  checkInEnabled: __t.bool(),
+  checkInPerRound: __t.bool(),
+  autoForfeitEnabled: __t.bool(),
+  autoForfeitMinutes: __t.u32(),
+  bracketRevealAt: __t.option(__t.timestamp()),
+  grandFinalsAdvantage: __t.bool(),
+  get groupAssignmentMode() {
+    return GroupAssignmentMode;
+  },
+  groupAdvanceCount: __t.u8(),
+  seasonId: __t.option(__t.u32()),
+  countTowardsMmr: __t.bool(),
+  defaultBestOf: __t.u8(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type Tournament = __Infer<typeof Tournament>;
+
+export const TournamentAssistant = __t.object("TournamentAssistant", {
+  tournamentId: __t.u32(),
+  userId: __t.u32(),
+  canValidateResults: __t.bool(),
+  canOverrideResults: __t.bool(),
+  canDqParticipants: __t.bool(),
+  canManageBracket: __t.bool(),
+  canAssignSeeds: __t.bool(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type TournamentAssistant = __Infer<typeof TournamentAssistant>;
+
+// The tagged union or sum type for the algebraic type `TournamentFormat`.
+export const TournamentFormat = __t.enum("TournamentFormat", {
+  SingleElimination: __t.unit(),
+  DoubleElimination: __t.unit(),
+  GroupOnly: __t.unit(),
+  GroupIntoSingleElim: __t.unit(),
+  GroupIntoDoubleElim: __t.unit(),
+});
+export type TournamentFormat = __Infer<typeof TournamentFormat>;
+
+export const TournamentParticipant = __t.object("TournamentParticipant", {
+  tournamentId: __t.u32(),
+  userId: __t.u32(),
+  teamId: __t.option(__t.u32()),
+  get participantType() {
+    return ParticipantType;
+  },
+  get status() {
+    return ParticipantStatus;
+  },
+  seedNumber: __t.option(__t.u32()),
+  anonymousAlias: __t.option(__t.string()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type TournamentParticipant = __Infer<typeof TournamentParticipant>;
+
+// The tagged union or sum type for the algebraic type `TournamentStage`.
+export const TournamentStage = __t.enum("TournamentStage", {
+  Draft: __t.unit(),
+  Registration: __t.unit(),
+  Seeding: __t.unit(),
+  InProgress: __t.unit(),
+  Paused: __t.unit(),
+  Completed: __t.unit(),
+  Cancelled: __t.unit(),
+});
+export type TournamentStage = __Infer<typeof TournamentStage>;
 
 export const UndoPayload = __t.object("UndoPayload", {
   originalSequenceId: __t.u32(),
@@ -507,6 +1054,19 @@ export const User = __t.object("User", {
 });
 export type User = __Infer<typeof User>;
 
+export const UserAchievement = __t.object("UserAchievement", {
+  id: __t.u32(),
+  userId: __t.u32(),
+  achievementId: __t.u32(),
+  awardedById: __t.u32(),
+  isDisplayed: __t.bool(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type UserAchievement = __Infer<typeof UserAchievement>;
+
 export const UserDeletionJob = __t.object("UserDeletionJob", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -528,4 +1088,13 @@ export const UserIdentity = __t.object("UserIdentity", {
   lastModifiedDate: __t.timestamp(),
 });
 export type UserIdentity = __Infer<typeof UserIdentity>;
+
+// The tagged union or sum type for the algebraic type `ValidationStatus`.
+export const ValidationStatus = __t.enum("ValidationStatus", {
+  Pending: __t.unit(),
+  Confirmed: __t.unit(),
+  Disputed: __t.unit(),
+  Overridden: __t.unit(),
+});
+export type ValidationStatus = __Infer<typeof ValidationStatus>;
 

@@ -51,6 +51,17 @@ import UpdateUsernameReducer from "./update_username_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import AchievementRow from "./achievement_table";
+import AvailabilitySlotRow from "./availability_slot_table";
+import BracketMatchRow from "./bracket_match_table";
+import CalendarEventRow from "./calendar_event_table";
+import CalendarEventInviteRow from "./calendar_event_invite_table";
+import CharacterStatsRow from "./character_stats_table";
+import ChatMessageRow from "./chat_message_table";
+import GroupStandingRow from "./group_standing_table";
+import HsrAccountRow from "./hsr_account_table";
+import HsrAccountCharacterRow from "./hsr_account_character_table";
+import HsrAccountLightconeRow from "./hsr_account_lightcone_table";
 import HsrCharacterRow from "./hsr_character_table";
 import HsrCharacterCostRow from "./hsr_character_cost_table";
 import HsrLightconeRow from "./hsr_lightcone_table";
@@ -59,17 +70,180 @@ import HsrSynergyCostRow from "./hsr_synergy_cost_table";
 import LobbyRow from "./lobby_table";
 import LobbyCursorEventRow from "./lobby_cursor_event_table";
 import LobbyMemberRow from "./lobby_member_table";
+import MatchResultGameRow from "./match_result_game_table";
+import MatchResultRecordRow from "./match_result_record_table";
 import MatchSessionRow from "./match_session_table";
 import MatchSessionHistoryRow from "./match_session_history_table";
 import MatchSessionStepRow from "./match_session_step_table";
 import MatchSessionStepHistoryRow from "./match_session_step_history_table";
+import MmrHistoryRow from "./mmr_history_table";
+import MmrRatingRow from "./mmr_rating_table";
+import PlayerStatsRow from "./player_stats_table";
+import SavedCalendarRow from "./saved_calendar_table";
+import TeamRow from "./team_table";
+import TeamInviteRow from "./team_invite_table";
+import TeamMemberRow from "./team_member_table";
+import TournamentRow from "./tournament_table";
+import TournamentAssistantRow from "./tournament_assistant_table";
+import TournamentParticipantRow from "./tournament_participant_table";
 import UserRow from "./user_table";
+import UserAchievementRow from "./user_achievement_table";
 import UserIdentityRow from "./user_identity_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  Achievement: __table({
+    name: 'achievement',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'name', algorithm: 'btree', columns: [
+        'name',
+      ] },
+    ],
+    constraints: [
+      { name: 'achievement_id_key', constraint: 'unique', columns: ['id'] },
+      { name: 'achievement_name_key', constraint: 'unique', columns: ['name'] },
+    ],
+  }, AchievementRow),
+  AvailabilitySlot: __table({
+    name: 'availability_slot',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'avail_start_at', algorithm: 'btree', columns: [
+        'startAt',
+      ] },
+      { name: 'avail_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'availability_slot_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AvailabilitySlotRow),
+  BracketMatch: __table({
+    name: 'bracket_match',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'bm_lobby', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+      { name: 'bm_tournament', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+    ],
+    constraints: [
+      { name: 'bracket_match_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, BracketMatchRow),
+  CalendarEvent: __table({
+    name: 'calendar_event',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'ce_organizer', algorithm: 'btree', columns: [
+        'organizerId',
+      ] },
+      { name: 'ce_start_at', algorithm: 'btree', columns: [
+        'startAt',
+      ] },
+    ],
+    constraints: [
+      { name: 'calendar_event_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, CalendarEventRow),
+  CalendarEventInvite: __table({
+    name: 'calendar_event_invite',
+    indexes: [
+      { name: 'cei_event_id', algorithm: 'btree', columns: [
+        'eventId',
+      ] },
+      { name: 'cei_invitee_id', algorithm: 'btree', columns: [
+        'inviteeUserId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, CalendarEventInviteRow),
+  CharacterStats: __table({
+    name: 'character_stats',
+    indexes: [
+      { name: 'cs_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, CharacterStatsRow),
+  ChatMessage: __table({
+    name: 'chat_message',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'chat_lobby_id', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_message_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatMessageRow),
+  GroupStanding: __table({
+    name: 'group_standing',
+    indexes: [
+      { name: 'gs_tournament_group', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, GroupStandingRow),
+  HsrAccount: __table({
+    name: 'hsr_account',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'hsr_account_uid', algorithm: 'btree', columns: [
+        'uid',
+      ] },
+      { name: 'hsr_account_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'hsr_account_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, HsrAccountRow),
+  HsrAccountCharacter: __table({
+    name: 'hsr_account_character',
+    indexes: [
+      { name: 'hsr_acc_char_account_id', algorithm: 'btree', columns: [
+        'accountId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, HsrAccountCharacterRow),
+  HsrAccountLightcone: __table({
+    name: 'hsr_account_lightcone',
+    indexes: [
+      { name: 'hsr_acc_lc_account_id', algorithm: 'btree', columns: [
+        'accountId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, HsrAccountLightconeRow),
   HsrCharacter: __table({
     name: 'hsr_character',
     indexes: [
@@ -114,12 +288,8 @@ const tablesSchema = __schema({
   HsrLightconeCost: __table({
     name: 'hsr_lightcone_cost',
     indexes: [
-      { name: 'lightconeName', algorithm: 'btree', columns: [
-        'lightconeName',
-      ] },
     ],
     constraints: [
-      { name: 'hsr_lightcone_cost_lightcone_name_key', constraint: 'unique', columns: ['lightconeName'] },
     ],
   }, HsrLightconeCostRow),
   HsrSynergyCost: __table({
@@ -152,6 +322,12 @@ const tablesSchema = __schema({
       { name: 'joinCode', algorithm: 'btree', columns: [
         'joinCode',
       ] },
+      { name: 'lobby_stage', algorithm: 'btree', columns: [
+        'stage',
+      ] },
+      { name: 'lobby_tournament', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
     ],
     constraints: [
       { name: 'lobby_id_key', constraint: 'unique', columns: ['id'] },
@@ -179,6 +355,36 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, LobbyMemberRow),
+  MatchResultGame: __table({
+    name: 'match_result_game',
+    indexes: [
+      { name: 'mrg_match_result', algorithm: 'btree', columns: [
+        'matchResultId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MatchResultGameRow),
+  MatchResultRecord: __table({
+    name: 'match_result_record',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'mr_lobby', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+      { name: 'mr_player1', algorithm: 'btree', columns: [
+        'player1Id',
+      ] },
+      { name: 'mr_player2', algorithm: 'btree', columns: [
+        'player2Id',
+      ] },
+    ],
+    constraints: [
+      { name: 'match_result_record_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, MatchResultRecordRow),
   MatchSession: __table({
     name: 'match_session',
     indexes: [
@@ -232,6 +438,151 @@ const tablesSchema = __schema({
       { name: 'match_session_step_history_match_id_key', constraint: 'unique', columns: ['matchId'] },
     ],
   }, MatchSessionStepHistoryRow),
+  MmrHistory: __table({
+    name: 'mmr_history',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'mh_match_result', algorithm: 'btree', columns: [
+        'matchResultId',
+      ] },
+      { name: 'mh_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'mmr_history_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, MmrHistoryRow),
+  MmrRating: __table({
+    name: 'mmr_rating',
+    indexes: [
+      { name: 'mmr_rating_value', algorithm: 'btree', columns: [
+        'rating',
+      ] },
+      { name: 'mmr_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MmrRatingRow),
+  PlayerStats: __table({
+    name: 'player_stats',
+    indexes: [
+      { name: 'userId', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+      { name: 'ps_wins', algorithm: 'btree', columns: [
+        'wins',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_stats_user_id_key', constraint: 'unique', columns: ['userId'] },
+    ],
+  }, PlayerStatsRow),
+  SavedCalendar: __table({
+    name: 'saved_calendar',
+    indexes: [
+      { name: 'sc_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, SavedCalendarRow),
+  Team: __table({
+    name: 'team',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'name', algorithm: 'btree', columns: [
+        'name',
+      ] },
+      { name: 'team_owner', algorithm: 'btree', columns: [
+        'ownerId',
+      ] },
+    ],
+    constraints: [
+      { name: 'team_id_key', constraint: 'unique', columns: ['id'] },
+      { name: 'team_name_key', constraint: 'unique', columns: ['name'] },
+    ],
+  }, TeamRow),
+  TeamInvite: __table({
+    name: 'team_invite',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'ti_invitee_id', algorithm: 'btree', columns: [
+        'inviteeUserId',
+      ] },
+      { name: 'ti_team_id', algorithm: 'btree', columns: [
+        'teamId',
+      ] },
+    ],
+    constraints: [
+      { name: 'team_invite_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TeamInviteRow),
+  TeamMember: __table({
+    name: 'team_member',
+    indexes: [
+      { name: 'tm_team_id', algorithm: 'btree', columns: [
+        'teamId',
+      ] },
+      { name: 'tm_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TeamMemberRow),
+  Tournament: __table({
+    name: 'tournament',
+    indexes: [
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'tournament_organizer', algorithm: 'btree', columns: [
+        'organizerId',
+      ] },
+      { name: 'tournament_stage', algorithm: 'btree', columns: [
+        'stage',
+      ] },
+    ],
+    constraints: [
+      { name: 'tournament_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TournamentRow),
+  TournamentAssistant: __table({
+    name: 'tournament_assistant',
+    indexes: [
+      { name: 'ta_tournament_id', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+      { name: 'ta_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentAssistantRow),
+  TournamentParticipant: __table({
+    name: 'tournament_participant',
+    indexes: [
+      { name: 'tp_tournament_id', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+      { name: 'tp_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentParticipantRow),
   User: __table({
     name: 'user',
     indexes: [
@@ -250,6 +601,23 @@ const tablesSchema = __schema({
       { name: 'user_username_key', constraint: 'unique', columns: ['username'] },
     ],
   }, UserRow),
+  UserAchievement: __table({
+    name: 'user_achievement',
+    indexes: [
+      { name: 'ua_achievement_id', algorithm: 'btree', columns: [
+        'achievementId',
+      ] },
+      { name: 'id', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { name: 'ua_user_id', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'user_achievement_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, UserAchievementRow),
   UserIdentity: __table({
     name: 'user_identity',
     indexes: [

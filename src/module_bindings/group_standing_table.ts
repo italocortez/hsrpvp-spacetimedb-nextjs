@@ -9,24 +9,15 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  ParticipationRole,
-  TeamLabel,
-} from "./types";
-
 
 export default __t.row({
-  lobbyId: __t.u32().name("lobby_id"),
-  userId: __t.u32().name("user_id"),
-  isOnline: __t.bool().name("is_online"),
-  get participationRole() {
-    return ParticipationRole.name("participation_role");
-  },
-  isReferee: __t.bool().name("is_referee"),
-  isCoach: __t.bool().name("is_coach"),
-  get teamSlot() {
-    return TeamLabel.name("team_slot");
-  },
+  tournamentId: __t.u32().name("tournament_id"),
+  groupId: __t.u32().name("group_id"),
+  participantUserId: __t.u32().name("participant_user_id"),
+  wins: __t.u32(),
+  losses: __t.u32(),
+  draws: __t.u32(),
+  points: __t.u32(),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

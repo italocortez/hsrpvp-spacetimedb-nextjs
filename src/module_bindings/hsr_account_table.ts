@@ -10,22 +10,18 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  ParticipationRole,
-  TeamLabel,
+  RosterVisibility,
 } from "./types";
 
 
 export default __t.row({
-  lobbyId: __t.u32().name("lobby_id"),
+  id: __t.u32().primaryKey(),
   userId: __t.u32().name("user_id"),
-  isOnline: __t.bool().name("is_online"),
-  get participationRole() {
-    return ParticipationRole.name("participation_role");
-  },
-  isReferee: __t.bool().name("is_referee"),
-  isCoach: __t.bool().name("is_coach"),
-  get teamSlot() {
-    return TeamLabel.name("team_slot");
+  uid: __t.string(),
+  displayLabel: __t.string().name("display_label"),
+  isActive: __t.bool().name("is_active"),
+  get rosterVisibility() {
+    return RosterVisibility.name("roster_visibility");
   },
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
