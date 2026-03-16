@@ -4,146 +4,194 @@
 
 ## Pattern Overview
 
-**Overall:** Full-stack real-time multiplayer application using Next.js 15 (App Router) on the frontend and SpacetimeDB as a WebSocket-based real-time database/backend.
+**Overall:** Distributed client-server architecture with SpacetimeDB as the realtime multiplayer backend and Next.js as the frontend framework.
 
 **Key Characteristics:**
-- SpacetimeDB replaces a traditional REST API + database stack. All persistent state lives in SpacetimeDB tables, mutated exclusively by server-side reducers.
-- The Next.js frontend connects to SpacetimeDB directly via WebSocket (client-side) and subscribes to table data reactively via `useTable` hooks from `spacetimedb/react`.
-- A trusted server identity (Next.js API route + `lib/spacetimedb-server.ts` singleton) calls privileged reducers that the browser client cannot call directly (Discord linking, role management).
-- No traditional REST endpoints for game/user data — all reads come from live SpacetimeDB table subscriptions pushed to the client.
+- Client-driven state sync via SpacetimeDB subscriptions (reactive, not server-polled)
+- Transactional reducers on the backend (no return values, mutations only)
+- NextAuth for authentication with Discord OAuth integration
+- Real-time cursor/movement events and game state synchronization
+- Audit trail on all user-facing tables (createdAt, createdBy, updatedAt, updatedBy)
+- Lazy server connection for API routes (singleton pattern)
 
 ## Layers
 
-**SpacetimeDB Backend:**
-- Purpose: Persistent data storage, all game logic, all writes
-- Location: `spacetimedb/src/`
-- Contains: Table definitions (`tables/`), reducer functions (`reducers/`), shared type definitions (`types/`)
-- Depends on: `spacetimedb/server` SDK
-- Used by: Frontend via generated client bindings, Next.js API routes via server connection
+**Presentation Layer:**
+- Purpose: React components, pages, layouts rendered by Next.js
+- Location: `app/`, `components/`
+- Contains: Page components, feature-specific UI components, layout wrappers
+- Depends on: React Context (AuthProvider, GameDataProvider), SpacetimeDB client bindings, Next.js routing
+- Used by: Browser clients, nextauth callbacks
 
-**Generated Client Bindings:**
-- Purpose: Type-safe TypeScript interface to the SpacetimeDB module
-- Location: `src/module_bindings/`
-- Contains: Auto-generated table accessors, reducer call stubs, `DbConnection` class
-- Depends on: SpacetimeDB backend schema (regenerated after each publish via `spacetime generate`)
-- Used by: All frontend code that reads data or invokes reducers
-
-**Next.js App (Frontend):**
-- Purpose: UI rendering, routing, React state, user interactions
-- Location: `app/` (pages/routes), `components/` (feature logic + UI)
-- Contains: Route groups, page components, feature hooks, context providers, global layout
-- Depends on: Generated bindings, `spacetimedb/react` hooks, NextAuth.js
-
-**Next.js API Routes (Trusted Server Bridge):**
-- Purpose: Perform privileged SpacetimeDB operations that require server-side validation (e.g., verifying Discord OAuth before calling trusted reducers)
+**API/Backend Layer:**
+- Purpose: Server-side business logic, authentication flows, webhooks
 - Location: `app/api/`
-- Contains: `app/api/auth/[...nextauth]/route.ts` (NextAuth handler), `app/api/auth/link-discord/route.ts` (Discord → SpacetimeDB link bridge)
-- Depends on: `lib/spacetimedb-server.ts`, NextAuth session
-- Used by: Client-side `useAuth` hook via `fetch('/api/auth/link-discord')`
+- Contains: NextAuth route handlers, Discord OAuth linking, server reducers
+- Depends on: SpacetimeDB server connection, NextAuth session
+- Used by: Presentation layer via fetch, external services via webhooks
 
-**Global Library:**
-- Purpose: Shared configuration constants accessible anywhere in the Next.js app
-- Location: `lib/`
-- Key files:
-  - `lib/spacetimedb.ts` — exports `SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME`, `SPACETIMEDB_TOKEN_KEY`
-  - `lib/spacetimedb-server.ts` — exports `getServerConnection()` singleton for API routes
+**State Management Layer:**
+- Purpose: Global state, hooks, context providers
+- Location: `components/features/*/components/*Provider.tsx`, `components/features/hooks/`
+- Contains: AuthProvider, GameDataProvider, custom hooks for data access
+- Depends on: SpacetimeDB client subscriptions, React Context
+- Used by: All consuming components
+
+**Database Layer:**
+- Purpose: SpacetimeDB backend - schema, tables, reducers, lifecycle hooks
+- Location: `spacetimedb/src/`
+- Contains: Table definitions, reducers (transactional mutations), client lifecycle handlers
+- Depends on: SpacetimeDB runtime
+- Used by: Client via generated bindings, server via singleton connection
+
+**Bindings Layer:**
+- Purpose: Generated TypeScript client bindings from SpacetimeDB schema
+- Location: `src/module_bindings/`
+- Contains: Auto-generated table classes, reducer stubs, type definitions
+- Depends on: SpacetimeDB server schema
+- Used by: All client code that reads/writes data
 
 ## Data Flow
 
-**User Authentication (Guest):**
+**User Login Flow:**
 
-1. Browser connects to SpacetimeDB via WebSocket (`app/providers.tsx` → `DbConnection.builder()`)
-2. SpacetimeDB token is read from `localStorage` on connect; saved on `onConnect` callback
-3. `AuthProvider` wraps the app; `useAuth` hook subscribes to `UserIdentity` and `User` tables
-4. If no `UserIdentity` mapping exists, user clicks "Login as Guest" → `conn.reducers.loginAsGuest({})` reducer creates `User` + `UserIdentity` rows
-5. SpacetimeDB pushes the new rows to the client subscription; `useAuth` derives `currentUser` and `authState`
+1. Browser visits app → `app/layout.tsx` wraps in `Providers` component
+2. `Providers` connects SpacetimeDB client via `DbConnection.builder()` (`app/providers.tsx`)
+3. SpacetimeDB client auto-connects and authenticates with token from localStorage
+4. On successful connection, `onConnect` callback stores token and logs identity (`app/providers.tsx`)
+5. NextAuth handles Discord OAuth callback at `app/api/auth/[...nextauth]/route.ts`
+6. Server reducer `server_link_discord` links Discord account to user via server connection (`spacetimedb/src/reducers/server.ts`)
+7. `AuthProvider` context wraps components, provides `useAuthContext()` hook
+8. Components guard auth-required routes with `AuthRequired` wrapper (`components/features/auth/components/AuthRequired.tsx`)
 
-**User Authentication (Discord OAuth):**
+**Game Session Data Flow:**
 
-1. User clicks "Connect with Discord" → `sessionStorage.setItem('discord_login_intent', '1')` → `signIn("discord")` via NextAuth
-2. After OAuth redirect, NextAuth stores Discord session in cookie
-3. `useAuth` detects `nextAuthStatus === 'authenticated'` + `discord_login_intent` flag
-4. Client calls `loginAsGuest` first (if no mapping) to create `UserIdentity`
-5. Client posts to `POST /api/auth/link-discord` with its `identity.toHexString()`
-6. API route verifies Discord session server-side, then calls `conn.reducers.serverLinkDiscord(...)` via the trusted server connection
-7. SpacetimeDB reducer upgrades the guest `User` to a Discord-linked user; subscription update propagates back to client
+1. Component calls reducer via generated stub: `MyReducer.reducer(args)` (e.g., `login_as_guest.login_as_guest()`)
+2. Client sends mutation request to SpacetimeDB server
+3. Server executes reducer transactionally: `spacetimedb.reducer((ctx) => { ... })`
+4. Reducer mutates tables via `ctx.db.TableName.operation()`
+5. On completion, server broadcasts table row changes to all subscribed clients
+6. Client receives updates in real-time, components re-render via React hooks
 
-**Game Data Flow (Read-only static data):**
+**Cursor Broadcast Flow:**
 
-1. `GameDataProvider` subscribes to `HsrCharacter`, `HsrLightcone`, `HsrCharacterCost`, `HsrLightconeCost`, `HsrSynergyCost` tables via `useTable`
-2. SpacetimeDB pushes all rows on initial subscription
-3. `GameDataProvider` maps raw rows to typed `Character[]`, `Lightcone[]`, `Synergy[]` via helper functions in `components/features/game-data/components/DataHelpers`
-4. All feature components access game data via `useGameData()` hook — no duplicate fetches
+1. Component detects user input/movement event
+2. Calls `broadcast_cursor` reducer with position data
+3. Server stores cursor event in `LobbyCursorEvent` table with audit columns
+4. Server emits to all lobby members via subscription
+5. All clients see cursor position update in real-time
 
-**Draft/Match Flow:**
+**Admin/Server Operations:**
 
-1. Lobby created → `Lobby` row inserted; `LobbyMember` rows track participants
-2. When draft starts, `MatchSession` row is created (keyed by `lobbyId`)
-3. `MatchSessionStep` rows record each pick/ban action with typed `StepPayload` union
-4. Draft hooks (`useDraftState`, `useDraftActions`, `useDraftTimer`) subscribe to `MatchSession` and `MatchSessionStep` tables
-5. On completion, `MatchSessionHistory` + `MatchSessionStepHistory` rows are written for persistence
+1. Server needs to call trusted reducers (e.g., Discord linking)
+2. Server uses singleton connection via `getServerConnection()` (`lib/spacetimedb-server.ts`)
+3. Connection authenticates with `SPACETIMEDB_SERVER_TOKEN` from `.env.local`
+4. Server calls reducers: `conn.server_link_discord(discordId, userId)`
+5. Reducers verify caller identity with `requireServer()` helper
+6. Returns nothing; client/caller reads result via table subscriptions
 
 **State Management:**
-- No Redux or Zustand. All shared state flows through React Context providers:
-  - `SpacetimeDBProvider` (from `spacetimedb/react`) — connection + subscriptions root
-  - `AuthProvider` — current user and auth actions (`useAuthContext()`)
-  - `GameDataProvider` — all HSR game data (`useGameData()`)
-- Local component state managed via `useState`/`useReducer` within feature hooks
+
+- SpacetimeDB acts as source of truth (optimistic updates on client)
+- Each component/hook subscribes to specific tables it needs
+- Subscriptions are reactive - React re-renders when tables change
+- GameDataProvider abstracts character/lightcone cost data access
+- AuthProvider provides session and user context globally
 
 ## Key Abstractions
 
-**SpacetimeDB Table → React Context Pipeline:**
-- Purpose: Convert live SpacetimeDB table subscriptions into React-accessible context
-- Examples: `components/features/auth/components/AuthProvider.tsx`, `components/features/game-data/components/GameDataProvider.tsx`
-- Pattern: `useTable(tables.X)` → transform rows → provide via `createContext` / custom hook
+**DbConnection (SpacetimeDB Client):**
+- Purpose: Establishes and maintains WebSocket connection to SpacetimeDB server
+- Examples: `lib/spacetimedb.ts`, `app/providers.tsx`
+- Pattern: Builder pattern with fluent API for configuration, connection lifecycle callbacks
 
-**Reducer Invocation:**
-- Purpose: Mutate server state
-- Examples: `conn.reducers.loginAsGuest({})`, `conn.reducers.deleteGuestAccount({}`
-- Pattern: Get connection via `useSpacetimeDB().getConnection()` → call `conn.reducers.<reducerName>(args)`. Never expect return values; observe table subscription updates instead.
+**Reducers (Backend Mutations):**
+- Purpose: Transactional, deterministic mutations of database state
+- Examples: `spacetimedb/src/reducers/auth.ts`, `spacetimedb/src/reducers/profile.ts`
+- Pattern: `spacetimedb.reducer((ctx) => { ctx.db.Table.operation(...) })`
+- Key rule: Reducers never return data to callers; they only mutate state
 
-**Trusted Server Identity:**
-- Purpose: Authorize privileged operations that the browser must not call directly
-- Examples: `server_link_discord`, `server_set_role`, `server_delete_user`
-- Pattern: Next.js API route verifies external session → calls `getServerConnection()` → calls reducer under registered server identity. Reducer calls `requireServer(ctx)` to validate the caller.
+**Tables (SpacetimeDB Data Model):**
+- Purpose: Define schema, indexes, and primary keys
+- Examples: `spacetimedb/src/tables/user.ts`, `spacetimedb/src/tables/lobby.ts`
+- Pattern: TypeScript classes with decorators for indexes and primary keys
 
-**Feature Module:**
-- Purpose: Self-contained vertical slice of functionality
-- Examples: `components/features/auth/`, `components/features/drafting/`, `components/features/profile/`
-- Pattern: Each feature folder contains `components/` (presentational + context), `hooks/` (logic), and optionally `types/` (feature-local types)
+**Audit Columns:**
+- Purpose: Track who created/updated each row and when
+- Implementation: `spacetimedb/src/helpers/auditColumns.ts`
+- Used by: All mutation helpers inject `auditInsert()` and `auditUpdate()`
+- Fields: `createdAt`, `createdBy`, `updatedAt`, `updatedBy` on all user-facing tables
+
+**Context Providers:**
+- Purpose: Global application state and configuration
+- Examples: `AuthProvider`, `GameDataProvider`, `SessionProvider`
+- Pattern: React Context with custom hooks for consumption
+- Nested hierarchy: SessionProvider → HeroUIProvider → SpacetimeDBProvider → AuthProvider → GameDataProvider
+
+**Generated Bindings:**
+- Purpose: Auto-generated TypeScript stubs for table access and reducer calls
+- Location: `src/module_bindings/`
+- Pattern: Table classes with CRUD methods, reducer functions with typed arguments
+- Refresh: `npm run generate` regenerates from SpacetimeDB schema
 
 ## Entry Points
 
-**Browser App Entry:**
+**Frontend Root:**
 - Location: `app/layout.tsx`
-- Triggers: Every Next.js page load
-- Responsibilities: Sets up `Providers` (SessionProvider → HeroUIProvider → SpacetimeDBProvider → AuthProvider → GameDataProvider), renders `Header`, `main`, `Footer`
+- Triggers: Browser navigation to any URL path
+- Responsibilities: Wrap application in providers, configure global styles, set metadata
 
-**SpacetimeDB Module Entry:**
-- Location: `spacetimedb/src/index.ts`
-- Triggers: Module publish to SpacetimeDB
-- Responsibilities: Registers schema, exports all reducers, registers `clientConnected`/`clientDisconnected` lifecycle hooks
-
-**Next.js API Auth Entry:**
+**Authentication Entry:**
 - Location: `app/api/auth/[...nextauth]/route.ts`
-- Triggers: NextAuth OAuth callbacks (Discord)
-- Responsibilities: Delegates to `authOptions` for session management
+- Triggers: NextAuth callback, Discord OAuth redirects
+- Responsibilities: Handle authentication flow, create sessions, call server-side reducers
+
+**Landing Page:**
+- Location: `app/(landing-page)/page.tsx`
+- Triggers: GET / (root path)
+- Responsibilities: Serve public landing page, redirect to appropriate next page based on auth state
+
+**Authenticated Routes:**
+- Location: `app/(authenticated)/*/page.tsx`
+- Triggers: Authenticated users navigating to protected routes
+- Responsibilities: Require auth via `AuthRequired` wrapper, load user-specific data
+
+**Draft Game:**
+- Location: `app/(game)/draft/[matchId]/page.tsx`
+- Triggers: User joins a draft match
+- Responsibilities: Load match session, subscribe to real-time updates, render game UI
+
+**Backend Setup:**
+- Location: `spacetimedb/src/index.ts`
+- Triggers: SpacetimeDB server starts
+- Responsibilities: Register reducers, export public reducer interface, attach lifecycle hooks (clientConnected/clientDisconnected)
 
 ## Error Handling
 
-**Strategy:** Localized try/catch within hooks and API routes. No global error boundary enforced.
+**Strategy:** Try-catch with SenderError for authorization, promise-based for async operations
 
 **Patterns:**
-- Reducer calls wrapped in `try/catch` inside hook callbacks: `conn.reducers.loginAsGuest({})` in `useAuth`
-- API routes return `NextResponse.json({ error })` with appropriate HTTP status codes
-- SpacetimeDB connection errors surfaced via `connectionError` from `useSpacetimeDB()`; exposed via `AuthContext`
-- Reducer-level errors use `throw new SenderError(...)` from `spacetimedb/server`
+
+- Server reducers throw `SenderError` for authorization failures (e.g., `requireServer()` check)
+- Client connection errors logged to console, caller app handles gracefully
+- Failed mutations rejected in promise chain, caller responsible for retry/fallback
+- API routes use Next.js error handling (throw Error, caught by error.tsx or default error page)
+- Guest account cleanup via background job in `UserDeletionJob` table and `run_user_deletion` reducer
 
 ## Cross-Cutting Concerns
 
-**Logging:** `console.log` / `console.error` directly. No structured logging library.
-**Validation:** Input validation inside reducers via explicit checks + `SenderError`. No Zod or similar on frontend.
-**Authentication:** Two-layer — SpacetimeDB identity (token in `localStorage`) for real-time connection; NextAuth Discord OAuth for account linking. Access control enforced in both Next.js route layouts (client-side role check) and SpacetimeDB reducers (`requireServer`, role checks).
+**Logging:** Console logging only. Server logs client connections/disconnections. Errors logged to console.
+
+**Validation:**
+- Input validation in reducers (check args match expected types)
+- Authorization via identity checks (`ctx.sender` for clients, `ServerIdentity` for server)
+- No explicit schema validation; SpacetimeDB enforces table structure
+
+**Authentication:**
+- Discord OAuth via NextAuth (session-based)
+- SpacetimeDB identity (ephemeral per connection, stored in `UserIdentity` table)
+- Server token via `SPACETIMEDB_SERVER_TOKEN` env var for trusted operations
+- Guest login via `login_as_guest` reducer (creates User + UserIdentity mapping)
 
 ---
 

@@ -5,164 +5,142 @@
 ## Naming Patterns
 
 **Files:**
-- React components: PascalCase `.tsx` — `CharacterCard.tsx`, `AuthProvider.tsx`
-- React hooks: camelCase prefixed with `use` — `useAuth.ts`, `useCharacterFilters.ts`
-- CSS Modules: co-located with component, same base name — `CharacterPool.module.css`
-- Type/enum files: lowercase descriptive name — `enums.ts`, `structs.ts`, `types.ts`
-- Backend reducers (SpacetimeDB): snake_case — `login_as_guest`, `admin_bulk_upsert`
-- Backend tables: camelCase export names matching table name — `User`, `HsrCharacter`
+- React components: PascalCase (e.g., `AdminTabs.tsx`, `CharacterCostTable.tsx`)
+- Hooks: camelCase with `use` prefix (e.g., `useAuth.ts`, `useCharacterCostTable.ts`)
+- Types/interfaces: PascalCase (e.g., `AdminTab`, `CharacterCostRow`)
+- Constants: UPPER_SNAKE_CASE (e.g., `ADMIN_TABS`, `COLUMNS`, `RARITY_COLORS`)
+- Utilities/helpers: camelCase (e.g., `toggleInArray`, `validateEnum`)
+- Reducers: snake_case with underscores (e.g., `login_as_guest`, `admin_delete_row`)
+- Tables: snake_case (e.g., `UserIdentity`, `HsrCharacter`) but referenced with PascalCase in code
 
 **Functions:**
-- React components: PascalCase named exports — `export function CharacterPool(...)`
-- Page components: PascalCase default exports — `export default function Header()`
-- Hooks: camelCase `use` prefix — `export function useCharacterFilters(...)`
-- Utility/helper functions: camelCase — `snakeToCamel`, `validateJson`, `convertKeys`
-- Backend reducers: snake_case — `login_as_guest`, `server_link_discord`
+- Frontend: camelCase with descriptive verb-noun pattern (e.g., `toggleRole`, `clearAll`, `validateEnum`)
+- Backend reducers: exported as snake_case, defined via `spacetimedb.reducer()` (e.g., `export const login_as_guest`)
+- Callback handlers: `onEventName` pattern (e.g., `onTabChange`, `onSelectionChange`, `onSortChange`)
 
 **Variables:**
-- Regular variables: camelCase — `costMap`, `selectedTable`, `filterState`
-- Constants (compile-time): SCREAMING_SNAKE_CASE — `INITIAL_STATE`, `TABLE_TEMPLATES`, `DEFAULT_SORT`
-- Enum variant arrays: SCREAMING_SNAKE_CASE with `_VARIANTS` suffix — `PATH_VARIANTS`, `ELEMENT_VARIANTS`, `ACTION_TYPE_VARIANTS`
+- camelCase for all local and state variables
+- Boolean flags: `is*` or `has*` prefix (e.g., `isActive`, `hasMapping`, `isExpanded`)
+- Ref variables: suffix with `Ref` (e.g., `linkingRef`, `autoRegisteredRef`, `hadTokenOnMount`)
+- Enum instances: tagged unions with `.tag` property (e.g., `role.tag`, `gameMode.tag`)
 
-**Types and Interfaces:**
-- Interfaces: PascalCase — `CharacterPoolProps`, `AuthState`, `UseLoadoutsReturn`
-- Type aliases derived from `as const` arrays — `export type Team = typeof TEAM_LABEL_VARIANTS[number]`
-- Return types for hooks documented as separate interfaces — `UseCharacterFiltersReturn`, `UseLoadoutsReturn`
-- Props interfaces named `[ComponentName]Props` and kept in the same file as the component
+**Types:**
+- Interfaces: PascalCase, suffixed with specific descriptor (e.g., `UserIdentityRow`, `CharacterCostRow`, `SortDescriptor`)
+- Type aliases: PascalCase (e.g., `AuthState`, `AdminTab`)
+- Enum-like tagged unions: defined in `enums.ts` files (e.g., `{ tag: 'Admin' | 'User' | ... }`)
 
 ## Code Style
 
 **Formatting:**
-- Prettier is listed in the `generate` script: `prettier --write src/module_bindings`
-- No standalone `.prettierrc` or `.eslintrc` detected — only the Next.js default linter (`next lint`)
-- Tabs used for indentation in most component files
-- Spaces used in some files (inconsistency observed between older and newer files)
+- No explicit Prettier or ESLint config present
+- Observed style: 4-space indentation in TypeScript backend code, mixed 2-4 space in frontend
+- Semicolons: used consistently throughout
+- String quotes: single quotes preferred in backend (`'field'`), JSX uses double quotes for attributes
 
 **Linting:**
-- `next lint` via `npm run lint`
-- No custom ESLint rules configured beyond Next.js defaults
-- TypeScript strict mode not explicitly configured; some `any` casts appear at SpacetimeDB boundary
+- ESLint integration via `next lint` script but no project-level `.eslintrc` found
+- Using Next.js default linting rules
+- TypeScript strict mode enabled (`"strict": true` in `tsconfig.json`)
 
-## Import Organization
-
-**Order observed in source files:**
-1. React and framework imports (`react`, `next/navigation`, `next-auth/react`)
-2. SpacetimeDB imports (`spacetimedb/react`, `spacetimedb`)
-3. Internal path-aliased imports using `@/` — `@/src/module_bindings`, `@/lib/spacetimedb`
-4. Feature-relative imports using `@/components/features/...`
-5. Local imports (`./`, `../`)
+**Import Organization:**
+- 1. React and external libraries (`import React from 'react'`)
+- 2. Third-party UI libraries (`import { ... } from '@heroui/...'`)
+- 3. SpacetimeDB bindings (`import { tables } from '@/src/module_bindings'`)
+- 4. Internal modules and hooks (`import { useAuth } from '../hooks/useAuth'`)
+- 5. Types and constants (`import type { ... }`, `import { CONSTANT }`)
+- 6. Styles/CSS (`import styles from './File.module.css'`)
 
 **Path Aliases:**
-- `@/` maps to project root — defined in Next.js tsconfig
-- Used for all cross-directory imports: `@/components/features/...`, `@/lib/...`, `@/src/...`
-
-**Example pattern from `useAuth.ts`:**
-```typescript
-import { useMemo, useEffect, useCallback, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession, signIn, signOut } from "next-auth/react";
-import { useTable, useSpacetimeDB } from 'spacetimedb/react';
-import { tables } from '@/src/module_bindings';
-import { SPACETIMEDB_TOKEN_KEY } from '@/lib/spacetimedb';
-import { AuthState, User, UserIdentityRow } from '../types';
-```
-
-## Directive Usage
-
-**Client components** always declare `'use client'` as the first line:
-- All interactive components, hooks files, and any file using React state/effects
-- Provider components: `AuthProvider.tsx`, `GameDataProvider.tsx`, `providers.tsx`
-
-**Server components** (no directive) are only page shells and layout wrappers in `app/`:
-- `app/layout.tsx`, `app/(landing-page)/page.tsx`, etc.
+- `@/*` maps to project root (configured in `tsconfig.json`)
+- Relative imports used for local module/component references
+- Absolute imports used for cross-feature dependencies
 
 ## Error Handling
 
-**Frontend patterns:**
-- SpacetimeDB reducer calls wrapped in `try/catch`, errors logged to `console.error`
-- Failed async operations (fetch) chained with `.catch(e => console.error(...))`
-- User-facing error messages stored in component state as `{ type: 'success' | 'error'; text: string } | null`
-- Context hooks throw descriptive errors if used outside their provider:
-  ```typescript
-  if (!ctx) throw new Error('useAuthContext must be used within an AuthProvider');
-  ```
+**Backend (SpacetimeDB):**
+- All validation errors throw `SenderError` from `'spacetimedb/server'` (seen in `ensurePermissions.ts`, `admin.ts`)
+- Permission checks: Functions like `ensureAdmin()`, `ensureTournamentHost()` throw SenderError if conditions fail
+- Enum validation: Strict case-sensitive matching, throws SenderError with full list of valid options
+- Key validation: Rows checked for exact key match (no missing, no extra fields) — detailed error messages listing missing/unexpected keys
+- Example from `admin.ts` line 24-31: validateEnum throws with "Invalid {field}: {value}. Must be exactly one of: ..."
 
-**Backend patterns (SpacetimeDB reducers):**
-- Permission failures throw `SenderError` from `spacetimedb/server`
-- All reducers call `ensureAdmin()` or `ensureTournamentHost()` from `spacetimedb/src/helpers/ensurePermissions.ts`
-- Validation errors thrown as `SenderError` with descriptive messages
-- Errors logged server-side with `console.error('[ADMIN] ...')` before throwing
+**Frontend (React/Next.js):**
+- Try-catch blocks wrap async operations (e.g., `loginAsGuest`, `deleteGuestAccount` in `useAuth.ts`)
+- Errors logged to console with context (e.g., "Auto-register loginAsGuest failed:", error)
+- Fetch errors parsed and re-thrown with custom message (line 107 in `useAuth.ts`)
+- No global error boundary or exception handler detected — errors surface in dev console
+- Reducer call failures silently set flag back to false (`linkingRef.current = false` in finally block)
 
 ## Logging
 
-**Framework:** `console.log` / `console.error` (no structured logger)
+**Framework:** Console-based
 
 **Patterns:**
-- SpacetimeDB connection events logged in `app/providers.tsx`: `'Connected to SpacetimeDB with identity:'`
-- Backend validation failures use `console.error` with prefix: `[ADMIN]`, caller identity, and reason
-- Client-side reducer failures use `console.error("Failed to call [reducer]:", err)`
-- No logging in pure data-transformation code (hooks, utilities)
+- Backend: `console.log()` with `[CONTEXT]` prefix tags (e.g., `[ADMIN]`, `[ADMIN]` for audit logging)
+- Example: `console.log("[ADMIN] User #${id} soft-deleted. Hard-delete scheduled in 5s.");`
+- Example: `console.error("[ADMIN] Bulk upsert REJECTED for table...")` for errors
+- Frontend: `console.error()` only for failures, with operation context
+- Client connection lifecycle: logged as `console.log("Client connected/disconnected: {identity}")` in `spacetimedb/src/index.ts`
 
 ## Comments
 
 **When to Comment:**
-- Architecture decisions that are non-obvious — especially Next.js SSR/hydration edge cases
-- Multi-step flows numbered inline: `// 1. External state`, `// 2. Subscribe to...`
-- SpacetimeDB subscription nuances: `// Note: tables.UserIdentity requires regenerated bindings after publish`
-- Section separators using `─` Unicode dividers for visual grouping within longer files
+- Algorithm explanation: Complex filter/sort logic in hooks (seen in `useCharacterCostTable.ts`)
+- State management intent: Multi-step flows with refs and flags (seen in `useAuth.ts` lines 45-51, 70-118)
+- Enum construction: How tagged unions map to data (e.g., line 43 in `auth.ts`: `role: { tag: 'User' }`)
+- TODO/FIXME: Not observed in codebase (grep found none)
 
-**JSDoc:**
-- Used selectively for exported hooks with non-obvious parameters:
+**JSDoc/TSDoc:**
+- Observed pattern: Single-line or multi-line block comments above functions
+- Example from `ensurePermissions.ts`:
   ```typescript
   /**
-   * Encapsulates all character filtering logic.
-   * Pure state + derived data — no SpacetimeDB or rendering concerns.
+   * Resolves ctx.sender (identity) → UserIdentity → User.
+   * Returns both the mapping row and the User row.
+   * Throws if the identity is not linked to any user.
    */
   ```
-- Architecture notes in block comments explaining *why* a pattern was chosen (see `useLoadouts.ts`)
+- Not consistently applied to all functions
+- Function parameters not documented with @param
+- Return values not documented with @return
 
 ## Function Design
 
-**Size:** Hooks can be long (100-200 lines) when they encapsulate a complete domain (auth, loadouts). Helper functions stay small (under 30 lines).
+**Size:**
+- Small focused functions preferred (10-30 lines typical)
+- Complex hooks can be longer (useAuth is 217 lines, but highly structured)
+- Data transformation helpers: 10-40 lines
+- Reducers: 20-60 lines (some admin operations reach 100+ due to switch cases)
 
 **Parameters:**
-- Component props always destructured in function signature
-- Hooks take primitive/typed params — `useCharacterFilters(characters: Character[])`
-- Default parameters used for optional hook behavior: `isAuthenticated = false`
+- Frontend: Destructured props objects for components
+- Backend: SpacetimeDB reducer pattern: `(ctx, args)` where args is destructured
+- Callbacks: Single parameter or object with multiple fields
+- Type all parameters explicitly (TypeScript strict mode enforced)
 
 **Return Values:**
-- Hooks return named object literals (not arrays) to allow selective destructuring
-- Components return JSX directly with no intermediate assignment
-- Pure utility functions return typed result objects: `ValidationResult`
+- React components: Always return JSX or Fragment
+- Hooks: Return object with state and action methods (seen in useAuth return at line 209-216)
+- Data functions: Return arrays or objects, null for missing data
+- Reducer functions: Return void (no return to caller; data changes via ctx.db)
 
 ## Module Design
 
 **Exports:**
-- Named exports for hooks and most components: `export function useAuth()`
-- Default exports for page components and some layout components: `export default function Header()`
-- No mixed default+named in a single file
+- Default exports: React components (e.g., `export default function AdminTabs()`)
+- Named exports: Hooks, utilities, types, reducers (e.g., `export function useAuth()`, `export const login_as_guest`)
+- Re-exports for batch operations: `src/index.ts` re-exports all reducers for SpacetimeDB
+- Barrel files for ease of import (e.g., exporting multiple reducers from `index.ts`)
 
 **Barrel Files:**
-- Used sparingly — only `components/globals/icons/index.ts` observed
-- Feature directories do NOT use barrel `index.ts` files; consumers import from full paths
+- `spacetimedb/src/index.ts`: Exports all reducers and lifecycle hooks
+- `types` directories: Group type definitions (e.g., `components/features/admin-view/types.ts`)
+- `enums.ts`: Centralized enum variant definitions
 
-## Context Pattern
-
-All shared state uses the Provider/hook pattern:
-1. `createContext<T | null>(null)` — always nullable default
-2. Provider component wraps children and passes hook return value
-3. Consumer hook checks for null and throws if used outside provider
-4. Examples: `AuthProvider.tsx` + `useAuthContext()`, `GameDataProvider.tsx` + `useGameData()`
-
-## Styling
-
-**Approach:** Mix of CSS Modules and Tailwind CSS utility classes
-- CSS Modules for component-specific layout and structural styles: `CharacterPool.module.css`
-- Tailwind classes for spacing, flex, color, and utility styles (especially in admin/form components)
-- HeroUI component library (`@heroui/*`) for form controls, modals, tables, and chips
-- `framer-motion` available but used minimally
-
-**CSS Module naming:** Class names in `styles.camelCase` within TSX, kebab-case in the `.module.css` file.
+**File Organization:**
+- Feature-based structure: `components/features/{feature-name}/{components,hooks,types}/`
+- Backend modules: `spacetimedb/src/{tables,reducers,helpers,types}/`
+- Shared types under `components/features/types/`
 
 ---
 
