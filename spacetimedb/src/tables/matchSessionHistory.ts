@@ -1,6 +1,6 @@
 import { table, t } from 'spacetimedb/server';
 import { DraftMode, GameMode, MatchResult } from '../types/enums';
-import { PlayerSnapshot, LobbyConfig } from '../types/structs';
+import { PlayerSnapshot, LobbyConfigSnapshot } from '../types/structs';
 
 export const matchSessionHistoryColumns = {
     id: t.string().primaryKey(), // UUID generated at game end
@@ -17,7 +17,7 @@ export const matchSessionHistoryColumns = {
     blueTeamMembers: t.array(PlayerSnapshot),
     redTeamMembers: t.array(PlayerSnapshot),
 
-    snapshotConfig: LobbyConfig, // The exact rules used (Snapshot)
+    snapshotConfig: LobbyConfigSnapshot, // The exact rules used (Snapshot)
 
     result: MatchResult,
 

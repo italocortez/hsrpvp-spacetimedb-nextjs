@@ -164,8 +164,16 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'HsrLightconeCost': {
-                if (!ctx.db.HsrLightconeCost.lightconeName.find(primaryKeyJson)) throw new SenderError('Row not found');
-                ctx.db.HsrLightconeCost.lightconeName.delete(primaryKeyJson);
+                const key = JSON.parse(primaryKeyJson);
+                let found = false;
+                for (const row of ctx.db.HsrLightconeCost.iter()) {
+                    if (row.lightconeName === key.lightconeName && row.gameMode.tag === key.gameModeTag) {
+                        ctx.db.HsrLightconeCost.delete(row);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) throw new SenderError('Row not found');
                 break;
             }
             case 'HsrSynergyCost': {
@@ -308,24 +316,28 @@ export const admin_bulk_upsert = spacetimedb.reducer(
             }
             case 'HsrLightconeCost': {
                 for (const r of rows) {
-                    const existing = ctx.db.HsrLightconeCost.lightconeName.find(r.lightconeName);
+                    validateEnum('gameMode', r.gameMode, ctx, tableName);
+                    // Composite PK: lightconeName + gameMode — use iter() to find existing
+                    let existing: any = null;
+                    for (const e of ctx.db.HsrLightconeCost.iter()) {
+                        if (e.lightconeName === r.lightconeName && e.gameMode.tag === r.gameMode) {
+                            existing = e;
+                            break;
+                        }
+                    }
                     const row = {
                         lightconeName: r.lightconeName,
+                        gameMode: { tag: r.gameMode, value: undefined } as any,
                         classicCosts: r.classicCosts,
                         auctionBaseBid: r.auctionBaseBid,
                     };
                     if (existing) {
-                        ctx.db.HsrLightconeCost.lightconeName.update({
-                            ...existing,
-                            ...row,
-                            ...auditUpdate(ctx, existing, admin.id),
-                        });
-                    } else {
-                        ctx.db.HsrLightconeCost.insert({
-                            ...row,
-                            ...auditInsert(ctx, admin.id),
-                        } as any);
+                        ctx.db.HsrLightconeCost.delete(existing);
                     }
+                    ctx.db.HsrLightconeCost.insert({
+                        ...row,
+                        ...(existing ? auditUpdate(ctx, existing, admin.id) : auditInsert(ctx, admin.id)),
+                    } as any);
                 }
                 break;
             }

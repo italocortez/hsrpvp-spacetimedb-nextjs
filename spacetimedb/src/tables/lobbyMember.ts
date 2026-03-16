@@ -8,6 +8,7 @@ export const lobbyMemberColumns = {
     isOnline: t.bool(),
     participationRole: ParticipationRole, // Player vs Spectator
     isReferee: t.bool(),    // Admin powers within this lobby
+    isCoach: t.bool(),
     teamSlot: TeamLabel,    // Blue, Red, or Spectator
     createdById: t.u32(),
     createdDate: t.timestamp(),

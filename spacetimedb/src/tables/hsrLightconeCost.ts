@@ -1,8 +1,10 @@
 import { table, t } from 'spacetimedb/server';
+import { GameMode } from '../types/enums';
 import { SuperimpositionCost } from '../types/structs';
 
 export const hsrLightconeCostColumns = {
-    lightconeName: t.string().primaryKey(),
+    lightconeName: t.string(),
+    gameMode: GameMode,
     classicCosts: SuperimpositionCost,
     auctionBaseBid: SuperimpositionCost,
     createdById: t.u32(),
@@ -14,4 +16,5 @@ export const hsrLightconeCostColumns = {
 export const HsrLightconeCost = table({
     name: 'hsr_lightcone_cost',
     public: true,
+    primaryKey: ['lightconeName', 'gameMode'],
 }, hsrLightconeCostColumns);
