@@ -9,6 +9,7 @@ import { hsrLightconeColumns } from '../tables/hsrLightcone';
 import { hsrCharacterCostColumns } from '../tables/hsrCharacterCost';
 import { hsrLightconeCostColumns } from '../tables/hsrLightconeCost';
 import { hsrSynergyCostUpsertKeys } from '../tables/hsrSynergyCost';
+import { archetypeColumns } from '../tables/archetype';
 
 // ─── Strict enum validator ───────────────────────────────────────────────────
 // Enum values must match exactly (case-sensitive). No coercion.
@@ -43,6 +44,7 @@ const EXPECTED_KEYS: Record<string, string[]> = {
     HsrCharacterCost: Object.keys(hsrCharacterCostColumns).filter(k => !AUDIT_KEYS.has(k)),
     HsrLightconeCost: Object.keys(hsrLightconeCostColumns).filter(k => !AUDIT_KEYS.has(k)),
     HsrSynergyCost: hsrSynergyCostUpsertKeys,
+    Archetype: Object.keys(archetypeColumns).filter(k => k !== 'id' && !AUDIT_KEYS.has(k)),
 };
 
 function validateKeys(rows: any[], tableName: string, ctx: any): void {
@@ -182,6 +184,23 @@ export const admin_delete_row = spacetimedb.reducer(
                 ctx.db.HsrSynergyCost.id.delete(id);
                 break;
             }
+            case 'Archetype': {
+                const id = Number(primaryKeyJson);
+                if (!ctx.db.Archetype.id.find(id)) throw new SenderError('Row not found');
+                // Cascade: delete all HsrCharacterArchetype rows for this archetype
+                const junctions = [...ctx.db.HsrCharacterArchetype.hsr_char_arch_arch.filter(id)];
+                for (const j of junctions) { ctx.db.HsrCharacterArchetype.delete(j); }
+                ctx.db.Archetype.id.delete(id);
+                break;
+            }
+            case 'HsrCharacterArchetype': {
+                const key = JSON.parse(primaryKeyJson);
+                const junctionTable = ctx.db.HsrCharacterArchetype as any;
+                const row = junctionTable.primaryKey.find({ characterName: key.characterName, archetypeId: key.archetypeId });
+                if (!row) throw new SenderError('Row not found');
+                ctx.db.HsrCharacterArchetype.delete(row);
+                break;
+            }
             case 'Lobby': {
                 const id = Number(primaryKeyJson);
                 if (!ctx.db.Lobby.id.find(id)) throw new SenderError('Row not found');
@@ -296,6 +315,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         gameMode,
                         classicCosts: r.classicCosts,
                         auctionBaseBid: r.auctionBaseBid,
+                        costSetId: r.costSetId || 0,
                     };
                     let existing = null;
                     for (const e of ctx.db.HsrCharacterCost.iter()) {
@@ -330,6 +350,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         gameMode: { tag: r.gameMode, value: undefined } as any,
                         classicCosts: r.classicCosts,
                         auctionBaseBid: r.auctionBaseBid,
+                        costSetId: r.costSetId || 0,
                     };
                     if (existing) {
                         ctx.db.HsrLightconeCost.delete(existing);
@@ -351,6 +372,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         targetName: r.targetName,
                         gameMode,
                         costModifier: r.costModifier,
+                        costSetId: r.costSetId || 0,
                     };
                     let existing = null;
                     for (const e of ctx.db.HsrSynergyCost.iter()) {
@@ -370,6 +392,18 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             ...row,
                             ...auditInsert(ctx, admin.id),
                         } as any);
+                    }
+                }
+                break;
+            }
+            case 'Archetype': {
+                for (const r of rows) {
+                    const existing = ctx.db.Archetype.name.find(r.name);
+                    const row = { id: 0, name: r.name, description: r.description };
+                    if (existing) {
+                        ctx.db.Archetype.id.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
+                    } else {
+                        ctx.db.Archetype.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
                 break;

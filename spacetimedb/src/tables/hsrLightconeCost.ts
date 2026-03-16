@@ -7,6 +7,7 @@ export const hsrLightconeCostColumns = {
     gameMode: GameMode,
     classicCosts: SuperimpositionCost,
     auctionBaseBid: SuperimpositionCost,
+    costSetId: t.u32(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
@@ -17,4 +18,7 @@ export const HsrLightconeCost = table({
     name: 'hsr_lightcone_cost',
     public: true,
     primaryKey: ['lightconeName', 'gameMode'],
+    indexes: [
+        { name: 'lc_cost_set_id', accessor: 'lc_cost_set_id', algorithm: 'btree', columns: ['costSetId'] },
+    ],
 }, hsrLightconeCostColumns);

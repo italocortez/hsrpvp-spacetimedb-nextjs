@@ -8,6 +8,8 @@ export const hsrAccountColumns = {
     displayLabel: t.string(),
     isActive: t.bool(),
     isRosterPublic: t.bool(),
+    isRatingPublic: t.bool(),
+    isDuplicateUid: t.bool(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

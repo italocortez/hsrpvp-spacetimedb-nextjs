@@ -7,6 +7,7 @@ export const hsrCharacterCostColumns = {
     gameMode: GameMode,
     classicCosts: EidolonCost,
     auctionBaseBid: EidolonCost,
+    costSetId: t.u32(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
@@ -17,4 +18,7 @@ export const HsrCharacterCost = table({
     name: 'hsr_character_cost',
     public: true,
     primaryKey: ['characterName', 'gameMode'],
+    indexes: [
+        { name: 'char_cost_set_id', accessor: 'char_cost_set_id', algorithm: 'btree', columns: ['costSetId'] },
+    ],
 }, hsrCharacterCostColumns);

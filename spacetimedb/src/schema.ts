@@ -13,6 +13,10 @@ import { HsrAccount } from './tables/hsrAccount';
 import { HsrAccountCharacter } from './tables/hsrAccountCharacter';
 import { HsrAccountLightcone } from './tables/hsrAccountLightcone';
 
+// Archetypes
+import { Archetype } from './tables/archetype';
+import { HsrCharacterArchetype } from './tables/hsrCharacterArchetype';
+
 // Tournament System
 import { Tournament } from './tables/tournament';
 import { TournamentParticipant } from './tables/tournamentParticipant';
@@ -55,6 +59,7 @@ import { ChatMessage } from './tables/chatMessage';
 // Lobby System
 import { Lobby } from './tables/lobby';
 import { LobbyMember } from './tables/lobbyMember';
+import { LobbyPassword } from './tables/lobbyPassword';
 import { LobbyCursorEvent } from './tables/lobbyCursorEvent';
 
 // Active Game
@@ -87,6 +92,10 @@ const spacetimedb = schema({
     HsrAccount,
     HsrAccountCharacter,
     HsrAccountLightcone,
+
+    // Archetypes
+    Archetype,
+    HsrCharacterArchetype,
 
     // Tournament System
     Tournament,
@@ -130,6 +139,7 @@ const spacetimedb = schema({
     // Lobby System
     Lobby,
     LobbyMember,
+    LobbyPassword,
     LobbyCursorEvent,
 
     // Active Game

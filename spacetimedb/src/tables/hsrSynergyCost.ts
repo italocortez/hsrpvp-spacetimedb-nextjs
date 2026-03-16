@@ -7,6 +7,7 @@ export const hsrSynergyCostColumns = {
     targetName: t.string(),
     gameMode: GameMode,
     costModifier: t.f32(),
+    costSetId: t.u32(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
@@ -23,5 +24,6 @@ export const HsrSynergyCost = table({
     indexes: [
         { name: 'synergy_source_mode', accessor: 'synergy_source_mode', algorithm: 'btree', columns: ['sourceName', 'gameMode'] },
         { name: 'synergy_target', accessor: 'synergy_target', algorithm: 'btree', columns: ['targetName'] },
+        { name: 'synergy_cost_set_id', accessor: 'synergy_cost_set_id', algorithm: 'btree', columns: ['costSetId'] },
     ]
 }, hsrSynergyCostColumns);
