@@ -15,6 +15,18 @@ export const run_user_deletion = spacetimedb.reducer(
             ctx.db.UserIdentity.identity.delete(ui.identity);
         }
 
+        // Cascade: delete all HSR accounts and their characters for this user
+        const hsrAccounts = [...ctx.db.HsrAccount.hsr_account_user_id.filter(arg.userId)];
+        for (const account of hsrAccounts) {
+            // Delete all characters owned by this account
+            const characters = [...ctx.db.HsrAccountCharacter.hsr_acc_char_account_id.filter(account.id)];
+            for (const char of characters) {
+                ctx.db.HsrAccountCharacter.delete(char);
+            }
+            // Delete the account itself
+            ctx.db.HsrAccount.id.delete(account.id);
+        }
+
         // Hard-delete the user
         ctx.db.User.id.delete(arg.userId);
         console.log(`[ADMIN] Scheduled hard-delete completed for user #${arg.userId}`);

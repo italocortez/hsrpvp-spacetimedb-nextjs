@@ -38,3 +38,15 @@ export function ensureTournamentHost(ctx: any) {
     }
     return user;
 }
+
+/**
+ * Ensures the sender is a verified (non-guest) user.
+ * Guests can browse public data but cannot modify roster.
+ */
+export function ensureVerifiedUser(ctx: any) {
+    const user = getAuthenticatedUser(ctx);
+    if (user.isGuest) {
+        throw new SenderError("Roster management requires a verified account. Link your Discord first.");
+    }
+    return user;
+}
