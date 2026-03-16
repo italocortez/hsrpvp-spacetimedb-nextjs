@@ -1,7 +1,7 @@
 import { table, t } from 'spacetimedb/server';
 
 export const hsrAccountCharacterColumns = {
-    accountId: t.u32(),
+    hsrAccountId: t.u32(),
     characterName: t.string(),
     eidolonLevel: t.u8(),
     createdById: t.u32(),
@@ -13,8 +13,8 @@ export const hsrAccountCharacterColumns = {
 export const HsrAccountCharacter = table({
     name: 'hsr_account_character',
     public: true,
-    primaryKey: ['accountId', 'characterName'],
+    primaryKey: ['hsrAccountId', 'characterName'],
     indexes: [
-        { name: 'hsr_acc_char_account_id', accessor: 'hsr_acc_char_account_id', algorithm: 'btree', columns: ['accountId'] },
+        { name: 'hsr_acc_char_account_id', accessor: 'hsr_acc_char_account_id', algorithm: 'btree', columns: ['hsrAccountId'] },
     ],
 }, hsrAccountCharacterColumns);

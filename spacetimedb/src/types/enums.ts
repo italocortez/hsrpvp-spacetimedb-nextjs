@@ -89,7 +89,6 @@ export const ActionType = t.enum('ActionType', {
 export const TournamentStage = t.enum('TournamentStage', {
     Draft: t.unit(),
     Registration: t.unit(),
-    Seeding: t.unit(),
     InProgress: t.unit(),
     Paused: t.unit(),
     Completed: t.unit(),
@@ -116,7 +115,6 @@ export const ValidationStatus = t.enum('ValidationStatus', {
     Pending: t.unit(),
     Confirmed: t.unit(),
     Disputed: t.unit(),
-    Overridden: t.unit(),
 });
 
 export const DisconnectPolicy = t.enum('DisconnectPolicy', {
@@ -131,10 +129,6 @@ export const RecurrenceType = t.enum('RecurrenceType', {
     Monthly: t.unit(),
 });
 
-export const RosterVisibility = t.enum('RosterVisibility', {
-    Public: t.unit(),
-    Private: t.unit(),
-});
 
 export const ParticipantStatus = t.enum('ParticipantStatus', {
     Registered: t.unit(),
@@ -151,7 +145,6 @@ export const ParticipantType = t.enum('ParticipantType', {
 });
 
 export const AchievementRarity = t.enum('AchievementRarity', {
-    Common: t.unit(),
     Rare: t.unit(),
     Epic: t.unit(),
     Legendary: t.unit(),

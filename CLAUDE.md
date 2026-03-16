@@ -38,6 +38,13 @@ These are always-in-context rules that apply regardless of skill loading.
 4. **Auto-increment IDs are not sequential** — gaps are normal, don't use for ordering
 5. **`ctx.sender` is the authenticated principal** — never trust identity args
 
+## Backend Feature Docs
+
+Maintain `spacetimedb/src/docs/` with human-readable architecture documentation:
+- One folder per feature domain (e.g., `teams/`, `match-results/`, `mmr/`)
+- Each folder has a `README.md` with table relationship diagrams (ASCII trees) and reducer flow descriptions
+- **Update these docs every time backend code changes** (new tables, new reducers, schema modifications)
+
 ## Editing Behavior
 
 - Make the smallest change necessary

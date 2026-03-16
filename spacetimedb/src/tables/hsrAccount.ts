@@ -1,13 +1,13 @@
 import { table, t } from 'spacetimedb/server';
-import { RosterVisibility } from '../types/enums';
 
 export const hsrAccountColumns = {
     id: t.u32().primaryKey().autoInc(),
     userId: t.u32(),
     uid: t.string(),
+    region: t.string(),
     displayLabel: t.string(),
     isActive: t.bool(),
-    rosterVisibility: RosterVisibility,
+    isRosterPublic: t.bool(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
