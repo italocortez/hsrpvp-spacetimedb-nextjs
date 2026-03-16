@@ -37,8 +37,6 @@ next-env.d.ts
 
 #claude context
 .claude/settings.local.json
-.planning
-.planning/
 test/
 notes
 notes/
