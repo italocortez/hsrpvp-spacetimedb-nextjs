@@ -57,8 +57,9 @@ import { schema, table, t } from 'spacetimedb/server';
 import { Timestamp, ScheduleAt } from 'spacetimedb';
 
 // Client — ONLY these packages exist
-import { DbConnection, tables } from './module_bindings';  // Generated!
-import { SpacetimeDBProvider, useTable, Identity } from 'spacetimedb/react';
+import { DbConnection, tables, reducers } from './module_bindings';  // Generated!
+import { SpacetimeDBProvider, useTable, useReducer, useSpacetimeDB } from 'spacetimedb/react';
+import { Identity } from 'spacetimedb';
 ```
 
 ### Table definition — `table(OPTIONS, COLUMNS)`
@@ -107,8 +108,8 @@ const newElement = await createItem({ title: 'Hello' });  // This doesn't work!
 conn.reducers.createItem({ title: 'Hello' });
 
 // ...elsewhere in your app, react to the insert
-conn.on('initialStateSync', () => {
-  // Use onInsert to capture new rows as they arrive
+conn.db.item.onInsert((ctx, row) => {
+  console.log('New item:', row);
 });
 // Or in React: const [items, isReady] = useTable(tables.item);
 ```
@@ -142,6 +143,14 @@ This is a known rough edge — expect a better API for this soon.
 ### Data access in React
 ```typescript
 const [rows, isReady] = useTable(tables.myTable);  // Tuple!
+
+// With query builder filter
+const [online, isReady] = useTable(tables.user.where(r => r.online.eq(true)));
+
+// With callbacks
+const [users, isReady] = useTable(tables.user, {
+  onInsert: (row) => toast(`${row.name} joined`),
+});
 ```
 
 ### CRUD operations (server)
@@ -237,7 +246,8 @@ These are APIs that don't exist — LLMs hallucinate them frequently:
 | `reducer('name', params, fn)` | `export const name = spacetimedb.reducer(params, fn)` |
 | `User.filterByName(...)` | `useTable(tables.user)` + filter in JS |
 | `tables.user.filter(u => ...)` | `useTable(tables.user)` returns array, filter that |
-| `const rows = useTable(table)` | `const [rows, isReady] = useTable(table)` |
+| `const rows = useTable(table)` | `const [rows, isReady] = useTable(tables.user)` |
+| `.subscribeToAll()` | `.subscribeToAllTables()` — method name changed |
 
 ## Feature implementation checklist
 

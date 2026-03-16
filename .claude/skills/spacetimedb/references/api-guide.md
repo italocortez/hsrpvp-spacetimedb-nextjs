@@ -7,14 +7,6 @@
 
 ---
 
-## Language-Specific Rules
-
-| Language | Rule File |
-|----------|-----------|
-| **TypeScript/React** | `spacetimedb-typescript.mdc` (MANDATORY, lives on .claude/spacetimedb/) |
-
----
-
 ## Core Concepts
 
 1. **Reducers are transactional** — they do not return data to callers
@@ -182,6 +174,7 @@ const [items, isReady] = useTable(tables.item);
 | `ctx.db` in procedures | `ctx.withTx(tx => tx.db...)` | Procedures need explicit transactions |
 | `ctx.myTable` in procedure tx | `tx.db.myTable` | Wrong context variable |
 | `.iter()` when index exists | Use `.find()` / `.filter()` on index | Unnecessary full table scan |
+| `.subscribeToAll()` | `.subscribeToAllTables()` | Method does not exist |
 | `snake_case` struct fields | Use `camelCase` for all struct fields | Convention mismatch with table columns |
 | Shared audit column import | Define audit columns inline per table | Unwanted coupling between table files |
 | Missing `auditInsert`/`auditUpdate` | Every insert/update must set audit fields | Missing audit trail |
@@ -199,6 +192,7 @@ const [items, isReady] = useTable(tables.item);
 | `const rows = useTable(table)` | `const [rows, isReady] = useTable(table)` | Tuple destructuring |
 | Optimistic UI updates | Let subscriptions drive state | Desync issues |
 | `<SpacetimeDBProvider builder={...}>` | `connectionBuilder={...}` | Wrong prop name |
+| `onUpdate`/`onDelete` on event table | Only `onInsert` exists for event tables | No callback fires (rows never persist) |
 
 ---
 
@@ -272,6 +266,7 @@ t.string()             // Text
 t.bool()               // Boolean
 t.timestamp()          // Timestamp (use ctx.timestamp for current time)
 t.scheduleAt()         // For scheduled tables only
+t.array(t.string())    // Array of primitives (also works with t.u64(), t.object(), etc.)
 
 // Product types (nested objects) — use t.object, NOT t.struct
 const Point = t.object('Point', { x: t.i32(), y: t.i32() });
@@ -566,20 +561,40 @@ if (scheduleAt.tag === 'Time') {
 
 ### Subscription patterns (client-side)
 ```typescript
-// Subscribe to ALL public tables (simplest)
-conn.subscriptionBuilder().subscribeToAll();
+// Subscribe to ALL public tables (simplest — not recommended for production)
+conn.subscriptionBuilder().subscribeToAllTables();
 
-// Subscribe to specific tables with SQL
+// Subscribe with raw SQL
 conn.subscriptionBuilder().subscribe([
   'SELECT * FROM message',
   'SELECT * FROM room WHERE is_public = true',
 ]);
 
+// Subscribe with typed query builder (preferred — type-safe)
+conn.subscriptionBuilder().subscribe(tables.user);
+conn.subscriptionBuilder().subscribe(
+  tables.user.where(r => r.online.eq(true))
+);
+conn.subscriptionBuilder().subscribe([tables.user, tables.message]);
+
 // Handle subscription lifecycle
 conn.subscriptionBuilder()
   .onApplied(() => console.log('Initial data loaded'))
-  .onError((e) => console.error('Subscription failed:', e))
-  .subscribeToAll();
+  .onError((ctx, e) => console.error('Subscription failed:', e))
+  .subscribe(tables.user);
+```
+
+### SubscriptionHandle
+`subscribe()` returns a handle to manage the subscription:
+```typescript
+const handle = conn.subscriptionBuilder().subscribe(tables.user);
+
+handle.isActive();       // true if applied and not unsubscribed
+handle.isEnded();        // true if terminated
+handle.unsubscribe();    // Remove subscription, rows cleared from cache
+handle.unsubscribeThen((ctx) => {
+  console.log('Unsubscribe confirmed');
+});
 ```
 
 ### Private table + view pattern (RECOMMENDED)
@@ -614,11 +629,21 @@ spacetimedb.view(
   (ctx) => [...ctx.db.privateData.iter()]  // Works but VERY slow at scale
 );
 
-// ✅ GOOD — index lookup enables targeted invalidation
+// ✅ GOOD — index lookup enables targeted invalidation (returns multiple rows)
 spacetimedb.view(
   { name: 'my_data', public: true },
   t.array(PrivateData.rowType),
   (ctx) => [...ctx.db.privateData.by_owner.filter(ctx.sender)]
+);
+
+// ✅ GOOD — t.option() for at-most-one row (e.g. "get my player")
+spacetimedb.view(
+  { name: 'my_player', public: true },
+  t.option(Player.rowType),
+  (ctx) => {
+    const row = ctx.db.player.identity.find(ctx.sender);
+    return row ?? undefined;
+  }
 );
 ```
 
@@ -632,18 +657,25 @@ spacetimedb.anonymousView(
   t.array(Player.rowType),
   (ctx) =>
     ctx.from.player
-      .where(p => p.score.gt(1000))
+      .where(p => p.score.gt(1000n))
+      .where(p => p.name.ne('BOT'))
 );
+
+// Query builder operators:
+//   Comparison: eq, ne, lt, lte, gt, gte
+//   Boolean:    and(), or(), not()
+//   Joins:      leftSemijoin(), rightSemijoin()
 ```
 
 ### ViewContext vs AnonymousViewContext
 ```typescript
-// ViewContext — has ctx.sender, result varies per user (computed per-subscriber)
+// ViewContext — has ctx.sender, result varies per user (computed separately per subscriber)
 spacetimedb.view({ name: 'my_items', public: true }, t.array(Item.rowType), (ctx) => {
   return [...ctx.db.item.by_owner.filter(ctx.sender)];
 });
 
-// AnonymousViewContext — no ctx.sender, same result for everyone (shared, better perf)
+// AnonymousViewContext — no ctx.sender, same result for everyone
+// SpacetimeDB materializes the view ONCE and serves that result to all subscribers (much better perf)
 spacetimedb.anonymousView({ name: 'leaderboard', public: true }, t.array(LeaderboardRow), (ctx) => {
   return [...ctx.db.player.by_score.filter(/* top scores */)];
 });
@@ -661,25 +693,184 @@ conn.subscriptionBuilder().subscribe([
 
 ## 8) React Integration
 
-### Key patterns
+### Provider setup
 ```typescript
-// Memoize connectionBuilder to prevent reconnects on re-render
-const builder = useMemo(() => 
-  DbConnection.builder()
-    .withUri(SPACETIMEDB_URI)
-    .withDatabaseName(MODULE_NAME)
-    .withToken(localStorage.getItem('auth_token') || undefined)
-    .onConnect(onConnect)
-    .onConnectError(onConnectError),
-  []  // Empty deps - only create once
-);
+import { SpacetimeDBProvider } from 'spacetimedb/react';
+import { DbConnection } from './module_bindings';
 
-// useTable returns tuple [rows, isReady]
+// connectionBuilder prop takes builder WITHOUT calling .build()
+const builder = DbConnection.builder()
+  .withUri(SPACETIMEDB_URI)
+  .withDatabaseName(MODULE_NAME)
+  .withToken(localStorage.getItem('auth_token') || undefined)
+  .onConnect((conn, identity, token) => {
+    localStorage.setItem('auth_token', token);
+    conn.subscriptionBuilder().subscribeToAllTables();
+  })
+  .onConnectError((ctx, err) => console.error(err))
+  .onDisconnect((ctx, err) => console.log('Disconnected', err));
+
+// Memoize to prevent reconnects on re-render
+const memoized = useMemo(() => builder, []);
+
+<SpacetimeDBProvider connectionBuilder={memoized}>
+  {children}
+</SpacetimeDBProvider>
+```
+
+### useTable — subscribe and read rows
+```typescript
+import { useTable } from 'spacetimedb/react';
+import { tables } from './module_bindings';
+
+// Basic — subscribe to all rows, returns [rows, isReady]
 const [rows, isReady] = useTable(tables.myTable);
 
-// Compare identities using toHexString()
+// With query builder filter (type-safe)
+const [onlineUsers, isReady] = useTable(
+  tables.user.where(r => r.online.eq(true))
+);
+
+// With inline callbacks for row events
+const [users, isReady] = useTable(tables.user, {
+  onInsert: (row) => console.log('New user:', row.name),
+  onDelete: (row) => console.log('User left:', row.name),
+  onUpdate: (oldRow, newRow) => console.log('Updated:', oldRow.name, '->', newRow.name),
+});
+```
+
+### useReducer — call reducers from React
+```typescript
+import { useReducer } from 'spacetimedb/react';
+import { reducers } from './module_bindings';
+
+const sendMessage = useReducer(reducers.sendMessage);
+
+// Call it — same object syntax as conn.reducers.*
+sendMessage({ text: 'Hello!' });
+
+// Zero-param reducers can be called with no args
+const login = useReducer(reducers.loginAsGuest);
+login();
+```
+
+### useSpacetimeDB — connection state
+```typescript
+import { useSpacetimeDB } from 'spacetimedb/react';
+
+const {
+  isActive,         // boolean — connection active
+  identity,         // Identity | undefined
+  token,            // string | undefined
+  connectionId,     // ConnectionId
+  connectionError,  // Error | undefined
+  getConnection,    // () => DbConnection | null
+} = useSpacetimeDB();
+
+const conn = getConnection();
+```
+
+### Identity comparison
+```typescript
 const isOwner = row.ownerId.toHexString() === myIdentity.toHexString();
 ```
+
+### Table row callbacks (client-side)
+
+React to individual row changes on regular tables:
+
+```typescript
+// Register callbacks after connection is established
+conn.db.myTable.onInsert((ctx, row) => {
+  console.log('New row:', row);
+});
+
+conn.db.myTable.onUpdate((ctx, oldRow, newRow) => {
+  console.log('Updated:', oldRow, '->', newRow);
+});
+
+conn.db.myTable.onDelete((ctx, row) => {
+  console.log('Deleted:', row);
+});
+```
+
+These fire for ALL changes (yours and others'). Remove callbacks with `conn.db.myTable.removeOnInsert(callback)` (same for `removeOnUpdate`, `removeOnDelete`).
+
+### Per-reducer callbacks
+```typescript
+// Register a callback for a specific reducer (fires for all callers)
+conn.reducers.onUpdateUsername((ctx) => {
+  console.log('Status:', ctx.event.status);  // { tag: 'Committed' } | { tag: 'Failed', value: string } | { tag: 'OutOfEnergy' }
+  console.log('Caller:', ctx.event.callerIdentity);
+  console.log('Energy:', ctx.event.energyConsumed);
+});
+
+// For reacting only to YOUR OWN reducer call:
+conn.reducers.updateUsername({ newUsername: 'alice' })._then((ctx) => {
+  // Fires only for this specific call
+});
+```
+
+### Client-side cache access
+```typescript
+// Count rows currently in cache
+const count = conn.db.user.count();
+
+// Iterate all cached rows
+for (const user of conn.db.user.iter()) {
+  console.log(user.name);
+}
+
+// Find by unique index (client-side)
+const user = conn.db.user.id.find(42);
+```
+
+### Event context discriminator
+```typescript
+// In row callbacks, check ctx.event.tag to distinguish what caused the change
+conn.db.user.onInsert((ctx, row) => {
+  if (ctx.event.tag === 'Reducer') {
+    console.log('Caused by reducer:', ctx.event.value.reducer.name);
+  } else if (ctx.event.tag === 'SubscribeApplied') {
+    console.log('Initial sync — subscription applied');
+  }
+});
+// Event tags: 'Reducer' | 'SubscribeApplied' | 'UnsubscribeApplied' | 'Error' | 'Transaction'
+```
+
+### Event tables
+
+Event tables are transient — rows exist only for the duration of the transaction that created them. They broadcast to subscribed clients on commit, then are automatically deleted. Between transactions, the table is always empty.
+
+```typescript
+// Server — define with event: true (cannot be changed after publish)
+const DamageEvent = table({
+  public: true,
+  event: true,
+}, {
+  entityId: t.identity(),
+  damage: t.u32(),
+  source: t.string(),
+});
+
+// Server — insert like a normal table (inside a reducer)
+ctx.db.damageEvent.insert({ entityId: targetId, damage: 50, source: 'melee_attack' });
+```
+
+**Client-side differences from regular tables:**
+- **Only `onInsert` fires** — no `onUpdate` or `onDelete` (rows never persist client-side)
+- **`count()` always returns 0**, `iter()` yields nothing — rows never enter the client cache
+- Subscriptions use the same SQL syntax: `SELECT * FROM damage_event`
+- Event tables **cannot** be used in subscription joins or inside view functions
+
+```typescript
+// Client — only onInsert is available
+conn.db.damageEvent.onInsert((ctx, event) => {
+  showDamageNumber(event.entityId, event.damage);
+});
+```
+
+This project uses `LobbyCursorEvent` as an event table for real-time cursor broadcasting.
 
 ---
 
@@ -743,11 +934,15 @@ spacetimedb.procedure({ url: t.string() }, t.unit(), (ctx, { url }) => {
 
 ## 10) Project Structure
 
-### Server (`backend/spacetimedb/`)
+### Server (`spacetimedb/`)
 ```
-src/schema.ts   → Tables, export spacetimedb
-src/index.ts    → Reducers, lifecycle, import schema
-package.json    → { "type": "module", "dependencies": { "spacetimedb": "^1.11.0" } }
+src/schema.ts   → Imports all tables, exports spacetimedb via schema({...})
+src/index.ts    → Imports all reducers, lifecycle hooks (clientConnected/Disconnected)
+src/tables/     → One file per table (e.g. user.ts, lobby.ts)
+src/reducers/   → One file per domain (e.g. auth.ts, admin.ts)
+src/helpers/    → Shared utilities (e.g. ensurePermissions.ts, auditColumns.ts)
+src/types/      → enums.ts, structs.ts
+package.json    → { "type": "module", "dependencies": { "spacetimedb": "^2.0.0" } }
 tsconfig.json   → Standard config
 ```
 
@@ -757,12 +952,12 @@ schema.ts → defines tables AND exports spacetimedb
 index.ts  → imports spacetimedb from ./schema, defines reducers
 ```
 
-### Client (`client/`)
+### Client (Next.js)
 ```
-src/module_bindings/ → Generated (spacetime generate)
-src/main.tsx         → Provider, connection setup
-src/App.tsx          → UI components
-src/config.ts        → MODULE_NAME, SPACETIMEDB_URI
+src/module_bindings/ → Generated (spacetime generate — don't edit!)
+app/                 → Next.js App Router pages
+components/features/ → Feature-based component organization
+lib/                 → Shared utilities and configuration
 ```
 
 ---
@@ -801,6 +996,6 @@ spacetime logs <module-name>
 7. **Use BigInt for u64/i64 fields** — `0n`, `1n`, not `0`, `1`
 8. **Reducers are transactional** — they do not return data
 9. **Reducers must be deterministic** — no filesystem, network, timers, random
-10. **Views should use index lookups** — `.iter()` causes severe performance issues
+10. **Views should use index lookups** — `.iter()` causes severe performance issues. Return `t.array()` for multiple rows, `t.option()` for at-most-one
 11. **Procedures need `ctx.withTx()`** — `ctx.db` doesn't exist in procedures
 12. **Sum type values** — use `{ tag: 'variant', value: payload }` not `{ variant: payload }`
