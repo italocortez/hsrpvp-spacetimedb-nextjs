@@ -15,12 +15,12 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Roster Management
 
-- [ ] **ROST-01**: User can create an HSR account entry with a display label and set it as active
-- [ ] **ROST-02**: User can add owned characters with eidolon level (0-6) to an HSR account
+- [x] **ROST-01**: User can create an HSR account entry with a display label and set it as active
+- [x] **ROST-02**: User can add owned characters with eidolon level (0-6) to an HSR account
 - [x] **ROST-03**: User can add owned lightcones with superimposition level (1-5) to an HSR account
-- [ ] **ROST-04**: User can manage multiple HSR accounts and select which is active for play
-- [ ] **ROST-05**: Admin can add/edit roster entries on behalf of any user
-- [ ] **ROST-06**: User can set roster visibility to public or private
+- [x] **ROST-04**: User can manage multiple HSR accounts and select which is active for play
+- [x] **ROST-05**: Admin can add/edit roster entries on behalf of any user
+- [x] **ROST-06**: User can set roster visibility to public or private
 - [x] **ROST-07**: Roster visibility is overridden by lobby/tournament open-roster settings
 - [x] **ROST-08**: Account rating is calculated from roster composition (characters + eidolons + lightcones owned)
 
@@ -178,12 +178,12 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | SCHM-01 | Phase 1 | Complete |
 | SCHM-02 | Phase 1 | Complete |
 | SCHM-03 | Phase 1 | Complete |
-| ROST-01 | Phase 2 | Pending |
-| ROST-02 | Phase 2 | Pending |
+| ROST-01 | Phase 2 | Complete |
+| ROST-02 | Phase 2 | Complete |
 | ROST-03 | Phase 2 | Complete |
-| ROST-04 | Phase 2 | Pending |
-| ROST-05 | Phase 2 | Pending |
-| ROST-06 | Phase 2 | Pending |
+| ROST-04 | Phase 2 | Complete |
+| ROST-05 | Phase 2 | Complete |
+| ROST-06 | Phase 2 | Complete |
 | ROST-07 | Phase 2 | Complete |
 | ROST-08 | Phase 2 | Complete |
 | TRNT-01 | Phase 3 | Pending |

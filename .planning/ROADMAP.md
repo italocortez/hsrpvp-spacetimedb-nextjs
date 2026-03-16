@@ -13,7 +13,7 @@ This milestone builds the complete SpacetimeDB backend for the HSRPVP competitiv
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Schema Foundation** - Define all enums, structs, and table schemas before any reducer is written (completed 2026-03-16)
-- [ ] **Phase 2: Roster Management** - HSR account and character/lightcone ownership with server-enforced visibility
+- [x] **Phase 2: Roster Management** - HSR account and character/lightcone ownership with server-enforced visibility (completed 2026-03-16)
 - [ ] **Phase 3: Tournament System** - Tournament lifecycle, participant registration, teams, and referee assignment
 - [ ] **Phase 4: Bracket Generation** - Single/double elimination and group phase bracket rows with explicit FK advancement
 - [ ] **Phase 5: Match Results and MMR** - Score submission, screenshot verification, ELO calculation, and leaderboard
@@ -50,7 +50,7 @@ Plans:
   4. Roster visibility is overridden to open when a lobby or tournament enforces open-roster settings
   5. An admin can create or update roster entries on behalf of any user via a dedicated reducer
   6. A per-account rating value is stored and recalculated when roster contents change
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
 - [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
@@ -192,7 +192,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Schema Foundation | 2/2 | Complete   | 2026-03-16 |
-| 2. Roster Management | 1/2 | In Progress|  |
+| 2. Roster Management | 2/2 | Complete   | 2026-03-16 |
 | 3. Tournament System | 0/? | Not started | - |
 | 4. Bracket Generation | 0/? | Not started | - |
 | 5. Match Results and MMR | 0/? | Not started | - |
