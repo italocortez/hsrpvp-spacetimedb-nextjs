@@ -41,9 +41,9 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Teams
 
-- [x] **TEAM-01**: User can create a persistent team with name and roster
-- [x] **TEAM-02**: User can invite other users to join their team
-- [x] **TEAM-03**: User can accept/decline team invitations
+- [ ] **TEAM-01**: User can create a persistent team with name and roster — *Out of Scope (v0.5)*
+- [ ] **TEAM-02**: User can invite other users to join their team — *Out of Scope (v0.5)*
+- [ ] **TEAM-03**: User can accept/decline team invitations — *Out of Scope (v0.5)*
 - [x] **TEAM-04**: Ad-hoc groups can be formed for a specific tournament without a persistent team
 - [x] **TEAM-05**: Coach role exists on a team: can observe match (cursor tracking) but cannot pick
 
@@ -170,6 +170,7 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | Persistent chat history | Ephemeral by design |
 | Automated anti-smurf detection | Premature without large player base |
 | Global/public chat room | Moderation burden; community chat belongs in Discord |
+| Persistent teams (TEAM-01/02/03) | Deferred beyond v0.5 — tournament-scoped teams (TEAM-04) cover Phase 3 needs |
 
 ## Traceability
 
@@ -198,9 +199,9 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | TRNT-10 | Phase 3 | Complete |
 | TRNT-11 | Phase 3 | Complete |
 | TRNT-12 | Phase 3 | Complete |
-| TEAM-01 | Phase 3 | Complete |
-| TEAM-02 | Phase 3 | Complete |
-| TEAM-03 | Phase 3 | Complete |
+| TEAM-01 | Phase 3 | Out of Scope |
+| TEAM-02 | Phase 3 | Out of Scope |
+| TEAM-03 | Phase 3 | Out of Scope |
 | TEAM-04 | Phase 3 | Complete |
 | TEAM-05 | Phase 3 | Complete |
 | BRKT-01 | Phase 4 | Pending |
@@ -262,9 +263,10 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 
 **Coverage:**
 - v0.5 requirements: 84 total
-- Mapped to phases: 84
+- Mapped to phases: 81
+- Out of scope: 3 (TEAM-01, TEAM-02, TEAM-03)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after roadmap creation — coverage count corrected to 84 (Teams, Anonymous Play categories included in final count)*
+*Last updated: 2026-03-17 — TEAM-01/02/03 reclassified as Out of Scope (v0.5); tournament-scoped teams (TEAM-04) cover Phase 3 needs*
