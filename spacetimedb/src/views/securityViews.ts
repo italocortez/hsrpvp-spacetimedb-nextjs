@@ -3,6 +3,10 @@ import { t } from 'spacetimedb/server';
 import { User } from '../tables/user';
 import { UserIdentity } from '../tables/userIdentity';
 import { Lobby } from '../tables/lobby';
+import { CostSet } from '../tables/costSet';
+import { CostSetDraftCharacter } from '../tables/costSetDraftCharacter';
+import { CostSetDraftLightcone } from '../tables/costSetDraftLightcone';
+import { CostSetDraftSynergy } from '../tables/costSetDraftSynergy';
 
 // ---------------------------------------------------------------------------
 // 1. Lobby Browser (anonymous view) — all public lobbies, no passwordHash
@@ -78,5 +82,93 @@ spacetimedb.view(
         const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
         if (!mapping) return undefined;
         return ctx.db.User.id.find(mapping.userId) ?? undefined;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 6. My Cost Sets (per-user view) — CostSet rows owned by the requesting user
+//    Used by TOs to manage their own cost sets in the draft/publish workflow.
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_cost_sets', public: true },
+    t.array(CostSet.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const user = ctx.db.User.id.find(mapping.userId);
+        if (!user) return [];
+        return [...ctx.db.CostSet.creator_id.filter(user.id)];
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 7. My Draft Character Costs (per-user view) — CostSetDraftCharacter rows
+//    for all cost sets owned by the requesting user. Draft tables are private
+//    (not broadcast to clients), so this view is the only way to read them.
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_draft_character_costs', public: true },
+    t.array(CostSetDraftCharacter.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const user = ctx.db.User.id.find(mapping.userId);
+        if (!user) return [];
+        // Collect all cost set ids owned by this user
+        const mySets = [...ctx.db.CostSet.creator_id.filter(user.id)];
+        const mySetIds = new Set(mySets.map(s => s.id));
+        // Return all draft character rows for those sets
+        // iter() is used here because there is no cross-table index on (creatorId, costSetId)
+        const results: any[] = [];
+        for (const row of ctx.db.CostSetDraftCharacter.iter()) {
+            if (mySetIds.has(row.costSetId)) results.push(row);
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 8. My Draft Lightcone Costs (per-user view) — CostSetDraftLightcone rows
+//    for all cost sets owned by the requesting user.
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_draft_lightcone_costs', public: true },
+    t.array(CostSetDraftLightcone.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const user = ctx.db.User.id.find(mapping.userId);
+        if (!user) return [];
+        const mySets = [...ctx.db.CostSet.creator_id.filter(user.id)];
+        const mySetIds = new Set(mySets.map(s => s.id));
+        // iter() is used here because there is no cross-table index on (creatorId, costSetId)
+        const results: any[] = [];
+        for (const row of ctx.db.CostSetDraftLightcone.iter()) {
+            if (mySetIds.has(row.costSetId)) results.push(row);
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 9. My Draft Synergy Costs (per-user view) — CostSetDraftSynergy rows
+//    for all cost sets owned by the requesting user.
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_draft_synergy_costs', public: true },
+    t.array(CostSetDraftSynergy.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const user = ctx.db.User.id.find(mapping.userId);
+        if (!user) return [];
+        const mySets = [...ctx.db.CostSet.creator_id.filter(user.id)];
+        const mySetIds = new Set(mySets.map(s => s.id));
+        // iter() is used here because there is no cross-table index on (creatorId, costSetId)
+        const results: any[] = [];
+        for (const row of ctx.db.CostSetDraftSynergy.iter()) {
+            if (mySetIds.has(row.costSetId)) results.push(row);
+        }
+        return results;
     }
 );
