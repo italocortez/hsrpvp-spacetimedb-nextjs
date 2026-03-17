@@ -68,7 +68,7 @@ Indexes go in OPTIONS (1st arg), never in COLUMNS (2nd arg).
 export const MyTable = table({
   name: 'my_table',
   public: true,
-  indexes: [{ name: 'my_table_owner_id', algorithm: 'btree', columns: ['ownerId'] }]
+  indexes: [{ name: 'my_table_owner_id', accessor: 'my_table_owner_id', algorithm: 'btree', columns: ['ownerId'] }]
 }, {
   id: t.u64().primaryKey().autoInc(),
   ownerId: t.identity(),
@@ -329,6 +329,15 @@ lib/                    -> Shared utilities and configuration
 
 **Never mix conventions within a layer.** All struct fields and table columns MUST be camelCase. Enum variants MUST be PascalCase (standard TypeScript enum convention).
 
+**Index definitions MUST include `accessor`** — as of SpacetimeDB 2.0.4 the SDK requires it (previously optional). The `accessor` value must match `name`:
+```typescript
+// ✅ Project convention — always include accessor matching name
+indexes: [{ name: 'my_table_col', accessor: 'my_table_col', algorithm: 'btree', columns: ['col'] }]
+
+// ❌ Never omit accessor in this project
+indexes: [{ name: 'my_table_col', algorithm: 'btree', columns: ['col'] }]
+```
+
 ## Audit columns policy (this repo — ENFORCED)
 
 Every table MUST have these 4 columns at the end of its column definition (exception: `ServerIdentity`):
@@ -358,6 +367,7 @@ lastModifiedDate: t.timestamp(),
 | Lookup by PK | `ctx.db.Table.pkColumn.find(value)` | `for (const r of ctx.db.Table.iter())` |
 | Lookup by unique column | `ctx.db.Table.uniqueCol.find(value)` | `.iter()` + manual filter |
 | Lookup by indexed column | `[...ctx.db.Table.index_name.filter(value)]` | `.iter()` + manual filter |
+| Multi-column index lookup | `[...ctx.db.Table.idx_name.filter({col1, col2})]` | `.iter()` + manual match on each column |
 | Composite PK lookup | `(ctx.db.Table as any).primaryKey.find({...})` | `.iter()` + manual match |
 | Identity hex string match | `.iter()` (no hex→Identity conversion exists) | N/A — iter is the only option |
 | Composite key upsert (no PK accessor) | `.iter()` + match | N/A — iter is the only option |

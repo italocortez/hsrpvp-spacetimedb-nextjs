@@ -34,7 +34,7 @@ export const lobbyColumns = {
 
     // Visibility:
     isPublic: t.bool(),
-    passwordHash: t.string().optional(),
+    // passwordHash moved to LobbyPassword (private table) — never broadcast to clients
 
     // Disconnect behavior:
     disconnectPolicy: DisconnectPolicy,

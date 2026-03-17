@@ -3,6 +3,7 @@
         "clockworklabs",
         "hsrpvp",
         "maincloud",
-        "spacetimedb"
+        "spacetimedb",
+        "vercel"
     ]
 }

@@ -157,6 +157,8 @@ const [items, isReady] = useTable(tables.item);
 | Entrypoint not at `src/index.ts` | Use `src/index.ts` | Module won't bundle |
 | `indexes` in COLUMNS (2nd arg) | `indexes` in OPTIONS (1st arg) | "reading 'tag'" error |
 | Index without `algorithm` | `algorithm: 'btree'` | "reading 'tag'" error |
+| Index without `accessor` | Include `accessor` matching `name` (required since 2.0.4) | Throws error |
+| `t.bool()` returns `0`/`1` not `true`/`false` | Fixed in 2.0.4 — fast-path now returns proper booleans | Type mismatch (number vs boolean) |
 | `filter({ ownerId })` | `filter(ownerId)` | "does not exist in type 'Range'" |
 | `.filter()` on unique column | `.find()` on unique column | TypeError |
 | `insert({ ...without id })` | `insert({ id: 0n, ... })` | "Property 'id' is missing" |
@@ -166,7 +168,7 @@ const [items, isReady] = useTable(tables.item);
 | Same index name in multiple tables | Prefix with table name | "name is used for multiple entities" |
 | `.indexName.filter()` after removing index | Use `.iter()` + manual filter | "Cannot read properties of undefined" |
 | Import spacetimedb from index.ts | Import from schema.ts | "Cannot access before initialization" |
-| Multi-column index `.filter()` | **⚠️ BROKEN** — use single-column | PANIC or silent empty results |
+| Multi-column index `.filter(singleVal)` | Pass object with all columns: `.filter({col1, col2})` | PANIC or silent empty results |
 | `JSON.stringify({ id: row.id })` | Convert BigInt first: `{ id: row.id.toString() }` | "Do not know how to serialize a BigInt" |
 | `ScheduleAt.Time(timestamp)` | `ScheduleAt.time(timestamp)` (lowercase) | "ScheduleAt.Time is not a function" |
 | `ctx.db.foo.myIndexName.filter()` | Use exact name: `ctx.db.foo.my_index_name.filter()` | "Cannot read properties of undefined" |
@@ -214,7 +216,7 @@ export const Task = table({ name: 'task' }, {
 export const Task = table({ 
   name: 'task',
   public: true,
-  indexes: [{ name: 'by_owner', algorithm: 'btree', columns: ['ownerId'] }]
+  indexes: [{ name: 'by_owner', accessor: 'by_owner', algorithm: 'btree', columns: ['ownerId'] }]
 }, {
   id: t.u64().primaryKey().autoInc(),
   ownerId: t.identity(),
@@ -340,7 +342,7 @@ for (const m of ctx.db.roomMember.iter()) {
 export const Message = table({ 
   name: 'message',
   public: true,
-  indexes: [{ name: 'message_room_id', algorithm: 'btree', columns: ['roomId'] }]
+  indexes: [{ name: 'message_room_id', accessor: 'message_room_id', algorithm: 'btree', columns: ['roomId'] }]
 }, {
   id: t.u64().primaryKey().autoInc(),
   roomId: t.u64(),
@@ -357,7 +359,7 @@ export const Message = table({
 **Index names — NO transformation, use EXACTLY as defined:**
 ```typescript
 // Schema definition
-indexes: [{ name: 'canvas_member_canvas_id', algorithm: 'btree', columns: ['canvasId'] }]
+indexes: [{ name: 'canvas_member_canvas_id', accessor: 'canvas_member_canvas_id', algorithm: 'btree', columns: ['canvasId'] }]
 
 // ❌ WRONG — don't assume camelCase transformation
 ctx.db.canvasMember.canvasMember_canvas_id.filter(...)  // WRONG!
@@ -372,8 +374,8 @@ ctx.db.canvasMember.canvas_member_canvas_id.filter(...)
 **Index naming pattern — use `{tableName}_{columnName}`:**
 ```typescript
 // ✅ GOOD — unique names across entire module
-indexes: [{ name: 'message_room_id', algorithm: 'btree', columns: ['roomId'] }]
-indexes: [{ name: 'reaction_message_id', algorithm: 'btree', columns: ['messageId'] }]
+indexes: [{ name: 'message_room_id', accessor: 'message_room_id', algorithm: 'btree', columns: ['roomId'] }]
+indexes: [{ name: 'reaction_message_id', accessor: 'reaction_message_id', algorithm: 'btree', columns: ['messageId'] }]
 
 // ❌ BAD — will collide if multiple tables use same index name
 indexes: [{ name: 'by_owner', ... }]  // in Task table
@@ -393,15 +395,42 @@ const rows = [...ctx.db.task.by_owner.filter(ownerId)];
 const row = ctx.db.player.identity.find(ctx.sender);
 ```
 
-### ⚠️ Multi-column indexes are BROKEN
-```typescript
-// ❌ DON'T — causes PANIC
-ctx.db.scores.by_player_level.filter(playerId);
+### Multi-column indexes
+Multi-column btree indexes work in SpacetimeDB 2.0+ (fixed in PR #3589). Pass an object with **all indexed columns** to `.filter()`.
 
-// ✅ DO — use single-column index + manual filter
-for (const row of ctx.db.scores.by_player.filter(playerId)) {
-  if (row.level === targetLevel) { /* ... */ }
+```typescript
+// Define a multi-column index
+const character_position = spacetimedb.table({
+  ownerId: t.identity().primaryKey(),
+  x: t.i32(),
+  y: t.i32(),
+  z: t.i32(),
+}, {
+  indexes: [{ name: 'char_idx_xyz', accessor: 'char_idx_xyz', algorithm: 'btree', columns: ['x', 'y', 'z'] }]
+});
+
+// ✅ Filter with object containing all indexed columns — O(log n) lookup
+const occupied = Array.from(ctx.db.character_position.char_idx_xyz.filter({ x, y, z }));
+
+// ❌ DON'T pass a single value to a multi-column index
+ctx.db.character_position.char_idx_xyz.filter(x); // PANIC
+
+// ❌ DON'T iterate entire table and manually check — O(n) full scan
+for (const other of ctx.db.character_position.iter()) {
+  if (other.x === x && other.z === z) { /* ... */ } // Slow!
 }
+```
+
+### Ranged index filtering (since 2.0.5)
+`Range` and `Bound` are exported from `spacetimedb/server` for ranged queries on btree indexes:
+
+```typescript
+import { Range, Bound } from 'spacetimedb/server';
+
+// Range filter on a btree index — find scores between 100 and 500
+const rows = [...ctx.db.leaderboard.by_score.filter(
+  new Range(new Bound.Inclusive(100), new Bound.Inclusive(500))
+)];
 ```
 
 ---
@@ -613,7 +642,7 @@ handle.unsubscribeThen((ctx) => {
 // Private table with index on ownerId
 export const PrivateData = table(
   { name: 'private_data',
-    indexes: [{ name: 'by_owner', algorithm: 'btree', columns: ['ownerId'] }]
+    indexes: [{ name: 'by_owner', accessor: 'by_owner', algorithm: 'btree', columns: ['ownerId'] }]
   },
   {
     id: t.u64().primaryKey().autoInc(),
@@ -921,6 +950,9 @@ spacetimedb.procedure({ url: t.string() }, t.unit(), (ctx, { url }) => {
   return {};
 });
 ```
+
+### Procedure timeouts (HTTP calls)
+Default timeout: **30s**. Maximum ceiling: **180s** (3 minutes). These limits apply to `ctx.http.fetch()` calls within procedures. Sufficient for LLM API calls and most external services.
 
 ### Key differences from reducers
 | Reducers | Procedures |

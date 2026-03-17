@@ -252,12 +252,25 @@ export function recalcDuplicateUid(ctx: any, uid: string, actorId: number): void
 }
 ```
 
+### Pattern 6: View-Ready Index Preparation
+**What:** Adding btree indexes on columns that will later be used in view WHERE clauses, at the time the column is created
+**When to use:** When adding a column (like costSetId) that will be filtered by a future anonymous or per-user view
+**Why:** costSetId indexes enable future anonymous views that filter by cost set. The pattern: when adding a column that will later be used in a view's WHERE clause, add a btree index immediately. This avoids a schema migration later (which would require --clear-database).
+**Example:**
+```typescript
+// In hsrCharacterCost.ts — costSetId added in Phase 2, anonymous view added in Phase 3
+indexes: [
+    { name: 'char_cost_set_id', accessor: 'char_cost_set_id', algorithm: 'btree', columns: ['costSetId'] },
+],
+```
+
 ### Anti-Patterns to Avoid
 - **Returning data from reducers:** SpacetimeDB reducers are transactional and do not return data. Read via subscriptions.
 - **Using .iter() when an index exists:** Always use `.find()` for PK lookups, `.filter()` for indexed columns. The HsrAccount table has btree indexes on userId and uid.
 - **Trusting identity arguments:** Always resolve via `ctx.sender` -> UserIdentity -> User. Never accept a userId parameter from clients for self-operations.
 - **Non-atomic batch validation:** Validate ALL items in a batch BEFORE writing ANY. If validation of item N fails after items 0..N-1 are written, data is inconsistent (reducers are transactional so this is technically safe in SpacetimeDB, but the pattern should be validate-first for clarity).
 - **Multi-column index .filter():** This is BROKEN in SpacetimeDB — causes PANIC or silent empty results. Use single-column btree indexes only.
+- **Broadcasting sensitive data via `public: true`:** SpacetimeDB sends all rows of public tables to all clients. Tables containing passwords, PII, or visibility-controlled data should use views or private tables. (Note: Phase 1 security views are being added separately for User, UserIdentity, and Lobby.)
 
 ## Don't Hand-Roll
 

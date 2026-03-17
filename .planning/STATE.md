@@ -3,11 +3,12 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 02-roster-management
-status: In Progress
-last_updated: "2026-03-16T22:49:00Z"
+current_plan: 02-02 complete — phase 02-roster-management done
+status: planning
+last_updated: "2026-03-16T22:54:37.467Z"
 progress:
   total_phases: 10
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
   completed_plans: 4
 ---
@@ -23,7 +24,7 @@ See: .planning/PROJECT.md
 **Milestone:** v0.5 milestone
 **Current phase:** 02-roster-management
 **Current plan:** 02-02 complete — phase 02-roster-management done
-**Status:** In Progress
+**Status:** Ready to plan
 
 ## Decisions
 

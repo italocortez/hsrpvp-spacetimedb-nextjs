@@ -100,12 +100,21 @@ Players can create HSR account entries, add owned characters with eidolon levels
 - CostSet table, clone reducer, and TO management deferred to Phase 3
 - Approach: Clone + edit (TO clones defaults, exports as CSV, edits, re-imports via existing JSON bulk upsert)
 
+### Views Strategy
+- Phase 2 keeps all roster tables `public: true` (no visibility change)
+- Add btree indexes on `costSetId` for all 3 cost tables (HsrCharacterCost, HsrLightconeCost, HsrSynergyCost) — prepares for Phase 3 anonymous views that filter by cost set
+- The subscription-based approach (own roster always subscribed, opponents' on lobby entry) remains correct for Phase 2
+- Per-user roster views (`my_hsr_accounts`, `my_hsr_characters`) are deferred to Phase 9 when lobby subscription management exists
+- Reason: roster visibility is context-dependent (lobby override, admin bypass) — a single view can't handle the multi-hop join efficiently
+- The two-hop identity resolution pattern (`ctx.sender` -> UserIdentity -> userId -> HsrAccount) has been validated as workable for future views
+
 ### Claude's Discretion
 - Exact guest blocking pattern (ensureVerifiedUser helper vs inline check)
 - isActive handling details (keep as default preference column — Claude decides specifics)
 - Reducer file organization and naming conventions
 - Index strategy for new archetype tables
 - Whether isDuplicateUid recalculation uses a helper or inline logic
+- Whether to add costSetId btree indexes in Phase 2 Plan 01 or defer to Phase 3
 
 </decisions>
 
@@ -203,6 +212,9 @@ Players can create HSR account entries, add owned characters with eidolon levels
 - Lightcone ownership tracking (HsrAccountLightcone) — removed from scope, reconsider in future if needed
 - Tournament multi-account signup enforcement — Phase 3
 - 3-state roster visibility on lobbies/tournaments (enum replacing boolean) — Phase 3/9 when lobby/tournament reducers are built
+- Per-user roster views (my_hsr_accounts, my_hsr_characters) — Phase 9 (requires lobby membership context)
+- Anonymous views for default cost set — Phase 3 (when custom cost sets exist)
+- Make HsrAccount/HsrAccountCharacter private + views — Phase 9 (after lobby subscription pattern established)
 
 </deferred>
 

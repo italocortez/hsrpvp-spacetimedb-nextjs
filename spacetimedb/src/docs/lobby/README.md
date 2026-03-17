@@ -18,7 +18,7 @@ Lobby
 │
 │  Settings:
 │    isAnonymousPlayers, isAnonymousSpectators, isOpenRoster
-│    isPublic, passwordHash?, disconnectPolicy, gameMode
+│    isPublic, disconnectPolicy, gameMode
 │
 │  Lifecycle:
 │    hostDisconnectTime?, lastActivityAt, stage (Waiting/Drafting/Finished)
@@ -29,6 +29,11 @@ Lobby
 │     userId     → User.id
 │     isOnline, participationRole (Player/Spectator)
 │     isReferee, isCoach, teamSlot (Blue/Red/Spectator)
+│
+├── LobbyPassword (PRIVATE — password hash storage)
+│     lobbyId (PK) → Lobby.id
+│     passwordHash
+│     (never sent to clients)
 │
 └── LobbyCursorEvent (ephemeral cursor broadcast)
       lobbyId       → Lobby.id
@@ -42,4 +47,5 @@ Lobby
 - `LobbyConfigSnapshot` (in structs.ts) is only used by MatchSessionHistory for historical snapshots
 - Capacity: 6 players, 2 coaches, 12 spectators = 20 max (enforced in reducer)
 - Visibility: public or private (password-protected), both have joinCode for Jackbox-style quick invite
+- Password hashes stored in private `LobbyPassword` table (never broadcast to clients)
 - `lastActivityAt` tracks lobby activity (cursor, chat, picks) for GC timeout — separate from `lastModifiedDate` audit column

@@ -1,182 +1,92 @@
-# Codebase Concerns
+# Concerns
 
-**Analysis Date:** 2026-03-15
+**Analysis Date:** 2026-03-16
 
-## Tech Debt
+## Security
 
-**Incomplete SpacetimeDB Integration:**
-- Issue: Loadout management uses localStorage for unauthenticated users but SpacetimeDB for authenticated users is not yet implemented. The TODO comment at line 95 in `components/features/hooks/useLoadouts.ts` indicates this is planned but unfinished.
-- Files: `components/features/hooks/useLoadouts.ts` (line 95), `spacetimedb/src/reducers/profile.ts`
-- Impact: Authenticated users cannot persist their loadouts to SpacetimeDB; they lose data when switching devices. All mutations currently skip database writes when `isAuthenticated` is true, resulting in data loss.
-- Fix approach: Implement SpacetimeDB reducers for `saveLoadouts`, `saveCurrentLoadoutIndex`, and `saveRulesetView` in the profile module. Call these reducers in the mutation save callbacks when `isAuthenticated` is true.
+### Lobby passwordHash exposed to all clients (CRITICAL)
+- **Table:** `spacetimedb/src/tables/lobby.ts` — `passwordHash: t.string().optional()` on a `public: true` table
+- **Impact:** Every subscriber receives the password hash. Clients can extract it and attempt to reverse it.
+- **Status:** IN-PROGRESS. Security views work planned to restrict sensitive columns. SpacetimeDB does not yet support column-level visibility; the fix likely requires splitting into a private table or using a view abstraction.
+- **Workaround options:** Move `passwordHash` to a separate non-public table. Or validate passwords server-side in a reducer and never store the hash in a public table.
 
-**Type Safety Issues in Admin Panel:**
-- Issue: Cast to `any` throughout admin components to bypass type checking. `(session.user as any).id` in `app/api/auth/authOptions.ts` and `(conn.reducers as any)` in `components/features/admin-view/components/BulkUpsert.tsx` hide type mismatches.
-- Files: `app/api/auth/authOptions.ts` (line 17), `components/features/admin-view/components/BulkUpsert.tsx` (line 210), `components/features/admin-view/components/UserManager.tsx` (line 90)
-- Impact: IDE cannot catch breaking changes in reducer signatures, authentication types, or reducer names. Changes to SpacetimeDB bindings may silently break functionality.
-- Fix approach: Define proper TypeScript types for session extensions and reducer return types. Use TypeScript's type system instead of `any` casts. Update `src/module_bindings` after publishing new module versions.
+### UserIdentity and User tables fully public (HIGH)
+- **Tables:** `user.ts` (`public: true`), `userIdentity.ts` (`public: true`)
+- **Impact:** All clients receive every user's `discordId`, `deletedAt`, `lastLoginAt`, and the full identity-to-userId mapping table. This leaks PII and enables user tracking.
+- **Status:** IN-PROGRESS. Security views planned to expose only necessary columns (id, displayName, avatarCharacterName, isOnline, role) to non-admin subscribers.
 
-**Missing Error Recovery in Offline Scenarios:**
-- Issue: Admin bulk upsert and user management operations do not retry on network failure. Single network hiccup during a large upsert cancels the entire operation with no recovery path.
-- Files: `components/features/admin-view/components/BulkUpsert.tsx` (line 194-221), `components/features/admin-view/components/UserManager.tsx` (line 76-101)
-- Impact: Admins cannot reliably update game data during network instability. Large data imports must be retried manually from scratch.
-- Fix approach: Implement exponential backoff retry logic in admin operations. Store pending operations in localStorage and retry on reconnect.
+### Discord OAuth scope limited to `identify`
+- **File:** `app/api/auth/authOptions.ts`
+- **Impact:** No email available for account recovery. Discord username/avatar changes are not synced automatically.
+- **Risk:** Low. Documented design choice.
 
-## Performance Bottlenecks
+### `any` casts bypass type safety on admin operations
+- **Files:** `admin.ts` (reducer inserts/updates), `BulkUpsert.tsx`, `UserManager.tsx`, `authOptions.ts`
+- **Impact:** Signature changes in SpacetimeDB bindings silently break at runtime instead of failing at compile time.
 
-**Full Table Scans in Admin Reducers:**
-- Problem: Several admin operations iterate through entire tables with `.iter()` to find compound key matches instead of using optimized indexes.
-- Files: `spacetimedb/src/reducers/admin.ts` (lines 293-297 for HsrCharacterCost, lines 344-348 for HsrSynergyCost)
-- Cause: Compound keys (character name + game mode) and composite lookups lack dedicated indexes, forcing linear scans.
-- Current capacity: Acceptable for small datasets (hundreds of rows) but will degrade as game data grows.
-- Improvement path: Add compound indexes to `HsrCharacterCost` and `HsrSynergyCost` tables for (characterName, gameMode) and (sourceName, targetName, gameMode) respectively. Use indexed lookups instead of `.iter()`.
+### No rate limiting on admin or server reducers
+- **Impact:** A compromised admin account could bulk-delete or bulk-modify unlimited data.
 
-**UserIdentity Full Scan in Server Reducers:**
-- Problem: `spacetimedb/src/reducers/server.ts` line 93 iterates all UserIdentity rows to find identity-to-user mappings during server initialization.
-- Files: `spacetimedb/src/reducers/server.ts` (line 93)
-- Cause: Lookups in this context are not performance-critical (one-time server init) but show a pattern that could be problematic elsewhere.
-- Scaling impact: No immediate issue with current user counts, but demonstrates inconsistent index usage.
-- Improvement path: Document why this full scan is necessary and acceptable; consider caching if this reducer is called frequently.
+## Performance
 
-**Client-Side Re-resolution of Team Members:**
-- Problem: `components/features/hooks/useLoadouts.ts` calls `LoadoutManager.resolveTeam()` on every render due to `resolvedTeam` useMemo re-computing on any change to characters or lightcones.
-- Files: `components/features/hooks/useLoadouts.ts` (lines 69-79)
-- Cause: Character and lightcone data changes (client-wide game data updates) trigger expensive resolution for all loadout teams.
-- Impact: Unnecessary CPU cycles during global data updates; perceptible lag on lower-end devices.
-- Improvement path: Memoize character and lightcone lookups separately; only re-resolve teams if their actual team array or lookup data changes, not all game data.
+### Full-table scans in admin reducers
+- **Where:** `admin.ts` lines 301-306 (HsrCharacterCost), 322-327 (HsrLightconeCost), 356-361 (HsrSynergyCost)
+- **Cause:** Composite key lookups (characterName + gameMode) use `.iter()` instead of compound indexes
+- **Scale:** Acceptable for current data volumes (~82 chars, ~156 LCs). Will degrade past 10,000 rows.
 
-## Security Considerations
+### UserIdentity full scan in server_link_discord
+- **Where:** `server.ts` line 93 — iterates all UserIdentity rows to match hex string
+- **Cause:** Identity objects cannot be reconstructed from hex; must iterate to find match
+- **Scale:** O(n) in total identity count. Acceptable under 10,000 users.
 
-**Inadequate Type Checking on Reducer Calls:**
-- Risk: Admin panel and profile operations cast reducer connections to `any`, allowing typos and signature changes to pass TypeScript checks and only fail at runtime.
-- Files: `components/features/admin-view/components/BulkUpsert.tsx` (line 210), `components/features/admin-view/components/UserManager.tsx` (line 90), `app/api/auth/authOptions.ts` (line 17)
-- Current mitigation: SpacetimeDB backend validates all inputs with strict enum checking and key validation before updating tables. Admin permissions are enforced server-side.
-- Recommendations: Generate TypeScript reducer types from SpacetimeDB schema and import them directly instead of casting to `any`. This catches signature mismatches at compile time.
+### Client-side team resolution on every game data change
+- **Where:** `useLoadouts.ts` — `resolvedTeam` useMemo recomputes when character/lightcone data changes globally
+- **Impact:** Unnecessary CPU on game data updates. Noticeable on low-end devices.
 
-**No Input Validation on Edit Fields in Admin Panel:**
-- Risk: Username and display name inputs accept any string up to 32 characters but no format validation (empty strings allowed after trim, special characters not checked).
-- Files: `components/features/admin-view/components/UserManager.tsx` (lines 172-176, 187-191)
-- Current mitigation: Server-side reducer validates uniqueness for username and enforces field presence.
-- Recommendations: Add client-side length and format validation before enabling save button. Prevent empty usernames (username.trim().length > 0). Warn about special characters that might not display correctly in game.
+## Technical Debt
 
-**Admin Panel Accessible to All Admins Without Audit Trail:**
-- Risk: Any user with Admin role can modify users, delete game data, and perform bulk upserts without detailed audit logging of what was changed or why.
-- Files: `spacetimedb/src/reducers/admin.ts` (all public functions), `components/features/admin-view/`
-- Current mitigation: Soft-delete for users includes a 5-second window for recovery. Admin actions are logged to server console with `console.log`.
-- Recommendations: Enhance audit logging to track who made changes, when, what was changed, and with what values. Store audit records in a dedicated table. Add approval workflow for sensitive operations (demoting admins, deleting characters).
+### No loadout persistence for authenticated users
+- **Where:** `useLoadouts.ts` (TODO comment), `spacetimedb/src/reducers/profile.ts`
+- **Impact:** Loadouts stored in localStorage only. Lost on device switch.
+- **Status:** Designed but unimplemented.
 
-**Discord OAuth Scope Limited to `identify`:**
-- Risk: Current implementation requests only `identify` scope (username, avatar, ID). No email or guild information available; user identification relies solely on Discord ID.
-- Files: `app/api/auth/authOptions.ts` (line 10)
-- Current mitigation: Discord ID is treated as unique user identifier and stored in `User.discordId`.
-- Recommendations: Document that Discord account changes (username/avatar) are not automatically synced. Consider requesting `email` scope if you need email-based account recovery in the future.
+### Admin bulk upsert requires manual sync between frontend and backend
+- **Where:** `admin.ts` switch statement, `BulkUpsert.tsx` UPSERT_TABLES enum
+- **Impact:** Adding a new upsertable table requires changes in both places with no compile-time enforcement.
 
-## Fragile Areas
+### User deletion has 5-second hard-delete with no cancel mechanism
+- **Where:** `admin.ts` lines 112-127, `userDeletionJob.ts`
+- **Impact:** No way to abort a scheduled deletion once initiated.
 
-**LoadoutManager Dependency Chain:**
-- Files: `components/features/hooks/useLoadouts.ts`, `components/features/team-builder/LoadoutManager.ts`
-- Why fragile: useLoadouts hook is deeply coupled to LoadoutManager's implementation. If LoadoutManager changes the shape of Loadout interface or adds new fields, the hook must be updated in multiple places. The unresolveTeamMember function is called in a useCallback (line 177-181) that depends on an external module.
-- Safe modification: Always run tests after modifying LoadoutManager interface. Use TypeScript strict mode to catch shape mismatches. Add JSDoc to LoadoutManager exports documenting the contract.
-- Test coverage: No tests found for useLoadouts hook. Loadout persistence and state management are untested.
+### Stale module bindings
+- **Observation:** `src/module_bindings/` was generated with SpacetimeDB CLI 2.0.3. The working tree shows modified bindings files (`hsr_account_character_table.ts`, `hsr_account_lightcone_table.ts`, `hsr_account_table.ts`, `index.ts`, `types.ts`) indicating the schema has been updated but bindings are partially regenerated or hand-edited.
+- **Impact:** Type mismatches between backend schema and client bindings if not regenerated cleanly.
 
-**Admin Bulk Upsert with Dynamic Table Routing:**
-- Files: `spacetimedb/src/reducers/admin.ts` (line 224-369), `components/features/admin-view/components/BulkUpsert.tsx`
-- Why fragile: Long switch statement in admin_bulk_upsert reducer that must be updated when adding new upsertable tables. Frontend validation and backend validation must stay in sync (separate lists of expected columns). If a new table is added, both frontend enum UPSERT_TABLES and backend switch must be updated.
-- Safe modification: Create a shared constants file that both frontend and backend import from (or codegen). Define table schemas once. Add a test that verifies every table in UPSERT_TABLES has a handler in the reducer switch statement.
-- Test coverage: No integration tests for bulk upsert. Admin operations are untested against actual SpacetimeDB.
+## Dependency Risks
 
-**User Identity Mapping Design:**
-- Files: `spacetimedb/src/tables/userIdentity.ts`, `spacetimedb/src/helpers/ensurePermissions.ts`, `spacetimedb/src/reducers/auth.ts`
-- Why fragile: Every reducer that needs user context must call `getAuthenticatedUser()`, which does a lookup on UserIdentity then User. If the UserIdentity record is deleted but User still exists, the reducer will throw. If the mapping is not established during OAuth callback, subsequent calls fail. No cascade delete constraints exist.
-- Safe modification: Test OAuth flow end-to-end (register → identity linked → can call authenticated reducers). Document the UserIdentity ↔ User relationship as required and immutable during session. Add a consistency check reducer that verifies every UserIdentity has a corresponding User.
-- Test coverage: No tests for auth flow. User registration and identity linking are untested.
+| Dependency | Risk | Notes |
+|------------|------|-------|
+| SpacetimeDB 2.0.3 | Breaking API changes in 3.x | Re-run `generate` and verify after upgrades |
+| NextAuth 4.24.13 | v5 has breaking changes | Plan dedicated migration phase |
+| Node.js >= 24.0.0 | Bleeding-edge requirement | May cause CI/hosting compatibility issues |
 
-## Test Coverage Gaps
+## Missing Infrastructure
 
-**No Tests for Authentication Flow:**
-- What's not tested: Discord OAuth callback, UserIdentity creation, session persistence, auth guard behavior, logout cleanup
-- Files: `app/api/auth/[...nextauth]/route.ts`, `app/api/auth/link-discord/route.ts`, `spacetimedb/src/reducers/auth.ts`
-- Risk: Auth middleware could silently fail or grant access to unauthenticated users. OAuth state validation might be compromised.
-- Priority: High
+- **Testing:** No test runner, no test files, no CI pipeline
+- **Error monitoring:** Console logging only, no Sentry/similar
+- **Error boundaries:** No React error boundaries in the component tree
+- **Input validation:** Server-side enum validation exists, but no client-side format validation on user inputs
 
-**No Tests for Loadout Persistence:**
-- What's not tested: localStorage save/load, SSR hydration without data loss, loadout update race conditions, fallback to defaults
-- Files: `components/features/hooks/useLoadouts.ts`, `components/features/team-builder/LoadoutManager.ts`
-- Risk: Loadout data could be silently lost due to hydration races. Users could lose their team configurations.
-- Priority: High
+## In-Progress Security Work
 
-**No Tests for Admin Operations:**
-- What's not tested: Bulk upsert validation, enum checking, key mismatch detection, table constraints, user deletion safeguards
-- Files: `spacetimedb/src/reducers/admin.ts`, `components/features/admin-view/components/BulkUpsert.tsx`
-- Risk: Invalid data could corrupt game data tables. Admin safeguards (preventing admin demotion, preventing user deletion if in active match) might be bypassed.
-- Priority: High
+The following security improvements are actively planned or in development:
 
-**No Tests for SpacetimeDB Reducers:**
-- What's not tested: Any reducer in `spacetimedb/src/reducers/`, permission checks, transactional consistency
-- Files: All `.ts` files in `spacetimedb/src/reducers/`
-- Risk: Business logic bugs in multiplayer state management are not caught until production. Reducers are the only transaction boundary in SpacetimeDB.
-- Priority: Critical
+1. **Lobby passwordHash extraction** — Move password hash out of the public Lobby table to prevent client-side exposure
+2. **UserIdentity view** — Create a restricted view so clients only see their own identity mapping
+3. **User view** — Create a public view with limited columns (id, displayName, avatar, isOnline, role) and keep sensitive fields (discordId, deletedAt, lastLoginAt) in a private or admin-only view
 
-**No Integration Tests Between Frontend and Backend:**
-- What's not tested: End-to-end flows like create lobby → add members → start draft
-- Files: All of `app/` and `spacetimedb/`
-- Risk: Frontend/backend contracts could drift. Changes in one could break the other undetected.
-- Priority: Medium
-
-## Missing Critical Features
-
-**No Loadout Persistence for Authenticated Users:**
-- Problem: Authenticated users' loadouts only exist in browser memory. No way to load a saved team on another device or after session expiry.
-- Blocks: Multi-device support, cloud save feature, team sharing
-- Implementation status: Partially designed (TODO in code) but not implemented
-
-**No Rate Limiting on Admin Operations:**
-- Problem: Admin can bulk upsert unlimited rows, delete unlimited users, or perform unlimited updates without throttling.
-- Blocks: Prevents abuse by compromised admin account; makes audit trail meaningful
-- Implementation status: Not implemented
-
-**No User Account Recovery After Deletion:**
-- Problem: Soft-deleted users are permanently deleted after 5 seconds with no way to cancel or restore.
-- Blocks: Accident recovery, user support workflows
-- Implementation status: 5-second grace period exists but no cancel mechanism
-
-## Dependencies at Risk
-
-**SpacetimeDB Version Lock:**
-- Risk: Project depends on `spacetimedb ^2.0.3`. Major version updates (e.g., 3.0.0) could introduce breaking changes to reducer API, table schema, or client bindings.
-- Impact: Binding generation would fail; client calls to reducers would break
-- Migration plan: Test major version upgrades in a branch before merging. Review SpacetimeDB changelog for breaking API changes. Re-run `pnpm generate` after upgrading and check for TypeScript errors.
-
-**NextAuth.js at 4.24.13 (Older Minor Version):**
-- Risk: Current version is several minor versions behind 5.x. v5 has breaking changes; staying on v4 means missing security updates for edge cases.
-- Impact: Potential OAuth CSRF vulnerabilities, session hijacking vectors
-- Migration plan: Plan a dedicated phase to upgrade to NextAuth.js v5. Review the migration guide for breaking changes to authOptions, callbacks, and session shape. Update Discord provider configuration.
-
-## Scaling Limits
-
-**Table Growth Bottleneck in Admin Upserts:**
-- Current capacity: HsrSynergyCost uses full-table scans for composite key lookups. Works fine with hundreds of rows.
-- Limit: Performance degrades linearly with table size when synergy cost combinations exceed 10,000 rows.
-- Scaling path: Add compound index on (sourceName, targetName, gameMode) to HsrSynergyCost. Replace `.iter()` loop (admin.ts line 344) with indexed lookup.
-
-**User Identity Lookup Under High CCU:**
-- Current capacity: Lookup via indexed UserIdentity.identity fast for single users; works well up to 10,000 concurrent connections.
-- Limit: If server-side logic iterates all UserIdentity rows during initialization or broadcasts, performance becomes O(n) in active user count.
-- Scaling path: Cache identity→userId mappings in memory during module initialization. Maintain cache during reducer calls.
-
-**Frontend Bundle Size with Game Data:**
-- Current: Characters and lightcones are fetched at runtime via SpacetimeDB subscriptions.
-- Limit: If game data grows to 50+ characters and 100+ lightcones, initial subscription payload could slow down client hydration.
-- Scaling path: Implement server-side caching of game data. Pre-load core game data (top 10 characters, most popular lightcones) on page load, lazy-load the rest on demand.
-
-## Known Issues in Notes
-
-**Index Definition Comment (Outdated):**
-- Location: `spacetimedb/src/tables/hsrCharacter.ts` line 19
-- Issue: Comment states "People from the forums say we dont need 'name': XXXXXXXXX on indexes anymore" — this suggests uncertainty about SpacetimeDB's index requirements. The comment is informal and suggests the index structure was not fully understood at the time.
-- Impact: Could indicate misunderstanding of how to define efficient indexes
-- Fix: Replace with a clear explanation of why this index structure was chosen or remove if no longer necessary
+These changes require either SpacetimeDB view support or table-splitting patterns.
 
 ---
 
-*Concerns audit: 2026-03-15*
+*Concerns audit: 2026-03-16*
