@@ -27,7 +27,7 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 ### Tournament System
 
 - [x] **TRNT-01**: User can request Tournament Organizer (TO) role; admin approves or denies
-- [ ] **TRNT-02**: TO can create a tournament with name, format, game mode, settings, and max participants
+- [x] **TRNT-02**: TO can create a tournament with name, format, game mode, settings, and max participants
 - [x] **TRNT-03**: Tournament supports formats: single elimination, double elimination, group phase (soccer-style round-robin)
 - [ ] **TRNT-04**: Tournament has explicit stage lifecycle (Draft → Registration → Seeding → InProgress → Completed → Cancelled)
 - [ ] **TRNT-05**: Player can self-sign up for a tournament (solo or as a team)
@@ -187,7 +187,7 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | ROST-07 | Phase 2 | Complete |
 | ROST-08 | Phase 2 | Complete |
 | TRNT-01 | Phase 3 | Complete |
-| TRNT-02 | Phase 3 | Pending |
+| TRNT-02 | Phase 3 | Complete |
 | TRNT-03 | Phase 3 | Complete |
 | TRNT-04 | Phase 3 | Pending |
 | TRNT-05 | Phase 3 | Pending |

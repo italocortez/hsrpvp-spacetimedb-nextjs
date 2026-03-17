@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 03-tournament-system
-current_plan: 03-01 complete
+current_plan: 03-03 complete
 status: executing
-last_updated: "2026-03-17T15:35:07.806Z"
+last_updated: "2026-03-17T15:41:58.536Z"
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 7
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 03-tournament-system
-**Current plan:** 03-01 complete
+**Current plan:** 03-03 complete
 **Status:** In progress
 
 ## Decisions
@@ -39,6 +39,10 @@ See: .planning/PROJECT.md
 - [03-tournament-system] winnerAdvantage (u8) replaces grandFinalsAdvantage (bool) — allows 0/1/2/3+ game head-starts
 - [03-tournament-system] TournamentTeam is tournament-scoped/ephemeral; differs from Team which is persistent org-level
 - [Phase 03-tournament-system]: Moderator role level 75 — between Admin (100) and TournamentHost (50); accepted by admin_update_user automatically via Object.keys(Role.variants) (TRNT-01)
+- [03-cost-sets] iter() used in per-user draft views — no cross-table (creatorId, costSetId) index; Set<id> membership check used after filtering CostSet by creatorId
+- [03-cost-sets] publish_cost_set preserves audit history via auditUpdate when live row already exists (supports republishing after edit)
+- [03-cost-sets] HsrSynergyCost uses id.update() on publish (autoInc PK); character/lightcone use delete+insert (composite PK)
+- [03-cost-sets] unpublish_cost_set does NOT delete live cost rows — only toggles isPublished/isLocked metadata; rows persist until delete_cost_set
 
 ## Session Log
 
@@ -46,3 +50,4 @@ See: .planning/PROJECT.md
 - 2026-03-16: Completed 02-01-PLAN.md — schema foundation for roster reducers
 - 2026-03-16: Completed 02-02-PLAN.md — 16 roster reducers, module published, bindings generated
 - 2026-03-17: Completed 03-01-PLAN.md — schema foundation for tournament system (enums, 6 new tables, permission helpers, module published with --clear-database)
+- 2026-03-17: Completed 03-03-PLAN.md — 8 cost set reducers (draft/publish/lock/unpublish/delete), 4 per-user draft cost views, cost-sets architecture docs
