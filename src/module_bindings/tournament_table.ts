@@ -13,6 +13,7 @@ import {
   GameMode,
   TournamentFormat,
   TournamentStage,
+  RosterVisibility,
   DisconnectPolicy,
   GroupAssignmentMode,
 } from "./types";
@@ -33,9 +34,12 @@ export default __t.row({
     return GameMode.name("default_game_mode");
   },
   maxParticipants: __t.u32().name("max_participants"),
+  teamSize: __t.u8().name("team_size"),
   isAnonymousDefault: __t.bool().name("is_anonymous_default"),
   isAnonymousSpectators: __t.bool().name("is_anonymous_spectators"),
-  isOpenRoster: __t.bool().name("is_open_roster"),
+  get rosterVisibility() {
+    return RosterVisibility.name("roster_visibility");
+  },
   get disconnectPolicy() {
     return DisconnectPolicy.name("disconnect_policy");
   },
@@ -44,14 +48,22 @@ export default __t.row({
   autoForfeitEnabled: __t.bool().name("auto_forfeit_enabled"),
   autoForfeitMinutes: __t.u32().name("auto_forfeit_minutes"),
   bracketRevealAt: __t.option(__t.timestamp()).name("bracket_reveal_at"),
-  grandFinalsAdvantage: __t.bool().name("grand_finals_advantage"),
+  winnerAdvantage: __t.u8().name("winner_advantage"),
   get groupAssignmentMode() {
     return GroupAssignmentMode.name("group_assignment_mode");
   },
   groupAdvanceCount: __t.u8().name("group_advance_count"),
+  costSetId: __t.u32().name("cost_set_id"),
   seasonId: __t.option(__t.u32()).name("season_id"),
   countTowardsMmr: __t.bool().name("count_towards_mmr"),
   defaultBestOf: __t.u8().name("default_best_of"),
+  requireVerified: __t.bool().name("require_verified"),
+  requireRoster: __t.bool().name("require_roster"),
+  minimumMmr: __t.option(__t.u32()).name("minimum_mmr"),
+  requireApproval: __t.bool().name("require_approval"),
+  waitlistEnabled: __t.bool().name("waitlist_enabled"),
+  scheduledStartAt: __t.option(__t.timestamp()).name("scheduled_start_at"),
+  registrationDeadline: __t.option(__t.timestamp()).name("registration_deadline"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

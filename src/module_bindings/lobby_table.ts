@@ -44,6 +44,7 @@ export default __t.row({
   isAnonymousPlayers: __t.bool().name("is_anonymous_players"),
   isAnonymousSpectators: __t.bool().name("is_anonymous_spectators"),
   isOpenRoster: __t.bool().name("is_open_roster"),
+  costSetId: __t.u32().name("cost_set_id"),
   isPublic: __t.bool().name("is_public"),
   get disconnectPolicy() {
     return DisconnectPolicy.name("disconnect_policy");

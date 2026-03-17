@@ -75,6 +75,7 @@ import CalendarEventRow from "./calendar_event_table";
 import CalendarEventInviteRow from "./calendar_event_invite_table";
 import CharacterStatsRow from "./character_stats_table";
 import ChatMessageRow from "./chat_message_table";
+import CostSetRow from "./cost_set_table";
 import GroupStandingRow from "./group_standing_table";
 import HsrAccountRow from "./hsr_account_table";
 import HsrAccountCharacterRow from "./hsr_account_character_table";
@@ -104,6 +105,8 @@ import TeamMemberRow from "./team_member_table";
 import TournamentRow from "./tournament_table";
 import TournamentAssistantRow from "./tournament_assistant_table";
 import TournamentParticipantRow from "./tournament_participant_table";
+import TournamentTeamRow from "./tournament_team_table";
+import TournamentTeamRequestRow from "./tournament_team_request_table";
 import UserRow from "./user_table";
 import UserAchievementRow from "./user_achievement_table";
 import UserIdentityRow from "./user_identity_table";
@@ -148,10 +151,10 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'availability_slot_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'avail_start_at', name: 'availability_slot_start_at_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'start_at', name: 'availability_slot_start_at_idx_btree', algorithm: 'btree', columns: [
         'startAt',
       ] },
-      { accessor: 'avail_user_id', name: 'availability_slot_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'availability_slot_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -165,10 +168,10 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'bracket_match_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'bm_lobby', name: 'bracket_match_lobby_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'lobby_id', name: 'bracket_match_lobby_id_idx_btree', algorithm: 'btree', columns: [
         'lobbyId',
       ] },
-      { accessor: 'bm_tournament', name: 'bracket_match_tournament_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'tournament_id', name: 'bracket_match_tournament_id_idx_btree', algorithm: 'btree', columns: [
         'tournamentId',
       ] },
     ],
@@ -182,10 +185,10 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'calendar_event_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'ce_organizer', name: 'calendar_event_organizer_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'organizer_id', name: 'calendar_event_organizer_id_idx_btree', algorithm: 'btree', columns: [
         'organizerId',
       ] },
-      { accessor: 'ce_start_at', name: 'calendar_event_start_at_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'start_at', name: 'calendar_event_start_at_idx_btree', algorithm: 'btree', columns: [
         'startAt',
       ] },
     ],
@@ -196,10 +199,10 @@ const tablesSchema = __schema({
   CalendarEventInvite: __table({
     name: 'calendar_event_invite',
     indexes: [
-      { accessor: 'cei_event_id', name: 'calendar_event_invite_event_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'event_id', name: 'calendar_event_invite_event_id_idx_btree', algorithm: 'btree', columns: [
         'eventId',
       ] },
-      { accessor: 'cei_invitee_id', name: 'calendar_event_invite_invitee_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'invitee_user_id', name: 'calendar_event_invite_invitee_user_id_idx_btree', algorithm: 'btree', columns: [
         'inviteeUserId',
       ] },
     ],
@@ -209,7 +212,7 @@ const tablesSchema = __schema({
   CharacterStats: __table({
     name: 'character_stats',
     indexes: [
-      { accessor: 'cs_user_id', name: 'character_stats_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'character_stats_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -222,7 +225,7 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'chat_message_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'chat_lobby_id', name: 'chat_message_lobby_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'lobby_id', name: 'chat_message_lobby_id_idx_btree', algorithm: 'btree', columns: [
         'lobbyId',
       ] },
     ],
@@ -230,10 +233,24 @@ const tablesSchema = __schema({
       { name: 'chat_message_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatMessageRow),
+  CostSet: __table({
+    name: 'cost_set',
+    indexes: [
+      { accessor: 'creator_id', name: 'cost_set_creator_id_idx_btree', algorithm: 'btree', columns: [
+        'creatorId',
+      ] },
+      { accessor: 'id', name: 'cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'cost_set_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, CostSetRow),
   GroupStanding: __table({
     name: 'group_standing',
     indexes: [
-      { accessor: 'gs_tournament_group', name: 'group_standing_tournament_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'tournament_id', name: 'group_standing_tournament_id_idx_btree', algorithm: 'btree', columns: [
         'tournamentId',
       ] },
     ],
@@ -246,10 +263,10 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'hsr_account_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'hsr_account_uid', name: 'hsr_account_uid_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'uid', name: 'hsr_account_uid_idx_btree', algorithm: 'btree', columns: [
         'uid',
       ] },
-      { accessor: 'hsr_account_user_id', name: 'hsr_account_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'hsr_account_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -260,7 +277,7 @@ const tablesSchema = __schema({
   HsrAccountCharacter: __table({
     name: 'hsr_account_character',
     indexes: [
-      { accessor: 'hsr_acc_char_account_id', name: 'hsr_account_character_hsr_account_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'hsr_account_id', name: 'hsr_account_character_hsr_account_id_idx_btree', algorithm: 'btree', columns: [
         'hsrAccountId',
       ] },
     ],
@@ -270,7 +287,7 @@ const tablesSchema = __schema({
   HsrAccountLightcone: __table({
     name: 'hsr_account_lightcone',
     indexes: [
-      { accessor: 'hsr_acc_lc_account_id', name: 'hsr_account_lightcone_hsr_account_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'hsr_account_id', name: 'hsr_account_lightcone_hsr_account_id_idx_btree', algorithm: 'btree', columns: [
         'hsrAccountId',
       ] },
     ],
@@ -280,16 +297,16 @@ const tablesSchema = __schema({
   HsrCharacter: __table({
     name: 'hsr_character',
     indexes: [
-      { accessor: 'character_by_element', name: 'hsr_character_element_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_element', name: 'hsr_character_element_idx_btree', algorithm: 'btree', columns: [
         'element',
       ] },
       { accessor: 'name', name: 'hsr_character_name_idx_btree', algorithm: 'btree', columns: [
         'name',
       ] },
-      { accessor: 'character_by_path', name: 'hsr_character_path_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_path', name: 'hsr_character_path_idx_btree', algorithm: 'btree', columns: [
         'path',
       ] },
-      { accessor: 'character_by_role', name: 'hsr_character_role_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_role', name: 'hsr_character_role_idx_btree', algorithm: 'btree', columns: [
         'role',
       ] },
     ],
@@ -300,10 +317,10 @@ const tablesSchema = __schema({
   HsrCharacterArchetype: __table({
     name: 'hsr_character_archetype',
     indexes: [
-      { accessor: 'hsr_char_arch_arch', name: 'hsr_character_archetype_archetype_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'archetype_id', name: 'hsr_character_archetype_archetype_id_idx_btree', algorithm: 'btree', columns: [
         'archetypeId',
       ] },
-      { accessor: 'hsr_char_arch_char', name: 'hsr_character_archetype_character_name_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'character_name', name: 'hsr_character_archetype_character_name_idx_btree', algorithm: 'btree', columns: [
         'characterName',
       ] },
     ],
@@ -313,7 +330,7 @@ const tablesSchema = __schema({
   HsrCharacterCost: __table({
     name: 'hsr_character_cost',
     indexes: [
-      { accessor: 'char_cost_set_id', name: 'hsr_character_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'cost_set_id', name: 'hsr_character_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'costSetId',
       ] },
     ],
@@ -326,7 +343,7 @@ const tablesSchema = __schema({
       { accessor: 'name', name: 'hsr_lightcone_name_idx_btree', algorithm: 'btree', columns: [
         'name',
       ] },
-      { accessor: 'lightcone_by_path', name: 'hsr_lightcone_path_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_path', name: 'hsr_lightcone_path_idx_btree', algorithm: 'btree', columns: [
         'path',
       ] },
     ],
@@ -337,7 +354,7 @@ const tablesSchema = __schema({
   HsrLightconeCost: __table({
     name: 'hsr_lightcone_cost',
     indexes: [
-      { accessor: 'lc_cost_set_id', name: 'hsr_lightcone_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'cost_set_id', name: 'hsr_lightcone_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'costSetId',
       ] },
     ],
@@ -347,17 +364,17 @@ const tablesSchema = __schema({
   HsrSynergyCost: __table({
     name: 'hsr_synergy_cost',
     indexes: [
-      { accessor: 'synergy_cost_set_id', name: 'hsr_synergy_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'cost_set_id', name: 'hsr_synergy_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'costSetId',
       ] },
       { accessor: 'id', name: 'hsr_synergy_cost_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'synergy_source_mode', name: 'hsr_synergy_cost_source_name_game_mode_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'source_mode', name: 'hsr_synergy_cost_source_name_game_mode_idx_btree', algorithm: 'btree', columns: [
         'sourceName',
         'gameMode',
       ] },
-      { accessor: 'synergy_target', name: 'hsr_synergy_cost_target_name_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'target_name', name: 'hsr_synergy_cost_target_name_idx_btree', algorithm: 'btree', columns: [
         'targetName',
       ] },
     ],
@@ -368,7 +385,7 @@ const tablesSchema = __schema({
   Lobby: __table({
     name: 'lobby',
     indexes: [
-      { accessor: 'lobby_host', name: 'lobby_host_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'host_user_id', name: 'lobby_host_user_id_idx_btree', algorithm: 'btree', columns: [
         'hostUserId',
       ] },
       { accessor: 'id', name: 'lobby_id_idx_btree', algorithm: 'btree', columns: [
@@ -377,10 +394,10 @@ const tablesSchema = __schema({
       { accessor: 'joinCode', name: 'lobby_join_code_idx_btree', algorithm: 'btree', columns: [
         'joinCode',
       ] },
-      { accessor: 'lobby_stage', name: 'lobby_stage_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'stage', name: 'lobby_stage_idx_btree', algorithm: 'btree', columns: [
         'stage',
       ] },
-      { accessor: 'lobby_tournament', name: 'lobby_tournament_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'tournament_id', name: 'lobby_tournament_id_idx_btree', algorithm: 'btree', columns: [
         'tournamentId',
       ] },
     ],
@@ -400,10 +417,10 @@ const tablesSchema = __schema({
   LobbyMember: __table({
     name: 'lobby_member',
     indexes: [
-      { accessor: 'lobby_member_lobby_id', name: 'lobby_member_lobby_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'lobby_id', name: 'lobby_member_lobby_id_idx_btree', algorithm: 'btree', columns: [
         'lobbyId',
       ] },
-      { accessor: 'lobby_member_user_id', name: 'lobby_member_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'lobby_member_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -413,7 +430,7 @@ const tablesSchema = __schema({
   MatchResultGame: __table({
     name: 'match_result_game',
     indexes: [
-      { accessor: 'mrg_match_result', name: 'match_result_game_match_result_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'match_result_id', name: 'match_result_game_match_result_id_idx_btree', algorithm: 'btree', columns: [
         'matchResultId',
       ] },
     ],
@@ -426,14 +443,17 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'match_result_record_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'mr_lobby', name: 'match_result_record_lobby_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'lobby_id', name: 'match_result_record_lobby_id_idx_btree', algorithm: 'btree', columns: [
         'lobbyId',
       ] },
-      { accessor: 'mr_player1', name: 'match_result_record_player_1_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'player_1_id', name: 'match_result_record_player_1_id_idx_btree', algorithm: 'btree', columns: [
         'player1Id',
       ] },
-      { accessor: 'mr_player2', name: 'match_result_record_player_2_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'player_2_id', name: 'match_result_record_player_2_id_idx_btree', algorithm: 'btree', columns: [
         'player2Id',
+      ] },
+      { accessor: 'tournament_id', name: 'match_result_record_tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
       ] },
     ],
     constraints: [
@@ -454,13 +474,13 @@ const tablesSchema = __schema({
   MatchSessionHistory: __table({
     name: 'match_session_history',
     indexes: [
-      { accessor: 'history_game_mode', name: 'match_session_history_game_mode_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'game_mode', name: 'match_session_history_game_mode_idx_btree', algorithm: 'btree', columns: [
         'gameMode',
       ] },
       { accessor: 'id', name: 'match_session_history_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'history_played_at', name: 'match_session_history_played_at_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'played_at', name: 'match_session_history_played_at_idx_btree', algorithm: 'btree', columns: [
         'playedAt',
       ] },
     ],
@@ -474,7 +494,7 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'match_session_step_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'match_history_lobby', name: 'match_session_step_lobby_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'lobby_id', name: 'match_session_step_lobby_id_idx_btree', algorithm: 'btree', columns: [
         'lobbyId',
       ] },
     ],
@@ -499,10 +519,10 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'mmr_history_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'mh_match_result', name: 'mmr_history_match_result_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'match_result_id', name: 'mmr_history_match_result_id_idx_btree', algorithm: 'btree', columns: [
         'matchResultId',
       ] },
-      { accessor: 'mh_user_id', name: 'mmr_history_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'mmr_history_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -513,10 +533,10 @@ const tablesSchema = __schema({
   MmrRating: __table({
     name: 'mmr_rating',
     indexes: [
-      { accessor: 'mmr_rating_value', name: 'mmr_rating_rating_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'rating', name: 'mmr_rating_rating_idx_btree', algorithm: 'btree', columns: [
         'rating',
       ] },
-      { accessor: 'mmr_user_id', name: 'mmr_rating_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'mmr_rating_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -529,7 +549,7 @@ const tablesSchema = __schema({
       { accessor: 'userId', name: 'player_stats_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
-      { accessor: 'ps_wins', name: 'player_stats_wins_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'wins', name: 'player_stats_wins_idx_btree', algorithm: 'btree', columns: [
         'wins',
       ] },
     ],
@@ -540,7 +560,7 @@ const tablesSchema = __schema({
   SavedCalendar: __table({
     name: 'saved_calendar',
     indexes: [
-      { accessor: 'sc_user_id', name: 'saved_calendar_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'saved_calendar_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -556,7 +576,7 @@ const tablesSchema = __schema({
       { accessor: 'name', name: 'team_name_idx_btree', algorithm: 'btree', columns: [
         'name',
       ] },
-      { accessor: 'team_owner', name: 'team_owner_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'owner_id', name: 'team_owner_id_idx_btree', algorithm: 'btree', columns: [
         'ownerId',
       ] },
     ],
@@ -571,10 +591,10 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'team_invite_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'ti_invitee_id', name: 'team_invite_invitee_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'invitee_user_id', name: 'team_invite_invitee_user_id_idx_btree', algorithm: 'btree', columns: [
         'inviteeUserId',
       ] },
-      { accessor: 'ti_team_id', name: 'team_invite_team_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'team_id', name: 'team_invite_team_id_idx_btree', algorithm: 'btree', columns: [
         'teamId',
       ] },
     ],
@@ -585,10 +605,10 @@ const tablesSchema = __schema({
   TeamMember: __table({
     name: 'team_member',
     indexes: [
-      { accessor: 'tm_team_id', name: 'team_member_team_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'team_id', name: 'team_member_team_id_idx_btree', algorithm: 'btree', columns: [
         'teamId',
       ] },
-      { accessor: 'tm_user_id', name: 'team_member_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'team_member_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -601,10 +621,10 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'tournament_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'tournament_organizer', name: 'tournament_organizer_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'organizer_id', name: 'tournament_organizer_id_idx_btree', algorithm: 'btree', columns: [
         'organizerId',
       ] },
-      { accessor: 'tournament_stage', name: 'tournament_stage_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'stage', name: 'tournament_stage_idx_btree', algorithm: 'btree', columns: [
         'stage',
       ] },
     ],
@@ -615,10 +635,10 @@ const tablesSchema = __schema({
   TournamentAssistant: __table({
     name: 'tournament_assistant',
     indexes: [
-      { accessor: 'ta_tournament_id', name: 'tournament_assistant_tournament_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'tournament_id', name: 'tournament_assistant_tournament_id_idx_btree', algorithm: 'btree', columns: [
         'tournamentId',
       ] },
-      { accessor: 'ta_user_id', name: 'tournament_assistant_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'tournament_assistant_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -628,20 +648,50 @@ const tablesSchema = __schema({
   TournamentParticipant: __table({
     name: 'tournament_participant',
     indexes: [
-      { accessor: 'tp_tournament_id', name: 'tournament_participant_tournament_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'tournament_id', name: 'tournament_participant_tournament_id_idx_btree', algorithm: 'btree', columns: [
         'tournamentId',
       ] },
-      { accessor: 'tp_user_id', name: 'tournament_participant_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'tournament_participant_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
     constraints: [
     ],
   }, TournamentParticipantRow),
+  TournamentTeam: __table({
+    name: 'tournament_team',
+    indexes: [
+      { accessor: 'captain_user_id', name: 'tournament_team_captain_user_id_idx_btree', algorithm: 'btree', columns: [
+        'captainUserId',
+      ] },
+      { accessor: 'id', name: 'tournament_team_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'tournament_id', name: 'tournament_team_tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+    ],
+    constraints: [
+      { name: 'tournament_team_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TournamentTeamRow),
+  TournamentTeamRequest: __table({
+    name: 'tournament_team_request',
+    indexes: [
+      { accessor: 'team_id', name: 'tournament_team_request_team_id_idx_btree', algorithm: 'btree', columns: [
+        'teamId',
+      ] },
+      { accessor: 'user_id', name: 'tournament_team_request_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentTeamRequestRow),
   User: __table({
     name: 'user',
     indexes: [
-      { accessor: 'user_discord_id', name: 'user_discord_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'discord_id', name: 'user_discord_id_idx_btree', algorithm: 'btree', columns: [
         'discordId',
       ] },
       { accessor: 'id', name: 'user_id_idx_btree', algorithm: 'btree', columns: [
@@ -659,13 +709,13 @@ const tablesSchema = __schema({
   UserAchievement: __table({
     name: 'user_achievement',
     indexes: [
-      { accessor: 'ua_achievement_id', name: 'user_achievement_achievement_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'achievement_id', name: 'user_achievement_achievement_id_idx_btree', algorithm: 'btree', columns: [
         'achievementId',
       ] },
       { accessor: 'id', name: 'user_achievement_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'ua_user_id', name: 'user_achievement_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'user_achievement_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -679,7 +729,7 @@ const tablesSchema = __schema({
       { accessor: 'identity', name: 'user_identity_identity_idx_btree', algorithm: 'btree', columns: [
         'identity',
       ] },
-      { accessor: 'user_identity_user_id', name: 'user_identity_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'user_id', name: 'user_identity_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],

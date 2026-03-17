@@ -9,27 +9,12 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  ParticipantType,
-  ParticipantStatus,
-} from "./types";
-
 
 export default __t.row({
+  id: __t.u32().primaryKey(),
   tournamentId: __t.u32().name("tournament_id"),
-  userId: __t.u32().name("user_id"),
-  teamGroupId: __t.option(__t.u32()).name("team_group_id"),
-  get participantType() {
-    return ParticipantType.name("participant_type");
-  },
-  get status() {
-    return ParticipantStatus;
-  },
-  seedNumber: __t.option(__t.u32()).name("seed_number"),
-  anonymousAlias: __t.option(__t.string()).name("anonymous_alias"),
-  isWaitlisted: __t.bool().name("is_waitlisted"),
-  approvedByToAt: __t.option(__t.timestamp()).name("approved_by_to_at"),
-  hsrAccountId: __t.option(__t.u32()).name("hsr_account_id"),
+  name: __t.string(),
+  captainUserId: __t.u32().name("captain_user_id"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),
