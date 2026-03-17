@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 03-tournament-system
-current_plan: 03-04 complete
+current_plan: 03-05 complete
 status: executing
-last_updated: "2026-03-17T15:51:00Z"
+last_updated: "2026-03-17T17:00:00Z"
 progress:
   total_phases: 10
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 3
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 03-tournament-system
-**Current plan:** 03-04 complete
+**Current plan:** 03-05 complete — Phase 3 fully done
 **Status:** In progress
 
 ## Decisions
@@ -49,6 +49,8 @@ See: .planning/PROJECT.md
 - [03-match-results] disputeReason reused to store override reason in override_match_result — keeps schema minimal
 - [03-match-results] submit_match_result is record-only in Phase 3 — MMR (Phase 5) and bracket advancement (Phase 4) triggered by downstream processes
 - [03-match-results] Referee auto-assignment at lobby creation deferred to Phase 9 — Phase 3 only implements transfer and reclaim
+- [Phase 03-tournament-system]: TEAM-01/02/03 reclassified Out of Scope for v0.5 — tournament-scoped teams (TEAM-04) cover Phase 3 needs; persistent teams deferred to v1+
+- [Phase 03-tournament-system]: set_coach and remove_coach placed in refereeManagement.ts — same permission model as referee flag (host or referee); pick/ban guard deferred to Phase 9
 
 ## Session Log
 
@@ -59,3 +61,4 @@ See: .planning/PROJECT.md
 - 2026-03-17: Completed 03-03-PLAN.md — 8 cost set reducers (draft/publish/lock/unpublish/delete), 4 per-user draft cost views, cost-sets architecture docs
 - 2026-03-17: Completed 03-02-PLAN.md — 14 tournament reducers (4 management, 4 registration, 6 teams), tournament architecture docs, published to maincloud
 - 2026-03-17: Completed 03-04-PLAN.md — 11 reducers (2 referee, 3 match result, 6 tournament admin), all Phase 3 reducers live on maincloud, 34 bindings generated
+- 2026-03-17: Completed 03-05-PLAN.md — gap closure: TEAM-01/02/03 reclassified Out of Scope, set_coach+remove_coach reducers implemented, Phase 3 fully complete

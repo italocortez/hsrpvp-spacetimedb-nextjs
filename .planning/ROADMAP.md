@@ -68,13 +68,13 @@ Plans:
   5. Tournament-level settings (anonymous play, roster visibility with 3 variants, disconnect policy, cost set) are stored and readable by match reducers
   6. A TO or admin can override match results and disqualify participants via explicit reducers
   7. Cost sets support draft/publish workflow with private draft tables
-**Plans:** 5 plans (4 complete, 1 gap closure)
+**Plans:** 5/5 plans complete
 Plans:
 - [x] 03-01-PLAN.md — Schema changes: enums (Moderator, Seeding, RosterVisibility), new tables (CostSet, drafts, TournamentTeam), cost PK expansion, permission helpers, publish --clear-database
 - [x] 03-02-PLAN.md — Tournament CRUD, lifecycle, registration, tournament-scoped team reducers
 - [x] 03-03-PLAN.md — Cost set management: clone, draft edit, publish, unpublish, delete, per-user views
 - [x] 03-04-PLAN.md — Match result submission, referee management, tournament admin overrides, final publish + bindings
-- [ ] 03-05-PLAN.md — Gap closure: reclassify TEAM-01/02/03 as out of scope, implement coach reducers
+- [x] 03-05-PLAN.md — Gap closure: reclassify TEAM-01/02/03 as out of scope, implement coach reducers
 
 ### Phase 4: Bracket Generation and Advancement
 **Goal**: Brackets are pre-generated as individual rows with explicit FK links, seeded correctly, and auto-advance when a match result is confirmed
@@ -197,7 +197,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 |-------|----------------|--------|-----------|
 | 1. Schema Foundation | 2/2 | Complete   | 2026-03-16 |
 | 2. Roster Management | 2/2 | Complete   | 2026-03-16 |
-| 3. Tournament System | 4/5 | Gap closure | 2026-03-17 |
+| 3. Tournament System | 5/5 | Complete   | 2026-03-17 |
 | 4. Bracket Generation | 0/? | Not started | - |
 | 5. Match Results and MMR | 0/? | Not started | - |
 | 6. Anonymous Play and Player Stats | 0/? | Not started | - |
