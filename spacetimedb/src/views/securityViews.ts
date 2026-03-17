@@ -28,7 +28,7 @@ spacetimedb.view(
         if (!mapping) return [];
 
         // Look up lobby memberships via btree index on userId
-        const memberships = [...ctx.db.LobbyMember.lobby_member_user_id.filter(mapping.userId)];
+        const memberships = [...ctx.db.LobbyMember.user_id.filter(mapping.userId)];
 
         // Fetch each lobby by PK (users are in at most 1-2 lobbies)
         const lobbies = [];

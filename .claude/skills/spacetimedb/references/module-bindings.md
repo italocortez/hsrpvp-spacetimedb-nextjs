@@ -1,7 +1,7 @@
 # Module Bindings Reference
 
 > **Auto-generated summary.** Rebuild this file whenever `spacetime generate` is run.
-> Last generated from SpacetimeDB CLI v2.0.3
+> Last generated from SpacetimeDB CLI v2.0.5 (content is stale — needs `spacetime generate` + rebuild)
 
 Source: `src/module_bindings/` (do NOT edit generated files directly)
 

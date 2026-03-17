@@ -21,8 +21,8 @@ export const MatchResultRecord = table({
     name: 'match_result_record',
     public: true,
     indexes: [
-        { name: 'mr_lobby', accessor: 'mr_lobby', algorithm: 'btree', columns: ['lobbyId'] },
-        { name: 'mr_player1', accessor: 'mr_player1', algorithm: 'btree', columns: ['player1Id'] },
-        { name: 'mr_player2', accessor: 'mr_player2', algorithm: 'btree', columns: ['player2Id'] },
+        { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        { accessor: 'player_1_id', algorithm: 'btree', columns: ['player1Id'] },
+        { accessor: 'player_2_id', algorithm: 'btree', columns: ['player2Id'] },
     ],
 }, matchResultColumns);

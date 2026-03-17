@@ -23,6 +23,6 @@ export const HsrLightcone = table({
     name: 'hsr_lightcone',
     public: true,
     indexes: [
-        { name: 'lightcone_by_path', accessor: 'lightcone_by_path', algorithm: 'btree', columns: ['path'] },
+        { accessor: 'by_path', algorithm: 'btree', columns: ['path'] },
     ]
 }, hsrLightconeColumns);

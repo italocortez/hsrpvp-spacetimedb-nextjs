@@ -18,7 +18,7 @@ export const admin_create_hsr_account = spacetimedb.reducer(
         validateUid(uid);
         const region = deriveRegion(uid);
 
-        const existing = [...ctx.db.HsrAccount.hsr_account_user_id.filter(targetUserId)];
+        const existing = [...ctx.db.HsrAccount.user_id.filter(targetUserId)];
         if (existing.length >= 5) {
             throw new SenderError('Maximum 5 HSR accounts per user');
         }
@@ -82,7 +82,7 @@ export const admin_delete_hsr_account = spacetimedb.reducer(
         const accountUserId = account.userId;
 
         // Cascade: delete all characters for this account
-        const characters = [...ctx.db.HsrAccountCharacter.hsr_acc_char_account_id.filter(hsrAccountId)];
+        const characters = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(hsrAccountId)];
         for (const char of characters) {
             ctx.db.HsrAccountCharacter.delete(char);
         }
@@ -91,7 +91,7 @@ export const admin_delete_hsr_account = spacetimedb.reducer(
 
         // Auto-activate oldest remaining if this was the active account
         if (account.isActive) {
-            const remaining = [...ctx.db.HsrAccount.hsr_account_user_id.filter(accountUserId)];
+            const remaining = [...ctx.db.HsrAccount.user_id.filter(accountUserId)];
             if (remaining.length > 0) {
                 remaining.sort((a: any, b: any) =>
                     Number(a.createdDate.microsSinceUnixEpoch - b.createdDate.microsSinceUnixEpoch)
@@ -233,7 +233,7 @@ export const admin_delete_archetype = spacetimedb.reducer(
         if (!archetype) throw new SenderError('Archetype not found');
 
         // Cascade: delete all junction rows for this archetype
-        const junctions = [...ctx.db.HsrCharacterArchetype.hsr_char_arch_arch.filter(archetypeId)];
+        const junctions = [...ctx.db.HsrCharacterArchetype.archetype_id.filter(archetypeId)];
         for (const j of junctions) {
             ctx.db.HsrCharacterArchetype.delete(j);
         }

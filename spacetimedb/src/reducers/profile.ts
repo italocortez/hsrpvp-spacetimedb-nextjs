@@ -32,7 +32,7 @@ export const delete_guest_account = spacetimedb.reducer((ctx) => {
     ctx.db.UserIdentity.identity.delete(ctx.sender);
 
     // Check if any other identities still point to this user
-    const remainingLinks = [...ctx.db.UserIdentity.user_identity_user_id.filter(resolved.user.id)];
+    const remainingLinks = [...ctx.db.UserIdentity.user_id.filter(resolved.user.id)];
     if (remainingLinks.length === 0) {
         // No more identities linked — safe to delete the User row
         ctx.db.User.id.delete(resolved.user.id);

@@ -17,7 +17,7 @@ function requireServer(ctx: any) {
  * Helper: get the system user (discordId = "1"). Created during register_server.
  */
 function getSystemUserId(ctx: any): number {
-    const results = [...ctx.db.User.user_discord_id.filter('1')];
+    const results = [...ctx.db.User.discord_id.filter('1')];
     return results.length > 0 ? results[0].id : SYSTEM_USER_ID;
 }
 
@@ -103,7 +103,7 @@ export const server_link_discord = spacetimedb.reducer({
     }
 
     // 4. Check if a User with this discordId already exists
-    const existingByDiscord = [...ctx.db.User.user_discord_id.filter(discordId)];
+    const existingByDiscord = [...ctx.db.User.discord_id.filter(discordId)];
     const discordOwner = existingByDiscord.length > 0 ? existingByDiscord[0] : null;
 
     if (currentUser) {
@@ -128,7 +128,7 @@ export const server_link_discord = spacetimedb.reducer({
             });
 
             if (wasGuest) {
-                const remainingLinks = [...ctx.db.UserIdentity.user_identity_user_id.filter(oldGuestId)];
+                const remainingLinks = [...ctx.db.UserIdentity.user_id.filter(oldGuestId)];
                 if (remainingLinks.length === 0) {
                     ctx.db.User.id.delete(oldGuestId);
                 }
@@ -217,7 +217,7 @@ export const server_delete_user = spacetimedb.reducer({
     }
 
     // Delete associated UserIdentity rows using btree index
-    const mappings = [...ctx.db.UserIdentity.user_identity_user_id.filter(targetUser.id)];
+    const mappings = [...ctx.db.UserIdentity.user_id.filter(targetUser.id)];
     for (const mapping of mappings) {
         ctx.db.UserIdentity.identity.delete(mapping.identity);
     }

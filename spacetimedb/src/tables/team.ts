@@ -16,6 +16,6 @@ export const Team = table({
     name: 'team',
     public: true,
     indexes: [
-        { name: 'team_owner', accessor: 'team_owner', algorithm: 'btree', columns: ['ownerId'] },
+        { accessor: 'owner_id', algorithm: 'btree', columns: ['ownerId'] },
     ],
 }, teamColumns);

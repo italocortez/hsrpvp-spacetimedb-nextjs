@@ -20,7 +20,7 @@ export const MmrHistory = table({
     name: 'mmr_history',
     public: true,
     indexes: [
-        { name: 'mh_user_id', accessor: 'mh_user_id', algorithm: 'btree', columns: ['userId'] },
-        { name: 'mh_match_result', accessor: 'mh_match_result', algorithm: 'btree', columns: ['matchResultId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'match_result_id', algorithm: 'btree', columns: ['matchResultId'] },
     ],
 }, mmrHistoryColumns);

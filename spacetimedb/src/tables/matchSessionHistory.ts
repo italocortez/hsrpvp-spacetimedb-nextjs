@@ -35,7 +35,7 @@ export const MatchSessionHistory = table({
     name: 'match_session_history',
     public: true,
     indexes: [
-        { name: 'history_played_at', accessor: 'history_played_at', algorithm: 'btree', columns: ['playedAt'] },
-        { name: 'history_game_mode', accessor: 'history_game_mode', algorithm: 'btree', columns: ['gameMode'] },
+        { accessor: 'played_at', algorithm: 'btree', columns: ['playedAt'] },
+        { accessor: 'game_mode', algorithm: 'btree', columns: ['gameMode'] },
     ]
 }, matchSessionHistoryColumns);

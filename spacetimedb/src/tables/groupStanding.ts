@@ -19,6 +19,6 @@ export const GroupStanding = table({
     public: true,
     primaryKey: ['tournamentId', 'groupId', 'participantUserId'],
     indexes: [
-        { name: 'gs_tournament_group', accessor: 'gs_tournament_group', algorithm: 'btree', columns: ['tournamentId'] },
+        { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
     ],
 }, groupStandingColumns);

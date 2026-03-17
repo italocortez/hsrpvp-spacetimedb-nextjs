@@ -86,7 +86,7 @@ export const admin_delete_row = spacetimedb.reducer(
                 if (user.deletedAt) throw new SenderError(`User #${id} is already pending deletion.`);
 
                 // Block deletion if user is hosting an active lobby (use btree index)
-                const hostedLobbies = [...ctx.db.Lobby.lobby_host.filter(id)];
+                const hostedLobbies = [...ctx.db.Lobby.host_user_id.filter(id)];
                 if (hostedLobbies.length > 0) {
                     throw new SenderError(
                         `Cannot delete user #${id}: they are hosting lobby "${hostedLobbies[0].joinCode}". Remove the lobby first.`
@@ -94,7 +94,7 @@ export const admin_delete_row = spacetimedb.reducer(
                 }
 
                 // Block deletion if user is a member of an active lobby (use btree index)
-                const memberships = [...ctx.db.LobbyMember.lobby_member_user_id.filter(id)];
+                const memberships = [...ctx.db.LobbyMember.user_id.filter(id)];
                 if (memberships.length > 0) {
                     throw new SenderError(
                         `Cannot delete user #${id}: they are in active lobby #${memberships[0].lobbyId}. Remove them from the lobby first.`
@@ -188,7 +188,7 @@ export const admin_delete_row = spacetimedb.reducer(
                 const id = Number(primaryKeyJson);
                 if (!ctx.db.Archetype.id.find(id)) throw new SenderError('Row not found');
                 // Cascade: delete all HsrCharacterArchetype rows for this archetype
-                const junctions = [...ctx.db.HsrCharacterArchetype.hsr_char_arch_arch.filter(id)];
+                const junctions = [...ctx.db.HsrCharacterArchetype.archetype_id.filter(id)];
                 for (const j of junctions) { ctx.db.HsrCharacterArchetype.delete(j); }
                 ctx.db.Archetype.id.delete(id);
                 break;

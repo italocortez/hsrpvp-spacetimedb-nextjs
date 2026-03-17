@@ -16,7 +16,7 @@ export const TeamInvite = table({
     name: 'team_invite',
     public: true,
     indexes: [
-        { name: 'ti_team_id', accessor: 'ti_team_id', algorithm: 'btree', columns: ['teamId'] },
-        { name: 'ti_invitee_id', accessor: 'ti_invitee_id', algorithm: 'btree', columns: ['inviteeUserId'] },
+        { accessor: 'team_id', algorithm: 'btree', columns: ['teamId'] },
+        { accessor: 'invitee_user_id', algorithm: 'btree', columns: ['inviteeUserId'] },
     ],
 }, teamInviteColumns);

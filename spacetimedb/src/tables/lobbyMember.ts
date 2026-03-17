@@ -21,7 +21,7 @@ export const LobbyMember = table({
     public: true,
     primaryKey: ['lobbyId', 'userId'],
     indexes: [
-        { name: 'lobby_member_lobby_id', accessor: 'lobby_member_lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
-        { name: 'lobby_member_user_id', accessor: 'lobby_member_user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
     ]
 }, lobbyMemberColumns);

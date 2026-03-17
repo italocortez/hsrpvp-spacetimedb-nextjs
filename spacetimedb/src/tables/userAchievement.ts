@@ -16,7 +16,7 @@ export const UserAchievement = table({
     name: 'user_achievement',
     public: true,
     indexes: [
-        { name: 'ua_user_id', accessor: 'ua_user_id', algorithm: 'btree', columns: ['userId'] },
-        { name: 'ua_achievement_id', accessor: 'ua_achievement_id', algorithm: 'btree', columns: ['achievementId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'achievement_id', algorithm: 'btree', columns: ['achievementId'] },
     ],
 }, userAchievementColumns);

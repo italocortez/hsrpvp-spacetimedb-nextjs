@@ -19,6 +19,6 @@ export const UserIdentity = table({
     name: 'user_identity',
     public: true,
     indexes: [
-        { name: 'user_identity_user_id', accessor: 'user_identity_user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
     ]
 }, userIdentityColumns);

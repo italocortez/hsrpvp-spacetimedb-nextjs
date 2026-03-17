@@ -29,6 +29,6 @@ export const MatchResultGame = table({
     public: true,
     primaryKey: ['matchResultId', 'gameNumber'],
     indexes: [
-        { name: 'mrg_match_result', accessor: 'mrg_match_result', algorithm: 'btree', columns: ['matchResultId'] },
+        { accessor: 'match_result_id', algorithm: 'btree', columns: ['matchResultId'] },
     ],
 }, matchResultGameColumns);

@@ -15,6 +15,6 @@ export const SavedCalendar = table({
     public: true,
     primaryKey: ['userId', 'targetUserId'],
     indexes: [
-        { name: 'sc_user_id', accessor: 'sc_user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
     ],
 }, savedCalendarColumns);

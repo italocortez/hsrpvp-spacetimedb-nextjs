@@ -20,7 +20,7 @@ export const HsrAccount = table({
     name: 'hsr_account',
     public: true,
     indexes: [
-        { name: 'hsr_account_user_id', accessor: 'hsr_account_user_id', algorithm: 'btree', columns: ['userId'] },
-        { name: 'hsr_account_uid', accessor: 'hsr_account_uid', algorithm: 'btree', columns: ['uid'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'uid', algorithm: 'btree', columns: ['uid'] },
     ],
 }, hsrAccountColumns);

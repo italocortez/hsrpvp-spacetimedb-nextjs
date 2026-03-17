@@ -19,7 +19,7 @@ export const TournamentAssistant = table({
     public: true,
     primaryKey: ['tournamentId', 'userId'],
     indexes: [
-        { name: 'ta_tournament_id', accessor: 'ta_tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
-        { name: 'ta_user_id', accessor: 'ta_user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
     ],
 }, tournamentAssistantColumns);

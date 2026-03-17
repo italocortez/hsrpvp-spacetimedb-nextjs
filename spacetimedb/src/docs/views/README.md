@@ -37,7 +37,7 @@ view_my_profile (per-user)
 | View | Type | Returns | Index Lookups |
 |------|------|---------|---------------|
 | `view_lobby_browser` | anonymous | `t.array(Lobby.rowType)` | Query builder scan |
-| `view_my_lobbies` | per-user | `t.array(Lobby.rowType)` | `UserIdentity.identity` (PK), `LobbyMember.lobby_member_user_id` (btree), `Lobby.id` (PK) |
+| `view_my_lobbies` | per-user | `t.array(Lobby.rowType)` | `UserIdentity.identity` (PK), `LobbyMember.user_id` (btree), `Lobby.id` (PK) |
 | `view_my_identity` | per-user | `t.option(UserIdentity.rowType)` | `UserIdentity.identity` (PK) |
 | `view_user_directory` | anonymous | `t.array(User.rowType)` | Query builder scan |
 | `view_my_profile` | per-user | `t.option(User.rowType)` | `UserIdentity.identity` (PK), `User.id` (PK) |

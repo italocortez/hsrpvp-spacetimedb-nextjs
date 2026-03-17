@@ -21,8 +21,8 @@ export const HsrCharacter = table({
     name: 'hsr_character',
     public: true,
     indexes: [
-        { name: 'character_by_path', accessor: 'character_by_path', algorithm: 'btree', columns: ['path'] },
-        { name: 'character_by_element', accessor: 'character_by_element', algorithm: 'btree', columns: ['element'] },
-        { name: 'character_by_role', accessor: 'character_by_role', algorithm: 'btree', columns: ['role'] },
+        { accessor: 'by_path', algorithm: 'btree', columns: ['path'] },
+        { accessor: 'by_element', algorithm: 'btree', columns: ['element'] },
+        { accessor: 'by_role', algorithm: 'btree', columns: ['role'] },
     ]
 }, hsrCharacterColumns);

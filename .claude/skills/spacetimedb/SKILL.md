@@ -68,7 +68,7 @@ Indexes go in OPTIONS (1st arg), never in COLUMNS (2nd arg).
 export const MyTable = table({
   name: 'my_table',
   public: true,
-  indexes: [{ name: 'my_table_owner_id', accessor: 'my_table_owner_id', algorithm: 'btree', columns: ['ownerId'] }]
+  indexes: [{ accessor: 'owner_id', algorithm: 'btree', columns: ['ownerId'] }]
 }, {
   id: t.u64().primaryKey().autoInc(),
   ownerId: t.identity(),
@@ -158,9 +158,9 @@ const [users, isReady] = useTable(tables.user, {
 // Create — 0n placeholder for autoInc
 const row = ctx.db.myTable.insert({ id: 0n, ... });
 
-// Read — .find() for unique/PK, .filter() for indexed
+// Read — .find() for unique/PK, .filter() for indexed (use accessor name)
 const item = ctx.db.myTable.id.find(itemId);
-const items = [...ctx.db.myTable.my_table_owner_id.filter(ownerId)];
+const items = [...ctx.db.myTable.owner_id.filter(ownerId)];
 
 // Update — spread existing row
 ctx.db.myTable.id.update({ ...existing, title: newTitle });
@@ -188,7 +188,7 @@ export const MyTable = table({
   name: 'my_table',
   public: true,
   indexes: [
-    { name: 'my_table_category', accessor: 'my_table_category', algorithm: 'btree', columns: ['category'] },
+    { accessor: 'category', algorithm: 'btree', columns: ['category'] },
   ]
 }, myTableColumns);
 ```
@@ -279,15 +279,17 @@ spacetime logs <name> --level warn                 # Filter by log level (warn a
 ### Backend (`spacetimedb/src/`)
 ```
 schema.ts              -> Imports all tables, exports spacetimedb via schema({...})
-index.ts               -> Imports all reducers, lifecycle hooks (clientConnected/Disconnected)
+index.ts               -> Imports all reducers, views, lifecycle hooks (clientConnected/Disconnected)
 tables/                -> One file per table (e.g. user.ts, lobby.ts, hsrCharacter.ts)
   └── Each exports column definitions + table() call
-reducers/              -> One file per domain (e.g. auth.ts, admin.ts, profile.ts, server.ts)
+reducers/              -> One file per domain (e.g. auth.ts, admin.ts, roster.ts, rosterAdmin.ts)
   └── Each imports spacetimedb from ../schema
-helpers/               -> Shared utilities (e.g. ensurePermissions.ts)
+views/                 -> Security views limiting client data access (e.g. securityViews.ts)
+helpers/               -> Shared utilities (ensurePermissions.ts, auditColumns.ts, rosterHelpers.ts)
 types/
   ├── enums.ts         -> All enum definitions (Path, Element, CharRole, GameMode, etc.)
   └── structs.ts       -> All struct/object type definitions (EidolonCost, LobbyConfig, etc.)
+docs/                  -> Feature architecture docs (one folder per domain with README.md)
 ```
 
 ### Frontend
@@ -312,7 +314,9 @@ lib/                    -> Shared utilities and configuration
 - **New tables** go in `spacetimedb/src/tables/` as individual files, then import in `schema.ts`
 - **New reducers** go in `spacetimedb/src/reducers/` grouped by domain, then import in `index.ts`
 - **New enums/structs** go in `spacetimedb/src/types/enums.ts` or `structs.ts`
+- **New views** go in `spacetimedb/src/views/`, then import in `index.ts`
 - **New frontend features** go in `components/features/<feature-name>/` with `components/` and `hooks/` subdirs
+- **Private tables** (e.g. `LobbyPassword`) use `public: false` to keep sensitive data off the wire — see pattern below
 
 ## Naming conventions (this repo — ENFORCED)
 
@@ -322,20 +326,24 @@ lib/                    -> Shared utilities and configuration
 | Struct/object fields | `camelCase` | `teamSize`, `characterName`, `isPaused` |
 | Enum variants | `PascalCase` | `MemoryOfChaos`, `BlueWins`, `TournamentHost` |
 | Reducer export names | `snake_case` | `login_as_guest`, `server_link_discord` |
-| Index names & accessors | `snake_case` | `lobby_host`, `user_discord_id` |
+| Index accessors (code-facing) | `snake_case` | `host_user_id`, `discord_id`, `user_id` |
 | Table names (in `table()`) | `snake_case` | `'user'`, `'hsr_character'`, `'lobby_member'` |
 | Helper functions | `camelCase` | `resolveUser`, `ensureAdmin`, `auditInsert` |
 | Constants | `UPPER_SNAKE_CASE` | `SYSTEM_USER_ID`, `DISCORD_INTENT_KEY` |
 
 **Never mix conventions within a layer.** All struct fields and table columns MUST be camelCase. Enum variants MUST be PascalCase (standard TypeScript enum convention).
 
-**Index definitions MUST include `accessor`** — as of SpacetimeDB 2.0.4 the SDK requires it (previously optional). The `accessor` value must match `name`:
-```typescript
-// ✅ Project convention — always include accessor matching name
-indexes: [{ name: 'my_table_col', accessor: 'my_table_col', algorithm: 'btree', columns: ['col'] }]
+**Index definitions only need `accessor`** — SpacetimeDB auto-generates the DB catalog `name`, so omit it. The `accessor` is the code-facing handle used in `ctx.db.Table.accessor.find/filter()`. Keep it short — accessors are scoped per-table, so no table prefix needed.
 
-// ❌ Never omit accessor in this project
-indexes: [{ name: 'my_table_col', algorithm: 'btree', columns: ['col'] }]
+```typescript
+// ✅ Clean — accessor only, name auto-generated
+indexes: [{ accessor: 'owner_id', algorithm: 'btree', columns: ['ownerId'] }]
+
+// ❌ Never omit accessor
+indexes: [{ algorithm: 'btree', columns: ['ownerId'] }]
+
+// ❌ Unnecessary — name is auto-generated, don't declare it
+indexes: [{ name: 'my_table_owner_id_idx_btree', accessor: 'owner_id', algorithm: 'btree', columns: ['ownerId'] }]
 ```
 
 ## Audit columns policy (this repo — ENFORCED)
@@ -387,6 +395,41 @@ lastModifiedDate: t.timestamp(),
 - `isOnline: t.bool()` — set `true` in `clientConnected`, `false` in `clientDisconnected`
 - `isPrivate: t.bool()` — defaults to `false`, for future privacy features
 - `deletedAt: t.timestamp().optional()` — soft-delete pattern, triggers scheduled hard-delete after 5s
+
+## Private tables — keeping sensitive data off the wire
+
+When a table has columns that should never reach the client (passwords, tokens, secrets), extract those columns into a separate `public: false` table linked by FK. This project uses `LobbyPassword` as the canonical example:
+
+```typescript
+// lobbyPassword.ts — private table, never broadcast to clients
+export const LobbyPassword = table({
+  name: 'lobby_password',
+  // public: false is the default, but explicit is better
+  indexes: [{ accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] }]
+}, {
+  lobbyId: t.u64().primaryKey(),  // FK to Lobby.id
+  passwordHash: t.string(),
+  // audit columns...
+});
+```
+
+Reducers can still read/write private tables — only client subscriptions are blocked.
+
+## Admin proxy reducer pattern
+
+For features where users have self-service reducers, create a parallel set of `admin_*` reducers that mirror the user operations but act on behalf of any user. The pattern:
+
+```typescript
+export const admin_create_thing = spacetimedb.reducer(
+  { targetUserId: t.u32(), /* same params as user reducer */ },
+  (ctx, { targetUserId, ...params }) => {
+    const admin = ensureAdmin(ctx);
+    // Same logic as user reducer, but use targetUserId instead of ctx.sender
+  }
+);
+```
+
+See `reducers/rosterAdmin.ts` for the full example (9 admin proxy reducers mirroring `roster.ts`).
 
 ## Foreign keys
 

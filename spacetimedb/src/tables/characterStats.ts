@@ -17,6 +17,6 @@ export const CharacterStats = table({
     public: true,
     primaryKey: ['userId', 'characterName'],
     indexes: [
-        { name: 'cs_user_id', accessor: 'cs_user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
     ],
 }, characterStatsColumns);

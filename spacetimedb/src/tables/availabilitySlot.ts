@@ -19,7 +19,7 @@ export const AvailabilitySlot = table({
     name: 'availability_slot',
     public: true,
     indexes: [
-        { name: 'avail_user_id', accessor: 'avail_user_id', algorithm: 'btree', columns: ['userId'] },
-        { name: 'avail_start_at', accessor: 'avail_start_at', algorithm: 'btree', columns: ['startAt'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'start_at', algorithm: 'btree', columns: ['startAt'] },
     ],
 }, availabilitySlotColumns);

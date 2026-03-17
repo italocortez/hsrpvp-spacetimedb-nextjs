@@ -19,6 +19,6 @@ export const ChatMessage = table({
     name: 'chat_message',
     public: true,
     indexes: [
-        { name: 'chat_lobby_id', accessor: 'chat_lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
     ],
 }, chatMessageColumns);

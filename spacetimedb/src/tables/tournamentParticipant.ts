@@ -20,7 +20,7 @@ export const TournamentParticipant = table({
     public: true,
     primaryKey: ['tournamentId', 'userId'],
     indexes: [
-        { name: 'tp_tournament_id', accessor: 'tp_tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
-        { name: 'tp_user_id', accessor: 'tp_user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
     ],
 }, tournamentParticipantColumns);

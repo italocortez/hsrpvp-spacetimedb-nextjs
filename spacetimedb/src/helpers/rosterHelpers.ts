@@ -41,7 +41,7 @@ export function deriveRegion(uid: string): string {
  * If only 1 account has the UID, it gets isDuplicateUid = false.
  */
 export function recalcDuplicateUid(ctx: any, uid: string, actorId: number): void {
-    const accounts = [...ctx.db.HsrAccount.hsr_account_uid.filter(uid)];
+    const accounts = [...ctx.db.HsrAccount.uid.filter(uid)];
     const isDuplicate = accounts.length > 1;
     for (const acc of accounts) {
         if (acc.isDuplicateUid !== isDuplicate) {

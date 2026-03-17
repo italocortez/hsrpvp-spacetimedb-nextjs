@@ -14,7 +14,7 @@ export const HsrCharacterArchetype = table({
     public: true,
     primaryKey: ['characterName', 'archetypeId'],
     indexes: [
-        { name: 'hsr_char_arch_char', accessor: 'hsr_char_arch_char', algorithm: 'btree', columns: ['characterName'] },
-        { name: 'hsr_char_arch_arch', accessor: 'hsr_char_arch_arch', algorithm: 'btree', columns: ['archetypeId'] },
+        { accessor: 'character_name', algorithm: 'btree', columns: ['characterName'] },
+        { accessor: 'archetype_id', algorithm: 'btree', columns: ['archetypeId'] },
     ],
 }, hsrCharacterArchetypeColumns);

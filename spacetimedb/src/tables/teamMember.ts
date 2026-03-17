@@ -16,7 +16,7 @@ export const TeamMember = table({
     public: true,
     primaryKey: ['teamId', 'userId'],
     indexes: [
-        { name: 'tm_team_id', accessor: 'tm_team_id', algorithm: 'btree', columns: ['teamId'] },
-        { name: 'tm_user_id', accessor: 'tm_user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'team_id', algorithm: 'btree', columns: ['teamId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
     ],
 }, teamMemberColumns);

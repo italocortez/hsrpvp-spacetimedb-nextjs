@@ -23,6 +23,6 @@ export const User = table({
     name: 'user',
     public: true,
     indexes: [
-        { name: 'user_discord_id', accessor: 'user_discord_id', algorithm: 'btree', columns: ['discordId'] },
+        { accessor: 'discord_id', algorithm: 'btree', columns: ['discordId'] },
     ]
 }, userColumns);

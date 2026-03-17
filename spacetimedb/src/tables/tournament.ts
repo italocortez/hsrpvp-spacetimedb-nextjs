@@ -35,7 +35,7 @@ export const Tournament = table({
     name: 'tournament',
     public: true,
     indexes: [
-        { name: 'tournament_organizer', accessor: 'tournament_organizer', algorithm: 'btree', columns: ['organizerId'] },
-        { name: 'tournament_stage', accessor: 'tournament_stage', algorithm: 'btree', columns: ['stage'] },
+        { accessor: 'organizer_id', algorithm: 'btree', columns: ['organizerId'] },
+        { accessor: 'stage', algorithm: 'btree', columns: ['stage'] },
     ],
 }, tournamentColumns);

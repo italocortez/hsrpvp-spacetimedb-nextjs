@@ -17,7 +17,7 @@ export const create_hsr_account = spacetimedb.reducer(
         validateUid(uid);
         const region = deriveRegion(uid);
 
-        const existing = [...ctx.db.HsrAccount.hsr_account_user_id.filter(user.id)];
+        const existing = [...ctx.db.HsrAccount.user_id.filter(user.id)];
         if (existing.length >= 5) {
             throw new SenderError('Maximum 5 HSR accounts per user');
         }
@@ -83,7 +83,7 @@ export const set_active_hsr_account = spacetimedb.reducer(
         // No-op if already active
         if (account.isActive) return;
 
-        const allAccounts = [...ctx.db.HsrAccount.hsr_account_user_id.filter(user.id)];
+        const allAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
         for (const acc of allAccounts) {
             if (acc.isActive && acc.id !== hsrAccountId) {
                 ctx.db.HsrAccount.id.update({ ...acc, isActive: false, ...auditUpdate(ctx, acc, user.id) });
@@ -110,7 +110,7 @@ export const delete_hsr_account = spacetimedb.reducer(
         const uid = account.uid;
 
         // Cascade: delete all characters for this account
-        const characters = [...ctx.db.HsrAccountCharacter.hsr_acc_char_account_id.filter(hsrAccountId)];
+        const characters = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(hsrAccountId)];
         for (const char of characters) {
             ctx.db.HsrAccountCharacter.delete(char);
         }
@@ -119,7 +119,7 @@ export const delete_hsr_account = spacetimedb.reducer(
 
         // Auto-activate oldest remaining if this was the active account
         if (account.isActive) {
-            const remaining = [...ctx.db.HsrAccount.hsr_account_user_id.filter(user.id)];
+            const remaining = [...ctx.db.HsrAccount.user_id.filter(user.id)];
             if (remaining.length > 0) {
                 remaining.sort((a: any, b: any) =>
                     Number(a.createdDate.microsSinceUnixEpoch - b.createdDate.microsSinceUnixEpoch)
@@ -249,7 +249,7 @@ export const migrate_roster = spacetimedb.reducer(
             throw new SenderError('Source and target cannot be the same account');
         }
 
-        const sourceChars = [...ctx.db.HsrAccountCharacter.hsr_acc_char_account_id.filter(sourceAccountId)];
+        const sourceChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(sourceAccountId)];
 
         // Copy/upsert source characters into target
         for (const char of sourceChars) {

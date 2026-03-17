@@ -30,7 +30,7 @@ export const BracketMatch = table({
     name: 'bracket_match',
     public: true,
     indexes: [
-        { name: 'bm_tournament', accessor: 'bm_tournament', algorithm: 'btree', columns: ['tournamentId'] },
-        { name: 'bm_lobby', accessor: 'bm_lobby', algorithm: 'btree', columns: ['lobbyId'] },
+        { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
+        { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
     ],
 }, bracketMatchColumns);

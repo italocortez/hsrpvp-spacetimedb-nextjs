@@ -16,8 +16,8 @@ Archetype
       characterName → HsrCharacter.name (application-enforced)
       archetypeId → Archetype.id (application-enforced)
       Indexes:
-        hsr_char_arch_char (characterName) — look up all archetypes for a character
-        hsr_char_arch_arch (archetypeId)   — look up all characters in an archetype
+        character_name (characterName) — look up all archetypes for a character
+        archetype_id (archetypeId)    — look up all characters in an archetype
 ```
 
 ## Admin Operations

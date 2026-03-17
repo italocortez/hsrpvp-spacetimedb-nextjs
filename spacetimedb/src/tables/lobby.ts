@@ -58,8 +58,8 @@ export const Lobby = table({
     name: 'lobby',
     public: true,
     indexes: [
-        { name: 'lobby_host', accessor: 'lobby_host', algorithm: 'btree', columns: ['hostUserId'] },
-        { name: 'lobby_stage', accessor: 'lobby_stage', algorithm: 'btree', columns: ['stage'] },
-        { name: 'lobby_tournament', accessor: 'lobby_tournament', algorithm: 'btree', columns: ['tournamentId'] },
+        { accessor: 'host_user_id', algorithm: 'btree', columns: ['hostUserId'] },
+        { accessor: 'stage', algorithm: 'btree', columns: ['stage'] },
+        { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
     ]
 }, lobbyColumns);

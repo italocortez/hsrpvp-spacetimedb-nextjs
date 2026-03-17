@@ -17,7 +17,7 @@ export const CalendarEvent = table({
     name: 'calendar_event',
     public: true,
     indexes: [
-        { name: 'ce_organizer', accessor: 'ce_organizer', algorithm: 'btree', columns: ['organizerId'] },
-        { name: 'ce_start_at', accessor: 'ce_start_at', algorithm: 'btree', columns: ['startAt'] },
+        { accessor: 'organizer_id', algorithm: 'btree', columns: ['organizerId'] },
+        { accessor: 'start_at', algorithm: 'btree', columns: ['startAt'] },
     ],
 }, calendarEventColumns);

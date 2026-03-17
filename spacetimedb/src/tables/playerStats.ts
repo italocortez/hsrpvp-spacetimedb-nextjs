@@ -17,6 +17,6 @@ export const PlayerStats = table({
     name: 'player_stats',
     public: true,
     indexes: [
-        { name: 'ps_wins', accessor: 'ps_wins', algorithm: 'btree', columns: ['wins'] },
+        { accessor: 'wins', algorithm: 'btree', columns: ['wins'] },
     ],
 }, playerStatsColumns);
