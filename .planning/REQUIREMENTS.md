@@ -29,9 +29,9 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 - [x] **TRNT-01**: User can request Tournament Organizer (TO) role; admin approves or denies
 - [x] **TRNT-02**: TO can create a tournament with name, format, game mode, settings, and max participants
 - [x] **TRNT-03**: Tournament supports formats: single elimination, double elimination, group phase (soccer-style round-robin)
-- [ ] **TRNT-04**: Tournament has explicit stage lifecycle (Draft → Registration → Seeding → InProgress → Completed → Cancelled)
-- [ ] **TRNT-05**: Player can self-sign up for a tournament (solo or as a team)
-- [ ] **TRNT-06**: Team can sign up for a tournament as a unit
+- [x] **TRNT-04**: Tournament has explicit stage lifecycle (Draft → Registration → Seeding → InProgress → Completed → Cancelled)
+- [x] **TRNT-05**: Player can self-sign up for a tournament (solo or as a team)
+- [x] **TRNT-06**: Team can sign up for a tournament as a unit
 - [ ] **TRNT-07**: TO can assign referees to the tournament
 - [x] **TRNT-08**: TO can set tournament-level anonymous play default
 - [x] **TRNT-09**: TO can set tournament-level open/closed roster visibility
@@ -41,10 +41,10 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Teams
 
-- [ ] **TEAM-01**: User can create a persistent team with name and roster
-- [ ] **TEAM-02**: User can invite other users to join their team
-- [ ] **TEAM-03**: User can accept/decline team invitations
-- [ ] **TEAM-04**: Ad-hoc groups can be formed for a specific tournament without a persistent team
+- [x] **TEAM-01**: User can create a persistent team with name and roster
+- [x] **TEAM-02**: User can invite other users to join their team
+- [x] **TEAM-03**: User can accept/decline team invitations
+- [x] **TEAM-04**: Ad-hoc groups can be formed for a specific tournament without a persistent team
 - [x] **TEAM-05**: Coach role exists on a team: can observe match (cursor tracking) but cannot pick
 
 ### Bracket & Advancement
@@ -189,19 +189,19 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | TRNT-01 | Phase 3 | Complete |
 | TRNT-02 | Phase 3 | Complete |
 | TRNT-03 | Phase 3 | Complete |
-| TRNT-04 | Phase 3 | Pending |
-| TRNT-05 | Phase 3 | Pending |
-| TRNT-06 | Phase 3 | Pending |
+| TRNT-04 | Phase 3 | Complete |
+| TRNT-05 | Phase 3 | Complete |
+| TRNT-06 | Phase 3 | Complete |
 | TRNT-07 | Phase 3 | Pending |
 | TRNT-08 | Phase 3 | Complete |
 | TRNT-09 | Phase 3 | Complete |
 | TRNT-10 | Phase 3 | Complete |
 | TRNT-11 | Phase 3 | Pending |
 | TRNT-12 | Phase 3 | Pending |
-| TEAM-01 | Phase 3 | Pending |
-| TEAM-02 | Phase 3 | Pending |
-| TEAM-03 | Phase 3 | Pending |
-| TEAM-04 | Phase 3 | Pending |
+| TEAM-01 | Phase 3 | Complete |
+| TEAM-02 | Phase 3 | Complete |
+| TEAM-03 | Phase 3 | Complete |
+| TEAM-04 | Phase 3 | Complete |
 | TEAM-05 | Phase 3 | Complete |
 | BRKT-01 | Phase 4 | Pending |
 | BRKT-02 | Phase 4 | Pending |

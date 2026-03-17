@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 03-tournament-system
 current_plan: 03-03 complete
 status: executing
-last_updated: "2026-03-17T15:41:58.536Z"
+last_updated: "2026-03-17T15:42:35.593Z"
 progress:
   total_phases: 10
   completed_phases: 2
@@ -43,6 +43,8 @@ See: .planning/PROJECT.md
 - [03-cost-sets] publish_cost_set preserves audit history via auditUpdate when live row already exists (supports republishing after edit)
 - [03-cost-sets] HsrSynergyCost uses id.update() on publish (autoInc PK); character/lightcone use delete+insert (composite PK)
 - [03-cost-sets] unpublish_cost_set does NOT delete live cost rows — only toggles isPublished/isLocked metadata; rows persist until delete_cost_set
+- [Phase 03-tournament-system]: teamGroupId=0 sentinel in reducer args (u32 not optional) — mirrors costSetId=0 pattern; simplifies client calls
+- [Phase 03-tournament-system]: minimumMmr enforcement deferred to Phase 5 — MMR tables exist but rating calculation not yet implemented
 
 ## Session Log
 
@@ -51,3 +53,4 @@ See: .planning/PROJECT.md
 - 2026-03-16: Completed 02-02-PLAN.md — 16 roster reducers, module published, bindings generated
 - 2026-03-17: Completed 03-01-PLAN.md — schema foundation for tournament system (enums, 6 new tables, permission helpers, module published with --clear-database)
 - 2026-03-17: Completed 03-03-PLAN.md — 8 cost set reducers (draft/publish/lock/unpublish/delete), 4 per-user draft cost views, cost-sets architecture docs
+- 2026-03-17: Completed 03-02-PLAN.md — 14 tournament reducers (4 management, 4 registration, 6 teams), tournament architecture docs, published to maincloud
