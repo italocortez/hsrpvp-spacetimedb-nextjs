@@ -26,16 +26,16 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Tournament System
 
-- [ ] **TRNT-01**: User can request Tournament Organizer (TO) role; admin approves or denies
+- [x] **TRNT-01**: User can request Tournament Organizer (TO) role; admin approves or denies
 - [ ] **TRNT-02**: TO can create a tournament with name, format, game mode, settings, and max participants
-- [ ] **TRNT-03**: Tournament supports formats: single elimination, double elimination, group phase (soccer-style round-robin)
+- [x] **TRNT-03**: Tournament supports formats: single elimination, double elimination, group phase (soccer-style round-robin)
 - [ ] **TRNT-04**: Tournament has explicit stage lifecycle (Draft → Registration → Seeding → InProgress → Completed → Cancelled)
 - [ ] **TRNT-05**: Player can self-sign up for a tournament (solo or as a team)
 - [ ] **TRNT-06**: Team can sign up for a tournament as a unit
 - [ ] **TRNT-07**: TO can assign referees to the tournament
-- [ ] **TRNT-08**: TO can set tournament-level anonymous play default
-- [ ] **TRNT-09**: TO can set tournament-level open/closed roster visibility
-- [ ] **TRNT-10**: TO can set tournament-level disconnect behavior policy
+- [x] **TRNT-08**: TO can set tournament-level anonymous play default
+- [x] **TRNT-09**: TO can set tournament-level open/closed roster visibility
+- [x] **TRNT-10**: TO can set tournament-level disconnect behavior policy
 - [ ] **TRNT-11**: TO can override match results and DQ participants
 - [ ] **TRNT-12**: Referee can validate match results within their assigned tournament
 
@@ -45,7 +45,7 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 - [ ] **TEAM-02**: User can invite other users to join their team
 - [ ] **TEAM-03**: User can accept/decline team invitations
 - [ ] **TEAM-04**: Ad-hoc groups can be formed for a specific tournament without a persistent team
-- [ ] **TEAM-05**: Coach role exists on a team: can observe match (cursor tracking) but cannot pick
+- [x] **TEAM-05**: Coach role exists on a team: can observe match (cursor tracking) but cannot pick
 
 ### Bracket & Advancement
 
@@ -186,23 +186,23 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | ROST-06 | Phase 2 | Complete |
 | ROST-07 | Phase 2 | Complete |
 | ROST-08 | Phase 2 | Complete |
-| TRNT-01 | Phase 3 | Pending |
+| TRNT-01 | Phase 3 | Complete |
 | TRNT-02 | Phase 3 | Pending |
-| TRNT-03 | Phase 3 | Pending |
+| TRNT-03 | Phase 3 | Complete |
 | TRNT-04 | Phase 3 | Pending |
 | TRNT-05 | Phase 3 | Pending |
 | TRNT-06 | Phase 3 | Pending |
 | TRNT-07 | Phase 3 | Pending |
-| TRNT-08 | Phase 3 | Pending |
-| TRNT-09 | Phase 3 | Pending |
-| TRNT-10 | Phase 3 | Pending |
+| TRNT-08 | Phase 3 | Complete |
+| TRNT-09 | Phase 3 | Complete |
+| TRNT-10 | Phase 3 | Complete |
 | TRNT-11 | Phase 3 | Pending |
 | TRNT-12 | Phase 3 | Pending |
 | TEAM-01 | Phase 3 | Pending |
 | TEAM-02 | Phase 3 | Pending |
 | TEAM-03 | Phase 3 | Pending |
 | TEAM-04 | Phase 3 | Pending |
-| TEAM-05 | Phase 3 | Pending |
+| TEAM-05 | Phase 3 | Complete |
 | BRKT-01 | Phase 4 | Pending |
 | BRKT-02 | Phase 4 | Pending |
 | BRKT-03 | Phase 4 | Pending |

@@ -12,7 +12,7 @@ This milestone builds the complete SpacetimeDB backend for the HSRPVP competitiv
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Schema Foundation** - Define all enums, structs, and table schemas before any reducer is written (completed 2026-03-16)
+- [x] **Phase 1: Schema Foundation** - Define all enums, structs, and table schemas before any reducer is written (completed 2026-03-16)
 - [x] **Phase 2: Roster Management** - HSR account and character/lightcone ownership with server-enforced visibility (completed 2026-03-16)
 - [ ] **Phase 3: Tournament System** - Tournament lifecycle, participant registration, teams, and referee assignment
 - [ ] **Phase 4: Bracket Generation** - Single/double elimination and group phase bracket rows with explicit FK advancement
@@ -52,25 +52,27 @@ Plans:
   6. A per-account rating value is stored and recalculated when roster contents change
 **Plans:** 2/2 plans complete
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade
+- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish
 
 ### Phase 3: Tournament System
-**Goal**: Tournament organizers can create and manage tournament lifecycle, players can register solo or as teams, and referees are scoped per tournament
+**Goal**: Tournament organizers can create and manage tournament lifecycle, players can register solo or as tournament-scoped teams, referees operate per-match (not per-tournament), cost sets have draft/publish workflow, and the expanded role hierarchy (Moderator, TournamentHost) is enforced
 **Depends on**: Phase 2
 **Requirements**: TRNT-01, TRNT-02, TRNT-03, TRNT-04, TRNT-05, TRNT-06, TRNT-07, TRNT-08, TRNT-09, TRNT-10, TRNT-11, TRNT-12, TEAM-01, TEAM-02, TEAM-03, TEAM-04, TEAM-05
 **Success Criteria** (what must be TRUE):
-  1. A user can request the TO role via reducer; an admin can approve or deny the request
-  2. A TO can create a tournament with format (single elimination, double elimination, group phase), game mode, and all tournament-level settings; tournament advances through explicit stage transitions (Draft → Registration → Seeding → InProgress → Completed/Cancelled)
-  3. A player can sign up for a tournament individually; a team captain can sign up an entire team as a unit
-  4. A TO can assign one or more users as referees scoped to that tournament; referees cannot act outside their assigned tournament
-  5. Tournament-level settings (anonymous play default, open/closed roster, disconnect policy) are stored and readable by match reducers
+  1. Admin can promote a user to TournamentHost or Moderator via existing admin_update_user reducer (no TO request flow)
+  2. A TO can create a tournament with format, game mode, all settings, and it advances through explicit stage transitions (Draft -> Registration -> Seeding -> InProgress -> Completed/Cancelled)
+  3. A player can sign up for a tournament individually; in team formats, players form tournament-scoped teams with captain/join/accept flow
+  4. Referee is a per-match (per-lobby) flag, transferable within the lobby; host auto-assigned
+  5. Tournament-level settings (anonymous play, roster visibility with 3 variants, disconnect policy, cost set) are stored and readable by match reducers
   6. A TO or admin can override match results and disqualify participants via explicit reducers
-  7. A user can create a persistent team, invite members, and a coach role member can observe but not act
-**Plans:** 2 plans
+  7. Cost sets support draft/publish workflow with private draft tables
+**Plans:** 1/4 plans executed
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 03-01-PLAN.md — Schema changes: enums (Moderator, Seeding, RosterVisibility), new tables (CostSet, drafts, TournamentTeam), cost PK expansion, permission helpers, publish --clear-database
+- [ ] 03-02-PLAN.md — Tournament CRUD, lifecycle, registration, tournament-scoped team reducers
+- [ ] 03-03-PLAN.md — Cost set management: clone, draft edit, publish, unpublish, delete, per-user views
+- [ ] 03-04-PLAN.md — Match result submission, referee management, tournament admin overrides, final publish + bindings
 
 ### Phase 4: Bracket Generation and Advancement
 **Goal**: Brackets are pre-generated as individual rows with explicit FK links, seeded correctly, and auto-advance when a match result is confirmed
@@ -84,8 +86,8 @@ Plans:
   5. Seeding supports both manual slot assignment and MMR-based auto-seeding
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 04-01-PLAN.md — [To be planned]
+- [ ] 04-02-PLAN.md — [To be planned]
 
 ### Phase 5: Match Results and MMR
 **Goal**: Players can submit and verify match results with screenshots; validated results trigger ELO updates and bracket advancement atomically in one transaction
@@ -102,8 +104,8 @@ Plans:
   8. A leaderboard table or view is queryable sorted by per-mode MMR and by global composite MMR; schema includes seasonId column
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 05-01-PLAN.md — [To be planned]
+- [ ] 05-02-PLAN.md — [To be planned]
 
 ### Phase 6: Anonymous Play and Player Stats
 **Goal**: Anonymous mode is enforced at the data write layer, and complete player statistics are tracked and queryable
@@ -120,8 +122,8 @@ Plans:
   8. Match history supports step-by-step replay by reading MatchSessionStepHistory; final result with game-mode-specific scoring is readable from the match result table
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 06-01-PLAN.md — [To be planned]
+- [ ] 06-02-PLAN.md — [To be planned]
 
 ### Phase 7: Achievements and Titles
 **Goal**: Admins can define achievements, the system auto-awards them on condition, and players can display earned titles on their profile
@@ -134,8 +136,8 @@ Plans:
   4. A player can read their collected achievements and call a reducer to set which title is displayed on their profile
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 07-01-PLAN.md — [To be planned]
+- [ ] 07-02-PLAN.md — [To be planned]
 
 ### Phase 8: Calendar and Scheduling
 **Goal**: Players can record recurring availability, view others' calendars, find common windows, and tournament organizers can schedule matches via calendar events
@@ -149,8 +151,8 @@ Plans:
   5. A TO can create calendar events linked to tournament matches and send invites to participants
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 08-01-PLAN.md — [To be planned]
+- [ ] 08-02-PLAN.md — [To be planned]
 
 ### Phase 9: Mouse Tracking, Chat, and Lobby Browser
 **Goal**: Full cursor broadcast works for all match roles, ephemeral chat is available per lobby, and players can browse and filter available lobbies
@@ -164,8 +166,8 @@ Plans:
   5. A lobby list table or view supports filtering by game mode, match status, and player count; lobby visibility (public, private, invite-only) is enforced at the subscription level
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 09-01-PLAN.md — [To be planned]
+- [ ] 09-02-PLAN.md — [To be planned]
 
 ### Phase 10: Disconnect Handling and Cost Parity
 **Goal**: Disconnect behavior is configurable and safe, rejoins preserve full match state, and pick/ban reducers are guarded against post-forfeit action; lightcone cost table gains game-mode parity with character costs
@@ -179,13 +181,13 @@ Plans:
   5. HsrLightconeCost table gains a gameMode column as part of its primary composite key, matching the structure of HsrCharacterCost
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade� Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish� User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [ ] 10-01-PLAN.md — [To be planned]
+- [ ] 10-02-PLAN.md — [To be planned]
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
 
@@ -193,7 +195,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 |-------|----------------|--------|-----------|
 | 1. Schema Foundation | 2/2 | Complete   | 2026-03-16 |
 | 2. Roster Management | 2/2 | Complete   | 2026-03-16 |
-| 3. Tournament System | 0/? | Not started | - |
+| 3. Tournament System | 1/4 | In Progress|  |
 | 4. Bracket Generation | 0/? | Not started | - |
 | 5. Match Results and MMR | 0/? | Not started | - |
 | 6. Anonymous Play and Player Stats | 0/? | Not started | - |
