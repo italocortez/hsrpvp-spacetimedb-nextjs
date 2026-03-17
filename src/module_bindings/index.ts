@@ -80,12 +80,14 @@ import ReclaimRefereeReducer from "./reclaim_referee_reducer";
 import RegisterForTournamentReducer from "./register_for_tournament_reducer";
 import RegisterServerReducer from "./register_server_reducer";
 import RejectTeamRequestReducer from "./reject_team_request_reducer";
+import RemoveCoachReducer from "./remove_coach_reducer";
 import RemoveTournamentAssistantReducer from "./remove_tournament_assistant_reducer";
 import RequestJoinTeamReducer from "./request_join_team_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkDiscordReducer from "./server_link_discord_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
+import SetCoachReducer from "./set_coach_reducer";
 import SubmitMatchResultReducer from "./submit_match_result_reducer";
 import TransferRefereeReducer from "./transfer_referee_reducer";
 import UnpublishCostSetReducer from "./unpublish_cost_set_reducer";
@@ -820,12 +822,14 @@ const reducersSchema = __reducers(
   __reducerSchema("register_for_tournament", RegisterForTournamentReducer),
   __reducerSchema("register_server", RegisterServerReducer),
   __reducerSchema("reject_team_request", RejectTeamRequestReducer),
+  __reducerSchema("remove_coach", RemoveCoachReducer),
   __reducerSchema("remove_tournament_assistant", RemoveTournamentAssistantReducer),
   __reducerSchema("request_join_team", RequestJoinTeamReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
   __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
+  __reducerSchema("set_coach", SetCoachReducer),
   __reducerSchema("submit_match_result", SubmitMatchResultReducer),
   __reducerSchema("transfer_referee", TransferRefereeReducer),
   __reducerSchema("unpublish_cost_set", UnpublishCostSetReducer),

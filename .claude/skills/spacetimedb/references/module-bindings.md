@@ -1,7 +1,7 @@
 # Module Bindings Reference
 
 > **Auto-generated summary.** Rebuild this file whenever `spacetime generate` is run.
-> Last generated from SpacetimeDB CLI v2.0.5 — Phase 03-01 schema changes applied
+> Last generated from SpacetimeDB CLI v2.0.5 — Phase 03-05 gap closure: set_coach, remove_coach reducers added
 
 Source: `src/module_bindings/` (do NOT edit generated files directly)
 
@@ -449,6 +449,10 @@ import { DbConnection, tables } from './module_bindings';
 | Reducer | Parameters | Description |
 |---------|-----------|-------------|
 | `broadcast_cursor` | `lobbyId: u32, x: f32, y: f32` | Send cursor position |
+| `transfer_referee` | `lobbyId: u32, targetUserId: u32` | Transfer referee flag to another member (caller must be referee) |
+| `reclaim_referee` | `lobbyId: u32` | Reclaim referee flag back to lobby host |
+| `set_coach` | `lobbyId: u32, targetUserId: u32` | Set isCoach=true on a lobby member (host or referee only) |
+| `remove_coach` | `lobbyId: u32, targetUserId: u32` | Set isCoach=false on a lobby member (host or referee only) |
 
 **Client-side calls use camelCase and object syntax:**
 ```typescript

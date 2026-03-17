@@ -68,6 +68,8 @@ Draft → Registration → Seeding → InProgress → Completed
 | `disband_tournament_team` | tournamentTeams.ts | Team Captain | Disband team, reset all members |
 | `transfer_referee` | refereeManagement.ts | Current Referee | Transfer referee flag to another lobby member |
 | `reclaim_referee` | refereeManagement.ts | Lobby Host | Reclaim referee flag from current holder |
+| `set_coach` | refereeManagement.ts | Lobby Host or Referee | Set isCoach=true on a lobby member |
+| `remove_coach` | refereeManagement.ts | Lobby Host or Referee | Set isCoach=false on a lobby member |
 | `confirm_match_scores` | matchResultSubmission.ts | Match Participant | Confirm team's scores |
 | `submit_match_result` | matchResultSubmission.ts | Referee/Mod/Admin | Submit match result (requires both teams confirmed) |
 | `dispute_match_result` | matchResultSubmission.ts | Match Participant | Dispute submitted result (once per match) |
