@@ -2,6 +2,7 @@ import { t } from 'spacetimedb/server';
 
 export const Role = t.enum('Role', {
     Admin: t.unit(),
+    Moderator: t.unit(),
     TournamentHost: t.unit(),
     User: t.unit(),
 });
@@ -89,10 +90,16 @@ export const ActionType = t.enum('ActionType', {
 export const TournamentStage = t.enum('TournamentStage', {
     Draft: t.unit(),
     Registration: t.unit(),
+    Seeding: t.unit(),
     InProgress: t.unit(),
-    Paused: t.unit(),
     Completed: t.unit(),
     Cancelled: t.unit(),
+});
+
+export const RosterVisibility = t.enum('RosterVisibility', {
+    OpenRoster: t.unit(),
+    ClosedWithRating: t.unit(),
+    ClosedNoRating: t.unit(),
 });
 
 export const TournamentFormat = t.enum('TournamentFormat', {
