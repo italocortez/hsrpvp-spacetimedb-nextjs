@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { TournamentFormat, TournamentStage, GameMode, DisconnectPolicy, GroupAssignmentMode } from '../types/enums';
+import { TournamentFormat, TournamentStage, GameMode, DisconnectPolicy, GroupAssignmentMode, RosterVisibility } from '../types/enums';
 
 export const tournamentColumns = {
     id: t.u32().primaryKey().autoInc(),
@@ -10,21 +10,42 @@ export const tournamentColumns = {
     stage: TournamentStage,
     defaultGameMode: GameMode,
     maxParticipants: t.u32(),
+    teamSize: t.u8(),
+    // Anonymous
     isAnonymousDefault: t.bool(),
     isAnonymousSpectators: t.bool(),
-    isOpenRoster: t.bool(),
+    // Roster visibility (replaces isOpenRoster)
+    rosterVisibility: RosterVisibility,
+    // Disconnect
     disconnectPolicy: DisconnectPolicy,
+    // Check-in
     checkInEnabled: t.bool(),
     checkInPerRound: t.bool(),
+    // Auto-forfeit
     autoForfeitEnabled: t.bool(),
     autoForfeitMinutes: t.u32(),
+    // Bracket
     bracketRevealAt: t.timestamp().optional(),
-    grandFinalsAdvantage: t.bool(),
+    winnerAdvantage: t.u8(),
     groupAssignmentMode: GroupAssignmentMode,
     groupAdvanceCount: t.u8(),
+    // Cost set
+    costSetId: t.u32(),
+    // Season
     seasonId: t.u32().optional(),
+    // MMR
     countTowardsMmr: t.bool(),
     defaultBestOf: t.u8(),
+    // Registration requirements
+    requireVerified: t.bool(),
+    requireRoster: t.bool(),
+    minimumMmr: t.u32().optional(),
+    requireApproval: t.bool(),
+    waitlistEnabled: t.bool(),
+    // Scheduling (informational only)
+    scheduledStartAt: t.timestamp().optional(),
+    registrationDeadline: t.timestamp().optional(),
+    // Audit
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

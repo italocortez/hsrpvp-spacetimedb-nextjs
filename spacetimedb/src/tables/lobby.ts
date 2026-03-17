@@ -31,6 +31,7 @@ export const lobbyColumns = {
 
     // Roster:
     isOpenRoster: t.bool(),
+    costSetId: t.u32(),
 
     // Visibility:
     isPublic: t.bool(),

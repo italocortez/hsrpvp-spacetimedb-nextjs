@@ -22,6 +22,16 @@ import { Tournament } from './tables/tournament';
 import { TournamentParticipant } from './tables/tournamentParticipant';
 import { TournamentAssistant } from './tables/tournamentAssistant';
 
+// Cost Set Management
+import { CostSet } from './tables/costSet';
+import { CostSetDraftCharacter } from './tables/costSetDraftCharacter';
+import { CostSetDraftLightcone } from './tables/costSetDraftLightcone';
+import { CostSetDraftSynergy } from './tables/costSetDraftSynergy';
+
+// Tournament Teams
+import { TournamentTeam } from './tables/tournamentTeam';
+import { TournamentTeamRequest } from './tables/tournamentTeamRequest';
+
 // Teams
 import { Team } from './tables/team';
 import { TeamMember } from './tables/teamMember';
@@ -101,6 +111,16 @@ const spacetimedb = schema({
     Tournament,
     TournamentParticipant,
     TournamentAssistant,
+
+    // Cost Set Management
+    CostSet,
+    CostSetDraftCharacter,
+    CostSetDraftLightcone,
+    CostSetDraftSynergy,
+
+    // Tournament Teams
+    TournamentTeam,
+    TournamentTeamRequest,
 
     // Teams
     Team,
