@@ -66,6 +66,17 @@ Draft → Registration → Seeding → InProgress → Completed
 | `reject_team_request` | tournamentTeams.ts | Team Captain | Reject and delete a join request |
 | `leave_tournament_team` | tournamentTeams.ts | Authenticated | Leave team (non-captain only) |
 | `disband_tournament_team` | tournamentTeams.ts | Team Captain | Disband team, reset all members |
+| `transfer_referee` | refereeManagement.ts | Current Referee | Transfer referee flag to another lobby member |
+| `reclaim_referee` | refereeManagement.ts | Lobby Host | Reclaim referee flag from current holder |
+| `confirm_match_scores` | matchResultSubmission.ts | Match Participant | Confirm team's scores |
+| `submit_match_result` | matchResultSubmission.ts | Referee/Mod/Admin | Submit match result (requires both teams confirmed) |
+| `dispute_match_result` | matchResultSubmission.ts | Match Participant | Dispute submitted result (once per match) |
+| `dq_participant` | tournamentAdmin.ts | TO/Assistant/Mod/Admin | Disqualify tournament participant |
+| `override_match_result` | tournamentAdmin.ts | TO/Mod/Admin | Override match result status (Validated or Rejected) |
+| `assign_tournament_assistant` | tournamentAdmin.ts | Organizer/Mod/Admin | Assign or update tournament assistant permissions |
+| `remove_tournament_assistant` | tournamentAdmin.ts | Organizer/Mod/Admin | Remove tournament assistant |
+| `mod_promote_to_host` | tournamentAdmin.ts | Moderator/Admin | Promote User role to TournamentHost |
+| `mod_demote_from_host` | tournamentAdmin.ts | Moderator/Admin | Demote TournamentHost role to User |
 
 ### TO/Assistant/Mod+ Access
 

@@ -34,6 +34,7 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AcceptTeamRequestReducer from "./accept_team_request_reducer";
 import AdminAssignCharacterArchetypesReducer from "./admin_assign_character_archetypes_reducer";
 import AdminBatchRemoveCharactersReducer from "./admin_batch_remove_characters_reducer";
 import AdminBatchUpsertCharactersReducer from "./admin_batch_upsert_characters_reducer";
@@ -46,23 +47,55 @@ import AdminRemoveCharacterArchetypesReducer from "./admin_remove_character_arch
 import AdminUpdateHsrAccountReducer from "./admin_update_hsr_account_reducer";
 import AdminUpdateUserReducer from "./admin_update_user_reducer";
 import AdminUpsertArchetypeReducer from "./admin_upsert_archetype_reducer";
+import AdvanceTournamentStageReducer from "./advance_tournament_stage_reducer";
+import ApproveParticipantReducer from "./approve_participant_reducer";
+import AssignTournamentAssistantReducer from "./assign_tournament_assistant_reducer";
 import BatchRemoveCharactersReducer from "./batch_remove_characters_reducer";
 import BatchUpsertCharactersReducer from "./batch_upsert_characters_reducer";
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
+import CancelTournamentReducer from "./cancel_tournament_reducer";
+import ConfirmMatchScoresReducer from "./confirm_match_scores_reducer";
+import CreateCostSetReducer from "./create_cost_set_reducer";
 import CreateHsrAccountReducer from "./create_hsr_account_reducer";
+import CreateTournamentReducer from "./create_tournament_reducer";
+import CreateTournamentTeamReducer from "./create_tournament_team_reducer";
+import DeleteCostSetReducer from "./delete_cost_set_reducer";
 import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
 import DeleteHsrAccountReducer from "./delete_hsr_account_reducer";
+import DisbandTournamentTeamReducer from "./disband_tournament_team_reducer";
+import DisputeMatchResultReducer from "./dispute_match_result_reducer";
+import DqParticipantReducer from "./dq_participant_reducer";
+import EditDraftCharacterCostReducer from "./edit_draft_character_cost_reducer";
+import EditDraftLightconeCostReducer from "./edit_draft_lightcone_cost_reducer";
+import EditDraftSynergyCostReducer from "./edit_draft_synergy_cost_reducer";
+import LeaveTournamentTeamReducer from "./leave_tournament_team_reducer";
+import LockCostSetReducer from "./lock_cost_set_reducer";
 import LoginAsGuestReducer from "./login_as_guest_reducer";
 import MigrateRosterReducer from "./migrate_roster_reducer";
+import ModDemoteFromHostReducer from "./mod_demote_from_host_reducer";
+import ModPromoteToHostReducer from "./mod_promote_to_host_reducer";
+import OverrideMatchResultReducer from "./override_match_result_reducer";
+import PublishCostSetReducer from "./publish_cost_set_reducer";
+import ReclaimRefereeReducer from "./reclaim_referee_reducer";
+import RegisterForTournamentReducer from "./register_for_tournament_reducer";
 import RegisterServerReducer from "./register_server_reducer";
+import RejectTeamRequestReducer from "./reject_team_request_reducer";
+import RemoveTournamentAssistantReducer from "./remove_tournament_assistant_reducer";
+import RequestJoinTeamReducer from "./request_join_team_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkDiscordReducer from "./server_link_discord_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
+import SubmitMatchResultReducer from "./submit_match_result_reducer";
+import TransferRefereeReducer from "./transfer_referee_reducer";
+import UnpublishCostSetReducer from "./unpublish_cost_set_reducer";
 import UpdateAvatarReducer from "./update_avatar_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
 import UpdateHsrAccountReducer from "./update_hsr_account_reducer";
+import UpdateTournamentReducer from "./update_tournament_reducer";
 import UpdateUsernameReducer from "./update_username_reducer";
+import WaitlistPromoteReducer from "./waitlist_promote_reducer";
+import WithdrawFromTournamentReducer from "./withdraw_from_tournament_reducer";
 
 // Import all procedure arg schemas
 
@@ -741,6 +774,7 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("accept_team_request", AcceptTeamRequestReducer),
   __reducerSchema("admin_assign_character_archetypes", AdminAssignCharacterArchetypesReducer),
   __reducerSchema("admin_batch_remove_characters", AdminBatchRemoveCharactersReducer),
   __reducerSchema("admin_batch_upsert_characters", AdminBatchUpsertCharactersReducer),
@@ -753,23 +787,55 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_update_hsr_account", AdminUpdateHsrAccountReducer),
   __reducerSchema("admin_update_user", AdminUpdateUserReducer),
   __reducerSchema("admin_upsert_archetype", AdminUpsertArchetypeReducer),
+  __reducerSchema("advance_tournament_stage", AdvanceTournamentStageReducer),
+  __reducerSchema("approve_participant", ApproveParticipantReducer),
+  __reducerSchema("assign_tournament_assistant", AssignTournamentAssistantReducer),
   __reducerSchema("batch_remove_characters", BatchRemoveCharactersReducer),
   __reducerSchema("batch_upsert_characters", BatchUpsertCharactersReducer),
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
+  __reducerSchema("cancel_tournament", CancelTournamentReducer),
+  __reducerSchema("confirm_match_scores", ConfirmMatchScoresReducer),
+  __reducerSchema("create_cost_set", CreateCostSetReducer),
   __reducerSchema("create_hsr_account", CreateHsrAccountReducer),
+  __reducerSchema("create_tournament", CreateTournamentReducer),
+  __reducerSchema("create_tournament_team", CreateTournamentTeamReducer),
+  __reducerSchema("delete_cost_set", DeleteCostSetReducer),
   __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
   __reducerSchema("delete_hsr_account", DeleteHsrAccountReducer),
+  __reducerSchema("disband_tournament_team", DisbandTournamentTeamReducer),
+  __reducerSchema("dispute_match_result", DisputeMatchResultReducer),
+  __reducerSchema("dq_participant", DqParticipantReducer),
+  __reducerSchema("edit_draft_character_cost", EditDraftCharacterCostReducer),
+  __reducerSchema("edit_draft_lightcone_cost", EditDraftLightconeCostReducer),
+  __reducerSchema("edit_draft_synergy_cost", EditDraftSynergyCostReducer),
+  __reducerSchema("leave_tournament_team", LeaveTournamentTeamReducer),
+  __reducerSchema("lock_cost_set", LockCostSetReducer),
   __reducerSchema("login_as_guest", LoginAsGuestReducer),
   __reducerSchema("migrate_roster", MigrateRosterReducer),
+  __reducerSchema("mod_demote_from_host", ModDemoteFromHostReducer),
+  __reducerSchema("mod_promote_to_host", ModPromoteToHostReducer),
+  __reducerSchema("override_match_result", OverrideMatchResultReducer),
+  __reducerSchema("publish_cost_set", PublishCostSetReducer),
+  __reducerSchema("reclaim_referee", ReclaimRefereeReducer),
+  __reducerSchema("register_for_tournament", RegisterForTournamentReducer),
   __reducerSchema("register_server", RegisterServerReducer),
+  __reducerSchema("reject_team_request", RejectTeamRequestReducer),
+  __reducerSchema("remove_tournament_assistant", RemoveTournamentAssistantReducer),
+  __reducerSchema("request_join_team", RequestJoinTeamReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
   __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
+  __reducerSchema("submit_match_result", SubmitMatchResultReducer),
+  __reducerSchema("transfer_referee", TransferRefereeReducer),
+  __reducerSchema("unpublish_cost_set", UnpublishCostSetReducer),
   __reducerSchema("update_avatar", UpdateAvatarReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
   __reducerSchema("update_hsr_account", UpdateHsrAccountReducer),
+  __reducerSchema("update_tournament", UpdateTournamentReducer),
   __reducerSchema("update_username", UpdateUsernameReducer),
+  __reducerSchema("waitlist_promote", WaitlistPromoteReducer),
+  __reducerSchema("withdraw_from_tournament", WithdrawFromTournamentReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
