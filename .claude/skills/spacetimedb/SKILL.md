@@ -53,7 +53,7 @@ For quick tasks where you already know the pattern, the cheat sheet below may su
 ### Imports
 ```typescript
 // Server
-import { schema, table, t } from 'spacetimedb/server';
+import { schema, table, t, SenderError } from 'spacetimedb/server';
 import { Timestamp, ScheduleAt } from 'spacetimedb';
 
 // Client — ONLY these packages exist
@@ -167,12 +167,24 @@ ctx.db.myTable.id.update({ ...existing, title: newTitle });
 
 // Delete — by PK value
 ctx.db.myTable.id.delete(itemId);
+
+// Composite PK lookup — requires `as any` cast (SDK limitation)
+const row = (ctx.db.MyJoinTable as any).primaryKey.find({ colA: valA, colB: valB });
+```
+
+### Errors in reducers — use `SenderError`
+```typescript
+import { SenderError } from 'spacetimedb/server';
+
+// SenderError is the standard way to reject a reducer call with a message
+if (!item) throw new SenderError('Item not found.');
+// Do NOT use plain `throw new Error()` — SenderError surfaces the message to the calling client
 ```
 
 ### Exported columns — reuse column definitions across backend components
 Extract column definitions into a named object so other backend files (reducers, helpers, validators) can import and reference the column shape without exposing data to clients. Define the columns object and table in the same schema file:
 ```typescript
-// schema.ts (or tables/my_table.ts)
+// tables/my_table.ts
 import { table, t } from 'spacetimedb/server';
 
 // Export columns separately — other backend code can import this
@@ -248,13 +260,14 @@ These are APIs that don't exist — LLMs hallucinate them frequently:
 | `tables.user.filter(u => ...)` | `useTable(tables.user)` returns array, filter that |
 | `const rows = useTable(table)` | `const [rows, isReady] = useTable(tables.user)` |
 | `.subscribeToAll()` | `.subscribeToAllTables()` — method name changed |
+| `throw new Error('msg')` in reducers | `throw new SenderError('msg')` — surfaces message to the calling client |
 
 ## Feature implementation checklist
 
 When implementing a feature that spans backend and client:
 
-1. **Backend:** Define table(s) in `schema.ts`
-2. **Backend:** Define reducer(s) in `index.ts` (or reducers/ folder)
+1. **Backend:** Define table(s) in `tables/` folder (one file per table), then import in `schema.ts`
+2. **Backend:** Define reducer(s) in `reducers/` folder (grouped by domain), then re-export in `index.ts`
 3. **Backend:** Publish module (`spacetime publish`)
 4. **Backend:** Generate bindings (`spacetime generate`)
 5. **Client:** Subscribe to the table(s)
@@ -434,6 +447,60 @@ See `reducers/rosterAdmin.ts` for the full example (9 admin proxy reducers mirro
 ## Foreign keys
 
 SpacetimeDB does NOT support FK constraints. Referential integrity must be enforced in reducer code. This is expected — not a bug or missing feature.
+
+## Energy budget & bandwidth rules (ENFORCED)
+
+This project runs on SpacetimeDB maincloud with a **40,000 energy/month budget**. Egress is the dominant cost driver (~99% of energy in growth scenarios). Every table and reducer decision must consider bandwidth impact.
+
+**Energy rates:**
+- 1M reducer calls = 840 energy
+- 10GB egress = 2,000 energy
+- 1GB storage = 2,592 energy
+
+**The #1 cost driver is initial subscription load** — every user connection downloads all subscribed public table data. At scale, this dwarfs real-time broadcasts.
+
+### Subscription strategy (MUST follow)
+
+- **Never subscribe to all tables.** Users subscribe only to tables relevant to their current view.
+- **Match history tables are on-demand** — `match_session_history`, `match_session_step_history` are NOT in default subscriptions. Load only when user views match history.
+- **Cost tables**: Subscribe only to the active `costSetId`, not all cost sets.
+- **Tournament data**: Subscribe only for tournaments the user is viewing/participating in.
+- **Static data** (characters, lightcones, archetypes): Safe to subscribe globally — small and rarely updated.
+- **Transient tables** (lobby, match_session, chat): Subscribe only when in a lobby.
+
+### Table design rules for bandwidth
+
+| Rule | Why |
+|------|-----|
+| Prefer `public: false` + views over `public: true` for user-scoped data | Prevents broadcasting to all subscribers |
+| Prefer computed values on frontend over stored columns | Saves writes, storage, AND egress (e.g., `winRate = wins / matchesPlayed`) |
+| Use transactional tables (row exists = pending, delete = resolved) | Fewer rows = less storage and egress |
+| Minimize string columns on high-row-count tables | Strings have 4-byte overhead + content; use enums or u8 codes where possible |
+| Split large tables by access pattern | History/audit data separate from live data users always subscribe to |
+| Keep audit columns (24 bytes/row) — they're tiny vs string columns | Don't remove audit for "savings" — the overhead is negligible |
+
+### When to run the energy model
+
+Run `node tools/energy-model.js` to check energy impact:
+- Before adding new public tables (especially unbounded-growth ones)
+- When changing subscription strategy
+- During phase discussions to compare design options
+- Use `--scenario growth --months 12` for forward-looking analysis
+
+```bash
+node tools/energy-model.js                                    # Current baseline
+node tools/energy-model.js --scenario growth --months 12      # Growth projection
+node tools/energy-model.js --users 300 --matches-per-day 40   # Custom scenario
+node tools/energy-model.js --all                              # Compare all scenarios
+```
+
+### Tradeoff reporting
+
+When proposing any design that adds tables, columns, or changes visibility:
+1. State the bandwidth impact (rough: "adds ~X MB to initial subscription load per user")
+2. State the storage growth rate ("~X rows/month at Y bytes/row = Z MB/year")
+3. Compare alternatives if they exist
+4. Flag if the change moves the growth scenario closer to budget limits
 
 ## Updating docs from SpacetimeDB GitHub
 

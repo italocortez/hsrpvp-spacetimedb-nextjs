@@ -39,6 +39,8 @@ export const lobbyColumns = {
 
     // Disconnect behavior:
     disconnectPolicy: DisconnectPolicy,
+    disconnectForfeitSeconds: t.u32().optional(), // If disconnected for this many seconds, auto-forfeit (used with TimerThenForfeit policy)
+    disconnectForfeitAt: t.timestamp().optional(), // Set when disconnect timer starts; checked by scheduled reducer
 
     // Game mode:
     gameMode: GameMode,

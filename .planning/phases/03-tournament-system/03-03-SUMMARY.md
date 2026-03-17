@@ -114,6 +114,14 @@ None — no external service configuration required.
 - Per-user views are registered and will be available after next `spacetime publish`
 - Phase 9 can implement auto-unpublish on last lobby close by checking `isLocked === true && !hasActiveLobbies`
 
+## Self-Check: PASSED
+
+- FOUND: spacetimedb/src/reducers/costSetManagement.ts
+- FOUND: spacetimedb/src/docs/cost-sets/README.md
+- FOUND: .planning/phases/03-tournament-system/03-03-SUMMARY.md
+- FOUND: commit 1b81732 (Task 1)
+- FOUND: commit d53894f (Task 2)
+
 ---
 *Phase: 03-tournament-system*
 *Completed: 2026-03-17*

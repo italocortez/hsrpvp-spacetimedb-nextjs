@@ -72,6 +72,7 @@ Tournament organizers can create and manage tournament lifecycle, players can re
   - Use `TournamentParticipant` with `teamGroupId` column for team grouping
   - Small `TournamentTeam` table for team name + captain info (personalized names for fun factor)
   - For 2v2/3v3 formats: player creates a team inside the tournament, others request to join, captain accepts
+  - **TournamentTeamRequest is purely transactional** — row exists = pending request, row deleted = resolved (accepted or rejected). No status columns. The table's only purpose is to mediate the join request flow.
   - Solo in team formats is allowed (team of 1)
 - **Tournament format**: `teamSize` (1/2/3) separate from `bracketFormat` (SingleElim/DoubleElim/GroupPhase)
 - **Participant limits**: Optional maxParticipants with waitlist support
@@ -92,7 +93,7 @@ Tournament organizers can create and manage tournament lifecycle, players can re
 - **Winner advantage**: Boolean/u8 on Tournament. Only applies to double elimination grand finals (winner's bracket finalist starts 1-0 up).
 
 ### Cost Set Management
-- **CostSet metadata table**: id (PK autoInc), name, creatorId, isPublished, isDraft + audit columns
+- **CostSet metadata table**: id (PK autoInc), name, creatorId, isPublished, isDraft, isLocked + audit columns
 - CostSet rows reference `costSetId` (u32 FK) in HsrCharacterCost, HsrLightconeCost, HsrSynergyCost (columns already exist from Phase 2)
 - **Reusable across tournaments** — CostSet belongs to a creator, can be assigned to any match or tournament
 - **Non-tournament matches can also use custom cost sets** and earn MMR
@@ -103,6 +104,7 @@ Tournament organizers can create and manage tournament lifecycle, players can re
   4. Draft rows cleaned up after publish
 - **Draft table needs a per-user view** so TOs only see their own drafts (similar to `view_my_lobbies` pattern)
 - **Publish/unpublish toggle** on CostSet for bandwidth savings — unpublished sets not broadcast to clients
+- **Lock before unpublish/delete**: If a cost set is in active use (lobbies using it), the TO must first **lock** it (`isLocked = true`). A locked cost set prevents new lobbies from selecting it but existing lobbies continue using it. Once the last lobby using a locked cost set ends, the set becomes eligible for unpublish/delete. Phase 3 implements the lock reducer and the `isLocked` column. The automatic "unpublish when last lobby closes" trigger is deferred to Phase 9 (lobby lifecycle reducers).
 - **Synergy costs**: Optionally included in cost sets. Copied during clone but not mandatory to customize.
 - **Creation scope**: When creating a cost set for a specific game mode, it must cover all characters and lightcones for that mode with both classicCost and auctionCost filled
 - **Cloning**: Can clone from default (costSetId=0) or any other existing published cost set
@@ -198,13 +200,14 @@ Tournament organizers can create and manage tournament lifecycle, players can re
 <deferred>
 ## Deferred Ideas
 
-- **Persistent teams** (Team/TeamMember/TeamInvite tables) — future phase, may repurpose existing tables
+- **Persistent teams** (Team/TeamMember/TeamInvite tables) — OUT OF PROJECT SCOPE (v0.5). Tables exist as skeletons but no reducers will be implemented this milestone
 - **Match submission timeout handling** — what happens if scores aren't submitted? Belongs in Phase 5 (Match Results) or Phase 10 (Disconnect Handling)
 - **Automated check-in system** — not explicitly requested, defer unless needed
 - **Cost set CSV import/export** — frontend feature, v1 milestone
 - **Bracket modification backward-stepping logic** — complex, may span Phase 3 + Phase 4
 - **Synergy cost management UI** — frontend, v1 milestone
 - **Season support for cost sets** — schema supports it but logic deferred
+- **Auto-unpublish cost set when last lobby closes** — Phase 9 (lobby lifecycle reducers). Phase 3 adds the `isLocked` flag and `lock_cost_set` reducer; Phase 9 wires the lobby close reducer to check if a locked cost set has zero active lobbies and auto-unpublishes it.
 
 </deferred>
 

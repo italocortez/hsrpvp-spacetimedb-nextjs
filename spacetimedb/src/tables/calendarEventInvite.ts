@@ -3,7 +3,6 @@ import { table, t } from 'spacetimedb/server';
 export const calendarEventInviteColumns = {
     eventId: t.u32(),
     inviteeUserId: t.u32(),
-    isAccepted: t.bool().optional(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

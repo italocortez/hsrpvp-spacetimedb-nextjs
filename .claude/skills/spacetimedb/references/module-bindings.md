@@ -14,7 +14,7 @@ import { DbConnection, tables } from './module_bindings';
 
 ---
 
-## Tables (public tables — 37 total)
+## Tables (public tables — 43 total)
 
 ### User
 | Column | Type | Notes |

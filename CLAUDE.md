@@ -26,6 +26,13 @@ Always load the relevant skill before writing code. The skills contain project-s
 
 ---
 
+# Git Rules
+
+- **Do NOT auto-commit code changes.** Leave all file changes unstaged so the user can review diffs in VS Code before committing. Only commit when the user explicitly asks.
+- Planning/docs files (.planning/) may be committed by GSD workflows, but code files (spacetimedb/, src/, app/, components/) must NEVER be committed without user review.
+
+---
+
 # SpacetimeDB Core Rules
 
 These are always-in-context rules that apply regardless of skill loading.

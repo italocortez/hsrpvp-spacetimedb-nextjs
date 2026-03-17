@@ -7,6 +7,8 @@ export const playerStatsColumns = {
     losses: t.u32(),
     draws: t.u32(),
     matchesSpectated: t.u32(),
+    bestAllyUserId: t.u32().optional(),
+    nemesisUserId: t.u32().optional(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

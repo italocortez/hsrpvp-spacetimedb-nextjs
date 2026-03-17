@@ -120,7 +120,6 @@ export const request_join_team = spacetimedb.reducer(
         ctx.db.TournamentTeamRequest.insert({
             teamId,
             userId: user.id,
-            isPending: true,
             ...auditInsert(ctx, user.id),
         } as any);
     }
@@ -145,7 +144,6 @@ export const accept_team_request = spacetimedb.reducer(
 
         const request = (ctx.db.TournamentTeamRequest as any).primaryKey.find({ teamId, userId });
         if (!request) throw new SenderError('Join request not found.');
-        if (!request.isPending) throw new SenderError('Join request is no longer pending.');
 
         // Check current team member count
         const tournament = ctx.db.Tournament.id.find(team.tournamentId);
@@ -156,13 +154,8 @@ export const accept_team_request = spacetimedb.reducer(
             throw new SenderError('Team is already full.');
         }
 
-        // Update request: set isPending = false (delete + insert)
+        // Delete the request row (transactional — existence = pending)
         ctx.db.TournamentTeamRequest.delete(request);
-        ctx.db.TournamentTeamRequest.insert({
-            ...request,
-            isPending: false,
-            ...auditUpdate(ctx, request, caller.id),
-        } as any);
 
         // Update the accepted player's TournamentParticipant: set teamGroupId + Team type
         const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({
@@ -200,9 +193,8 @@ export const reject_team_request = spacetimedb.reducer(
 
         const request = (ctx.db.TournamentTeamRequest as any).primaryKey.find({ teamId, userId });
         if (!request) throw new SenderError('Join request not found.');
-        if (!request.isPending) throw new SenderError('Join request is no longer pending.');
 
-        // Delete the request entirely (rejected requests don't need audit trail)
+        // Delete the request row (transactional — existence = pending)
         ctx.db.TournamentTeamRequest.delete(request);
     }
 );
@@ -283,10 +275,8 @@ export const disband_tournament_team = spacetimedb.reducer(
             } as any);
         }
 
-        // Delete all pending requests for this team
-        const pendingRequests = [...ctx.db.TournamentTeamRequest.team_id.filter(teamId)]
-            .filter((r: any) => r.isPending);
-        for (const req of pendingRequests) {
+        // Delete all requests for this team
+        for (const req of [...ctx.db.TournamentTeamRequest.team_id.filter(teamId)]) {
             ctx.db.TournamentTeamRequest.delete(req);
         }
 

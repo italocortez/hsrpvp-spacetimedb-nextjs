@@ -19,15 +19,7 @@
 
 ## Feature Implementation Checklist
 
-When implementing a feature that spans backend and client:
-
-1. **Backend:** Define table(s) to store the data
-2. **Backend:** Define reducer(s) to mutate the data
-3. **Client:** Subscribe to the table(s)
-4. **Client:** Call the reducer(s) from UI — **don't forget this step!**
-5. **Client:** Render the data from the table(s)
-
-**Common mistake:** Building backend tables/reducers but forgetting to wire up the client to call them.
+See the checklist in SKILL.md (the canonical version). Summary: tables in `tables/` → reducers in `reducers/` → publish → generate → subscribe → call → render.
 
 ---
 
