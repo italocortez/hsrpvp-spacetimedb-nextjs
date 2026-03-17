@@ -32,12 +32,12 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 - [x] **TRNT-04**: Tournament has explicit stage lifecycle (Draft → Registration → Seeding → InProgress → Completed → Cancelled)
 - [x] **TRNT-05**: Player can self-sign up for a tournament (solo or as a team)
 - [x] **TRNT-06**: Team can sign up for a tournament as a unit
-- [ ] **TRNT-07**: TO can assign referees to the tournament
+- [x] **TRNT-07**: TO can assign referees to the tournament
 - [x] **TRNT-08**: TO can set tournament-level anonymous play default
 - [x] **TRNT-09**: TO can set tournament-level open/closed roster visibility
 - [x] **TRNT-10**: TO can set tournament-level disconnect behavior policy
-- [ ] **TRNT-11**: TO can override match results and DQ participants
-- [ ] **TRNT-12**: Referee can validate match results within their assigned tournament
+- [x] **TRNT-11**: TO can override match results and DQ participants
+- [x] **TRNT-12**: Referee can validate match results within their assigned tournament
 
 ### Teams
 
@@ -192,12 +192,12 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | TRNT-04 | Phase 3 | Complete |
 | TRNT-05 | Phase 3 | Complete |
 | TRNT-06 | Phase 3 | Complete |
-| TRNT-07 | Phase 3 | Pending |
+| TRNT-07 | Phase 3 | Complete |
 | TRNT-08 | Phase 3 | Complete |
 | TRNT-09 | Phase 3 | Complete |
 | TRNT-10 | Phase 3 | Complete |
-| TRNT-11 | Phase 3 | Pending |
-| TRNT-12 | Phase 3 | Pending |
+| TRNT-11 | Phase 3 | Complete |
+| TRNT-12 | Phase 3 | Complete |
 | TEAM-01 | Phase 3 | Complete |
 | TEAM-02 | Phase 3 | Complete |
 | TEAM-03 | Phase 3 | Complete |
