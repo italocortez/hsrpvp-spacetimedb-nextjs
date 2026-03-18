@@ -43,6 +43,61 @@ export const dq_participant = spacetimedb.reducer(
         } as any);
 
         console.log(`[TOURNAMENT] Participant #${userId} disqualified from tournament #${tournamentId}: ${reason}`);
+
+        // Auto-advance opponent in bracket if autoAdvanceBracket is enabled
+        const tournament = ctx.db.Tournament.id.find(tournamentId);
+        if (tournament && tournament.autoAdvanceBracket && tournament.stage.tag === 'InProgress') {
+            // Find the participant's team
+            const teamGroupId = participant.teamGroupId;
+            if (teamGroupId) {
+                // Scan bracket matches for this tournament to find the DQ'd team's active match
+                // An "active" match is one where: the team is participant1 or participant2, AND winnerId is not set
+                const bracketMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
+                const activeMatch = bracketMatches.find((m: any) =>
+                    !m.winnerId &&
+                    (m.participant1Id === teamGroupId || m.participant2Id === teamGroupId)
+                );
+
+                if (activeMatch) {
+                    // Determine the opponent (the one who isn't DQ'd)
+                    const opponentTeamId = activeMatch.participant1Id === teamGroupId
+                        ? activeMatch.participant2Id
+                        : activeMatch.participant1Id;
+
+                    if (opponentTeamId) {
+                        // Set opponent as winner
+                        ctx.db.BracketMatch.id.update({
+                            ...activeMatch,
+                            winnerId: opponentTeamId,
+                            resultStatus: { tag: 'Validated', value: {} } as any,
+                            ...auditUpdate(ctx, activeMatch, user.id),
+                        } as any);
+
+                        // Place opponent in next match
+                        if (activeMatch.nextWinnerMatchId) {
+                            const nextMatch = ctx.db.BracketMatch.id.find(activeMatch.nextWinnerMatchId);
+                            if (nextMatch) {
+                                if (!nextMatch.participant1Id) {
+                                    ctx.db.BracketMatch.id.update({
+                                        ...nextMatch,
+                                        participant1Id: opponentTeamId,
+                                        ...auditUpdate(ctx, nextMatch, user.id),
+                                    } as any);
+                                } else if (!nextMatch.participant2Id) {
+                                    ctx.db.BracketMatch.id.update({
+                                        ...nextMatch,
+                                        participant2Id: opponentTeamId,
+                                        ...auditUpdate(ctx, nextMatch, user.id),
+                                    } as any);
+                                }
+                            }
+                        }
+
+                        console.log(`[TOURNAMENT] Auto-advanced team #${opponentTeamId} after DQ of team #${teamGroupId} in match #${activeMatch.id}`);
+                    }
+                }
+            }
+        }
     }
 );
 
