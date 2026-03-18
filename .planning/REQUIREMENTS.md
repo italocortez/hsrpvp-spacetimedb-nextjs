@@ -53,8 +53,8 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 - [ ] **BRKT-02**: Double elimination bracket is generated with winners and losers brackets
 - [ ] **BRKT-03**: Group phase generates round-robin groups with standings tracking (wins/losses/draws/points)
 - [ ] **BRKT-04**: Bracket auto-advances winner to next match slot on confirmed result
-- [ ] **BRKT-05**: Seeding supports manual assignment and MMR-based auto-seeding
-- [ ] **BRKT-06**: Each BracketMatch row has explicit FK references (nextWinnerMatchId, nextLoserMatchId) — no JSON blob storage
+- [x] **BRKT-05**: Seeding supports manual assignment and MMR-based auto-seeding
+- [x] **BRKT-06**: Each BracketMatch row has explicit FK references (nextWinnerMatchId, nextLoserMatchId) — no JSON blob storage
 
 ### Match Results & Scoring
 
@@ -208,8 +208,8 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | BRKT-02 | Phase 4 | Pending |
 | BRKT-03 | Phase 4 | Pending |
 | BRKT-04 | Phase 4 | Pending |
-| BRKT-05 | Phase 4 | Pending |
-| BRKT-06 | Phase 4 | Pending |
+| BRKT-05 | Phase 4 | Complete |
+| BRKT-06 | Phase 4 | Complete |
 | MTCH-01 | Phase 5 | Pending |
 | MTCH-02 | Phase 5 | Pending |
 | MTCH-03 | Phase 5 | Pending |

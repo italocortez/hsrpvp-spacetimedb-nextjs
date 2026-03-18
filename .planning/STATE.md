@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 03-tournament-system
-current_plan: 03-05 complete — Phase 3 fully done
-status: planning
-last_updated: "2026-03-17T17:17:27.421Z"
+current_phase: 04-bracket-generation-and-advancement
+current_plan: 04-01 complete
+status: in-progress
+last_updated: "2026-03-18T14:15:00Z"
 progress:
   total_phases: 10
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 12
+  completed_plans: 10
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 03-tournament-system
-**Current plan:** 03-05 complete — Phase 3 fully done
-**Status:** Ready to plan
+**Current phase:** 04-bracket-generation-and-advancement
+**Current plan:** 04-01 complete
+**Status:** In progress
 
 ## Decisions
 
@@ -51,6 +51,19 @@ See: .planning/PROJECT.md
 - [03-match-results] Referee auto-assignment at lobby creation deferred to Phase 9 — Phase 3 only implements transfer and reclaim
 - [Phase 03-tournament-system]: TEAM-01/02/03 reclassified Out of Scope for v0.5 — tournament-scoped teams (TEAM-04) cover Phase 3 needs; persistent teams deferred to v1+
 - [Phase 03-tournament-system]: set_coach and remove_coach placed in refereeManagement.ts — same permission model as referee flag (host or referee); pick/ban guard deferred to Phase 9
+- [04-bracket-schema]: bracketSide (BracketSide enum, 5 variants) replaces isLosersBracket (bool) on BracketMatch — supports GrandFinals, ThirdPlace, Group not expressible as bool
+- [04-bracket-schema]: seedNumber moved from TournamentParticipant to TournamentTeam — seeding is a team-level concept
+- [04-bracket-schema]: GroupStanding uses participantTeamId instead of participantUserId — standings track teams, not individual players
+- [04-bracket-schema]: Solo tournaments auto-create invisible TournamentTeam on register_for_tournament — bracket generation treats all participants as teams uniformly
+- [04-bracket-schema]: MatchResultParticipant junction table added for 2v2/3v3 participant tracking beyond the 2-user limit of MatchResultRecord.player1Id/player2Id
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260318-2ci | Restructure test suite and build post-publish bootstrap | 2026-03-18 | unstaged | [260318-2ci](./quick/260318-2ci-restructure-test-suite-and-build-post-pu/) |
+| 260318-6kx | Update test-suite references to uat in planning files | 2026-03-18 | unstaged | [260318-6kx](./quick/260318-6kx-update-test-suite-references-to-uat-in-p/) |
+| 260318-94t | Migrate feature docs to centralized docs/ directory | 2026-03-18 | unstaged | [260318-94t](./quick/260318-94t-migrate-feature-docs-to-centralized-docs/) |
 
 ## Session Log
 
@@ -62,3 +75,4 @@ See: .planning/PROJECT.md
 - 2026-03-17: Completed 03-02-PLAN.md — 14 tournament reducers (4 management, 4 registration, 6 teams), tournament architecture docs, published to maincloud
 - 2026-03-17: Completed 03-04-PLAN.md — 11 reducers (2 referee, 3 match result, 6 tournament admin), all Phase 3 reducers live on maincloud, 34 bindings generated
 - 2026-03-17: Completed 03-05-PLAN.md — gap closure: TEAM-01/02/03 reclassified Out of Scope, set_coach+remove_coach reducers implemented, Phase 3 fully complete
+- 2026-03-18: Completed 04-01-PLAN.md — schema foundation for bracket generation: BracketSide enum, 7 table schema changes, MatchResultParticipant junction table, stage transition guards, solo auto-team creation, display name lazy sync

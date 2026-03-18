@@ -86,7 +86,7 @@ Plans:
   3. Group phase tournaments produce round-robin groups with standing rows tracking wins, losses, draws, and points per participant
   4. When a match result is confirmed, the bracket auto-advances the winner to the correct next match slot without manual TO action
   5. Seeding supports both manual slot assignment and MMR-based auto-seeding
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 Plans:
 - [ ] 04-01-PLAN.md — Schema changes: BracketSide enum, table updates (BracketMatch, Tournament, TournamentParticipant, TournamentTeam, GroupStanding), stage transition guards, auto-team creation, display name sync
 - [ ] 04-02-PLAN.md — Bracket generation helpers (fold seeding, circle scheduling, snake distribution) and generate_bracket, seed_bracket, swap_seeds reducers
@@ -199,7 +199,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 1. Schema Foundation | 2/2 | Complete   | 2026-03-16 |
 | 2. Roster Management | 2/2 | Complete   | 2026-03-16 |
 | 3. Tournament System | 5/5 | Complete   | 2026-03-17 |
-| 4. Bracket Generation | 0/3 | Planned | - |
+| 4. Bracket Generation | 1/3 | In Progress|  |
 | 5. Match Results and MMR | 0/? | Not started | - |
 | 6. Anonymous Play and Player Stats | 0/? | Not started | - |
 | 7. Achievements and Titles | 0/? | Not started | - |
