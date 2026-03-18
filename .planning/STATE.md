@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 04-bracket-generation-and-advancement
-current_plan: 04-02 complete
+current_plan: 04-03 complete
 status: executing
-last_updated: "2026-03-18T14:23:24.460Z"
+last_updated: "2026-03-18T14:31:26.997Z"
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Session State
@@ -57,6 +57,8 @@ See: .planning/PROJECT.md
 - [04-bracket-schema]: Solo tournaments auto-create invisible TournamentTeam on register_for_tournament — bracket generation treats all participants as teams uniformly
 - [04-bracket-schema]: MatchResultParticipant junction table added for 2v2/3v3 participant tracking beyond the 2-user limit of MatchResultRecord.player1Id/player2Id
 - [Phase 04-bracket-generation-and-advancement]: Deterministic seeding hash (tournamentId * 31 + teamId) % 2147483647 for random mode — SpacetimeDB reducers must be deterministic; no Math.random()
+- [Phase 04-bracket-generation-and-advancement]: submit_and_advance_bracket re-reads bracketMatch after update for fresh state in auto-advance logic
+- [Phase 04-bracket-generation-and-advancement]: dq_participant auto-advance is inline code, not a reducer call -- keeps it atomic in one transaction
 
 ### Quick Tasks Completed
 
@@ -78,3 +80,4 @@ See: .planning/PROJECT.md
 - 2026-03-17: Completed 03-05-PLAN.md — gap closure: TEAM-01/02/03 reclassified Out of Scope, set_coach+remove_coach reducers implemented, Phase 3 fully complete
 - 2026-03-18: Completed 04-01-PLAN.md — schema foundation for bracket generation: BracketSide enum, 7 table schema changes, MatchResultParticipant junction table, stage transition guards, solo auto-team creation, display name lazy sync
 - 2026-03-18: Completed 04-02-PLAN.md — bracket generation algorithms: foldSeeding, circleSchedule, snakeSeedIntoGroups, single/double/group/hybrid bracket helpers, generate_bracket/seed_bracket/swap_seeds reducers
+- 2026-03-18: Completed 04-03-PLAN.md — bracket advancement: advance_bracket_match/submit_and_advance_bracket/rollback_bracket_match reducers, dq_participant auto-advance, group standings Win=2/Draw=1/Loss=0, published to maincloud
