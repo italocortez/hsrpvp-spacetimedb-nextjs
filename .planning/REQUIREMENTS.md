@@ -49,9 +49,9 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Bracket & Advancement
 
-- [ ] **BRKT-01**: Single elimination bracket is generated from tournament participants with proper seeding
-- [ ] **BRKT-02**: Double elimination bracket is generated with winners and losers brackets
-- [ ] **BRKT-03**: Group phase generates round-robin groups with standings tracking (wins/losses/draws/points)
+- [x] **BRKT-01**: Single elimination bracket is generated from tournament participants with proper seeding
+- [x] **BRKT-02**: Double elimination bracket is generated with winners and losers brackets
+- [x] **BRKT-03**: Group phase generates round-robin groups with standings tracking (wins/losses/draws/points)
 - [ ] **BRKT-04**: Bracket auto-advances winner to next match slot on confirmed result
 - [x] **BRKT-05**: Seeding supports manual assignment and MMR-based auto-seeding
 - [x] **BRKT-06**: Each BracketMatch row has explicit FK references (nextWinnerMatchId, nextLoserMatchId) — no JSON blob storage
@@ -204,9 +204,9 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | TEAM-03 | Phase 3 | Out of Scope |
 | TEAM-04 | Phase 3 | Complete |
 | TEAM-05 | Phase 3 | Complete |
-| BRKT-01 | Phase 4 | Pending |
-| BRKT-02 | Phase 4 | Pending |
-| BRKT-03 | Phase 4 | Pending |
+| BRKT-01 | Phase 4 | Complete |
+| BRKT-02 | Phase 4 | Complete |
+| BRKT-03 | Phase 4 | Complete |
 | BRKT-04 | Phase 4 | Pending |
 | BRKT-05 | Phase 4 | Complete |
 | BRKT-06 | Phase 4 | Complete |
