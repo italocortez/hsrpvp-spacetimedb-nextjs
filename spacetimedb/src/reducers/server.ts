@@ -29,6 +29,7 @@ function getSystemUserId(ctx: any): number {
  * Run via: npx tsx scripts/register-server.ts
  */
 export const register_server = spacetimedb.reducer((ctx) => {
+    // iter() required: checking table emptiness — no count/isEmpty API exists, and PK is identity (unknown value)
     const existing = [...ctx.db.ServerIdentity.iter()];
     if (existing.length > 0) {
         throw new SenderError('Server identity already registered. To re-register, clear the database first.');
@@ -53,6 +54,7 @@ export const register_server = spacetimedb.reducer((ctx) => {
         role: { tag: 'Admin' },
         discordId: '1',
         avatarCharacterName: 'march7th',
+        displayedAchievementId: undefined,
         deletedAt: undefined,
         ...auditInsert(ctx, SYSTEM_USER_ID),
     });
@@ -87,8 +89,9 @@ export const server_link_discord = spacetimedb.reducer({
     }
 
     // 3. Resolve the end-user's identity → UserIdentity → User
-    //    We need to find the UserIdentity row by iterating (identity is an object,
-    //    and we only have the hex string from the API route).
+    //    iter() required: identity is an opaque object with no fromHexString() constructor.
+    //    The API route only provides the hex string, so we must scan and compare via .toHexString().
+    //    This is a one-shot operation (once per user lifetime) so O(n) on ~600 rows is negligible.
     let userMapping: any = null;
     for (const row of ctx.db.UserIdentity.iter()) {
         if (row.identity.toHexString() === callerIdentityHex) {

@@ -43,6 +43,7 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
         role: { tag: 'User' },
         discordId: undefined,
         avatarCharacterName: 'march7th',
+        displayedAchievementId: undefined,
         deletedAt: undefined,
         ...auditInsert(ctx, SYSTEM_USER_ID),
     });
