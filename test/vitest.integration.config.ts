@@ -32,10 +32,12 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
 
-    // Run sequentially — tests share SpacetimeDB state
+    // Run sequentially — tests share SpacetimeDB state and WebSocket connections to maincloud
+    // fileParallelism: false prevents parallel file execution (avoids connection saturation)
     sequence: {
       concurrent: false,
     },
+    fileParallelism: false,
   },
   resolve: {
     alias: {
