@@ -395,37 +395,49 @@ During UAT verification (`/gsd:verify-work`), every reducer call MUST be followe
 ### Rules
 
 1. **Query after each individual action.** Run `spacetime sql` on the affected table(s) immediately after each reducer call — not after a batch of calls. Each step gets its own snapshot.
-2. **NEVER write a batch script that runs all steps at once.** A script that runs 8 reducer calls and prints console.log output is NOT a substitute for per-step DB snapshots. The pattern is: call one reducer → `spacetime sql` → show markdown table → call next reducer → `spacetime sql` → show markdown table.
+2. **Query the DB after EVERY state-changing action.** A script that runs 8 reducer calls and prints console.log output is NOT a substitute for per-step DB snapshots. The pattern is: call one reducer → `spacetime sql` → call next reducer → `spacetime sql`. The presentation can be batched after all snapshots are collected, but the queries must happen between each step.
 3. **Show only tables the action touched.** If a reducer only modifies one table, only query that table. Don't dump unrelated tables.
 4. **Never reconstruct snapshots.** If you ran a batch test, the final DB state does NOT count as per-step snapshots. You must run actions individually with a query between each one.
 5. **Include snapshots in all outputs:**
    - Inline conversation when presenting checkpoint results to the user
    - Written UAT files (`.planning/phases/XX-name/{phase_num}-UAT.md`)
    - Report cards (`notes/reportcards/uat/backend-testing/`)
-6. **Format as a progression.** Show the data change story:
-   - "Called create reducer → Row inserted: field1=X, field2=Y"
-   - "Called update reducer → Row changed: field2 updated from Y to Z"
-   - "Called advance reducer → Row changed: status=NextState"
+6. **Present each snapshot with context.** Every snapshot in the conversation uses this format:
+
+   **{Action Description}** (as a title/header)
+
+   {markdown table from spacetime sql}
+
+   {narration}: "{user id} ({role/label}) does {action} on {target}" — highlight what changed vs the previous snapshot.
+
+   Example:
+   ```
+   **Moderator promotes target to TournamentHost**
+
+   | id | username | role |
+   |----|----------|------|
+   | 101 | TestUser_abc | tournamentHost |
+
+   User 100 (Moderator) called `mod_promote_to_host` on user 101 — role changed from `user` → `tournamentHost`.
+   ```
+
+   The user must be able to scan the progression and immediately see who acted, what changed, and whether the result is correct. Raw tables without narration force mental diffing — don't do that.
 
 ### Implementation
 
-**Each harness script does ONE action, then exits.** Run them sequentially from the conversation with a `spacetime sql` query between each one.
+Run each reducer call individually, then immediately `spacetime sql` the affected tables. Collect all snapshot outputs. Then present the full progression as one formatted story.
 
-```typescript
-// tmp/uat-test-X-step1.ts — ONE action only
-await userA.call.someReducer({ param: 'value' });
-await userA.sync();
-await userA.disconnect();
-```
+The pattern:
+1. Call reducer (via harness script or `spacetime call`)
+2. `spacetime sql` — capture the output
+3. Call next reducer
+4. `spacetime sql` — capture the output
+5. Repeat until done
+6. **Present all collected snapshots as a formatted progression** — see format in rule 6
 
-Then in the conversation:
-1. Run `npx tsx tmp/uat-test-X-step1.ts`
-2. Run `spacetime sql $DB_NAME "SELECT * FROM some_table WHERE ..."` — present as markdown table
-3. Run `npx tsx tmp/uat-test-X-step2.ts`
-4. Run `spacetime sql ...` — present as markdown table
-5. Repeat
+A single harness script CAN do multiple steps, as long as it pauses for a `spacetime sql` query between each one. The rule is **query after each action** — not one script per action.
 
-For simple rejection tests (expect error, no state change), a single script with `expectReducerError` is fine — no snapshot needed because no data changed. But any reducer that modifies data MUST be followed by a live SQL query.
+For rejection tests (no state change), group them in one script with `expectReducerError`. Present results as a summary table of caller/action/error. One final snapshot confirms no state changed.
 
 ## UAT Report Cards
 

@@ -1,5 +1,5 @@
 ---
-status: testing
+status: complete
 phase: 03-tournament-system
 source: [03-01-SUMMARY.md, 03-02-SUMMARY.md, 03-03-SUMMARY.md, 03-04-SUMMARY.md, 03-05-SUMMARY.md]
 started: 2026-03-18T00:00:00Z
@@ -9,11 +9,7 @@ updated: 2026-03-18T00:00:00Z
 ## Current Test
 <!-- OVERWRITE each test - shows where we are -->
 
-number: 16
-name: Moderator Role Management
-expected: |
-  A Moderator+ calls `mod_promote_to_host` on a User-role player — their role changes to TournamentHost. `mod_demote_from_host` on a TournamentHost — role reverts to User. Attempting to promote/demote Admin or Moderator roles is rejected.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -83,7 +79,7 @@ reason: override_match_result requires MatchResultRecord rows (no insert reducer
 
 ### 16. Moderator Role Management
 expected: A Moderator+ calls `mod_promote_to_host` on a User-role player — their role changes to TournamentHost. `mod_demote_from_host` on a TournamentHost — role reverts to User. Attempting to promote/demote Admin or Moderator roles is rejected.
-result: [pending]
+result: pass
 
 ### 17. Coach Role Management
 expected: In a lobby, the host or referee calls `set_coach` targeting a member — that member's isCoach becomes true. `remove_coach` sets isCoach back to false. Non-host/non-referee callers are rejected.
@@ -93,9 +89,9 @@ reason: No lobby CRUD reducers exist yet (Phase 9). Cannot create lobby + member
 ## Summary
 
 total: 17
-passed: 11
+passed: 12
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 deferred: 5
 

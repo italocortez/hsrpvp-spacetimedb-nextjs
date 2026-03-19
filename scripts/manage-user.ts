@@ -5,7 +5,7 @@
  *   npx tsx scripts/manage-user.ts set-role <username> <newRole>
  *   npx tsx scripts/manage-user.ts delete <username>
  *
- * Roles: Admin, TournamentHost, User
+ * Roles: Admin, Moderator, TournamentHost, User
  *
  * Requires SPACETIMEDB_SERVER_TOKEN in .env.local (from register-server.ts).
  */
@@ -36,7 +36,7 @@ function loadEnvFile(filename: string) {
 loadEnvFile('.env.local');
 loadEnvFile('.env');
 
-const VALID_ROLES = ['Admin', 'TournamentHost', 'User'];
+const VALID_ROLES = ['Admin', 'Moderator', 'TournamentHost', 'User'];
 
 const action = process.argv[2];
 const username = process.argv[3];
