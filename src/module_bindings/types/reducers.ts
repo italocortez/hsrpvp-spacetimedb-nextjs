@@ -61,6 +61,7 @@ import RollbackBracketMatchReducer from "../rollback_bracket_match_reducer";
 import SeedBracketReducer from "../seed_bracket_reducer";
 import ServerDeleteUserReducer from "../server_delete_user_reducer";
 import ServerLinkDiscordReducer from "../server_link_discord_reducer";
+import ServerSetMmrReducer from "../server_set_mmr_reducer";
 import ServerSetRoleReducer from "../server_set_role_reducer";
 import SetActiveHsrAccountReducer from "../set_active_hsr_account_reducer";
 import SetCoachReducer from "../set_coach_reducer";
@@ -132,6 +133,7 @@ export type RollbackBracketMatchParams = __Infer<typeof RollbackBracketMatchRedu
 export type SeedBracketParams = __Infer<typeof SeedBracketReducer>;
 export type ServerDeleteUserParams = __Infer<typeof ServerDeleteUserReducer>;
 export type ServerLinkDiscordParams = __Infer<typeof ServerLinkDiscordReducer>;
+export type ServerSetMmrParams = __Infer<typeof ServerSetMmrReducer>;
 export type ServerSetRoleParams = __Infer<typeof ServerSetRoleReducer>;
 export type SetActiveHsrAccountParams = __Infer<typeof SetActiveHsrAccountReducer>;
 export type SetCoachParams = __Infer<typeof SetCoachReducer>;

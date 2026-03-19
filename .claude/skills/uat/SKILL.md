@@ -423,6 +423,15 @@ During UAT verification (`/gsd:verify-work`), every reducer call MUST be followe
 
    The user must be able to scan the progression and immediately see who acted, what changed, and whether the result is correct. Raw tables without narration force mental diffing — don't do that.
 
+7. **Color-code entities with emoji markers.** Assign colored emoji (🔴🔵🟢🟡🟣🟠) to participant/team/user IDs the first time they appear. Use the same color for that ID across ALL tables and steps so the user can track entities through the progression. Use `*BYE*` for empty opponent slots. Example:
+
+   ```
+   | id | participant1 | participant2 | winner |
+   |----|--------------|--------------|--------|
+   | 101 | 🔴 5 | 🔵 8 | 🔴 5 |
+   | 102 | 🟢 6 | *BYE* | 🟢 6 |
+   ```
+
 ### Implementation
 
 Run each reducer call individually, then immediately `spacetime sql` the affected tables. Collect all snapshot outputs. Then present the full progression as one formatted story.

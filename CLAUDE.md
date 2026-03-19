@@ -89,6 +89,27 @@ Architecture docs cross-reference behavior specs. No duplication between them.
 - When publishing to maincloud the database dashboard will be at the url: https://spacetimedb.com/@<username>/<database-name>
 - The database owner can view utilization and performance metrics on the dashboard
 
+## UAT Verify-Work Format
+
+During `/gsd:verify-work`, present ONE test at a time using this exact format:
+
+```
+**STEP N: {who} does {what} on {whom}**
+
+| col | col | col |        ← spacetime sql output as markdown table
+|-----|-----|-----|
+| val | val | **changed** | ← bold changed values
+
+{who} ({role}) called `{reducer}` on {target} — {field} changed from `old` → `new`.
+```
+
+- `spacetime sql` after EVERY state-changing reducer call — no exceptions
+- Tables GROW as rows accumulate (show full table each step, not just the new row)
+- Assign colored emoji markers (🔴🔵🟢🟡🟣🟠) to participant/team/user IDs — same color across all tables so the user can track entities through steps
+- Rejection tests: group in a summary table (`caller | action | error`), one final snapshot confirms no state changed
+- After all steps: show checkpoint box, wait for user response
+- Do NOT batch multiple tests — one test per checkpoint, one response before the next
+
 ## Debugging Checklist
 
 1. Is the module published to maincloud? (`spacetime publish`) — this is a maincloud project, there is no local server

@@ -236,3 +236,53 @@ export const server_delete_user = spacetimedb.reducer({
 
     ctx.db.User.id.delete(targetUser.id);
 });
+
+/**
+ * Server-only reducer: set MMR rating for a user.
+ * Upserts MmrRating row for the given userId + gameMode.
+ * Useful for test seeding and future admin tools.
+ *
+ * Called via server-token connection (e.g. test harness or manage-user.ts).
+ */
+export const server_set_mmr = spacetimedb.reducer({
+    userId: t.u32(),
+    gameMode: t.string(),
+    rating: t.u32(),
+}, (ctx, { userId, gameMode, rating }) => {
+    requireServer(ctx);
+    const systemUserId = getSystemUserId(ctx);
+
+    const user = ctx.db.User.id.find(userId);
+    if (!user) {
+        throw new SenderError(`User #${userId} not found`);
+    }
+
+    const validModes = ['MemoryOfChaos', 'ApocalypticShadow'];
+    if (!validModes.includes(gameMode)) {
+        throw new SenderError(`Invalid gameMode "${gameMode}". Must be one of: ${validModes.join(', ')}`);
+    }
+
+    // Filter by userId, then find matching gameMode in memory
+    const existing = [...ctx.db.MmrRating.user_id.filter(userId)]
+        .find((r: any) => r.gameMode.tag === gameMode);
+
+    if (existing) {
+        // Delete + re-insert (composite PK)
+        ctx.db.MmrRating.delete(existing);
+        ctx.db.MmrRating.insert({
+            ...existing,
+            rating,
+            ...auditUpdate(ctx, existing, systemUserId),
+        } as any);
+    } else {
+        ctx.db.MmrRating.insert({
+            userId,
+            gameMode: { tag: gameMode, value: {} } as any,
+            rating,
+            matchesPlayed: 0,
+            globalCompositeRating: undefined,
+            seasonId: undefined,
+            ...auditInsert(ctx, systemUserId),
+        } as any);
+    }
+});

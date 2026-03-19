@@ -89,6 +89,7 @@ import RollbackBracketMatchReducer from "./rollback_bracket_match_reducer";
 import SeedBracketReducer from "./seed_bracket_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkDiscordReducer from "./server_link_discord_reducer";
+import ServerSetMmrReducer from "./server_set_mmr_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
 import SetCoachReducer from "./set_coach_reducer";
@@ -922,6 +923,7 @@ const reducersSchema = __reducers(
   __reducerSchema("seed_bracket", SeedBracketReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
+  __reducerSchema("server_set_mmr", ServerSetMmrReducer),
   __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
   __reducerSchema("set_coach", SetCoachReducer),

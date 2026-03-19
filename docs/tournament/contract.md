@@ -29,6 +29,11 @@
 **When:** `advance_tournament_stage(id, "Seeding")`
 **Then:** Throws "At least 2 active participants are required"
 
+### Stage Advancement (blocked — no brackets generated)
+**Given:** Tournament in Seeding, no BracketMatch rows exist
+**When:** `advance_tournament_stage(id, "InProgress")`
+**Then:** Throws "Bracket must be generated before advancing to InProgress"
+
 ### Cancel Tournament
 **Given:** Tournament in Registration stage
 **When:** `cancel_tournament(id)`
@@ -166,6 +171,9 @@
 | Tournament assistant assign/remove/self-block | Phase 3 execution | 2026-03-19 |
 | Moderator promote/demote with role guards | Phase 3 execution | 2026-03-19 |
 | Withdraw preserves row (status=Withdrawn), double-withdraw guard | Phase 3 execution | 2026-03-19 |
+
+| Stage guard: Seeding→InProgress requires bracket rows | Phase 4 execution | 2026-03-18 |
+| server_set_mmr reducer for test seeding | Phase 4 UAT | 2026-03-19 |
 
 ---
 

@@ -96,6 +96,11 @@ Plans:
 **Goal**: Players can submit and verify match results with screenshots; validated results trigger ELO updates and bracket advancement atomically in one transaction
 **Depends on**: Phase 4
 **Requirements**: MTCH-01, MTCH-02, MTCH-03, MTCH-04, MTCH-05, MTCH-06, MTCH-07, MTCH-08, MTCH-09, MMR-01, MMR-02, MMR-03, MMR-04, MMR-05, MMR-06, MMR-07
+**Deferred from Phase 4 UAT**: Tests 9, 10, 11, 12 require MatchResultRecord creation which doesn't exist until Phase 5. Retest as part of Phase 5 UAT once match result reducers are implemented:
+  - Test 9: Advance Bracket Match (needs MatchResultRecord to set BracketMatch.winnerId)
+  - Test 10: Submit and Advance Bracket (needs MatchResultRecord creation)
+  - Test 11: Rollback Bracket Match (needs MatchResultRecord with winnerId)
+  - Test 12: DQ Auto-Advance (testable in isolation but full verification needs match results)
 **Success Criteria** (what must be TRUE):
   1. Both players can submit a score in the correct game-mode format (cycles for MoC/AA, score for Apocalyptic Shadow) with optional per-boss breakdown and Imgur screenshot URL
   2. A casual match auto-confirms when both players submit matching scores; mismatched scores set status to Disputed
@@ -167,6 +172,8 @@ Plans:
   - Test 14: Match Dispute (needs MatchResultRecord in Submitted status)
   - Test 15: Tournament Admin Operations (override_match_result needs MatchResultRecord; dq + assistants testable but deferred for full coverage)
   - Test 17: Coach Role Management (needs lobby + members)
+**Deferred from Phase 4 UAT**:
+  - Bracket display slot order: `placeParticipantInNextMatch` uses first-empty-slot, not seed order. R2+ slots may flip vs traditional bracket convention. Frontend should sort by `TournamentTeam.seedNumber` for display, not by participant1Id/participant2Id slot position.
 **Success Criteria** (what must be TRUE):
   1. A player's full XY cursor position is broadcast via reducer while their browser tab is active; the position is visible in subscriptions to all match participants, spectators, and coaches
   2. A coach role player can see cursor tracking data but calling any pick/ban reducer as a coach is rejected with an authorization error
