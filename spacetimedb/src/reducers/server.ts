@@ -191,7 +191,7 @@ export const server_set_role = spacetimedb.reducer({
         throw new SenderError('username is required');
     }
 
-    const validRoles = ['Admin', 'TournamentHost', 'User'];
+    const validRoles = ['Admin', 'Moderator', 'TournamentHost', 'User'];
     if (!validRoles.includes(roleTag)) {
         throw new SenderError(`Invalid role "${roleTag}". Must be one of: ${validRoles.join(', ')}`);
     }

@@ -15,6 +15,22 @@ This skill governs the verification layer of the project's 3-layer development p
 
 Tests are the comparison mechanism. When a test fails, it reveals a gap between what was agreed upon (contract) and what was built (architecture). The user triages each gap: fix the architecture (bug) or update the contract (direction change).
 
+## Table of Contents
+
+1. [Process Integrity](#process-integrity) — Cardinal rules: test ownership, failure reporting, real-user flows
+2. [The Spec Contract](#the-spec-contract) — Behavior specs lifecycle, provenance tracking
+3. [Centralized Doc Pattern](#centralized-doc-pattern) — Where architecture + contract docs live
+4. [Feature Index](#feature-index) — Map of features, spec status, coverage
+5. [Writing Tests](#writing-tests) — Harness, fixtures, placement
+6. [Running Tests](#running-tests) — Commands and when to use them
+7. [Cold Start Smoke Test](#cold-start-smoke-test-maincloud) — Maincloud publish + verify
+8. [Post-Publish Bootstrap](#post-publish-bootstrap) — `post-publish.ts` auto-setup
+9. [UAT Test Harness](#uat-test-harness) — Primary approach for verify-work testing
+10. [Known Limitations](#known-limitations) — `sync()` timing, flaky tests
+11. [DB Snapshot Requirements](#db-snapshot-requirements) — Per-action query rules during UAT
+12. [UAT Report Cards](#uat-report-cards) — Pause/interrupt documentation
+13. [Test Structure](#test-structure) — Directory layout
+
 ## Process Integrity
 
 These two guarantees protect the 3-layer process. If either is violated, the verification layer becomes unreliable — you can no longer trust test results to accurately compare contract against architecture.
@@ -92,7 +108,7 @@ A test failure means the architecture doesn't match the contract. That gap is th
 - **backend-bug** — The backend behavior doesn't match the spec; the test is correct
 - **env-issue** — Connection failures, missing env vars, database not published, timeout
 
-After reporting, you may offer analysis: *"The `create_tournament` failures look like an architecture bug — the reducer isn't enforcing the min_players check from the contract. Want me to investigate the reducer code?"* But do not act without the user's go-ahead.
+After reporting, you may offer analysis: *"These failures look like an architecture bug — the reducer isn't enforcing the validation from the contract. Want me to investigate the reducer code?"* But do not act without the user's go-ahead.
 
 ### 3. Every Fix MUST Mirror Real User Flows — No Exceptions
 
@@ -138,9 +154,11 @@ The verification layer maps to GSD workflows:
 | `/gsd:discuss-phase` | Contract | Produces decisions → user approves spec updates |
 | `/gsd:execute-phase` | Architecture | Builds the code — does not modify contract during execution |
 | Post-execution | Contract | Claude updates contract with additions, tagged `Phase X execution` in Phase History |
-| `/gsd:verify-work` | Verification (full cycle) | Reads contract → writes tests → runs them → reports results. User reviews execution-sourced entries and test results together in one pass |
-| `/gsd:add-tests` | Verification (standalone) | Can be used independently, but typically runs as part of verify-work |
-| `npm test` | Verification (comparison) | Runs existing tests — failures are diagnostic, never auto-fixed |
+| `/gsd:verify-work` | Verification (manual) | Manual harness UAT — exercise reducers step-by-step, confirm behavior with user, find bugs |
+| `/gsd:add-tests` | Verification (automated) | Generate vitest files from confirmed-correct behavior — regression safety net |
+| `npm test` | Verification (regression) | Run existing tests — failures are diagnostic, never auto-fixed |
+
+**Per-phase order:** Always `verify-work` first, then `add-tests`. Manual UAT finds bugs while context is fresh. Automated tests lock in the confirmed behavior afterward. Writing automated tests before manual UAT is wasteful — bugs found during UAT would invalidate the tests.
 
 ---
 
@@ -259,7 +277,7 @@ This project publishes to SpacetimeDB maincloud (hosted). There is no local serv
 
 1. **Publish the module** — `spacetime publish hsrpvp-spacetimedb-nextjs-test1 -y` (compiles and deploys)
 2. **Check logs** — `spacetime logs hsrpvp-spacetimedb-nextjs-test1` (no startup errors)
-3. **Run a basic query** — `spacetime sql hsrpvp-spacetimedb-nextjs-test1 "SELECT * FROM Tournament"` (returns results or empty set without errors)
+3. **Run a basic query** — `spacetime sql hsrpvp-spacetimedb-nextjs-test1 "SELECT * FROM user"` (returns results or empty set without errors)
 
 Do NOT include `spacetime start` or instructions to "kill the server" — maincloud is always running. Only use `--clear-database` when the plan explicitly requires it (e.g., destructive PK migrations).
 
@@ -272,6 +290,91 @@ npx tsx scripts/post-publish.ts
 ```
 
 This auto-bootstraps: fresh identity → writes token to `.env.local` → `register_server` → seeds game data from `test/data/` JSONs.
+
+## UAT Test Harness
+
+**The test harness is the primary approach for all UAT verification.** Use `test/shared/connection.ts` to write standalone `.ts` scripts that exercise reducers with real WebSocket connections. Do NOT use `spacetime call` — it requires manual CLI identity management, supports only one user, and has no typed error handling.
+
+### Why harness over CLI
+
+| | Test Harness | `spacetime call` |
+|---|---|---|
+| Multi-user scenarios | Create N harnesses = N independent users | One CLI identity only |
+| Typed reducer calls | `h.call.someReducer({...})` with autocomplete | Manual JSON args, easy to misformat |
+| Error handling | Promise rejects with SenderError message | Exit code 1, parse stderr |
+| Subscription cache | `h.conn.db.Table.iter()` for in-memory reads | Must use `spacetime sql` for everything |
+| User creation | Automatic (guest or verified) on connect | Manual bootstrap (login_as_guest + manage-user.ts) |
+
+### Harness types
+
+```typescript
+import { createTestHarness, createVerifiedTestHarness, expectReducerError } from 'test/shared/connection';
+```
+
+| Function | User type | Use for |
+|---|---|---|
+| `createTestHarness()` | Guest | Permission guard tests (expect rejection) |
+| `createVerifiedTestHarness()` | Verified (discord-linked) | Most feature tests — requires `SPACETIMEDB_SERVER_TOKEN` in `.env.local` |
+
+### Role promotion
+
+The harness creates Guest or Verified (User-role) users. For tests requiring TournamentHost, Admin, or Moderator roles, promote after creation:
+
+```bash
+SPACETIMEDB_DB_NAME=<db-name> npx tsx scripts/manage-user.ts set-role <username> <role>
+```
+
+To promote within a script, create a server-token connection (same pattern as `verifyUserViaServerConnection` in `test/shared/connection.ts` — connect with `.withToken(SERVER_TOKEN)`, then call `serverConn.reducers.serverSetRole({...})`).
+
+### Writing a UAT test script
+
+Write standalone `.ts` scripts (NOT vitest test files) in `tmp/` for UAT verification. These are disposable — they exist to exercise reducers step-by-step and produce snapshots.
+
+```typescript
+// tmp/uat-test-X.ts
+import { loadEnvFile } from 'node:process';
+loadEnvFile('.env.local');
+
+import { createVerifiedTestHarness, expectReducerError } from '../test/shared/connection';
+
+async function main() {
+  // Each harness = independent user with WebSocket connection
+  const userA = await createVerifiedTestHarness();
+  console.log(`User A: id=${userA.userId}`);
+
+  // Promote role if needed (via manage-user.ts or inline server connection)
+
+  // Step 1: Call a reducer
+  await userA.call.someReducer({ param: 'value' });
+  await userA.sync();
+
+  // Read from subscription cache (filter to simulate real client view)
+  const rows = [...userA.conn.db.SomeTable.iter()].filter(r => r.userId === userA.userId);
+  console.log('Rows:', rows);
+
+  // Step 2: Expect a rejection
+  const err = await expectReducerError(userA.call.someReducer({ param: 'invalid' }));
+  console.log('Expected error:', err);
+
+  // Multi-user: create additional harnesses as needed
+  const userB = await createVerifiedTestHarness();
+  await userB.call.anotherReducer({ id: 1 });
+  await userB.sync();
+
+  await userA.disconnect();
+  await userB.disconnect();
+}
+
+main().catch(console.error);
+```
+
+Run with: `npx tsx tmp/uat-test-X.ts`
+
+### Always in consideration
+
+1. **Test at the correct permission level.** Use `createTestHarness()` (guest) for permission-guard tests. Use `createVerifiedTestHarness()` (verified user) for most feature tests. Promote via `manage-user.ts` only when the test requires an elevated role. Do not promote every harness to Admin — test at the minimum role the feature requires.
+2. **Format all table output as markdown tables** in the conversation — never raw ASCII.
+3. **Snapshot every table touched** — see [DB Snapshot Requirements](#db-snapshot-requirements). Use `spacetime sql` for authoritative snapshots (the subscription cache may lag behind due to `sync()` timing).
 
 ## Known Limitations
 
@@ -292,25 +395,37 @@ During UAT verification (`/gsd:verify-work`), every reducer call MUST be followe
 ### Rules
 
 1. **Query after each individual action.** Run `spacetime sql` on the affected table(s) immediately after each reducer call — not after a batch of calls. Each step gets its own snapshot.
-2. **Show only tables the action touched.** If `update_tournament` only modifies the Tournament table, only query Tournament. Don't dump unrelated tables.
-3. **Never reconstruct snapshots.** If you ran a batch test, the final DB state does NOT count as per-step snapshots. You must run actions individually with a query between each one.
-4. **Include snapshots in all outputs:**
+2. **NEVER write a batch script that runs all steps at once.** A script that runs 8 reducer calls and prints console.log output is NOT a substitute for per-step DB snapshots. The pattern is: call one reducer → `spacetime sql` → show markdown table → call next reducer → `spacetime sql` → show markdown table.
+3. **Show only tables the action touched.** If a reducer only modifies one table, only query that table. Don't dump unrelated tables.
+4. **Never reconstruct snapshots.** If you ran a batch test, the final DB state does NOT count as per-step snapshots. You must run actions individually with a query between each one.
+5. **Include snapshots in all outputs:**
    - Inline conversation when presenting checkpoint results to the user
    - Written UAT files (`.planning/phases/XX-name/{phase_num}-UAT.md`)
    - Report cards (`notes/reportcards/uat/backend-testing/`)
-5. **Format as a progression.** Show the data change story:
-   - "Created tournament → Tournament row: stage=Draft, name=X"
-   - "Updated tournament → Tournament row: name changed to Y, bestOf changed to 5"
-   - "Advanced stage → Tournament row: stage=Registration"
+6. **Format as a progression.** Show the data change story:
+   - "Called create reducer → Row inserted: field1=X, field2=Y"
+   - "Called update reducer → Row changed: field2 updated from Y to Z"
+   - "Called advance reducer → Row changed: status=NextState"
 
 ### Implementation
 
-For step-by-step verification, write standalone scripts (not vitest) that execute one action at a time with `spacetime sql` queries between each step. The script should print each snapshot inline so the full progression is visible in one output.
+**Each harness script does ONE action, then exits.** Run them sequentially from the conversation with a `spacetime sql` query between each one.
 
-```bash
-# Example query pattern
-spacetime sql $DB_NAME "SELECT * FROM Tournament WHERE id = $TID"
+```typescript
+// tmp/uat-test-X-step1.ts — ONE action only
+await userA.call.someReducer({ param: 'value' });
+await userA.sync();
+await userA.disconnect();
 ```
+
+Then in the conversation:
+1. Run `npx tsx tmp/uat-test-X-step1.ts`
+2. Run `spacetime sql $DB_NAME "SELECT * FROM some_table WHERE ..."` — present as markdown table
+3. Run `npx tsx tmp/uat-test-X-step2.ts`
+4. Run `spacetime sql ...` — present as markdown table
+5. Repeat
+
+For simple rejection tests (expect error, no state change), a single script with `expectReducerError` is fine — no snapshot needed because no data changed. But any reducer that modifies data MUST be followed by a live SQL query.
 
 ## UAT Report Cards
 

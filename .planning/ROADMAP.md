@@ -161,6 +161,12 @@ Plans:
 **Goal**: Full cursor broadcast works for all match roles, ephemeral chat is available per lobby, and players can browse and filter available lobbies
 **Depends on**: Phase 6
 **Requirements**: MOUS-01, MOUS-02, MOUS-03, CHAT-01, CHAT-02, CHAT-03, LBBY-01, LBBY-02
+**Deferred from Phase 3 UAT**: Tests 12, 13, 14, 15, 17 require prerequisite state that doesn't exist yet — lobby members (no lobby CRUD reducers) and MatchResultRecord rows (no insert reducer). Retest as part of Phase 9 UAT once lobby lifecycle reducers are implemented:
+  - Test 12: Referee Transfer & Reclaim (needs lobby + members)
+  - Test 13: Match Score Confirmation & Submission (needs MatchResultRecord + lobby referee)
+  - Test 14: Match Dispute (needs MatchResultRecord in Submitted status)
+  - Test 15: Tournament Admin Operations (override_match_result needs MatchResultRecord; dq + assistants testable but deferred for full coverage)
+  - Test 17: Coach Role Management (needs lobby + members)
 **Success Criteria** (what must be TRUE):
   1. A player's full XY cursor position is broadcast via reducer while their browser tab is active; the position is visible in subscriptions to all match participants, spectators, and coaches
   2. A coach role player can see cursor tracking data but calling any pick/ban reducer as a coach is rejected with an authorization error

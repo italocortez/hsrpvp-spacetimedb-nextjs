@@ -3,16 +3,16 @@ status: testing
 phase: 03-tournament-system
 source: [03-01-SUMMARY.md, 03-02-SUMMARY.md, 03-03-SUMMARY.md, 03-04-SUMMARY.md, 03-05-SUMMARY.md]
 started: 2026-03-18T00:00:00Z
-updated: 2026-03-19T01:30:00Z
+updated: 2026-03-18T00:00:00Z
 ---
 
 ## Current Test
 <!-- OVERWRITE each test - shows where we are -->
 
-number: 10
-name: Cost Set Lifecycle
+number: 16
+name: Moderator Role Management
 expected: |
-  Call `create_cost_set` — CostSet row created with isPublished=false. Call `edit_draft_character_cost` / `edit_draft_lightcone_cost` / `edit_draft_synergy_cost` — draft rows appear in private draft tables. Call `publish_cost_set` — draft costs copied to live HsrCharacterCost/HsrLightconeCost/HsrSynergyCost tables, isPublished=true. Call `lock_cost_set` — isLocked=true. Call `unpublish_cost_set` — isPublished=false. Call `delete_cost_set` — CostSet row and all associated live cost rows removed.
+  A Moderator+ calls `mod_promote_to_host` on a User-role player — their role changes to TournamentHost. `mod_demote_from_host` on a TournamentHost — role reverts to User. Attempting to promote/demote Admin or Moderator roles is rejected.
 awaiting: user response
 
 ## Tests
@@ -55,27 +55,31 @@ result: pass
 
 ### 10. Cost Set Lifecycle
 expected: Call `create_cost_set` — CostSet row created with isPublished=false. Call `edit_draft_character_cost` / `edit_draft_lightcone_cost` / `edit_draft_synergy_cost` — draft rows appear in private draft tables. Call `publish_cost_set` — draft costs copied to live HsrCharacterCost/HsrLightconeCost/HsrSynergyCost tables, isPublished=true. Call `lock_cost_set` — isLocked=true. Call `unpublish_cost_set` — isPublished=false. Call `delete_cost_set` — CostSet row and all associated live cost rows removed.
-result: [pending]
+result: pass
 
 ### 11. Cost Set Default Protection
 expected: Attempting to call `lock_cost_set`, `unpublish_cost_set`, or `delete_cost_set` with costSetId=0 (the default set) is rejected with an error. The default set cannot be modified through lifecycle reducers.
-result: [pending]
+result: pass
 
 ### 12. Referee Transfer & Reclaim
 expected: In a lobby, the host calls `transfer_referee` targeting another member. That member's isReferee becomes true, host's becomes false. Host calls `reclaim_referee` — referee flag returns to host.
-result: [pending]
+result: deferred
+reason: No lobby CRUD reducers exist yet (Phase 9). Cannot create lobby + members as prerequisite state. Retest when Phase 9 lobby lifecycle reducers are implemented.
 
 ### 13. Match Score Confirmation & Submission
 expected: With a MatchResultRecord in Pending status, Team 1 captain calls `confirm_match_scores` — team1Confirmed=true. Team 2 captain calls `confirm_match_scores` — team2Confirmed=true. Referee calls `submit_match_result` with winnerId — status changes to Submitted. Attempting to submit without both confirmations is rejected.
-result: [pending]
+result: deferred
+reason: No reducer creates MatchResultRecord rows. Requires lobby members (Phase 9) and bracket match generation (Phase 4) to produce prerequisite state. Retest after Phase 9.
 
 ### 14. Match Dispute
 expected: After a match result is submitted, a participant calls `dispute_match_result` with a reason. disputedByUserId is set and disputeReason recorded. A second dispute attempt (by anyone) on the same match is rejected — single-dispute-per-match enforcement.
-result: [pending]
+result: deferred
+reason: Depends on MatchResultRecord in Submitted status — requires tests 13's prerequisites. Retest after Phase 9.
 
 ### 15. Tournament Admin Operations
 expected: Moderator+ or organizer calls `dq_participant` — participant status changes to Disqualified. `override_match_result` changes the winner and stores the reason in disputeReason. `assign_tournament_assistant` adds an assistant (self-assignment blocked). `remove_tournament_assistant` removes the assistant.
-result: [pending]
+result: deferred
+reason: override_match_result requires MatchResultRecord rows (no insert reducer exists). dq_participant and assistant reducers are testable individually but test spec requires full coverage. Retest after Phase 9.
 
 ### 16. Moderator Role Management
 expected: A Moderator+ calls `mod_promote_to_host` on a User-role player — their role changes to TournamentHost. `mod_demote_from_host` on a TournamentHost — role reverts to User. Attempting to promote/demote Admin or Moderator roles is rejected.
@@ -83,15 +87,17 @@ result: [pending]
 
 ### 17. Coach Role Management
 expected: In a lobby, the host or referee calls `set_coach` targeting a member — that member's isCoach becomes true. `remove_coach` sets isCoach back to false. Non-host/non-referee callers are rejected.
-result: [pending]
+result: deferred
+reason: No lobby CRUD reducers exist yet (Phase 9). Cannot create lobby + members as prerequisite state. Retest when Phase 9 lobby lifecycle reducers are implemented.
 
 ## Summary
 
 total: 17
-passed: 9
+passed: 11
 issues: 0
-pending: 8
+pending: 1
 skipped: 0
+deferred: 5
 
 ## Gaps
 

@@ -20,7 +20,8 @@
     "test:integration": "vitest run --config test/vitest.integration.config.ts",
     "test:integration:watch": "vitest --config test/vitest.integration.config.ts",
     "test:all": "vitest run --config test/vitest.config.ts && vitest run --config test/vitest.integration.config.ts",
-    "test:phase": "vitest run --config test/vitest.integration.config.ts --dir"
+    "test:phase": "vitest run --config test/vitest.integration.config.ts --dir",
+    "test:typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@heroui/button": "^2.2.32",
