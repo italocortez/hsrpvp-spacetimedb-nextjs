@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 04-bracket-generation-and-advancement
-current_plan: 04-03 complete
-status: executing
-last_updated: "2026-03-18T14:31:26.997Z"
+current_plan: 04-01 complete
+status: planning
+last_updated: "2026-03-18T14:36:26.218Z"
 progress:
   total_phases: 10
   completed_phases: 4
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md
 **Milestone:** v0.5 milestone
 **Current phase:** 04-bracket-generation-and-advancement
 **Current plan:** 04-01 complete
-**Status:** In progress
+**Status:** Ready to plan
 
 ## Decisions
 
@@ -67,6 +67,7 @@ See: .planning/PROJECT.md
 | 260318-2ci | Restructure test suite and build post-publish bootstrap | 2026-03-18 | unstaged | [260318-2ci](./quick/260318-2ci-restructure-test-suite-and-build-post-pu/) |
 | 260318-6kx | Update test-suite references to uat in planning files | 2026-03-18 | unstaged | [260318-6kx](./quick/260318-6kx-update-test-suite-references-to-uat-in-p/) |
 | 260318-94t | Migrate feature docs to centralized docs/ directory | 2026-03-18 | unstaged | [260318-94t](./quick/260318-94t-migrate-feature-docs-to-centralized-docs/) |
+| 260318-r63 | Add multi-column btree indexes to 19 composite PK tables, migrate filter+find patterns | 2026-03-19 | 310f9b5 | [260318-r63](./quick/260318-r63-add-multi-column-btree-indexes-to-compos/) |
 
 ## Session Log
 
@@ -81,3 +82,4 @@ See: .planning/PROJECT.md
 - 2026-03-18: Completed 04-01-PLAN.md — schema foundation for bracket generation: BracketSide enum, 7 table schema changes, MatchResultParticipant junction table, stage transition guards, solo auto-team creation, display name lazy sync
 - 2026-03-18: Completed 04-02-PLAN.md — bracket generation algorithms: foldSeeding, circleSchedule, snakeSeedIntoGroups, single/double/group/hybrid bracket helpers, generate_bracket/seed_bracket/swap_seeds reducers
 - 2026-03-18: Completed 04-03-PLAN.md — bracket advancement: advance_bracket_match/submit_and_advance_bracket/rollback_bracket_match reducers, dq_participant auto-advance, group standings Win=2/Draw=1/Loss=0, published to maincloud
+- 2026-03-19: Completed quick task 260318-r63 — 19 multi-column btree indexes added to composite PK tables, 11 reducer/helper files migrated from filter+find to filter([v1,v2])[0], published to maincloud, 32/32 tests pass
