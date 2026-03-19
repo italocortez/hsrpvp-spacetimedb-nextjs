@@ -125,6 +125,18 @@ export const create_tournament = spacetimedb.reducer(
         const parsedScheduledStartAt = scheduledStartAt ? BigInt(scheduledStartAt) : undefined;
         const parsedRegistrationDeadline = registrationDeadline ? BigInt(registrationDeadline) : undefined;
 
+        // Validate timestamps against server time
+        const now = ctx.timestamp.microsSinceUnixEpoch;
+        if (parsedScheduledStartAt !== undefined && parsedScheduledStartAt <= now) {
+            throw new SenderError('scheduledStartAt must be in the future.');
+        }
+        if (parsedRegistrationDeadline !== undefined && parsedRegistrationDeadline <= now) {
+            throw new SenderError('registrationDeadline must be in the future.');
+        }
+        if (parsedScheduledStartAt !== undefined && parsedRegistrationDeadline !== undefined && parsedRegistrationDeadline >= parsedScheduledStartAt) {
+            throw new SenderError('registrationDeadline must be before scheduledStartAt.');
+        }
+
         ctx.db.Tournament.insert({
             id: 0,
             name: trimmedName,
@@ -264,6 +276,18 @@ export const update_tournament = spacetimedb.reducer(
         // Parse optional timestamps
         const parsedScheduledStartAt = scheduledStartAt ? BigInt(scheduledStartAt) : undefined;
         const parsedRegistrationDeadline = registrationDeadline ? BigInt(registrationDeadline) : undefined;
+
+        // Validate timestamps against server time
+        const now = ctx.timestamp.microsSinceUnixEpoch;
+        if (parsedScheduledStartAt !== undefined && parsedScheduledStartAt <= now) {
+            throw new SenderError('scheduledStartAt must be in the future.');
+        }
+        if (parsedRegistrationDeadline !== undefined && parsedRegistrationDeadline <= now) {
+            throw new SenderError('registrationDeadline must be in the future.');
+        }
+        if (parsedScheduledStartAt !== undefined && parsedRegistrationDeadline !== undefined && parsedRegistrationDeadline >= parsedScheduledStartAt) {
+            throw new SenderError('registrationDeadline must be before scheduledStartAt.');
+        }
 
         ctx.db.Tournament.id.update({
             ...tournament,
