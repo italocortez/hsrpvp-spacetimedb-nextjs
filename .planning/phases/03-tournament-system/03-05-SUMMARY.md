@@ -20,7 +20,7 @@ key_files:
     - .planning/phases/03-tournament-system/03-02-PLAN.md
     - spacetimedb/src/reducers/refereeManagement.ts
     - spacetimedb/src/index.ts
-    - spacetimedb/src/docs/tournament/README.md
+    - docs/tournament/architecture.md
     - .claude/skills/spacetimedb/references/module-bindings.md
 decisions:
   - "TEAM-01/02/03 (persistent teams) reclassified as Out of Scope for v0.5 — tournament-scoped teams (TEAM-04) cover all Phase 3 needs"

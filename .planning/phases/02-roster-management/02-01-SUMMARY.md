@@ -32,7 +32,7 @@ key-files:
     - spacetimedb/src/tables/archetype.ts
     - spacetimedb/src/tables/hsrCharacterArchetype.ts
     - spacetimedb/src/helpers/rosterHelpers.ts
-    - spacetimedb/src/docs/archetypes/README.md
+    - docs/archetypes/architecture.md
   modified:
     - spacetimedb/src/tables/hsrAccount.ts
     - spacetimedb/src/tables/hsrCharacterCost.ts
@@ -42,7 +42,7 @@ key-files:
     - spacetimedb/src/reducers/admin.ts
     - spacetimedb/src/helpers/ensurePermissions.ts
     - spacetimedb/src/reducers/userDeletion.ts
-    - spacetimedb/src/docs/roster/README.md
+    - docs/roster/architecture.md
 
 key-decisions:
   - "Used id.update() for Archetype upsert (not name.update()) — unique index accessor lacks update() method in SpacetimeDB SDK"
@@ -102,8 +102,8 @@ Each task was committed atomically:
 - `spacetimedb/src/helpers/ensurePermissions.ts` - Added ensureVerifiedUser
 - `spacetimedb/src/helpers/rosterHelpers.ts` - New: validateUid, deriveRegion, recalcDuplicateUid
 - `spacetimedb/src/reducers/userDeletion.ts` - Extended cascade to HsrAccount and HsrAccountCharacter
-- `spacetimedb/src/docs/roster/README.md` - Updated with new columns, helpers, cascade notes
-- `spacetimedb/src/docs/archetypes/README.md` - New: archetype domain documentation
+- `docs/roster/architecture.md` - Updated with new columns, helpers, cascade notes
+- `docs/archetypes/architecture.md` - New: archetype domain documentation
 
 ## Decisions Made
 - Used `id.update()` instead of `name.update()` for Archetype upsert — SpacetimeDB unique index accessor does not expose an `update()` method, only `find()`. Primary key accessor must be used for updates.

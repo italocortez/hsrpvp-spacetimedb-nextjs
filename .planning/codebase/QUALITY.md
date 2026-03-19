@@ -53,7 +53,7 @@
 
 ## Documentation
 
-**Backend feature docs:** `spacetimedb/src/docs/` contains README files for 14 feature domains (auth, roster, lobby, match-results, mmr, tournaments, teams, brackets, achievements, calendar, chat, player-stats, cost-tables, match-session). These document table relationships and reducer flows.
+**Backend feature docs:** `docs/` contains architecture.md and contract.md files for 17 feature domains (auth, roster, lobby, match-results, mmr, tournament, teams, brackets, achievements, calendar, chat, player-stats, cost-tables, match-session, cost-sets, views, archetypes). These document table relationships and reducer flows.
 
 **Code comments:** JSDoc on helper functions in `ensurePermissions.ts` and `auditColumns.ts`. Inline comments explain complex auth flows in `useAuth.ts`. Reducer files have explanatory comments.
 

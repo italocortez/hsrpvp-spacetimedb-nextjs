@@ -40,10 +40,10 @@ key-files:
     - spacetimedb/src/reducers/refereeManagement.ts
     - spacetimedb/src/reducers/matchResultSubmission.ts
     - spacetimedb/src/reducers/tournamentAdmin.ts
-    - spacetimedb/src/docs/match-results/README.md
+    - docs/match-results/architecture.md
   modified:
     - spacetimedb/src/index.ts
-    - spacetimedb/src/docs/tournament/README.md
+    - docs/tournament/architecture.md
     - src/module_bindings/ (34 reducer binding files regenerated)
     - spacetimedb/dist/bundle.js
 
@@ -100,8 +100,8 @@ Each task was committed atomically:
 - `spacetimedb/src/reducers/matchResultSubmission.ts` - confirm_match_scores, submit_match_result, dispute_match_result (id.update())
 - `spacetimedb/src/reducers/tournamentAdmin.ts` - 6 admin reducers with permission hierarchy and composite PK patterns
 - `spacetimedb/src/index.ts` - 3 new export lines for all 11 reducers
-- `spacetimedb/src/docs/match-results/README.md` - full architecture doc (new)
-- `spacetimedb/src/docs/tournament/README.md` - updated with all 25 Phase 3 reducers
+- `docs/match-results/architecture.md` - full architecture doc (new)
+- `docs/tournament/architecture.md` - updated with all 25 Phase 3 reducers
 - `src/module_bindings/` - 34 reducer binding files regenerated from published module
 
 ## Decisions Made

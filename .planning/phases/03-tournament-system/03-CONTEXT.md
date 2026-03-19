@@ -25,7 +25,7 @@ Tournament organizers can create and manage tournament lifecycle, players can re
   - **Admin**: Full system access, all panels
   - **Moderator**: User management (titles, MMR compensation/penalties), lobby management (kill/kick), cost tools for ANY ruleset, tournament oversight (see all history, edit any tournament, confirm any match)
   - **TournamentHost**: Create/manage own tournaments, assign tournament assistants, confirm match submissions in own tournaments, manage own cost sets
-  - **User (Verified)**: Full gameplay, roster management, MMR earning, join/create matches, join tournaments, request TO role, calendar, stats, achievements, team joining
+  - **User (Verified)**: Full gameplay, roster management, MMR earning, join/create matches, join tournaments, calendar, stats, achievements, team joining (no TO request flow — users contact admins on Discord)
   - **Guest (Unverified)**: Limited gameplay (no roster-requiring lobbies/tournaments), limited stats (no per-character, no replays), can join teams only within tournaments that don't enforce roster, can view calendars but not set own availability
 
 ### Referee System (Per-Match, Universal)
@@ -154,7 +154,7 @@ Tournament organizers can create and manage tournament lifecycle, players can re
 - `.planning/phases/02-roster-management/02-CONTEXT.md` — Prior decisions (roster visibility, active account per-lobby, cost set prep, views strategy)
 
 ### Architecture docs
-- `spacetimedb/src/docs/` — Feature domain docs (tournament/, teams/, brackets/ need updating)
+- `docs/` — Feature domain docs (tournament/, teams/, brackets/ need updating)
 - `spacetimedb/src/views/securityViews.ts` — Existing per-user view pattern for draft cost table view
 
 </canonical_refs>

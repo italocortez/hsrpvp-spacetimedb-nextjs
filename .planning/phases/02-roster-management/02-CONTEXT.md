@@ -124,7 +124,7 @@ Players can create HSR account entries, add owned characters with eidolon levels
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Roster data model
-- `spacetimedb/src/docs/roster/README.md` — Table relationships, visibility rules, rating formula (note: lightcone ownership removed, rating is character-cost-only now)
+- `docs/roster/architecture.md` — Table relationships, visibility rules, rating formula (note: lightcone ownership removed, rating is character-cost-only now)
 - `spacetimedb/src/tables/hsrAccount.ts` — HsrAccount table schema (isActive, isRosterPublic columns)
 - `spacetimedb/src/tables/hsrAccountCharacter.ts` — HsrAccountCharacter composite PK, eidolonLevel column
 - `spacetimedb/src/tables/hsrAccountLightcone.ts` — EXISTS but REMOVED from Phase 2 scope (do not write reducers for this)
@@ -190,7 +190,7 @@ Players can create HSR account entries, add owned characters with eidolon levels
 - `spacetimedb/src/schema.ts`: New Archetype and HsrCharacterArchetype tables must be registered here
 - `spacetimedb/src/index.ts`: All new reducers must be exported here
 - Cost tables: costSetId column addition requires modifying existing table definitions
-- `spacetimedb/src/docs/roster/README.md`: Must be updated with new reducer flows, archetype system, and revised visibility rules
+- `docs/roster/architecture.md`: Must be updated with new reducer flows, archetype system, and revised visibility rules
 
 </code_context>
 

@@ -54,7 +54,7 @@ re_verification: false
 | `spacetimedb/src/reducers/roster.ts` | 7 user-facing roster reducers | VERIFIED | All 7 exports present and substantive |
 | `spacetimedb/src/reducers/rosterAdmin.ts` | 9 admin proxy/CRUD reducers | VERIFIED | All 9 exports present and substantive |
 | `spacetimedb/src/index.ts` | All reducer exports wired | VERIFIED | Both export lines present; all 16 reducers covered |
-| `spacetimedb/src/docs/roster/README.md` | Architecture documentation | VERIFIED | Contains table relationships, all reducer flows, visibility rules, archetype system |
+| `docs/roster/architecture.md` | Architecture documentation | VERIFIED | Contains table relationships, all reducer flows, visibility rules, archetype system |
 
 ---
 

@@ -53,7 +53,7 @@ key-files:
     - src/module_bindings/hsr_character_archetype_table.ts
   modified:
     - spacetimedb/src/index.ts
-    - spacetimedb/src/docs/roster/README.md
+    - docs/roster/architecture.md
     - spacetimedb/dist/bundle.js
     - src/module_bindings/index.ts
     - src/module_bindings/types.ts
@@ -102,7 +102,7 @@ completed: 2026-03-16
 - `spacetimedb/src/reducers/roster.ts` — New: 7 user-facing reducers
 - `spacetimedb/src/reducers/rosterAdmin.ts` — New: 9 admin reducers
 - `spacetimedb/src/index.ts` — Added roster + rosterAdmin export lines
-- `spacetimedb/src/docs/roster/README.md` — Complete rewrite with full architecture
+- `docs/roster/architecture.md` — Complete rewrite with full architecture
 - `spacetimedb/dist/bundle.js` — Compiled module bundle
 - `src/module_bindings/` — 16 new reducer files + 2 new table files + updated index/types
 
@@ -139,7 +139,7 @@ None. Module is live on maincloud, bindings are generated.
 
 - [x] spacetimedb/src/reducers/roster.ts — created
 - [x] spacetimedb/src/reducers/rosterAdmin.ts — created
-- [x] spacetimedb/src/docs/roster/README.md — updated
+- [x] docs/roster/architecture.md — updated
 - [x] src/module_bindings/create_hsr_account_reducer.ts — generated
 
 **Checking commits exist:**

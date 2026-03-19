@@ -12,7 +12,7 @@ provides:
   - "8 cost set reducers: create_cost_set, edit_draft_character_cost, edit_draft_lightcone_cost, edit_draft_synergy_cost, publish_cost_set, lock_cost_set, unpublish_cost_set, delete_cost_set"
   - "4 per-user security views for draft cost data: view_my_cost_sets, view_my_draft_character_costs, view_my_draft_lightcone_costs, view_my_draft_synergy_costs"
   - "Full draft/publish lifecycle enforced: draft → publish → lock → unpublish → delete"
-  - "Cost set architecture docs at spacetimedb/src/docs/cost-sets/README.md"
+  - "Cost set architecture docs at docs/cost-sets/architecture.md"
 
 affects:
   - "03-04-PLAN (tournament creation uses costSetId)"
@@ -31,7 +31,7 @@ tech-stack:
 key-files:
   created:
     - spacetimedb/src/reducers/costSetManagement.ts
-    - spacetimedb/src/docs/cost-sets/README.md
+    - docs/cost-sets/architecture.md
   modified:
     - spacetimedb/src/views/securityViews.ts
     - spacetimedb/src/index.ts
@@ -86,7 +86,7 @@ Each task was committed atomically:
 - `spacetimedb/src/reducers/costSetManagement.ts` — 8 reducers: create_cost_set, edit_draft_character_cost, edit_draft_lightcone_cost, edit_draft_synergy_cost, publish_cost_set, lock_cost_set, unpublish_cost_set, delete_cost_set
 - `spacetimedb/src/views/securityViews.ts` — Added 4 per-user draft cost views (views 6–9)
 - `spacetimedb/src/index.ts` — Added export line for all 8 costSetManagement reducers
-- `spacetimedb/src/docs/cost-sets/README.md` — Cost set architecture docs with table diagram, workflow, key rules, and reducer reference
+- `docs/cost-sets/architecture.md` — Cost set architecture docs with table diagram, workflow, key rules, and reducer reference
 
 ## Decisions Made
 
@@ -117,7 +117,7 @@ None — no external service configuration required.
 ## Self-Check: PASSED
 
 - FOUND: spacetimedb/src/reducers/costSetManagement.ts
-- FOUND: spacetimedb/src/docs/cost-sets/README.md
+- FOUND: docs/cost-sets/architecture.md
 - FOUND: .planning/phases/03-tournament-system/03-03-SUMMARY.md
 - FOUND: commit 1b81732 (Task 1)
 - FOUND: commit d53894f (Task 2)

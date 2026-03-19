@@ -109,9 +109,9 @@ Score moved from 15/18 to 17/17 (18th truth removed from scope — TEAM-01/02/03
 | `src/module_bindings/tournament_team_request_table.ts` | Client bindings | VERIFIED | File exists |
 | `src/module_bindings/set_coach_reducer.ts` | Client binding for set_coach (new) | VERIFIED | File exists, contains lobbyId + targetUserId schema |
 | `src/module_bindings/remove_coach_reducer.ts` | Client binding for remove_coach (new) | VERIFIED | File exists, contains lobbyId + targetUserId schema |
-| `spacetimedb/src/docs/tournament/README.md` | Tournament architecture docs | VERIFIED | File exists |
-| `spacetimedb/src/docs/cost-sets/README.md` | Cost set architecture docs | VERIFIED | File exists |
-| `spacetimedb/src/docs/match-results/README.md` | Match result docs | VERIFIED | File exists |
+| `docs/tournament/architecture.md` | Tournament architecture docs | VERIFIED | File exists |
+| `docs/cost-sets/architecture.md` | Cost set architecture docs | VERIFIED | File exists |
+| `docs/match-results/architecture.md` | Match result docs | VERIFIED | File exists |
 
 ---
 

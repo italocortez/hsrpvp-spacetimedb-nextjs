@@ -12,7 +12,7 @@ provides:
   - 4 tournament management reducers: create_tournament (Draft stage, TournamentHost+), update_tournament (Draft/Registration), advance_tournament_stage (forward-only), cancel_tournament
   - 4 registration reducers: register_for_tournament (full validation incl. waitlist/approval), withdraw_from_tournament, approve_participant, waitlist_promote
   - 6 tournament team reducers: create_tournament_team, request_join_team, accept_team_request, reject_team_request, leave_tournament_team, disband_tournament_team
-  - Tournament architecture docs at spacetimedb/src/docs/tournament/README.md
+  - Tournament architecture docs at docs/tournament/architecture.md
 affects: [03-03-tournament-bracket, 03-04-frontend]
 
 # Tech tracking
@@ -29,7 +29,7 @@ key-files:
     - spacetimedb/src/reducers/tournamentManagement.ts
     - spacetimedb/src/reducers/tournamentRegistration.ts
     - spacetimedb/src/reducers/tournamentTeams.ts
-    - spacetimedb/src/docs/tournament/README.md
+    - docs/tournament/architecture.md
   modified:
     - spacetimedb/src/index.ts
 
@@ -83,7 +83,7 @@ Each task was committed atomically:
 - `spacetimedb/src/reducers/tournamentManagement.ts` - create_tournament, update_tournament, advance_tournament_stage, cancel_tournament
 - `spacetimedb/src/reducers/tournamentRegistration.ts` - register_for_tournament, withdraw_from_tournament, approve_participant, waitlist_promote
 - `spacetimedb/src/reducers/tournamentTeams.ts` - create_tournament_team, request_join_team, accept_team_request, reject_team_request, leave_tournament_team, disband_tournament_team
-- `spacetimedb/src/docs/tournament/README.md` - Full architecture docs with relationship diagram, lifecycle stages, reducer reference table
+- `docs/tournament/architecture.md` - Full architecture docs with relationship diagram, lifecycle stages, reducer reference table
 
 **Modified:**
 - `spacetimedb/src/index.ts` - Added 3 export lines for all 14 new tournament reducers
@@ -124,7 +124,7 @@ All files exist and all commits verified:
 - spacetimedb/src/reducers/tournamentManagement.ts: FOUND
 - spacetimedb/src/reducers/tournamentRegistration.ts: FOUND
 - spacetimedb/src/reducers/tournamentTeams.ts: FOUND
-- spacetimedb/src/docs/tournament/README.md: FOUND
+- docs/tournament/architecture.md: FOUND
 - .planning/phases/03-tournament-system/03-02-SUMMARY.md: FOUND
 - Commit d39de6a: FOUND
 - Commit dbc6c4c: FOUND
