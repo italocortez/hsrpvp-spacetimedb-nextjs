@@ -68,6 +68,7 @@ See: .planning/PROJECT.md
 | 260318-6kx | Update test-suite references to uat in planning files | 2026-03-18 | unstaged | [260318-6kx](./quick/260318-6kx-update-test-suite-references-to-uat-in-p/) |
 | 260318-94t | Migrate feature docs to centralized docs/ directory | 2026-03-18 | unstaged | [260318-94t](./quick/260318-94t-migrate-feature-docs-to-centralized-docs/) |
 | 260318-r63 | Add multi-column btree indexes to 19 composite PK tables, migrate filter+find patterns | 2026-03-19 | 310f9b5 | [260318-r63](./quick/260318-r63-add-multi-column-btree-indexes-to-compos/) |
+| 260319-39z | Organize unstaged files into logical commits | 2026-03-19 | dc7eb25 | [260319-39z](./quick/260319-39z-organize-unstaged-files-into-logical-com/) |
 
 ## Session Log
 
