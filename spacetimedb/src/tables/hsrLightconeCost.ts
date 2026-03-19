@@ -20,5 +20,6 @@ export const HsrLightconeCost = table({
     primaryKey: ['lightconeName', 'gameMode', 'costSetId'],
     indexes: [
         { accessor: 'cost_set_id', algorithm: 'btree', columns: ['costSetId'] },
+        { accessor: 'by_lightcone_mode_and_set', algorithm: 'btree', columns: ['lightconeName', 'gameMode', 'costSetId'] },
     ],
 }, hsrLightconeCostColumns);

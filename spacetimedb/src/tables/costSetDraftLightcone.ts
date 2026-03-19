@@ -19,5 +19,6 @@ export const CostSetDraftLightcone = table({
     primaryKey: ['costSetId', 'lightconeName', 'gameMode'],
     indexes: [
         { accessor: 'cost_set_id', algorithm: 'btree', columns: ['costSetId'] },
+        { accessor: 'by_set_lightcone_and_mode', algorithm: 'btree', columns: ['costSetId', 'lightconeName', 'gameMode'] },
     ],
 }, costSetDraftLightconeColumns);

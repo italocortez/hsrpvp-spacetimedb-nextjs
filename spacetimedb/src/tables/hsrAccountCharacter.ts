@@ -16,5 +16,6 @@ export const HsrAccountCharacter = table({
     primaryKey: ['hsrAccountId', 'characterName'],
     indexes: [
         { accessor: 'hsr_account_id', algorithm: 'btree', columns: ['hsrAccountId'] },
+        { accessor: 'by_account_and_character', algorithm: 'btree', columns: ['hsrAccountId', 'characterName'] },
     ],
 }, hsrAccountCharacterColumns);

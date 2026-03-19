@@ -16,5 +16,6 @@ export const TournamentTeamRequest = table({
     indexes: [
         { accessor: 'team_id', algorithm: 'btree', columns: ['teamId'] },
         { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'by_team_and_user', algorithm: 'btree', columns: ['teamId', 'userId'] },
     ],
 }, tournamentTeamRequestColumns);

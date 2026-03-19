@@ -16,5 +16,6 @@ export const HsrAccountLightcone = table({
     primaryKey: ['hsrAccountId', 'lightconeName'],
     indexes: [
         { accessor: 'hsr_account_id', algorithm: 'btree', columns: ['hsrAccountId'] },
+        { accessor: 'by_account_and_lightcone', algorithm: 'btree', columns: ['hsrAccountId', 'lightconeName'] },
     ],
 }, hsrAccountLightconeColumns);

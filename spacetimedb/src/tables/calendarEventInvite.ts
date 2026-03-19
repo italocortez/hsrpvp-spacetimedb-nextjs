@@ -16,5 +16,6 @@ export const CalendarEventInvite = table({
     indexes: [
         { accessor: 'event_id', algorithm: 'btree', columns: ['eventId'] },
         { accessor: 'invitee_user_id', algorithm: 'btree', columns: ['inviteeUserId'] },
+        { accessor: 'by_event_and_invitee', algorithm: 'btree', columns: ['eventId', 'inviteeUserId'] },
     ],
 }, calendarEventInviteColumns);

@@ -18,5 +18,6 @@ export const CostSetDraftSynergy = table({
     primaryKey: ['costSetId', 'sourceName', 'targetName', 'gameMode'],
     indexes: [
         { accessor: 'cost_set_id', algorithm: 'btree', columns: ['costSetId'] },
+        { accessor: 'by_set_source_target_and_mode', algorithm: 'btree', columns: ['costSetId', 'sourceName', 'targetName', 'gameMode'] },
     ],
 }, costSetDraftSynergyColumns);

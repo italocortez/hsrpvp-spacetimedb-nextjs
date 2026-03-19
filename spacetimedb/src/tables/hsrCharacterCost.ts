@@ -20,5 +20,6 @@ export const HsrCharacterCost = table({
     primaryKey: ['characterName', 'gameMode', 'costSetId'],
     indexes: [
         { accessor: 'cost_set_id', algorithm: 'btree', columns: ['costSetId'] },
+        { accessor: 'by_character_mode_and_set', algorithm: 'btree', columns: ['characterName', 'gameMode', 'costSetId'] },
     ],
 }, hsrCharacterCostColumns);

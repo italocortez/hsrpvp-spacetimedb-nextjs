@@ -23,5 +23,6 @@ export const LobbyMember = table({
     indexes: [
         { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
         { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'by_lobby_and_user', algorithm: 'btree', columns: ['lobbyId', 'userId'] },
     ]
 }, lobbyMemberColumns);
