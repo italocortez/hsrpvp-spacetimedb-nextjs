@@ -77,11 +77,6 @@ export const register_for_tournament = spacetimedb.reducer(
         // Determine approval timestamp
         const approvedByToAt = tournament.requireApproval ? undefined : ctx.timestamp;
 
-        // Determine participant type
-        const participantType = teamGroupId !== 0
-            ? { tag: 'Team', value: {} } as any
-            : { tag: 'Individual', value: {} } as any;
-
         // Get active HSR account id if any
         const activeAccount = [...ctx.db.HsrAccount.user_id.filter(user.id)].find((a: any) => a.isActive);
         const hsrAccountId = activeAccount ? activeAccount.id : undefined;
@@ -90,7 +85,6 @@ export const register_for_tournament = spacetimedb.reducer(
             tournamentId,
             userId: user.id,
             teamGroupId: teamGroupId !== 0 ? teamGroupId : undefined,
-            participantType,
             status: { tag: 'Registered', value: {} } as any,
             anonymousAlias: undefined,
             isWaitlisted,
@@ -146,6 +140,7 @@ export const withdraw_from_tournament = spacetimedb.reducer(
 
         const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
         if (!participant) throw new SenderError('You are not registered for this tournament.');
+        if (participant.status.tag === 'Withdrawn') throw new SenderError('Already withdrawn.');
 
         // Delete + re-insert pattern for composite PK table
         ctx.db.TournamentParticipant.delete(participant);
@@ -204,10 +199,12 @@ export const waitlist_promote = spacetimedb.reducer(
         }
 
         // Delete + re-insert pattern for composite PK table
+        // Promoting from waitlist implies approval — TO explicitly chose this person
         ctx.db.TournamentParticipant.delete(participant);
         ctx.db.TournamentParticipant.insert({
             ...participant,
             isWaitlisted: false,
+            approvedByToAt: participant.approvedByToAt ?? ctx.timestamp,
             ...auditUpdate(ctx, participant, user.id),
         } as any);
     }

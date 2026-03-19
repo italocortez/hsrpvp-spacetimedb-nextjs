@@ -61,12 +61,11 @@ export const create_tournament_team = spacetimedb.reducer(
 
         const teamId = newTeam.id;
 
-        // Update captain's participant row: set teamGroupId and participantType = Team
+        // Update captain's participant row: set teamGroupId
         ctx.db.TournamentParticipant.delete(participant);
         ctx.db.TournamentParticipant.insert({
             ...participant,
             teamGroupId: teamId,
-            participantType: { tag: 'Team', value: {} } as any,
             ...auditUpdate(ctx, participant, user.id),
         } as any);
     }
@@ -148,7 +147,7 @@ export const accept_team_request = spacetimedb.reducer(
         // Delete the request row (transactional — existence = pending)
         ctx.db.TournamentTeamRequest.delete(request);
 
-        // Update the accepted player's TournamentParticipant: set teamGroupId + Team type
+        // Update the accepted player's TournamentParticipant: set teamGroupId
         const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([team.tournamentId, userId])][0];
         if (!participant) throw new SenderError('Participant record not found.');
 
@@ -156,7 +155,6 @@ export const accept_team_request = spacetimedb.reducer(
         ctx.db.TournamentParticipant.insert({
             ...participant,
             teamGroupId: teamId,
-            participantType: { tag: 'Team', value: {} } as any,
             ...auditUpdate(ctx, participant, caller.id),
         } as any);
     }
@@ -213,12 +211,11 @@ export const leave_tournament_team = spacetimedb.reducer(
             throw new SenderError('You are not a member of this team.');
         }
 
-        // Reset: clear teamGroupId and set participantType to Individual
+        // Reset: clear teamGroupId
         ctx.db.TournamentParticipant.delete(participant);
         ctx.db.TournamentParticipant.insert({
             ...participant,
             teamGroupId: undefined,
-            participantType: { tag: 'Individual', value: {} } as any,
             ...auditUpdate(ctx, participant, user.id),
         } as any);
     }
@@ -247,7 +244,7 @@ export const disband_tournament_team = spacetimedb.reducer(
             throw new SenderError('Teams can only be disbanded during the Registration stage.');
         }
 
-        // Reset all members: clear teamGroupId and set participantType to Individual
+        // Reset all members: clear teamGroupId
         const members = [...ctx.db.TournamentParticipant.tournament_id.filter(team.tournamentId)]
             .filter((p: any) => p.teamGroupId === teamId);
         for (const member of members) {
@@ -255,7 +252,6 @@ export const disband_tournament_team = spacetimedb.reducer(
             ctx.db.TournamentParticipant.insert({
                 ...member,
                 teamGroupId: undefined,
-                participantType: { tag: 'Individual', value: {} } as any,
                 ...auditUpdate(ctx, member, user.id),
             } as any);
         }

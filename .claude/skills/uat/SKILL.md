@@ -285,6 +285,33 @@ The test harness's `sync(ms?)` method (from `test/shared/connection.ts`) is a `s
 
 When SpacetimeDB adds a subscription sync primitive, `sync()` should be replaced. Until then, treat flaky tests that pass on retry as a `sync()` timing issue, not a backend bug — categorize as **test-logic** in the failure report.
 
+## DB Snapshot Requirements
+
+During UAT verification (`/gsd:verify-work`), every reducer call MUST be followed by a live database query showing the actual state of the tables that action touched. Snapshots are the proof that the reducer did what it claims.
+
+### Rules
+
+1. **Query after each individual action.** Run `spacetime sql` on the affected table(s) immediately after each reducer call — not after a batch of calls. Each step gets its own snapshot.
+2. **Show only tables the action touched.** If `update_tournament` only modifies the Tournament table, only query Tournament. Don't dump unrelated tables.
+3. **Never reconstruct snapshots.** If you ran a batch test, the final DB state does NOT count as per-step snapshots. You must run actions individually with a query between each one.
+4. **Include snapshots in all outputs:**
+   - Inline conversation when presenting checkpoint results to the user
+   - Written UAT files (`.planning/phases/XX-name/{phase_num}-UAT.md`)
+   - Report cards (`notes/reportcards/uat/backend-testing/`)
+5. **Format as a progression.** Show the data change story:
+   - "Created tournament → Tournament row: stage=Draft, name=X"
+   - "Updated tournament → Tournament row: name changed to Y, bestOf changed to 5"
+   - "Advanced stage → Tournament row: stage=Registration"
+
+### Implementation
+
+For step-by-step verification, write standalone scripts (not vitest) that execute one action at a time with `spacetime sql` queries between each step. The script should print each snapshot inline so the full progression is visible in one output.
+
+```bash
+# Example query pattern
+spacetime sql $DB_NAME "SELECT * FROM Tournament WHERE id = $TID"
+```
+
 ## UAT Report Cards
 
 When a UAT session is **paused, abandoned, or interrupted** to work on something else (e.g., fixing a different phase's failures), write a report card before switching context.

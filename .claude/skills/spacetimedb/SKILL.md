@@ -7,6 +7,10 @@ description: "Build and debug SpacetimeDB TypeScript modules and React clients, 
 
 This skill guides you through building correct SpacetimeDB applications. SpacetimeDB has many API pitfalls that LLMs commonly hallucinate — this skill exists to prevent those mistakes and keep you on the correct APIs.
 
+## This is a maincloud SpacetimeDB project. Connection: `wss://maincloud.spacetimedb.com` / database name in `spacetime.json`. No local server — do not use `spacetime start`. `spacetime call` uses the CLI identity (not an app user) so avoid it for testing authenticated reducers.
+
+**Maintaining this skill:** When updating any pattern or API behavior in this file: (1) check whether the content already exists before adding — grep SKILL.md and references to avoid duplication, (2) check whether the same topic appears in the reference files (especially `references/api-guide.md` — see its table of contents) and update those too. Stale or duplicated references are worse than none — they teach agents the wrong pattern or waste context.
+
 ## When to load references
 
 Read `references/api-guide.md` when you need detailed syntax for any of:
@@ -17,18 +21,13 @@ Read `references/api-guide.md` when you need detailed syntax for any of:
 - Scheduled tables and timestamps
 - Common mistakes table (server-side and client-side)
 
-Read `references/module-bindings.md` instead of reading `src/module_bindings/` files directly. This saves tokens — it contains all tables, reducers, enums, types, and indexes in a compact format.
+**Module bindings** — read the generated files directly (always up-to-date, never stale):
 
-**Post-generate binding refresh (ENFORCED — a PostToolUse hook reminds you):**
-After every `spacetime generate`, you must update the module-bindings reference so it stays in sync with the actual generated code. Stale bindings cause hallucinated APIs, wrong column names, and missing reducers — which is worse than having no reference at all.
-
-Steps:
-1. Read `src/module_bindings/types.ts` — contains all type definitions (objects, enums, structs, tagged unions)
-2. Read `src/module_bindings/index.ts` — contains table schema (indexes, constraints, unique columns), reducer list, and CLI version
-3. Optionally scan individual `*_reducer.ts` files if you need exact parameter names
-4. Rewrite `references/module-bindings.md` in the same compact format, noting the new sync date at the top
-
-The hook at `.claude/hooks/post-generate-bindings.js` will inject a reminder into your context whenever a `spacetime generate` Bash command completes.
+| What you need | Read this file |
+|---|---|
+| Table schemas, indexes, constraints, reducer list | `src/module_bindings/index.ts` |
+| Type definitions (enums, structs, tagged unions) | `src/module_bindings/types.ts` |
+| Reducer parameter names for a specific reducer | `src/module_bindings/<reducer_name>_reducer.ts` |
 
 Read `references/spacetime-json.md` when editing `spacetime.json` or `spacetime.local.json` — covers all config fields, generate targets, environment overrides, `spacetime dev` setup, and child database inheritance.
 
@@ -68,26 +67,8 @@ import { SpacetimeDBProvider, useTable, useReducer, useSpacetimeDB } from 'space
 import { Identity } from 'spacetimedb';
 ```
 
-### Table definition — `table(OPTIONS, COLUMNS)`
-Indexes go in OPTIONS (1st arg), never in COLUMNS (2nd arg). Putting them in the columns object causes a cryptic `"reading 'tag'"` runtime error because the SDK tries to parse the index config as a column type.
-```typescript
-export const MyTable = table({
-  name: 'my_table',
-  public: true,
-  indexes: [{ accessor: 'owner_id', algorithm: 'btree', columns: ['ownerId'] }]
-}, {
-  id: t.u64().primaryKey().autoInc(),
-  ownerId: t.identity(),
-  title: t.string(),
-});
-```
-
-### Schema export — exactly ONE object argument
-The `schema()` function uses the object's keys to build the DB namespace. Passing tables as positional args or individually causes silent misconfiguration — tables won't be accessible via `ctx.db`.
-```typescript
-const spacetimedb = schema({ myTable, otherTable });
-export default spacetimedb;
-```
+### Table definition & schema export
+`table(OPTIONS, COLUMNS)` — indexes go in OPTIONS (1st arg), never COLUMNS (2nd arg causes `"reading 'tag'"` error). `schema()` takes exactly one object arg. See `references/api-guide.md` § 2 for full syntax, column types, exported columns pattern, and examples.
 
 ### Reducers — name from export, object params, no return values
 The SDK derives the reducer name from the `export const` binding. There is no string-based registration — `reducer('name', ...)` doesn't exist. Parameters must be an object because the SDK generates typed destructuring from the schema; positional args would lose parameter names.
@@ -241,31 +222,6 @@ import { SenderError } from 'spacetimedb/server';
 if (!item) throw new SenderError('Item not found.');
 ```
 
-### Exported columns — reuse column definitions across backend components
-Extract column definitions into a named object so other backend files (reducers, helpers, validators) can import and reference the column shape without exposing data to clients. Define the columns object and table in the same schema file:
-```typescript
-// tables/my_table.ts
-import { table, t } from 'spacetimedb/server';
-
-// Export columns separately — other backend code can import this
-export const myTableColumns = {
-  name: t.string().primaryKey(),
-  displayName: t.string(),
-  category: t.string(),
-  imageUrl: t.string(),
-};
-
-// Pass the columns object as the 2nd arg to table()
-export const MyTable = table({
-  name: 'my_table',
-  public: true,
-  indexes: [
-    { accessor: 'category', algorithm: 'btree', columns: ['category'] },
-  ]
-}, myTableColumns);
-```
-Other backend files can then `import { myTableColumns } from '../tables/my_table'` to reference the column types for validation, type-safe helpers, or building related tables that share a subset of columns — all without making the data public to clients.
-
 ### BigInt — all u64/i64 fields
 Use `0n`, `1n`, `100n` — never plain numbers for ID/u64 fields. JavaScript `number` loses precision above 2^53, so SpacetimeDB maps 64-bit integers to BigInt. Mixing `number` and `BigInt` (e.g. `row.id === 5`) silently returns `false` — no error, just wrong behavior.
 
@@ -335,23 +291,38 @@ When implementing a feature that spans backend and client:
 2. **Backend:** Define reducer(s) in `reducers/` folder (grouped by domain), then re-export in `index.ts`
 3. **Backend:** Publish module (`spacetime publish`)
 4. **Backend:** Generate bindings (`spacetime generate`)
-5. **Sync:** Read `src/module_bindings/types.ts` + `index.ts` and update `references/module-bindings.md` (the hook reminds you)
-6. **Client:** Subscribe to the table(s)
-7. **Client:** Call the reducer(s) from UI
-8. **Client:** Render data from `useTable(tables.tableName)`
+5. **Client:** Subscribe to the table(s)
+6. **Client:** Call the reducer(s) from UI
+7. **Client:** Render data from `useTable(tables.tableName)`
 
 Common mistake: building backend tables/reducers but forgetting to wire up the client to call them.
 
 ## CLI commands
 
+### Connecting to the database
+
+The database name and server are configured in `spacetime.json` at the project root:
+- `database` — the published database name (use this as `<name>` in all CLI commands)
+- `server` — the target server nickname (e.g. `maincloud`)
+
+**When running CLI commands from the project root**, `spacetime.json` is auto-detected — so you can omit `-s <server>` and sometimes even `<name>`. But always prefer being explicit to avoid confusion.
+
 ```bash
-spacetime start                                    # Start local server
+# Read the database name from spacetime.json before running any CLI command:
+#   "database": "hsrpvp-spacetimedb-nextjs-test1"
+#   "server": "maincloud"
+```
+
+### Common commands
+
+```bash
 spacetime publish <name> --module-path <dir>       # Publish module
 spacetime publish <name> --clear-database -y --module-path <dir>  # Clear & republish
 spacetime generate --lang typescript --out-dir <client>/src/module_bindings --module-path <dir>
 spacetime logs <name>                              # View logs
 spacetime logs <name> --level warn                 # Filter by log level (warn and above)
 spacetime sql <name> "SELECT * FROM table_name"    # Query tables via SQL
+spacetime call <name> <reducer_name> [args...]     # Call a reducer
 ```
 
 ### `spacetime sql` column name gotcha
@@ -421,7 +392,7 @@ lib/                    -> Shared utilities and configuration
 | Reducer export names | `snake_case` | `login_as_guest`, `server_link_discord` |
 | Index accessors (code-facing) | `snake_case` | `host_user_id`, `discord_id`, `user_id` |
 | Table names (in `table()`) | `snake_case` | `'user'`, `'hsr_character'`, `'lobby_member'` |
-| Helper functions | `camelCase` | `resolveUser`, `ensureAdmin`, `auditInsert` |
+| Helper functions | `camelCase` | `getAuthenticatedUser`, `ensureAdmin`, `auditInsert` |
 | Constants | `UPPER_SNAKE_CASE` | `SYSTEM_USER_ID`, `DISCORD_INTENT_KEY` |
 
 **Never mix conventions within a layer.** All struct fields and table columns MUST be camelCase. Enum variants MUST be PascalCase (standard TypeScript enum convention).
@@ -481,7 +452,7 @@ lastModifiedDate: t.timestamp(),
 
 ## TypeScript patterns in SpacetimeDB (SDK limitations)
 
-**`ctx: any` in helper functions** — The SpacetimeDB SDK exports `ReducerCtx` but it's generic and requires the full schema type parameter. Using `any` for `ctx` in standalone helper functions (`ensureAdmin`, `resolveUser`, `auditInsert`) is the accepted pattern. Do NOT try to import or construct the generic context type.
+**`ctx: any` in helper functions** — The SpacetimeDB SDK exports `ReducerCtx` but it's generic and requires the full schema type parameter. Using `any` for `ctx` in standalone helper functions (`ensureAdmin`, `getAuthenticatedUser`, `auditInsert`) is the accepted pattern. Do NOT try to import or construct the generic context type.
 
 **`as any` on enum values** — When constructing enum values from runtime strings (e.g. `{ tag: roleTag, value: {} } as any`), the `as any` cast is necessary because TypeScript can't narrow a `string` variable to the specific literal union the enum type expects. This is expected.
 

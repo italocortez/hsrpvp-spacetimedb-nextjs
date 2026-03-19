@@ -10,7 +10,6 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  ParticipantType,
   ParticipantStatus,
 } from "./types";
 
@@ -19,9 +18,6 @@ export default __t.row({
   tournamentId: __t.u32().name("tournament_id"),
   userId: __t.u32().name("user_id"),
   teamGroupId: __t.option(__t.u32()).name("team_group_id"),
-  get participantType() {
-    return ParticipantType.name("participant_type");
-  },
   get status() {
     return ParticipantStatus;
   },

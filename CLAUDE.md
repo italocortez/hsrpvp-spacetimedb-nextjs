@@ -91,8 +91,7 @@ Architecture docs cross-reference behavior specs. No duplication between them.
 
 ## Debugging Checklist
 
-1. Is SpacetimeDB server running? (`spacetime start`)
-2. Is the module published? (`spacetime publish`)
-3. Are client bindings generated? (`spacetime generate`)
-4. Check server logs for errors (`spacetime logs <db-name>`)
-5. **Is the reducer actually being called from the client?**
+1. Is the module published to maincloud? (`spacetime publish`) — this is a maincloud project, there is no local server
+2. Are client bindings generated? (`spacetime generate`)
+3. Check server logs for errors (`spacetime logs <db-name>`)
+4. **Is the reducer actually being called from the client?**

@@ -146,10 +146,7 @@ export const ParticipantStatus = t.enum('ParticipantStatus', {
     Withdrawn: t.unit(),
 });
 
-export const ParticipantType = t.enum('ParticipantType', {
-    Individual: t.unit(),
-    Team: t.unit(),
-});
+// ParticipantType removed — redundant with teamGroupId (Phase 3 UAT decision)
 
 export const AchievementRarity = t.enum('AchievementRarity', {
     Rare: t.unit(),

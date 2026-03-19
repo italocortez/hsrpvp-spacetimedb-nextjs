@@ -1,11 +1,10 @@
 import { table, t } from 'spacetimedb/server';
-import { ParticipantType, ParticipantStatus } from '../types/enums';
+import { ParticipantStatus } from '../types/enums';
 
 export const tournamentParticipantColumns = {
     tournamentId: t.u32(),
     userId: t.u32(),
     teamGroupId: t.u32().optional(),
-    participantType: ParticipantType,
     status: ParticipantStatus,
     anonymousAlias: t.string().optional(),
     isWaitlisted: t.bool(),

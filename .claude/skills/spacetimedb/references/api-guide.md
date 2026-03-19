@@ -5,6 +5,25 @@
 
 # SpacetimeDB Rules (All Languages)
 
+## Table of Contents
+
+| § | Section | Key content |
+|---|---------|-------------|
+| — | [Core Concepts](#core-concepts) | 5 fundamental rules |
+| — | [Hallucinated APIs](#-hallucinated-apis--do-not-use) | Wrong imports, wrong methods, correct patterns |
+| 1 | [Common Mistakes Table](#1-common-mistakes-table) | 37 server + client errors with fixes |
+| 2 | [Table Definition](#2-table-definition-critical) | `table(OPTIONS, COLUMNS)`, column types, schema export, exported columns pattern |
+| 3 | [Index Access](#3-index-access) | find vs filter, naming, multi-column indexes, ranged filtering |
+| 4 | [Reducers](#4-reducers) | Definition syntax, update/delete patterns, lifecycle hooks |
+| 5 | [Scheduled Tables](#5-scheduled-tables) | Scheduled reducers, ScheduleAt |
+| 6 | [Timestamps](#6-timestamps) | Server and client timestamp handling |
+| 7 | [Data Visibility & Subscriptions](#7-data-visibility--subscriptions) | Public/private tables, views, query builder, subscription handles |
+| 8 | [React Integration](#8-react-integration) | Provider, useTable, useReducer, callbacks, event tables |
+| 9 | [Procedures (Beta)](#9-procedures-beta) | HTTP/side effects, ctx.withTx(), timeouts |
+| 10 | [Project Structure](#10-project-structure) | Server + client layout, circular import avoidance |
+| 11 | [Commands](#11-commands) | CLI reference |
+| 12 | [Hard Requirements](#12-hard-requirements) | 12 TypeScript-specific rules |
+
 ---
 
 ## Core Concepts
@@ -140,6 +159,16 @@ const [items, isReady] = useTable(tables.item);
 
 ## 1) Common Mistakes Table
 
+### Top 5 — check these first (reducers & views)
+
+These cause the most wasted time in this project. If you're working with reducers or views (writing, debugging, reviewing, or modifying), scan these before anything else:
+
+1. **`.filter({obj})` silently returns 0 rows** — use `.filter(scalar)` or `.filter([val1, val2])`, never an object arg
+2. **`.find()` vs `.filter()` mismatch** — PK/unique columns only have `.find()`, btree indexes only have `.filter()`. Mixing them = TypeError
+3. **`.iter()` in views** — causes severe performance issues (view re-evaluates on *any* row change). Always use index lookups in views
+4. **Indexes in COLUMNS (2nd arg)** — must go in OPTIONS (1st arg), otherwise `"reading 'tag'"` error
+5. **Partial update nulls out fields** — always spread the existing row: `{ ...existing, changedField: newValue }`
+
 ### Server-side errors
 
 | Wrong | Right | Error |
@@ -160,7 +189,12 @@ const [items, isReady] = useTable(tables.item);
 | Same index name in multiple tables | Prefix with table name | "name is used for multiple entities" |
 | `.indexName.filter()` after removing index | Use `.iter()` + manual filter | "Cannot read properties of undefined" |
 | Import spacetimedb from index.ts | Import from schema.ts | "Cannot access before initialization" |
-| Multi-column index `.filter(singleVal)` | Pass object with all columns: `.filter({col1, col2})` | PANIC or silent empty results |
+| Multi-column index `.filter(singleVal)` | `.filter([val1, val2])` — positional array matching columns order | PANIC or silent empty results |
+| `.filter({col1, col2})` (object arg) | `.filter(scalar)` for single-col, `.filter([val1, val2])` for multi-col | Silently returns 0 rows (no error!) |
+| `.filter([val1, val2])` on single-col btree | `.filter(scalar)` — only single-element arrays auto-coerce | Silently returns 0 rows (no error!) |
+| `ctx.db.Table.btreeIdx.find(val)` | `[...ctx.db.Table.btreeIdx.filter(val)]` | TypeError — btree only has `.filter()` |
+| `ctx.db.Table.pkCol.filter(val)` | `ctx.db.Table.pkCol.find(val)` | TypeError — PK/unique only has `.find()` |
+| `(ctx.db.Table as any).primaryKey.find({...})` | Define multi-col btree index, then `.filter([val1, val2])` | `.primaryKey` is undefined at runtime — PANIC |
 | `JSON.stringify({ id: row.id })` | Convert BigInt first: `{ id: row.id.toString() }` | "Do not know how to serialize a BigInt" |
 | `ScheduleAt.Time(timestamp)` | `ScheduleAt.time(timestamp)` (lowercase) | "ScheduleAt.Time is not a function" |
 | `ctx.db.foo.myIndexName.filter()` | Use exact name: `ctx.db.foo.my_index_name.filter()` | "Cannot read properties of undefined" |
@@ -387,24 +421,30 @@ const row = ctx.db.player.identity.find(ctx.sender);
 ```
 
 ### Multi-column indexes
-Multi-column btree indexes work in SpacetimeDB 2.0+ (fixed in PR #3589). Pass an object with **all indexed columns** to `.filter()`.
+Multi-column btree indexes work in SpacetimeDB 2.0+. Pass a **positional array** to `.filter()` — values map to the `columns` array order.
 
 ```typescript
-// Define a multi-column index
-const character_position = spacetimedb.table({
-  ownerId: t.identity().primaryKey(),
-  x: t.i32(),
-  y: t.i32(),
-  z: t.i32(),
+// Define a multi-column index — values in .filter() map to columns order
+export const TournamentParticipant = table({
+  name: 'tournament_participant',
+  public: true,
+  indexes: [
+    { accessor: 'by_tournament_and_user', algorithm: 'btree', columns: ['tournamentId', 'userId'] },
+  ]
 }, {
-  indexes: [{ accessor: 'xyz', algorithm: 'btree', columns: ['x', 'y', 'z'] }]
+  tournamentId: t.u32(),
+  userId: t.u32(),
+  // ...
 });
 
-// ✅ Filter with object containing all indexed columns — O(log n) lookup
-const occupied = Array.from(ctx.db.character_position.xyz.filter({ x, y, z }));
+// ✅ Positional array — maps [val1, val2] to [tournamentId, userId]
+const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tid, uid])][0];
 
-// ❌ DON'T pass a single value to a multi-column index
-ctx.db.character_position.char_idx_xyz.filter(x); // PANIC
+// ❌ Object arg — silently returns 0 rows (no error!)
+ctx.db.TournamentParticipant.by_tournament_and_user.filter({ tournamentId: tid, userId: uid }); // WRONG
+
+// ❌ Single value on multi-column index — PANIC or silent empty results
+ctx.db.TournamentParticipant.by_tournament_and_user.filter(tid); // WRONG
 
 // ❌ DON'T iterate entire table and manually check — O(n) full scan
 for (const other of ctx.db.character_position.iter()) {
@@ -440,13 +480,13 @@ export const reducer_name = spacetimedb.reducer({ param1: t.string(), param2: t.
   // Validation
   if (!param1) throw new SenderError('param1 required');
   
-  // Access tables via ctx.db
-  const row = ctx.db.myTable.primaryKey.find(param2);
-  
+  // Access tables via ctx.db — use the PK column name, not ".primaryKey"
+  const row = ctx.db.myTable.id.find(param2);
+
   // Mutations
-  ctx.db.myTable.insert({ ... });
-  ctx.db.myTable.primaryKey.update({ ...row, newField: value });
-  ctx.db.myTable.primaryKey.delete(param2);
+  ctx.db.myTable.insert({ id: 0n, ... });
+  ctx.db.myTable.id.update({ ...row, newField: value });
+  ctx.db.myTable.id.delete(param2);
 });
 
 // No params: export const init = spacetimedb.reducer((ctx) => { ... });

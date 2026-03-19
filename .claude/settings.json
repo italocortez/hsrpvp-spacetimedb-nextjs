@@ -31,15 +31,6 @@
         ]
       },
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node .claude/hooks/post-generate-bindings.js"
-          }
-        ]
-      },
-      {
         "hooks": [
           {
             "type": "command",

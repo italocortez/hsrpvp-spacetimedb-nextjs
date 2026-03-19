@@ -856,13 +856,6 @@ export const ParticipantStatus = __t.enum("ParticipantStatus", {
 });
 export type ParticipantStatus = __Infer<typeof ParticipantStatus>;
 
-// The tagged union or sum type for the algebraic type `ParticipantType`.
-export const ParticipantType = __t.enum("ParticipantType", {
-  Individual: __t.unit(),
-  Team: __t.unit(),
-});
-export type ParticipantType = __Infer<typeof ParticipantType>;
-
 // The tagged union or sum type for the algebraic type `ParticipationRole`.
 export const ParticipationRole = __t.enum("ParticipationRole", {
   Player: __t.unit(),
@@ -1155,9 +1148,6 @@ export const TournamentParticipant = __t.object("TournamentParticipant", {
   tournamentId: __t.u32(),
   userId: __t.u32(),
   teamGroupId: __t.option(__t.u32()),
-  get participantType() {
-    return ParticipantType;
-  },
   get status() {
     return ParticipantStatus;
   },
