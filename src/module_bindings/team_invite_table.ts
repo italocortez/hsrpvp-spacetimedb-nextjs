@@ -15,7 +15,6 @@ export default __t.row({
   teamId: __t.u32().name("team_id"),
   inviteeUserId: __t.u32().name("invitee_user_id"),
   inviterUserId: __t.u32().name("inviter_user_id"),
-  isPending: __t.bool().name("is_pending"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

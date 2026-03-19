@@ -17,6 +17,8 @@ export default __t.row({
   losses: __t.u32(),
   draws: __t.u32(),
   matchesSpectated: __t.u32().name("matches_spectated"),
+  bestAllyUserId: __t.option(__t.u32()).name("best_ally_user_id"),
+  nemesisUserId: __t.option(__t.u32()).name("nemesis_user_id"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

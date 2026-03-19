@@ -15,6 +15,7 @@ export default __t.row({
   tournamentId: __t.u32().name("tournament_id"),
   name: __t.string(),
   captainUserId: __t.u32().name("captain_user_id"),
+  seedNumber: __t.option(__t.u32()).name("seed_number"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

@@ -13,7 +13,7 @@ import {
 export default __t.row({
   tournamentId: __t.u32().name("tournament_id"),
   groupId: __t.u32().name("group_id"),
-  participantUserId: __t.u32().name("participant_user_id"),
+  participantTeamId: __t.u32().name("participant_team_id"),
   wins: __t.u32(),
   losses: __t.u32(),
   draws: __t.u32(),

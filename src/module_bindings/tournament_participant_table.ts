@@ -25,9 +25,9 @@ export default __t.row({
   get status() {
     return ParticipantStatus;
   },
-  seedNumber: __t.option(__t.u32()).name("seed_number"),
   anonymousAlias: __t.option(__t.string()).name("anonymous_alias"),
   isWaitlisted: __t.bool().name("is_waitlisted"),
+  allowRandomTeamAssignment: __t.bool().name("allow_random_team_assignment"),
   approvedByToAt: __t.option(__t.timestamp()).name("approved_by_to_at"),
   hsrAccountId: __t.option(__t.u32()).name("hsr_account_id"),
   createdById: __t.u32().name("created_by_id"),

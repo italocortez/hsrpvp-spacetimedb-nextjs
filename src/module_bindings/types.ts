@@ -121,7 +121,9 @@ export const BracketMatch = __t.object("BracketMatch", {
   tournamentId: __t.u32(),
   roundNumber: __t.u32(),
   matchNumber: __t.u32(),
-  isLosersBracket: __t.bool(),
+  get bracketSide() {
+    return BracketSide;
+  },
   groupId: __t.option(__t.u32()),
   participant1Id: __t.option(__t.u32()),
   participant2Id: __t.option(__t.u32()),
@@ -146,6 +148,16 @@ export const BracketMatch = __t.object("BracketMatch", {
 });
 export type BracketMatch = __Infer<typeof BracketMatch>;
 
+// The tagged union or sum type for the algebraic type `BracketSide`.
+export const BracketSide = __t.enum("BracketSide", {
+  Winners: __t.unit(),
+  Losers: __t.unit(),
+  GrandFinals: __t.unit(),
+  ThirdPlace: __t.unit(),
+  Group: __t.unit(),
+});
+export type BracketSide = __Infer<typeof BracketSide>;
+
 export const CalendarEvent = __t.object("CalendarEvent", {
   id: __t.u32(),
   organizerId: __t.u32(),
@@ -163,7 +175,6 @@ export type CalendarEvent = __Infer<typeof CalendarEvent>;
 export const CalendarEventInvite = __t.object("CalendarEventInvite", {
   eventId: __t.u32(),
   inviteeUserId: __t.u32(),
-  isAccepted: __t.option(__t.bool()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -352,7 +363,7 @@ export type GroupAssignmentMode = __Infer<typeof GroupAssignmentMode>;
 export const GroupStanding = __t.object("GroupStanding", {
   tournamentId: __t.u32(),
   groupId: __t.u32(),
-  participantUserId: __t.u32(),
+  participantTeamId: __t.u32(),
   wins: __t.u32(),
   losses: __t.u32(),
   draws: __t.u32(),
@@ -539,6 +550,8 @@ export const Lobby = __t.object("Lobby", {
   get disconnectPolicy() {
     return DisconnectPolicy;
   },
+  disconnectForfeitSeconds: __t.option(__t.u32()),
+  disconnectForfeitAt: __t.option(__t.timestamp()),
   get gameMode() {
     return GameMode;
   },
@@ -659,6 +672,19 @@ export const MatchResultGame = __t.object("MatchResultGame", {
   lastModifiedDate: __t.timestamp(),
 });
 export type MatchResultGame = __Infer<typeof MatchResultGame>;
+
+export const MatchResultParticipant = __t.object("MatchResultParticipant", {
+  matchResultId: __t.u32(),
+  userId: __t.u32(),
+  get teamSide() {
+    return TeamLabel;
+  },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type MatchResultParticipant = __Infer<typeof MatchResultParticipant>;
 
 export const MatchResultRecord = __t.object("MatchResultRecord", {
   id: __t.u32(),
@@ -885,6 +911,8 @@ export const PlayerStats = __t.object("PlayerStats", {
   losses: __t.u32(),
   draws: __t.u32(),
   matchesSpectated: __t.u32(),
+  bestAllyUserId: __t.option(__t.u32()),
+  nemesisUserId: __t.option(__t.u32()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -998,7 +1026,6 @@ export const TeamInvite = __t.object("TeamInvite", {
   teamId: __t.u32(),
   inviteeUserId: __t.u32(),
   inviterUserId: __t.u32(),
-  isPending: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -1082,6 +1109,9 @@ export const Tournament = __t.object("Tournament", {
   seasonId: __t.option(__t.u32()),
   countTowardsMmr: __t.bool(),
   defaultBestOf: __t.u8(),
+  groupSize: __t.u8(),
+  has3RdPlaceMatch: __t.bool(),
+  autoAdvanceBracket: __t.bool(),
   requireVerified: __t.bool(),
   requireRoster: __t.bool(),
   minimumMmr: __t.option(__t.u32()),
@@ -1131,9 +1161,9 @@ export const TournamentParticipant = __t.object("TournamentParticipant", {
   get status() {
     return ParticipantStatus;
   },
-  seedNumber: __t.option(__t.u32()),
   anonymousAlias: __t.option(__t.string()),
   isWaitlisted: __t.bool(),
+  allowRandomTeamAssignment: __t.bool(),
   approvedByToAt: __t.option(__t.timestamp()),
   hsrAccountId: __t.option(__t.u32()),
   createdById: __t.u32(),
@@ -1159,6 +1189,7 @@ export const TournamentTeam = __t.object("TournamentTeam", {
   tournamentId: __t.u32(),
   name: __t.string(),
   captainUserId: __t.u32(),
+  seedNumber: __t.option(__t.u32()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -1169,7 +1200,6 @@ export type TournamentTeam = __Infer<typeof TournamentTeam>;
 export const TournamentTeamRequest = __t.object("TournamentTeamRequest", {
   teamId: __t.u32(),
   userId: __t.u32(),
-  isPending: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -1195,6 +1225,7 @@ export const User = __t.object("User", {
   },
   discordId: __t.option(__t.string()),
   avatarCharacterName: __t.string(),
+  displayedAchievementId: __t.option(__t.u32()),
   deletedAt: __t.option(__t.timestamp()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),

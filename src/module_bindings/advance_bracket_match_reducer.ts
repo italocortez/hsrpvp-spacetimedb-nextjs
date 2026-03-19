@@ -10,11 +10,6 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  teamId: __t.u32().name("team_id"),
-  userId: __t.u32().name("user_id"),
-  createdById: __t.u32().name("created_by_id"),
-  createdDate: __t.timestamp().name("created_date"),
-  lastModifiedById: __t.u32().name("last_modified_by_id"),
-  lastModifiedDate: __t.timestamp().name("last_modified_date"),
-});
+export default {
+  bracketMatchId: __t.u32(),
+};

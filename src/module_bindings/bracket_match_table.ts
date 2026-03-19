@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
+  BracketSide,
   MatchResultStatus,
 } from "./types";
 
@@ -20,7 +21,9 @@ export default __t.row({
   tournamentId: __t.u32().name("tournament_id"),
   roundNumber: __t.u32().name("round_number"),
   matchNumber: __t.u32().name("match_number"),
-  isLosersBracket: __t.bool().name("is_losers_bracket"),
+  get bracketSide() {
+    return BracketSide.name("bracket_side");
+  },
   groupId: __t.option(__t.u32()).name("group_id"),
   participant1Id: __t.option(__t.u32()).name("participant_1_id"),
   participant2Id: __t.option(__t.u32()).name("participant_2_id"),

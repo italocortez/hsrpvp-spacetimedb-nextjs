@@ -49,6 +49,8 @@ export default __t.row({
   get disconnectPolicy() {
     return DisconnectPolicy.name("disconnect_policy");
   },
+  disconnectForfeitSeconds: __t.option(__t.u32()).name("disconnect_forfeit_seconds"),
+  disconnectForfeitAt: __t.option(__t.timestamp()).name("disconnect_forfeit_at"),
   get gameMode() {
     return GameMode.name("game_mode");
   },
