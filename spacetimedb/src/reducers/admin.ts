@@ -195,8 +195,7 @@ export const admin_delete_row = spacetimedb.reducer(
             }
             case 'HsrCharacterArchetype': {
                 const key = JSON.parse(primaryKeyJson);
-                const junctionTable = ctx.db.HsrCharacterArchetype as any;
-                const row = junctionTable.primaryKey.find({ characterName: key.characterName, archetypeId: key.archetypeId });
+                const row = [...ctx.db.HsrCharacterArchetype.by_character_and_archetype.filter([key.characterName, key.archetypeId])][0];
                 if (!row) throw new SenderError('Row not found');
                 ctx.db.HsrCharacterArchetype.delete(row);
                 break;
@@ -209,11 +208,7 @@ export const admin_delete_row = spacetimedb.reducer(
             }
             case 'LobbyMember': {
                 const key = JSON.parse(primaryKeyJson);
-                const memberTable = ctx.db.LobbyMember as any;
-                const row = memberTable.primaryKey.find({
-                    lobbyId: key.lobbyId,
-                    userId: key.userId,
-                });
+                const row = [...ctx.db.LobbyMember.by_lobby_and_user.filter([key.lobbyId, key.userId])][0];
                 if (!row) throw new SenderError('Row not found');
                 ctx.db.LobbyMember.delete(row);
                 break;

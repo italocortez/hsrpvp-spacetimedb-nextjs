@@ -33,10 +33,7 @@ export const create_tournament_team = spacetimedb.reducer(
         }
 
         // Player must be registered in the tournament
-        const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId,
-            userId: user.id,
-        });
+        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
         if (!participant) {
             throw new SenderError('You must be registered in the tournament before creating a team.');
         }
@@ -95,10 +92,7 @@ export const request_join_team = spacetimedb.reducer(
         }
 
         // User must be registered in the same tournament
-        const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId: team.tournamentId,
-            userId: user.id,
-        });
+        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([team.tournamentId, user.id])][0];
         if (!participant) {
             throw new SenderError('You must be registered in the tournament before joining a team.');
         }
@@ -109,10 +103,7 @@ export const request_join_team = spacetimedb.reducer(
         }
 
         // No existing pending request from this user to this team
-        const existingRequest = (ctx.db.TournamentTeamRequest as any).primaryKey.find({
-            teamId,
-            userId: user.id,
-        });
+        const existingRequest = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([teamId, user.id])][0];
         if (existingRequest) {
             throw new SenderError('You already have a pending request to join this team.');
         }
@@ -142,7 +133,7 @@ export const accept_team_request = spacetimedb.reducer(
             throw new SenderError('Only the team captain can accept join requests.');
         }
 
-        const request = (ctx.db.TournamentTeamRequest as any).primaryKey.find({ teamId, userId });
+        const request = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([teamId, userId])][0];
         if (!request) throw new SenderError('Join request not found.');
 
         // Check current team member count
@@ -158,10 +149,7 @@ export const accept_team_request = spacetimedb.reducer(
         ctx.db.TournamentTeamRequest.delete(request);
 
         // Update the accepted player's TournamentParticipant: set teamGroupId + Team type
-        const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId: team.tournamentId,
-            userId,
-        });
+        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([team.tournamentId, userId])][0];
         if (!participant) throw new SenderError('Participant record not found.');
 
         ctx.db.TournamentParticipant.delete(participant);
@@ -191,7 +179,7 @@ export const reject_team_request = spacetimedb.reducer(
             throw new SenderError('Only the team captain can reject join requests.');
         }
 
-        const request = (ctx.db.TournamentTeamRequest as any).primaryKey.find({ teamId, userId });
+        const request = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([teamId, userId])][0];
         if (!request) throw new SenderError('Join request not found.');
 
         // Delete the request row (transactional — existence = pending)
@@ -219,10 +207,7 @@ export const leave_tournament_team = spacetimedb.reducer(
         }
 
         // Verify user is a member of this team
-        const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId: team.tournamentId,
-            userId: user.id,
-        });
+        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([team.tournamentId, user.id])][0];
         if (!participant) throw new SenderError('Participant record not found.');
         if (participant.teamGroupId !== teamId) {
             throw new SenderError('You are not a member of this team.');

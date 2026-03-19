@@ -21,7 +21,7 @@ export const dq_participant = spacetimedb.reducer(
         const { user } = ensureTournamentAccess(ctx, tournamentId);
 
         // Find the TournamentParticipant
-        const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({ tournamentId, userId });
+        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, userId])][0];
         if (!participant) {
             throw new SenderError('Participant not found in this tournament.');
         }
@@ -199,7 +199,7 @@ export const assign_tournament_assistant = spacetimedb.reducer(
         }
 
         // Check if assistant row already exists (upsert pattern)
-        const existing = (ctx.db.TournamentAssistant as any).primaryKey.find({ tournamentId, userId });
+        const existing = [...ctx.db.TournamentAssistant.by_tournament_and_user.filter([tournamentId, userId])][0];
 
         if (existing) {
             // Delete + re-insert with updated permissions
@@ -257,7 +257,7 @@ export const remove_tournament_assistant = spacetimedb.reducer(
         }
 
         // Find the assistant row
-        const assistant = (ctx.db.TournamentAssistant as any).primaryKey.find({ tournamentId, userId });
+        const assistant = [...ctx.db.TournamentAssistant.by_tournament_and_user.filter([tournamentId, userId])][0];
         if (!assistant) {
             throw new SenderError('Tournament assistant not found.');
         }

@@ -11,12 +11,8 @@ export const broadcast_cursor = spacetimedb.reducer({
     const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
     if (!mapping) return; // Not registered, ignore
 
-    // Validate membership via composite PK
-    const memberTable = ctx.db.LobbyMember as any;
-    const membership = memberTable.primaryKey.find({
-        lobbyId,
-        userId: mapping.userId,
-    });
+    // Validate membership via index filter
+    const membership = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, mapping.userId])][0];
 
     if (!membership) {
         // User is not in this lobby, ignore the request

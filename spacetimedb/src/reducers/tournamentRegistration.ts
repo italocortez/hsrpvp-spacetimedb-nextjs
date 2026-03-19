@@ -24,10 +24,7 @@ export const register_for_tournament = spacetimedb.reducer(
         }
 
         // Player must not already be registered
-        const existing = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId,
-            userId: user.id,
-        });
+        const existing = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
         if (existing) {
             throw new SenderError('You are already registered for this tournament.');
         }
@@ -95,13 +92,37 @@ export const register_for_tournament = spacetimedb.reducer(
             teamGroupId: teamGroupId !== 0 ? teamGroupId : undefined,
             participantType,
             status: { tag: 'Registered', value: {} } as any,
-            seedNumber: undefined,
             anonymousAlias: undefined,
             isWaitlisted,
+            allowRandomTeamAssignment: false,
             approvedByToAt,
             hsrAccountId,
             ...auditInsert(ctx, user.id),
         } as any);
+
+        // Auto-create TournamentTeam for solo tournaments (teamSize === 1)
+        // Solo players are also "teams" for bracket purposes — the team is invisible to the user
+        if (tournament.teamSize === 1 && teamGroupId === 0) {
+            const newTeam = ctx.db.TournamentTeam.insert({
+                id: 0,
+                tournamentId,
+                name: user.displayName,
+                captainUserId: user.id,
+                seedNumber: undefined,
+                ...auditInsert(ctx, user.id),
+            } as any);
+
+            // Update the participant to link to the auto-created team
+            const insertedParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
+            if (insertedParticipant) {
+                ctx.db.TournamentParticipant.delete(insertedParticipant);
+                ctx.db.TournamentParticipant.insert({
+                    ...insertedParticipant,
+                    teamGroupId: newTeam.id,
+                    ...auditUpdate(ctx, insertedParticipant, user.id),
+                } as any);
+            }
+        }
     }
 );
 
@@ -123,10 +144,7 @@ export const withdraw_from_tournament = spacetimedb.reducer(
             throw new SenderError('Cannot withdraw during this stage. Contact the organizer to be disqualified.');
         }
 
-        const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId,
-            userId: user.id,
-        });
+        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
         if (!participant) throw new SenderError('You are not registered for this tournament.');
 
         // Delete + re-insert pattern for composite PK table
@@ -151,10 +169,7 @@ export const approve_participant = spacetimedb.reducer(
     (ctx, { tournamentId, userId }) => {
         const { user } = ensureTournamentAccess(ctx, tournamentId);
 
-        const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId,
-            userId,
-        });
+        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, userId])][0];
         if (!participant) throw new SenderError('Participant not found.');
         if (participant.approvedByToAt !== undefined) {
             throw new SenderError('Participant is already approved.');
@@ -182,10 +197,7 @@ export const waitlist_promote = spacetimedb.reducer(
     (ctx, { tournamentId, userId }) => {
         const { user } = ensureTournamentAccess(ctx, tournamentId);
 
-        const participant = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId,
-            userId,
-        });
+        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, userId])][0];
         if (!participant) throw new SenderError('Participant not found.');
         if (!participant.isWaitlisted) {
             throw new SenderError('Participant is not on the waitlist.');

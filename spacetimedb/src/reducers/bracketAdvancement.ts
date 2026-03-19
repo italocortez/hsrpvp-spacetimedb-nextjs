@@ -73,16 +73,11 @@ function updateGroupStandings(ctx: any, bracketMatch: any, userId: number): void
     const groupId = bracketMatch.groupId;
     const tournamentId = bracketMatch.tournamentId;
 
-    const standing1 = (ctx.db.GroupStanding as any).primaryKey.find({
-        tournamentId,
-        groupId,
-        participantTeamId: bracketMatch.participant1Id,
-    });
-    const standing2 = (ctx.db.GroupStanding as any).primaryKey.find({
-        tournamentId,
-        groupId,
-        participantTeamId: bracketMatch.participant2Id,
-    });
+    const tournamentStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
+    const standing1 = tournamentStandings
+        .find((row: any) => row.groupId === groupId && row.participantTeamId === bracketMatch.participant1Id);
+    const standing2 = tournamentStandings
+        .find((row: any) => row.groupId === groupId && row.participantTeamId === bracketMatch.participant2Id);
 
     if (!standing1 || !standing2) return;
 
@@ -146,16 +141,11 @@ function reverseGroupStandings(ctx: any, bracketMatch: any, userId: number): voi
     const groupId = bracketMatch.groupId;
     const tournamentId = bracketMatch.tournamentId;
 
-    const standing1 = (ctx.db.GroupStanding as any).primaryKey.find({
-        tournamentId,
-        groupId,
-        participantTeamId: bracketMatch.participant1Id,
-    });
-    const standing2 = (ctx.db.GroupStanding as any).primaryKey.find({
-        tournamentId,
-        groupId,
-        participantTeamId: bracketMatch.participant2Id,
-    });
+    const tournamentStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
+    const standing1 = tournamentStandings
+        .find((row: any) => row.groupId === groupId && row.participantTeamId === bracketMatch.participant1Id);
+    const standing2 = tournamentStandings
+        .find((row: any) => row.groupId === groupId && row.participantTeamId === bracketMatch.participant2Id);
 
     if (!standing1 || !standing2) return;
 
@@ -307,10 +297,7 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
         }
 
         // Map winnerId (userId) to teamId via TournamentParticipant
-        const winnerParticipant = (ctx.db.TournamentParticipant as any).primaryKey.find({
-            tournamentId: matchResult.tournamentId,
-            userId: matchResult.winnerId,
-        });
+        const winnerParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([matchResult.tournamentId, matchResult.winnerId])][0];
         if (!winnerParticipant || !winnerParticipant.teamGroupId) {
             throw new SenderError('Winner participant or team not found in tournament.');
         }

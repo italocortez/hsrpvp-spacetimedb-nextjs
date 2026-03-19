@@ -136,10 +136,7 @@ export const admin_batch_upsert_characters = spacetimedb.reducer(
 
         // Phase 2 — Upsert all
         for (const item of items) {
-            const existing = (ctx.db.HsrAccountCharacter as any).primaryKey.find({
-                hsrAccountId,
-                characterName: item.characterName,
-            });
+            const existing = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([hsrAccountId, item.characterName])][0];
             if (existing) {
                 ctx.db.HsrAccountCharacter.delete(existing);
             }
@@ -171,10 +168,7 @@ export const admin_batch_remove_characters = spacetimedb.reducer(
 
         // Validate ALL names exist before deleting ANY
         for (const name of names) {
-            const existing = (ctx.db.HsrAccountCharacter as any).primaryKey.find({
-                hsrAccountId,
-                characterName: name,
-            });
+            const existing = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([hsrAccountId, name])][0];
             if (!existing) {
                 throw new SenderError(`Character "${name}" not found on this account`);
             }
@@ -182,11 +176,8 @@ export const admin_batch_remove_characters = spacetimedb.reducer(
 
         // All validated — now delete
         for (const name of names) {
-            const row = (ctx.db.HsrAccountCharacter as any).primaryKey.find({
-                hsrAccountId,
-                characterName: name,
-            });
-            ctx.db.HsrAccountCharacter.delete(row);
+            const row = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([hsrAccountId, name])][0];
+            ctx.db.HsrAccountCharacter.delete(row!);
         }
     }
 );
@@ -265,10 +256,7 @@ export const admin_assign_character_archetypes = spacetimedb.reducer(
 
         // Insert (skip if already assigned — idempotent)
         for (const archId of archetypeIds) {
-            const existing = (ctx.db.HsrCharacterArchetype as any).primaryKey.find({
-                characterName,
-                archetypeId: archId,
-            });
+            const existing = [...ctx.db.HsrCharacterArchetype.by_character_and_archetype.filter([characterName, archId])][0];
             if (!existing) {
                 ctx.db.HsrCharacterArchetype.insert({
                     characterName,
@@ -292,10 +280,7 @@ export const admin_remove_character_archetypes = spacetimedb.reducer(
 
         // Validate ALL assignments exist before deleting ANY
         for (const archId of archetypeIds) {
-            const existing = (ctx.db.HsrCharacterArchetype as any).primaryKey.find({
-                characterName,
-                archetypeId: archId,
-            });
+            const existing = [...ctx.db.HsrCharacterArchetype.by_character_and_archetype.filter([characterName, archId])][0];
             if (!existing) {
                 throw new SenderError(
                     `Character "${characterName}" is not assigned to archetype #${archId}`
@@ -305,11 +290,8 @@ export const admin_remove_character_archetypes = spacetimedb.reducer(
 
         // All validated — now delete
         for (const archId of archetypeIds) {
-            const row = (ctx.db.HsrCharacterArchetype as any).primaryKey.find({
-                characterName,
-                archetypeId: archId,
-            });
-            ctx.db.HsrCharacterArchetype.delete(row);
+            const row = [...ctx.db.HsrCharacterArchetype.by_character_and_archetype.filter([characterName, archId])][0];
+            ctx.db.HsrCharacterArchetype.delete(row!);
         }
     }
 );

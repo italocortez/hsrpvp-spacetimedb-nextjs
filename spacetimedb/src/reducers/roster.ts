@@ -166,10 +166,7 @@ export const batch_upsert_characters = spacetimedb.reducer(
 
         // Phase 2 — Upsert all (composite PK: delete then insert)
         for (const item of items) {
-            const existing = (ctx.db.HsrAccountCharacter as any).primaryKey.find({
-                hsrAccountId,
-                characterName: item.characterName,
-            });
+            const existing = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([hsrAccountId, item.characterName])][0] ?? null;
             if (existing) {
                 ctx.db.HsrAccountCharacter.delete(existing);
             }
@@ -201,12 +198,12 @@ export const batch_remove_characters = spacetimedb.reducer(
             throw new SenderError('characterNamesJson must be a non-empty JSON array');
         }
 
+        // Composite PK lookup: filter by indexed hsrAccountId, then match characterName
+        const accountChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(hsrAccountId)];
+
         // Validate ALL names exist before deleting ANY
         for (const name of names) {
-            const existing = (ctx.db.HsrAccountCharacter as any).primaryKey.find({
-                hsrAccountId,
-                characterName: name,
-            });
+            const existing = accountChars.find(row => row.characterName === name) ?? null;
             if (!existing) {
                 throw new SenderError(`Character "${name}" not found on this account`);
             }
@@ -214,10 +211,7 @@ export const batch_remove_characters = spacetimedb.reducer(
 
         // All validated — now delete
         for (const name of names) {
-            const row = (ctx.db.HsrAccountCharacter as any).primaryKey.find({
-                hsrAccountId,
-                characterName: name,
-            });
+            const row = accountChars.find(row => row.characterName === name)!;
             ctx.db.HsrAccountCharacter.delete(row);
         }
     }
@@ -253,10 +247,7 @@ export const migrate_roster = spacetimedb.reducer(
 
         // Copy/upsert source characters into target
         for (const char of sourceChars) {
-            const existingInTarget = (ctx.db.HsrAccountCharacter as any).primaryKey.find({
-                hsrAccountId: targetAccountId,
-                characterName: char.characterName,
-            });
+            const existingInTarget = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([targetAccountId, char.characterName])][0] ?? null;
             if (existingInTarget) {
                 ctx.db.HsrAccountCharacter.delete(existingInTarget);
             }

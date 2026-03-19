@@ -84,10 +84,7 @@ export const submit_match_result = spacetimedb.reducer(
         // 1. Check if caller is the lobby referee
         let hasAuthority = false;
 
-        const lobbyMember = (ctx.db.LobbyMember as any).primaryKey.find({
-            lobbyId: matchResult.lobbyId,
-            userId: user.id,
-        });
+        const lobbyMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([matchResult.lobbyId, user.id])][0];
         if (lobbyMember && lobbyMember.isReferee) {
             hasAuthority = true;
         }
@@ -104,10 +101,7 @@ export const submit_match_result = spacetimedb.reducer(
                 hasAuthority = true;
             }
             if (!hasAuthority) {
-                const assistant = (ctx.db.TournamentAssistant as any).primaryKey.find({
-                    tournamentId: matchResult.tournamentId,
-                    userId: user.id,
-                });
+                const assistant = [...ctx.db.TournamentAssistant.by_tournament_and_user.filter([matchResult.tournamentId, user.id])][0];
                 if (assistant && assistant.canValidateResults) {
                     hasAuthority = true;
                 }

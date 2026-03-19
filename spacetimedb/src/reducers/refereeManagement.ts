@@ -16,7 +16,7 @@ export const transfer_referee = spacetimedb.reducer(
         const user = getAuthenticatedUser(ctx);
 
         // Find caller's LobbyMember row
-        const senderMember = (ctx.db.LobbyMember as any).primaryKey.find({ lobbyId, userId: user.id });
+        const senderMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
         if (!senderMember) {
             throw new SenderError('You are not a member of this lobby.');
         }
@@ -32,7 +32,7 @@ export const transfer_referee = spacetimedb.reducer(
         }
 
         // Find target's LobbyMember row
-        const targetMember = (ctx.db.LobbyMember as any).primaryKey.find({ lobbyId, userId: targetUserId });
+        const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
         if (!targetMember) {
             throw new SenderError('Target user is not a member of this lobby.');
         }
@@ -89,7 +89,7 @@ export const reclaim_referee = spacetimedb.reducer(
         }
 
         // Find host's LobbyMember row
-        const hostMember = (ctx.db.LobbyMember as any).primaryKey.find({ lobbyId, userId: user.id });
+        const hostMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
         if (!hostMember) {
             throw new SenderError('Host is not a member of this lobby.');
         }
@@ -131,7 +131,7 @@ export const set_coach = spacetimedb.reducer(
         const lobby = ctx.db.Lobby.id.find(lobbyId);
         if (!lobby) throw new SenderError('Lobby not found.');
 
-        const callerMember = (ctx.db.LobbyMember as any).primaryKey.find({ lobbyId, userId: user.id });
+        const callerMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
         if (!callerMember) throw new SenderError('You are not a member of this lobby.');
 
         const isHost = lobby.hostUserId === user.id;
@@ -141,7 +141,7 @@ export const set_coach = spacetimedb.reducer(
         }
 
         // Find target member
-        const targetMember = (ctx.db.LobbyMember as any).primaryKey.find({ lobbyId, userId: targetUserId });
+        const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
         if (!targetMember) throw new SenderError('Target user is not a member of this lobby.');
 
         // Already a coach — no-op
@@ -171,7 +171,7 @@ export const remove_coach = spacetimedb.reducer(
         const lobby = ctx.db.Lobby.id.find(lobbyId);
         if (!lobby) throw new SenderError('Lobby not found.');
 
-        const callerMember = (ctx.db.LobbyMember as any).primaryKey.find({ lobbyId, userId: user.id });
+        const callerMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
         if (!callerMember) throw new SenderError('You are not a member of this lobby.');
 
         const isHost = lobby.hostUserId === user.id;
@@ -181,7 +181,7 @@ export const remove_coach = spacetimedb.reducer(
         }
 
         // Find target member
-        const targetMember = (ctx.db.LobbyMember as any).primaryKey.find({ lobbyId, userId: targetUserId });
+        const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
         if (!targetMember) throw new SenderError('Target user is not a member of this lobby.');
 
         // Not a coach — no-op
