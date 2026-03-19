@@ -1,12 +1,12 @@
 import { table, t } from 'spacetimedb/server';
-import { GameMode, MatchResultStatus } from '../types/enums';
+import { GameMode, MatchResultStatus, BracketSide } from '../types/enums';
 
 export const bracketMatchColumns = {
     id: t.u32().primaryKey().autoInc(),
     tournamentId: t.u32(),
     roundNumber: t.u32(),
     matchNumber: t.u32(),
-    isLosersBracket: t.bool(),
+    bracketSide: BracketSide,
     groupId: t.u32().optional(),
     participant1Id: t.u32().optional(),
     participant2Id: t.u32().optional(),

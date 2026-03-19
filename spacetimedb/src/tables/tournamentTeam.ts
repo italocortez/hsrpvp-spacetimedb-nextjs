@@ -5,6 +5,7 @@ export const tournamentTeamColumns = {
     tournamentId: t.u32(),
     name: t.string(),
     captainUserId: t.u32(),
+    seedNumber: t.u32().optional(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

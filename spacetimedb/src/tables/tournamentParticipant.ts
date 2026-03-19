@@ -7,9 +7,9 @@ export const tournamentParticipantColumns = {
     teamGroupId: t.u32().optional(),
     participantType: ParticipantType,
     status: ParticipantStatus,
-    seedNumber: t.u32().optional(),
     anonymousAlias: t.string().optional(),
     isWaitlisted: t.bool(),
+    allowRandomTeamAssignment: t.bool(),
     approvedByToAt: t.timestamp().optional(),
     hsrAccountId: t.u32().optional(),
     createdById: t.u32(),
@@ -25,5 +25,6 @@ export const TournamentParticipant = table({
     indexes: [
         { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
         { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'by_tournament_and_user', algorithm: 'btree', columns: ['tournamentId', 'userId'] },
     ],
 }, tournamentParticipantColumns);

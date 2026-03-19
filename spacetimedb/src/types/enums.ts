@@ -178,3 +178,11 @@ export const GroupAssignmentMode = t.enum('GroupAssignmentMode', {
     Auto: t.unit(),
     Manual: t.unit(),
 });
+
+export const BracketSide = t.enum('BracketSide', {
+    Winners: t.unit(),
+    Losers: t.unit(),
+    GrandFinals: t.unit(),
+    ThirdPlace: t.unit(),
+    Group: t.unit(),
+});

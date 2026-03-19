@@ -43,7 +43,7 @@ export const register_server = spacetimedb.reducer((ctx) => {
 
     // Create the SYSTEM user — the first user in the database.
     // discordId = "1" is the sentinel for the system account.
-    ctx.db.User.insert({
+    const systemUser = ctx.db.User.insert({
         id: 0,
         username: 'SYSTEM',
         displayName: 'SYSTEM',
@@ -56,6 +56,15 @@ export const register_server = spacetimedb.reducer((ctx) => {
         avatarCharacterName: 'march7th',
         displayedAchievementId: undefined,
         deletedAt: undefined,
+        ...auditInsert(ctx, SYSTEM_USER_ID),
+    });
+
+    // Link server identity to SYSTEM user so server-token connections
+    // pass getAuthenticatedUser/ensureAdmin checks (e.g. seed-data.ts)
+    ctx.db.UserIdentity.insert({
+        identity: ctx.sender,
+        userId: systemUser.id,
+        lastSeenAt: ctx.timestamp,
         ...auditInsert(ctx, SYSTEM_USER_ID),
     });
 });

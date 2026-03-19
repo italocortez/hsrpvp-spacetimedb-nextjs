@@ -36,6 +36,9 @@ export const tournamentColumns = {
     // MMR
     countTowardsMmr: t.bool(),
     defaultBestOf: t.u8(),
+    groupSize: t.u8(),                    // min 3, target group size for round-robin
+    has3rdPlaceMatch: t.bool(),           // controls 3rd place match generation
+    autoAdvanceBracket: t.bool(),         // controls auto vs manual advancement
     // Registration requirements
     requireVerified: t.bool(),
     requireRoster: t.bool(),

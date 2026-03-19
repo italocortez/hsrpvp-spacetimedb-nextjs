@@ -114,14 +114,13 @@ spacetimedb.view(
         if (!mapping) return [];
         const user = ctx.db.User.id.find(mapping.userId);
         if (!user) return [];
-        // Collect all cost set ids owned by this user
+        // Collect all cost set ids owned by this user, then use cost_set_id index on each
         const mySets = [...ctx.db.CostSet.creator_id.filter(user.id)];
-        const mySetIds = new Set(mySets.map(s => s.id));
-        // Return all draft character rows for those sets
-        // iter() is used here because there is no cross-table index on (creatorId, costSetId)
         const results: any[] = [];
-        for (const row of ctx.db.CostSetDraftCharacter.iter()) {
-            if (mySetIds.has(row.costSetId)) results.push(row);
+        for (const set of mySets) {
+            for (const row of ctx.db.CostSetDraftCharacter.cost_set_id.filter(set.id)) {
+                results.push(row);
+            }
         }
         return results;
     }
@@ -140,11 +139,11 @@ spacetimedb.view(
         const user = ctx.db.User.id.find(mapping.userId);
         if (!user) return [];
         const mySets = [...ctx.db.CostSet.creator_id.filter(user.id)];
-        const mySetIds = new Set(mySets.map(s => s.id));
-        // iter() is used here because there is no cross-table index on (creatorId, costSetId)
         const results: any[] = [];
-        for (const row of ctx.db.CostSetDraftLightcone.iter()) {
-            if (mySetIds.has(row.costSetId)) results.push(row);
+        for (const set of mySets) {
+            for (const row of ctx.db.CostSetDraftLightcone.cost_set_id.filter(set.id)) {
+                results.push(row);
+            }
         }
         return results;
     }
@@ -163,11 +162,11 @@ spacetimedb.view(
         const user = ctx.db.User.id.find(mapping.userId);
         if (!user) return [];
         const mySets = [...ctx.db.CostSet.creator_id.filter(user.id)];
-        const mySetIds = new Set(mySets.map(s => s.id));
-        // iter() is used here because there is no cross-table index on (creatorId, costSetId)
         const results: any[] = [];
-        for (const row of ctx.db.CostSetDraftSynergy.iter()) {
-            if (mySetIds.has(row.costSetId)) results.push(row);
+        for (const set of mySets) {
+            for (const row of ctx.db.CostSetDraftSynergy.cost_set_id.filter(set.id)) {
+                results.push(row);
+            }
         }
         return results;
     }

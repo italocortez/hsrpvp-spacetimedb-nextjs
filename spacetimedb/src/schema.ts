@@ -44,6 +44,7 @@ import { GroupStanding } from './tables/groupStanding';
 // Match Results
 import { MatchResultRecord } from './tables/matchResult';
 import { MatchResultGame } from './tables/matchResultGame';
+import { MatchResultParticipant } from './tables/matchResultParticipant';
 
 // MMR
 import { MmrRating } from './tables/mmrRating';
@@ -134,6 +135,7 @@ const spacetimedb = schema({
     // Match Results
     MatchResultRecord,
     MatchResultGame,
+    MatchResultParticipant,
 
     // MMR
     MmrRating,

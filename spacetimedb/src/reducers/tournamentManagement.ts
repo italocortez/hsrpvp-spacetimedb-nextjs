@@ -1,8 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureTournamentHost } from '../helpers/ensurePermissions';
-import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { validateStageTransition } from '../helpers/tournamentHelpers';
+import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 
 // Valid enum tag lists for runtime validation
@@ -34,6 +33,9 @@ export const create_tournament = spacetimedb.reducer(
         disconnectPolicy: t.string(),
         costSetId: t.u32(),
         defaultBestOf: t.u8(),
+        groupSize: t.u8(),
+        has3rdPlaceMatch: t.bool(),
+        autoAdvanceBracket: t.bool(),
         countTowardsMmr: t.bool(),
         winnerAdvantage: t.u8(),
         requireVerified: t.bool(),
@@ -56,6 +58,9 @@ export const create_tournament = spacetimedb.reducer(
         disconnectPolicy,
         costSetId,
         defaultBestOf,
+        groupSize,
+        has3rdPlaceMatch,
+        autoAdvanceBracket,
         countTowardsMmr,
         winnerAdvantage,
         requireVerified,
@@ -92,6 +97,11 @@ export const create_tournament = spacetimedb.reducer(
         // Validate winnerAdvantage
         if (winnerAdvantage > 3) {
             throw new SenderError('winnerAdvantage must be 0-3.');
+        }
+
+        // Validate groupSize
+        if (groupSize < 3) {
+            throw new SenderError('groupSize must be at least 3.');
         }
 
         // Validate enum tags
@@ -141,6 +151,9 @@ export const create_tournament = spacetimedb.reducer(
             seasonId: undefined,
             countTowardsMmr,
             defaultBestOf,
+            groupSize,
+            has3rdPlaceMatch,
+            autoAdvanceBracket,
             requireVerified,
             requireRoster,
             minimumMmr: minimumMmr > 0 ? minimumMmr : undefined,
@@ -167,6 +180,9 @@ export const update_tournament = spacetimedb.reducer(
         disconnectPolicy: t.string(),
         costSetId: t.u32(),
         defaultBestOf: t.u8(),
+        groupSize: t.u8(),
+        has3rdPlaceMatch: t.bool(),
+        autoAdvanceBracket: t.bool(),
         winnerAdvantage: t.u8(),
         requireVerified: t.bool(),
         requireRoster: t.bool(),
@@ -185,6 +201,9 @@ export const update_tournament = spacetimedb.reducer(
         disconnectPolicy,
         costSetId,
         defaultBestOf,
+        groupSize,
+        has3rdPlaceMatch,
+        autoAdvanceBracket,
         winnerAdvantage,
         requireVerified,
         requireRoster,
@@ -222,6 +241,11 @@ export const update_tournament = spacetimedb.reducer(
             throw new SenderError('winnerAdvantage must be 0-3.');
         }
 
+        // Validate groupSize
+        if (groupSize < 3) {
+            throw new SenderError('groupSize must be at least 3.');
+        }
+
         // Validate enum tags
         validateEnumTag(rosterVisibility, VALID_ROSTER_VISIBILITIES, 'rosterVisibility');
         validateEnumTag(disconnectPolicy, VALID_DISCONNECT_POLICIES, 'disconnectPolicy');
@@ -251,6 +275,9 @@ export const update_tournament = spacetimedb.reducer(
             disconnectPolicy: { tag: disconnectPolicy, value: {} } as any,
             costSetId,
             defaultBestOf,
+            groupSize,
+            has3rdPlaceMatch,
+            autoAdvanceBracket,
             winnerAdvantage,
             requireVerified,
             requireRoster,
@@ -277,6 +304,13 @@ export const advance_tournament_stage = spacetimedb.reducer(
         const { user, tournament } = ensureTournamentAccess(ctx, tournamentId);
 
         validateStageTransition(tournament.stage.tag, nextStage);
+
+        if (tournament.stage.tag === 'Registration' && nextStage === 'Seeding') {
+            validateRegistrationToSeeding(ctx, tournamentId);
+        }
+        if (tournament.stage.tag === 'Seeding' && nextStage === 'InProgress') {
+            validateSeedingToInProgress(ctx, tournamentId);
+        }
 
         ctx.db.Tournament.id.update({
             ...tournament,

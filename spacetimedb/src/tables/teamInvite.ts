@@ -1,11 +1,11 @@
 import { table, t } from 'spacetimedb/server';
 
+// Transactional table: row exists = pending invite, delete = resolved (accepted/rejected)
 export const teamInviteColumns = {
     id: t.u32().primaryKey().autoInc(),
     teamId: t.u32(),
     inviteeUserId: t.u32(),
     inviterUserId: t.u32(),
-    isPending: t.bool(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

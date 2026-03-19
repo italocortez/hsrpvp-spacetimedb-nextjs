@@ -64,6 +64,25 @@ export const update_display_name = spacetimedb.reducer({
         displayName: trimmed,
         ...auditUpdate(ctx, resolved.user, resolved.user.id),
     });
+
+    // Lazy sync: update TournamentTeam.name for active solo non-anonymous tournaments
+    // A solo player's team name = their displayName (invisible team for bracket purposes)
+    for (const team of [...ctx.db.TournamentTeam.captain_user_id.filter(resolved.user.id)]) {
+        const tournament = ctx.db.Tournament.id.find(team.tournamentId);
+        if (!tournament) continue;
+        // Only sync if: tournament is active (not Completed/Cancelled), solo tournament, and not anonymous
+        const isActive = tournament.stage.tag !== 'Completed' && tournament.stage.tag !== 'Cancelled';
+        const isSolo = tournament.teamSize === 1;
+        const isNotAnonymous = !tournament.isAnonymousDefault;
+        if (isActive && isSolo && isNotAnonymous) {
+            ctx.db.TournamentTeam.id.update({
+                ...team,
+                name: trimmed,
+                lastModifiedById: resolved.user.id,
+                lastModifiedDate: ctx.timestamp,
+            } as any);
+        }
+    }
 });
 
 /**
