@@ -342,8 +342,6 @@ When implementing a feature that spans backend and client:
 
 Common mistake: building backend tables/reducers but forgetting to wire up the client to call them.
 
-**Never modify behavior specs (`docs/*/contract.md`) during execution.** If tasked to update one, report what you intended to write but stop — only the user approves spec changes.
-
 ## CLI commands
 
 ```bash
