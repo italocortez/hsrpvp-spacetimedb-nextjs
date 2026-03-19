@@ -1,0 +1,62 @@
+[
+  {
+    "name": "acheron",
+    "display_name": "Acheron",
+    "aliases": ["acheron"],
+    "rarity": 5,
+    "path": "nihility",
+    "element": "lightning",
+    "role": "dps",
+    "imageUrl": "https://example.com/acheron.png",
+    "cost": {
+      "memoryofchaos": {
+        "E0": 7.0,
+        "E1": 8.0,
+        "E2": 11.0,
+        "E3": 11.5,
+        "E4": 12.5,
+        "E5": 13.0,
+        "E6": 15.0
+      },
+      "apocalypticshadow": {
+        "E0": 7.0,
+        "E1": 8.0,
+        "E2": 11.0,
+        "E3": 11.5,
+        "E4": 12.5,
+        "E5": 13.0,
+        "E6": 15.0
+      }
+    }
+  },
+  {
+    "name": "arlan",
+    "display_name": "Arlan",
+    "aliases": ["arlan"],
+    "rarity": 4,
+    "path": "destruction",
+    "element": "lightning",
+    "role": "dps",
+    "imageUrl": "https://example.com/arlan.png",
+    "cost": {
+      "memoryofchaos": {
+        "E0": 3.0,
+        "E1": 3.5,
+        "E2": 4.0,
+        "E3": 4.5,
+        "E4": 5.0,
+        "E5": 5.5,
+        "E6": 6.0
+      },
+      "apocalypticshadow": {
+        "E0": 3.0,
+        "E1": 3.5,
+        "E2": 4.0,
+        "E3": 4.5,
+        "E4": 5.0,
+        "E5": 5.5,
+        "E6": 6.0
+      }
+    }
+  }
+]
