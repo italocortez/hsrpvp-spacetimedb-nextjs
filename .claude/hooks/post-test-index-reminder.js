@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// gsd-hook-version: 1.26.0
 // PostToolUse hook: remind Claude to update test-index.md after relevant file changes
 //
 // When test files, docs/*/contract.md, or docs/*/ directories are created/modified,

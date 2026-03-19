@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// gsd-hook-version: 1.26.0
 // Stop hook — checks for sensitive files staged in git before session ends
 
 const { execSync } = require('child_process');

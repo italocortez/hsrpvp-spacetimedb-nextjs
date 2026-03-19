@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// gsd-hook-version: 1.26.0
 // PreToolUse security hook — blocks dangerous Bash commands
 // Lightweight version for early development: only catches the worst patterns
 
