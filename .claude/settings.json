@@ -29,6 +29,23 @@
             "command": "node .claude/hooks/gsd-context-monitor.js"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-generate-bindings.js"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-test-index-reminder.js"
+          }
+        ]
       }
     ],
     "Stop": [

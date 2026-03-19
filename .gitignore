@@ -8,6 +8,10 @@
 # testing
 /coverage
 
+# test: ignore raw game data (private) but commit infra and templates
+test/data/
+!test/data-templates/
+
 # next.js
 /.next/
 /out/
@@ -37,6 +41,5 @@ next-env.d.ts
 
 #claude context
 .claude/settings.local.json
-test/
 notes
 notes/

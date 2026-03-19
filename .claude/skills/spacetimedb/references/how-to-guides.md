@@ -18,7 +18,8 @@
 4. [Confirmed Reads](#confirmed-reads)
 5. [PostgreSQL Wire Protocol](#postgresql-wire-protocol)
 6. [Maincloud Deployment](#maincloud-deployment)
-7. [Row Level Security (deprecated)](#row-level-security)
+7. [Reconnection](#reconnection)
+8. [Row Level Security (deprecated)](#row-level-security)
 
 ---
 
@@ -175,6 +176,26 @@ spacetime publish <db-name> --server maincloud
 ```bash
 spacetime delete <db-name> --server maincloud
 ```
+
+---
+
+## Reconnection
+
+SpacetimeDB's reconnect story is being improved, but currently the only reliable way is to unmount and remount the `SpacetimeDBProvider` by toggling a key prop:
+
+```typescript
+const [connectionKey, setConnectionKey] = useState(0);
+
+// In your onDisconnect callback:
+setTimeout(() => setConnectionKey(k => k + 1), 2000);
+
+// This forces React to destroy and recreate the entire provider tree
+<SpacetimeDBProvider key={connectionKey} connectionBuilder={builder}>
+  {children}
+</SpacetimeDBProvider>
+```
+
+This is a known rough edge — expect a better API for this soon.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: spacetimedb
-description: "Build and debug SpacetimeDB TypeScript modules and React clients, including multiplayer sync patterns. Use this skill whenever the user is working with SpacetimeDB — adding tables, writing reducers, creating views, setting up React subscriptions, publishing modules, debugging connection or query issues, implementing multiplayer features (movement sync, projectiles, combat, client-side prediction, interpolation), or any feature that touches the SpacetimeDB backend or client bindings. Also trigger when the user mentions spacetimedb, reducers, module_bindings, spacetime publish, spacetime generate, ctx.db, multiplayer sync, or real-time multiplayer."
+description: "Build and debug SpacetimeDB TypeScript modules and React clients, including multiplayer sync patterns. Use this skill whenever the user is working with SpacetimeDB — adding tables, writing reducers, creating views, setting up React subscriptions, publishing modules, debugging connection or query issues, implementing multiplayer features (movement sync, projectiles, combat, client-side prediction, interpolation), or any feature that touches the SpacetimeDB backend or client bindings. Also trigger when the user mentions spacetimedb, reducers, module_bindings, spacetime publish, spacetime generate, ctx.db, multiplayer sync, real-time multiplayer, table schema, subscription, BigInt, SenderError, useTable, or DbConnection."
 ---
 
 # SpacetimeDB TypeScript Development
@@ -19,10 +19,16 @@ Read `references/api-guide.md` when you need detailed syntax for any of:
 
 Read `references/module-bindings.md` instead of reading `src/module_bindings/` files directly. This saves tokens — it contains all tables, reducers, enums, types, and indexes in a compact format.
 
-**To regenerate `references/module-bindings.md`** (do this after every `spacetime generate` or when the user asks):
-1. Read all `.ts` files in `src/module_bindings/` (tables, reducers, types, index.ts)
-2. Extract: table names, columns with types, PKs, indexes, reducer names with params, enums, custom types
-3. Rewrite `references/module-bindings.md` in the same compact format, updating the CLI version at the top
+**Post-generate binding refresh (ENFORCED — a PostToolUse hook reminds you):**
+After every `spacetime generate`, you must update the module-bindings reference so it stays in sync with the actual generated code. Stale bindings cause hallucinated APIs, wrong column names, and missing reducers — which is worse than having no reference at all.
+
+Steps:
+1. Read `src/module_bindings/types.ts` — contains all type definitions (objects, enums, structs, tagged unions)
+2. Read `src/module_bindings/index.ts` — contains table schema (indexes, constraints, unique columns), reducer list, and CLI version
+3. Optionally scan individual `*_reducer.ts` files if you need exact parameter names
+4. Rewrite `references/module-bindings.md` in the same compact format, noting the new sync date at the top
+
+The hook at `.claude/hooks/post-generate-bindings.js` will inject a reminder into your context whenever a `spacetime generate` Bash command completes.
 
 Read `references/spacetime-json.md` when editing `spacetime.json` or `spacetime.local.json` — covers all config fields, generate targets, environment overrides, `spacetime dev` setup, and child database inheritance.
 
@@ -63,7 +69,7 @@ import { Identity } from 'spacetimedb';
 ```
 
 ### Table definition — `table(OPTIONS, COLUMNS)`
-Indexes go in OPTIONS (1st arg), never in COLUMNS (2nd arg).
+Indexes go in OPTIONS (1st arg), never in COLUMNS (2nd arg). Putting them in the columns object causes a cryptic `"reading 'tag'"` runtime error because the SDK tries to parse the index config as a column type.
 ```typescript
 export const MyTable = table({
   name: 'my_table',
@@ -77,12 +83,14 @@ export const MyTable = table({
 ```
 
 ### Schema export — exactly ONE object argument
+The `schema()` function uses the object's keys to build the DB namespace. Passing tables as positional args or individually causes silent misconfiguration — tables won't be accessible via `ctx.db`.
 ```typescript
 const spacetimedb = schema({ myTable, otherTable });
 export default spacetimedb;
 ```
 
 ### Reducers — name from export, object params, no return values
+The SDK derives the reducer name from the `export const` binding. There is no string-based registration — `reducer('name', ...)` doesn't exist. Parameters must be an object because the SDK generates typed destructuring from the schema; positional args would lose parameter names.
 ```typescript
 export const create_item = spacetimedb.reducer(
   { title: t.string() },
@@ -124,21 +132,7 @@ If you genuinely need immediate response data (rare once you adopt the pattern),
 If reducer round-trips feel slow (200ms+ even locally), the likely cause is confirmed reads — the default in SpacetimeDB 2.0. Add `.withConfirmedReads(false)` to the connection builder for games and real-time apps. This applies to both local dev and maincloud. See `references/how-to-guides.md` § Confirmed Reads for the full trade-off.
 
 ### Reconnection workaround (temporary)
-SpacetimeDB's reconnect story is being improved, but currently the only reliable way is to unmount and remount the `SpacetimeDBProvider` by toggling a key prop:
-
-```typescript
-const [connectionKey, setConnectionKey] = useState(0);
-
-// In your onDisconnect callback:
-setTimeout(() => setConnectionKey(k => k + 1), 2000);
-
-// This forces React to destroy and recreate the entire provider tree
-<SpacetimeDBProvider key={connectionKey} connectionBuilder={builder}>
-  {children}
-</SpacetimeDBProvider>
-```
-
-This is a known rough edge — expect a better API for this soon.
+SpacetimeDB's reconnect API is being improved. For the current workaround (unmount/remount provider via key prop), see `references/how-to-guides.md` § Reconnection.
 
 ### Data access in React
 ```typescript
@@ -153,32 +147,98 @@ const [users, isReady] = useTable(tables.user, {
 });
 ```
 
+### Handling reducer errors on the client
+Reducers don't return data, so errors surface via callbacks. Use `_then()` to detect failures from a specific call, and `ctx.event.status` to read the `SenderError` message:
+```typescript
+// Per-call error handling — fires only for THIS call
+conn.reducers.updateUsername({ newUsername: 'alice' })._then((ctx) => {
+  if (ctx.event.status.tag === 'Failed') {
+    toast.error(ctx.event.status.value);  // SenderError message string
+  }
+});
+
+// Global reducer listener — fires for ALL calls to this reducer
+conn.reducers.onUpdateUsername((ctx) => {
+  if (ctx.event.status.tag === 'Failed') {
+    console.error('updateUsername failed:', ctx.event.status.value);
+  }
+});
+// Status tags: 'Committed' | 'Failed' (value = error message) | 'OutOfEnergy'
+```
+
 ### CRUD operations (server)
 ```typescript
 // Create — 0n placeholder for autoInc
 const row = ctx.db.myTable.insert({ id: 0n, ... });
 
-// Read — .find() for unique/PK, .filter() for indexed (use accessor name)
-const item = ctx.db.myTable.id.find(itemId);
-const items = [...ctx.db.myTable.owner_id.filter(ownerId)];
+// Read — accessor API depends on how the column was declared:
+//   .primaryKey()  → has .find() only (returns row or null)
+//   .unique()      → has .find() only (returns row or null)
+//   btree index    → has .filter() only (returns iterator)
+const item = ctx.db.myTable.id.find(itemId);                   // PK → single row or null
+const user = ctx.db.User.username.find('alice');                // unique → single row or null
+const items = [...ctx.db.myTable.owner_id.filter(ownerId)];    // btree → iterator (spread to array)
 
-// Update — spread existing row
+// Multi-column btree index — .filter([val1, val2]) maps positionally to columns array
+const row = [...ctx.db.MyJoinTable.by_col1_and_col2.filter([val1, val2])][0];
+
+// Update — spread existing row (SpacetimeDB replaces the full row, so omitted fields become defaults/zero)
 ctx.db.myTable.id.update({ ...existing, title: newTitle });
 
 // Delete — by PK value
 ctx.db.myTable.id.delete(itemId);
 
-// Composite PK lookup — requires `as any` cast (SDK limitation)
-const row = (ctx.db.MyJoinTable as any).primaryKey.find({ colA: valA, colB: valB });
+// Composite PK lookup — BEST: define a multi-column btree index, then .filter([val1, val2])
+// See "Accessor types" section below for the 3 declaration types and their APIs
+```
+
+### Accessor types — verified runtime behavior (2026-03-18)
+
+Each column declaration type produces a different accessor with a different API. Mixing them up causes TypeErrors or silent data loss. A column can be functionally unique (e.g., `discordId`) but declared as a btree index — in that case it only has `.filter()`, not `.find()`.
+
+| Declaration | Example | Has `.find()` | Has `.filter()` |
+|---|---|---|---|
+| `t.xxx().primaryKey()` | `id: t.u32().primaryKey().autoInc()` | YES (row or null) | NO (TypeError) |
+| `t.xxx().unique()` | `username: t.string().unique()` | YES (row or null) | NO (TypeError) |
+| btree index (`indexes: [...]`) | `{ accessor: 'owner_id', algorithm: 'btree', columns: ['ownerId'] }` | NO (TypeError) | YES (iterator) |
+
+**`.filter()` argument rules for btree indexes:**
+
+| Index type | Correct usage | Silent failures (0 rows, no error) |
+|---|---|---|
+| Single-column btree | `.filter(scalar)` | `.filter({obj})`, `.filter([val1, val2])` |
+| Multi-column btree | `.filter([val1, val2])` (positional to columns array) | `.filter({obj})` |
+
+Single-column btree with `.filter([val])` (one-element array) auto-coerces to scalar and works, but prefer `.filter(scalar)` for clarity.
+
+**Multi-column btree index definition and usage:**
+```typescript
+// Table definition with multi-column btree index
+export const TournamentParticipant = table({
+  name: 'tournament_participant',
+  public: true,
+  indexes: [
+    { accessor: 'by_tournament_and_user', algorithm: 'btree', columns: ['tournamentId', 'userId'] },
+  ]
+}, {
+  tournamentId: t.u32(),
+  userId: t.u32(),
+  // ... other columns
+});
+
+// Usage — values map positionally to the columns array
+const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tid, uid])][0];
+
+// Fallback if no multi-column index exists: filter on one column, find on the other
+const fallback = [...ctx.db.TournamentParticipant.tournament_id.filter(tid)].find(r => r.userId === uid);
 ```
 
 ### Errors in reducers — use `SenderError`
+A plain `throw new Error()` logs to the server but the client only sees a generic failure. `SenderError` serializes the message into the reducer response so the calling client can display it.
 ```typescript
 import { SenderError } from 'spacetimedb/server';
 
-// SenderError is the standard way to reject a reducer call with a message
 if (!item) throw new SenderError('Item not found.');
-// Do NOT use plain `throw new Error()` — SenderError surfaces the message to the calling client
 ```
 
 ### Exported columns — reuse column definitions across backend components
@@ -207,7 +267,7 @@ export const MyTable = table({
 Other backend files can then `import { myTableColumns } from '../tables/my_table'` to reference the column types for validation, type-safe helpers, or building related tables that share a subset of columns — all without making the data public to clients.
 
 ### BigInt — all u64/i64 fields
-Use `0n`, `1n`, `100n` — never plain numbers for ID/u64 fields.
+Use `0n`, `1n`, `100n` — never plain numbers for ID/u64 fields. JavaScript `number` loses precision above 2^53, so SpacetimeDB maps 64-bit integers to BigInt. Mixing `number` and `BigInt` (e.g. `row.id === 5`) silently returns `false` — no error, just wrong behavior.
 
 ### Timestamps on client
 ```typescript
@@ -261,6 +321,11 @@ These are APIs that don't exist — LLMs hallucinate them frequently:
 | `const rows = useTable(table)` | `const [rows, isReady] = useTable(tables.user)` |
 | `.subscribeToAll()` | `.subscribeToAllTables()` — method name changed |
 | `throw new Error('msg')` in reducers | `throw new SenderError('msg')` — surfaces message to the calling client |
+| `(ctx.db.Table as any).primaryKey.find({...})` | Define a multi-column btree index and use `.filter([val1, val2])` — `.primaryKey` is undefined at runtime, causes PANIC |
+| `ctx.db.Table.index.filter({col1, col2})` (object arg) | `.filter(scalar)` for single-col, `.filter([val1, val2])` for multi-col btree — object arg silently returns 0 rows |
+| `ctx.db.Table.singleColIdx.filter([val1, val2])` (array on single-col) | `.filter(scalar)` — passing an array to a single-column btree index silently returns 0 rows |
+| `ctx.db.Table.btreeIdx.find(val)` | `[...ctx.db.Table.btreeIdx.filter(val)]` — btree indexes only have `.filter()`, not `.find()` (TypeError) |
+| `ctx.db.Table.pkCol.filter(val)` | `ctx.db.Table.pkCol.find(val)` — PK/unique columns only have `.find()`, not `.filter()` (TypeError) |
 
 ## Feature implementation checklist
 
@@ -270,11 +335,14 @@ When implementing a feature that spans backend and client:
 2. **Backend:** Define reducer(s) in `reducers/` folder (grouped by domain), then re-export in `index.ts`
 3. **Backend:** Publish module (`spacetime publish`)
 4. **Backend:** Generate bindings (`spacetime generate`)
-5. **Client:** Subscribe to the table(s)
-6. **Client:** Call the reducer(s) from UI
-7. **Client:** Render data from `useTable(tables.tableName)`
+5. **Sync:** Read `src/module_bindings/types.ts` + `index.ts` and update `references/module-bindings.md` (the hook reminds you)
+6. **Client:** Subscribe to the table(s)
+7. **Client:** Call the reducer(s) from UI
+8. **Client:** Render data from `useTable(tables.tableName)`
 
 Common mistake: building backend tables/reducers but forgetting to wire up the client to call them.
+
+**Never modify behavior specs (`docs/*/contract.md`) during execution.** If tasked to update one, report what you intended to write but stop — only the user approves spec changes.
 
 ## CLI commands
 
@@ -285,7 +353,21 @@ spacetime publish <name> --clear-database -y --module-path <dir>  # Clear & repu
 spacetime generate --lang typescript --out-dir <client>/src/module_bindings --module-path <dir>
 spacetime logs <name>                              # View logs
 spacetime logs <name> --level warn                 # Filter by log level (warn and above)
+spacetime sql <name> "SELECT * FROM table_name"    # Query tables via SQL
 ```
+
+### `spacetime sql` column name gotcha
+
+`spacetime sql` auto-converts camelCase column definitions to snake_case, but the conversion splits at every case boundary including before digits. This produces non-obvious names:
+
+| Column definition (camelCase) | SQL column name (snake_case) |
+|------|------|
+| `groupSize` | `group_size` |
+| `autoAdvanceBracket` | `auto_advance_bracket` |
+| `has3rdPlaceMatch` | `has_3_rd_place_match` (not `has_3rd_place_match`) |
+| `participantTeamId` | `participant_team_id` |
+
+**When in doubt, use `SELECT * FROM table LIMIT 1`** to see the actual column names before writing filtered queries.
 
 ## Project structure (this repo)
 
@@ -302,7 +384,7 @@ helpers/               -> Shared utilities (ensurePermissions.ts, auditColumns.t
 types/
   ├── enums.ts         -> All enum definitions (Path, Element, CharRole, GameMode, etc.)
   └── structs.ts       -> All struct/object type definitions (EidolonCost, LobbyConfig, etc.)
-docs/                  -> Feature architecture docs (one folder per domain with README.md)
+docs/ (project root)   -> Feature architecture docs (one folder per domain with architecture.md and contract.md)
 ```
 
 ### Frontend
@@ -349,8 +431,11 @@ lib/                    -> Shared utilities and configuration
 **Index definitions only need `accessor`** — SpacetimeDB auto-generates the DB catalog `name`, so omit it. The `accessor` is the code-facing handle used in `ctx.db.Table.accessor.find/filter()`. Keep it short — accessors are scoped per-table, so no table prefix needed.
 
 ```typescript
-// ✅ Clean — accessor only, name auto-generated
+// ✅ Clean — single-column, accessor only, name auto-generated
 indexes: [{ accessor: 'owner_id', algorithm: 'btree', columns: ['ownerId'] }]
+
+// ✅ Multi-column btree — use for composite PK lookups; .filter([val1, val2]) maps positionally
+indexes: [{ accessor: 'by_tournament_and_user', algorithm: 'btree', columns: ['tournamentId', 'userId'] }]
 
 // ❌ Never omit accessor
 indexes: [{ algorithm: 'btree', columns: ['ownerId'] }]
@@ -371,7 +456,7 @@ lastModifiedDate: t.timestamp(),
 ```
 
 **Rules:**
-- Each table defines its own audit columns inline — do NOT import/spread a shared object. Tables must not be coupled through column definitions.
+- Each table defines its own audit columns inline — do NOT import/spread a shared object. SpacetimeDB's `table()` resolves column types at call time, so if tables share a column definition object, a change to that object silently alters every table that uses it — causing unintended schema migrations or `--clear-database` requirements.
 - Use `auditInsert(ctx, userId)` from `helpers/auditColumns.ts` when inserting a new row
 - Use `auditUpdate(ctx, existingRow, userId)` from `helpers/auditColumns.ts` when updating a row — this preserves original `createdById`/`createdDate`
 - `SYSTEM_USER_ID = 0` is used for bootstrap operations (e.g. `register_server` creating the SYSTEM user) and scheduled reducers
@@ -381,15 +466,16 @@ lastModifiedDate: t.timestamp(),
 
 ## Data access best practices (this repo — ENFORCED)
 
-**Always prefer indexed lookups over `.iter()`:**
+**Always prefer indexed lookups over `.iter()`** — `.iter()` performs a full table scan (O(n)), while `.find()` and `.filter()` on indexes are O(log n). In views, `.iter()` is especially dangerous: the view re-evaluates on *any* row change in the source table, so an iter-based view touching a 10k-row table fires 10k scans per write.
 
 | Scenario | Use | NOT |
 |----------|-----|-----|
-| Lookup by PK | `ctx.db.Table.pkColumn.find(value)` | `for (const r of ctx.db.Table.iter())` |
-| Lookup by unique column | `ctx.db.Table.uniqueCol.find(value)` | `.iter()` + manual filter |
-| Lookup by indexed column | `[...ctx.db.Table.index_name.filter(value)]` | `.iter()` + manual filter |
-| Multi-column index lookup | `[...ctx.db.Table.idx_name.filter({col1, col2})]` | `.iter()` + manual match on each column |
-| Composite PK lookup | `(ctx.db.Table as any).primaryKey.find({...})` | `.iter()` + manual match |
+| Lookup by PK (`.primaryKey()`) | `ctx.db.Table.pkCol.find(value)` | `.pkCol.filter()` (TypeError — PK only has `.find()`) |
+| Lookup by unique col (`.unique()`) | `ctx.db.Table.uniqueCol.find(value)` | `.uniqueCol.filter()` (TypeError — unique only has `.find()`) |
+| Lookup by btree index (`indexes: [...]`) | `[...ctx.db.Table.idx.filter(value)]` | `.idx.find()` (TypeError — btree only has `.filter()`) |
+| Multi-column lookup (multi-col btree) | `[...ctx.db.Table.by_col1_and_col2.filter([val1, val2])]` | `.filter({col1, col2})` (object arg silently returns 0 rows!) |
+| Multi-column lookup (single-col btree fallback) | `[...ctx.db.Table.idx.filter(col1Val)].find(r => r.col2 === col2Val)` | `.filter([val1, val2])` on single-col index (silently returns 0 rows!) |
+| Composite PK lookup | Define multi-col btree index, then `[...ctx.db.Table.by_col1_and_col2.filter([val1, val2])]` | `.primaryKey.find()` (undefined at runtime — PANIC!) |
 | Identity hex string match | `.iter()` (no hex→Identity conversion exists) | N/A — iter is the only option |
 | Composite key upsert (no PK accessor) | `.iter()` + match | N/A — iter is the only option |
 
@@ -446,7 +532,7 @@ See `reducers/rosterAdmin.ts` for the full example (9 admin proxy reducers mirro
 
 ## Foreign keys
 
-SpacetimeDB does NOT support FK constraints. Referential integrity must be enforced in reducer code. This is expected — not a bug or missing feature.
+SpacetimeDB does NOT support FK constraints. Referential integrity must be enforced in reducer code. This is by design — SpacetimeDB's distributed architecture prioritizes write throughput over relational constraints. Check for the existence of referenced rows in reducers before inserting, and cascade-delete related rows manually when removing parents.
 
 ## Energy budget & bandwidth rules (ENFORCED)
 
@@ -504,7 +590,7 @@ When proposing any design that adds tables, columns, or changes visibility:
 
 ## Updating docs from SpacetimeDB GitHub
 
-When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"):
+The skill references are currently based on **SpacetimeDB v2.0.5**. When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped past this version:
 
 1. **Check the latest release** — fetch `https://github.com/clockworklabs/SpacetimeDB/releases/latest` and compare the version against what's documented in our references
 2. **Fetch upstream how-to docs** — each reference file has `<!-- Sources: ... -->` comments at the top with the exact GitHub URLs. Fetch the raw versions of those URLs (swap `github.com/.../blob/` to `raw.githubusercontent.com/.../`) and compare against our current content
