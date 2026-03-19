@@ -3,7 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import {
-    BracketMatchDescriptor,
+    type BracketMatchDescriptor,
     generateSingleElimBracket,
     generateDoubleElimBracket,
     generateGroupPhaseBracket,
