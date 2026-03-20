@@ -5,22 +5,22 @@
 ## Acceptance Scenarios
 
 ### Score Confirmation
-**Given:** MatchResultRecord in Pending status, caller is player1
+**Given:** MatchResultRecord in Pending status, caller is a captain (MatchResultParticipant.isCaptain=true)
 **When:** `confirm_match_scores(matchResultId)`
-**Then:** team1Confirmed=true. If caller is player2, team2Confirmed=true.
+**Then:** Caller's MatchResultParticipant.isConfirmed set to true. In 1v1, both participants have isCaptain=true. In team formats, only the designated team captain confirms on behalf of their side.
 
 ### Submit Match Result
-**Given:** MatchResultRecord with both teams confirmed, caller has referee authority
-**When:** `submit_match_result(matchResultId, winnerId)`
-**Then:** Status changes to Submitted. winnerId and refereeUserId set.
+**Given:** MatchResultRecord with all captains confirmed, caller has referee authority
+**When:** `submit_match_result(matchResultId, winnerUserId)`
+**Then:** Status changes to Submitted. winnerUserId and refereeUserId set.
 
-### Submit Without Both Confirmations (blocked)
-**Given:** MatchResultRecord with only team1Confirmed=true
+### Submit Without All Confirmations (blocked)
+**Given:** MatchResultRecord where not all captains have confirmed
 **When:** Referee calls `submit_match_result`
 **Then:** Throws "Both teams must confirm scores before submission"
 
 ### Dispute Match Result
-**Given:** MatchResultRecord in Submitted status, caller is a match participant
+**Given:** MatchResultRecord in Submitted status, caller is a match participant (has MatchResultParticipant row)
 **When:** `dispute_match_result(matchResultId, reason)`
 **Then:** Status changes to Disputed. disputedByUserId and disputeReason set.
 
@@ -31,8 +31,15 @@
 
 ### Override Match Result
 **Given:** MatchResultRecord exists, caller is TO/Mod/Admin
-**When:** `override_match_result(matchResultId, "Validated", winnerId, reason)`
-**Then:** Status changes to Validated. winnerId updated. disputeReason stores override reason.
+**When:** `override_match_result(matchResultId, "Validated", winnerUserId, reason)`
+**Then:** Status changes to Validated. winnerUserId updated. disputeReason stores override reason.
+
+### Match Finalization (Phase 5)
+**Given:** MatchResultRecord in Validated status, MMR processed (or MMR disabled)
+**When:** `finalize_match_result(matchResultId)` is called
+**Then:** MatchSessionHistory row written with match outcome. MatchParticipantHistory rows written for each participant. PlayerStat and PlayerCharacterStat incremented. PlayerRelationship updated for ally/opponent pairs. MatchResultRecord, MatchResultParticipant, and MatchResultGame rows all deleted.
+
+**Note:** This reducer is a stub in Phase 04.1. Full implementation in Phase 5. Documenting the contract here so Phase 5 has a behavioral spec to implement against.
 
 ### Referee Transfer
 **Given:** Lobby with host and members, host has isReferee=true
@@ -57,6 +64,7 @@
 |------|-------------------|
 | Confirm scores on non-Pending match | Throws "Scores can only be confirmed when Pending" |
 | Non-participant confirms scores | Throws "You are not a participant" |
+| Confirm by non-captain in team match | Throws "Only the team captain can confirm scores" |
 | Submit without referee authority | Throws "You do not have referee authority" |
 | Dispute a Pending match | Throws "Can only dispute after submission" |
 | Dispute with empty reason | Throws "Dispute reason cannot be empty" |
@@ -69,19 +77,22 @@
 
 ## Testing Notes
 
-**Deferred to Phase 9 UAT:** Tests for score confirmation (13), dispute (14), override (15), referee transfer (12), and coach management (17) require lobby CRUD reducers and MatchResultRecord insert — both unavailable until Phase 9. Scenarios are documented here for test generation once prerequisites exist.
+**Deferred to Phase 9 UAT:** Tests for score confirmation (13), dispute (14), override (15), referee transfer (12), and coach management (17) require lobby CRUD reducers and MatchResultRecord insert -- both unavailable until Phase 9. Scenarios are documented here for test generation once prerequisites exist.
 
 ## Integration Points
 
 | This Feature | Connects To | Direction |
 |-------------|------------|-----------|
 | MatchResultRecord.lobbyId | Lobby.id | Reads |
-| MatchResultRecord.player1Id/player2Id | User.id | Reads |
+| MatchResultParticipant.userId | User.id | Reads |
 | MatchResultRecord.tournamentId | Tournament.id | Reads |
 | MatchResultRecord.bracketMatchId | BracketMatch.id | Phase 4 |
 | LobbyMember.isReferee | Referee authority check | Reads |
 | LobbyMember.isCoach | Coach role flag | Writes |
 | MmrRating | MMR calculation | Phase 5 reads |
+| MatchSessionHistory | Finalization writes history | Phase 5 writes |
+| MatchParticipantHistory | Finalization writes participant records | Phase 5 writes |
+| PlayerStat / PlayerCharacterStat | Finalization increments stats | Phase 5 writes |
 
 ## Phase History
 
@@ -94,7 +105,13 @@
 | disputeReason reused for admin override reason | Phase 3 execution | 2026-03-19 |
 | Coach set/remove by host or referee only | Phase 3 execution | 2026-03-19 |
 | All match result/referee/coach tests deferred to Phase 9 (no lobby CRUD) | Phase 3 execution | 2026-03-19 |
+| MatchResultRecord becomes ephemeral (deleted after finalization) | Phase 04.1 execution | 2026-03-20 |
+| Captain-based confirmation replaces team1Confirmed/team2Confirmed | Phase 04.1 execution | 2026-03-20 |
+| isTournamentControlled replaces isTournamentMatch (behavioral flag) | Phase 04.1 execution | 2026-03-20 |
+| Match Finalization scenario documented (Phase 5 contract) | Phase 04.1 execution | 2026-03-20 |
+| winnerTeamSide (TeamLabel) replaces winnerId on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
+| teamBlue*/teamRed* replaces player1*/player2* on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-20*

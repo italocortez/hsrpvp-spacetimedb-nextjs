@@ -11,20 +11,20 @@ Tournament
 |     roundNumber, matchNumber
 |     bracketSide           -> BracketSide enum: Winners|Losers|GrandFinals|ThirdPlace|Group
 |     groupId?              -> group number (for group phase, set when bracketSide=Group)
-|     participant1Id?       -> TournamentTeam.id
-|     participant2Id?       -> TournamentTeam.id
+|     team1Id?              -> TournamentTeam.id
+|     team2Id?              -> TournamentTeam.id
 |     nextWinnerMatchId?    -> BracketMatch.id (winner advances here)
 |     nextLoserMatchId?     -> BracketMatch.id (loser goes here -- double elim, 3rd place)
-|     winnerId?             -> TournamentTeam.id (set when match resolved)
+|     winnerTeamId?         -> TournamentTeam.id (set when match resolved)
 |     lobbyId?              -> Lobby.id (set when match played -- Phase 9)
 |     bestOf, gameMode, winnerAdvantage
 |     resultStatus          -> MatchResultStatus enum
 |
 +-- GroupStanding (round-robin standings per group)
-      PK: [tournamentId, groupId, participantTeamId]
+      PK: [tournamentId, groupId, teamId]
       tournamentId          -> Tournament.id
       groupId               -> group number
-      participantTeamId     -> TournamentTeam.id
+      teamId                -> TournamentTeam.id
       wins, losses, draws, points
 ```
 
@@ -40,11 +40,11 @@ Tournament
 
 Invariant: bracketSide=Group if and only if groupId is set.
 
-## Participant IDs
+## Team IDs
 
-All participant references on BracketMatch (participant1Id, participant2Id, winnerId) are **TournamentTeam.id** values, NOT userId values. Even solo players have auto-created TournamentTeam rows.
+All participant references on BracketMatch (team1Id, team2Id, winnerTeamId) are **TournamentTeam.id** values, NOT userId values. Even solo players have auto-created TournamentTeam rows.
 
-MatchResultRecord.winnerId is a userId. The advancement reducer maps: winnerId (userId) -> TournamentParticipant (tournamentId + userId) -> teamGroupId -> BracketMatch participant slot.
+MatchResultRecord.winnerUserId is a userId. The advancement reducer maps: winnerUserId (userId) -> TournamentParticipant (tournamentId + userId) -> teamGroupId -> BracketMatch team slot.
 
 ## Reducers
 
@@ -55,8 +55,8 @@ MatchResultRecord.winnerId is a userId. The advancement reducer maps: winnerId (
 
 ### Bracket Advancement (bracketAdvancement.ts)
 - `advance_bracket_match(bracketMatchId)` -- Places winner in nextWinnerMatchId slot. Routes loser to nextLoserMatchId (double elim). Updates GroupStanding for group matches. Requires tournament InProgress.
-- `submit_and_advance_bracket(matchResultId)` -- Wrapper for tournament matches. Maps winnerId (userId) -> teamId. Sets BracketMatch.winnerId. If autoAdvanceBracket=true, auto-advances.
-- `rollback_bracket_match(bracketMatchId)` -- Clears winnerId, removes winner/loser from next matches. Blocks if mmrProcessedAt is set on MatchResultRecord. Only during InProgress.
+- `submit_and_advance_bracket(matchResultId)` -- Wrapper for tournament matches. Maps winnerUserId (userId) -> winnerTeamId. Sets BracketMatch.winnerTeamId. If autoAdvanceBracket=true, auto-advances.
+- `rollback_bracket_match(bracketMatchId)` -- Clears winnerTeamId, removes winner/loser from next matches. Blocks if mmrProcessedAt is set on MatchResultRecord. Only during InProgress.
 
 ## Flow -- Single Elimination
 
@@ -67,7 +67,7 @@ MatchResultRecord.winnerId is a userId. The advancement reducer maps: winnerId (
 5. TO calls generate_bracket -- creates BracketMatch rows with fold seeding
 6. TO advances to InProgress (requires bracket rows to exist)
 7. Matches played: submit_and_advance_bracket maps result -> advances winner
-8. Tournament completes when finals match has winnerId
+8. Tournament completes when finals match has winnerTeamId
 
 ## Flow -- Double Elimination
 
@@ -89,7 +89,7 @@ Same as single elim, but losers go to Losers bracket via nextLoserMatchId. Winne
 
 ## BYE Handling
 
-Odd participant counts produce BYEs. Top seeds get BYEs (null opponent slot). BYE match rows exist for bracket display with winnerId pre-set. Winner auto-advanced during generate_bracket.
+Odd participant counts produce BYEs. Top seeds get BYEs (null opponent slot). BYE match rows exist for bracket display with winnerTeamId pre-set. Winner auto-advanced during generate_bracket.
 
 ## DQ Auto-Advance
 
@@ -114,7 +114,7 @@ BracketMatch rows reference each other via nextWinnerMatchId/nextLoserMatchId, b
 only known after insert (autoInc). Solution:
 1. Insert all matches with null FKs, build positionKey -> insertedId map
 2. Update each match's nextWinnerMatchId/nextLoserMatchId using the map
-3. Auto-advance BYE matches (place pre-set winnerId in next match's slot)
+3. Auto-advance BYE matches (place pre-set winnerTeamId in next match's slot)
 
 ### Circle Method (Round-Robin)
 Standard algorithm for group phase scheduling. Fix position 0, rotate rest clockwise each round.
@@ -136,7 +136,7 @@ Alternating minor (internal) and major (WB feed-in) rounds:
 
 - **BracketSide enum** (5 variants: Winners, Losers, GrandFinals, ThirdPlace, Group) replaces `isLosersBracket: bool` -- supports GrandFinals, ThirdPlace, Group as first-class match types (Phase 4)
 - **Explicit FK links** (nextWinnerMatchId, nextLoserMatchId) -- no JSON blob storage
-- **participantTeamId** on GroupStanding (renamed from participantUserId in Phase 4) -- standings track teams
+- **teamId** on GroupStanding (renamed from participantUserId in Phase 4, then from participantTeamId in Phase 04.1) -- standings track teams
 - **seedNumber** on TournamentTeam (moved from TournamentParticipant in Phase 4) -- seeding is team-level
 - **Solo auto-team**: solo tournament registrations auto-create TournamentTeam rows -- bracket generation treats all participants uniformly as teams
 - `groupId` is a simple number, not a separate table -- groups are implicit within a tournament

@@ -83,7 +83,7 @@ Draft → Registration → Seeding → InProgress → Completed
 | `seed_bracket` | bracketGeneration.ts | TO/Assistant/Mod/Admin | Assign seedNumber to TournamentTeams |
 | `swap_seeds` | bracketGeneration.ts | TO/Assistant/Mod/Admin | Swap seedNumber between two teams |
 | `advance_bracket_match` | bracketAdvancement.ts | TO/Assistant/Mod/Admin | Place winner in next match slot; route loser (double elim) |
-| `submit_and_advance_bracket` | bracketAdvancement.ts | Authenticated | Map userId winner -> teamId, set BracketMatch.winnerId, auto-advance if enabled |
+| `submit_and_advance_bracket` | bracketAdvancement.ts | Authenticated | Map winnerUserId (userId) -> winnerTeamId, set BracketMatch.winnerTeamId, auto-advance if enabled |
 | `rollback_bracket_match` | bracketAdvancement.ts | TO/Assistant/Mod/Admin | Reverse bracket advancement one step (blocked if MMR processed) |
 | `server_set_mmr` | server.ts | Server identity | Upsert MmrRating row for a user (test/admin utility) |
 

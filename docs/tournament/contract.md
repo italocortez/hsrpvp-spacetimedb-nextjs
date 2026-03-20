@@ -161,7 +161,7 @@
 | 3rd place match via has3rdPlaceMatch | Phase 4 CONTEXT.md | 2026-03-17 |
 | autoAdvanceBracket toggle | Phase 4 CONTEXT.md | 2026-03-17 |
 | seedNumber on TournamentTeam (not Participant) | Phase 4 CONTEXT.md | 2026-03-18 |
-| GroupStanding.participantTeamId | Phase 4 CONTEXT.md | 2026-03-18 |
+| GroupStanding.teamId (renamed from participantTeamId) | Phase 4 CONTEXT.md | 2026-03-18 |
 | MatchResultParticipant for 2v2/3v3 | Phase 4 CONTEXT.md | 2026-03-18 |
 | Team name rules by format + anonymous | Phase 4 CONTEXT.md | 2026-03-17 |
 | Groups: Win=2, Draw=1, Loss=0 | Phase 4 CONTEXT.md | 2026-03-17 |
@@ -172,8 +172,9 @@
 | Moderator promote/demote with role guards | Phase 3 execution | 2026-03-19 |
 | Withdraw preserves row (status=Withdrawn), double-withdraw guard | Phase 3 execution | 2026-03-19 |
 
-| Stage guard: Seeding→InProgress requires bracket rows | Phase 4 execution | 2026-03-18 |
+| Stage guard: Seeding->InProgress requires bracket rows | Phase 4 execution | 2026-03-18 |
 | server_set_mmr reducer for test seeding | Phase 4 UAT | 2026-03-19 |
+| participantTeamId -> teamId in GroupStanding references | Phase 04.1 execution | 2026-03-20 |
 
 ---
 
