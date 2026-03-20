@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 04.1
-current_plan: 3 of 3
-status: executing
-last_updated: "2026-03-20T16:22:34.725Z"
+current_plan: 3 of 3 (complete)
+status: completed
+last_updated: "2026-03-20T16:34:11.620Z"
 progress:
   total_phases: 11
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Session State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 04.1
-**Current plan:** 3 of 3
-**Status:** Executing Phase 04.1
+**Current plan:** 3 of 3 (complete)
+**Status:** Phase 04.1 Complete
 
 ## Decisions
 
@@ -63,6 +63,7 @@ See: .planning/PROJECT.md
 - [Phase 04.1]: winnerTeamSide on MatchResultGame is TeamLabel (required, not optional) -- per-game winner is determined at recording time
 - [Phase 04.1]: submit_match_result reducer arg renamed winnerId->winnerUserId to avoid confusion with BracketMatch.winnerTeamId
 - [Phase 04.1]: override_match_result validates winnerId against MatchResultParticipant instead of removed player1Id/player2Id
+- [Phase 04.1]: PlayerSnapshot references retained as historical context in match-session docs (not current table)
 
 ### Quick Tasks Completed
 
@@ -96,3 +97,4 @@ See: .planning/PROJECT.md
 - 2026-03-19: Completed quick task 260318-r63 — 19 multi-column btree indexes added to composite PK tables, 11 reducer/helper files migrated from filter+find to filter([v1,v2])[0], published to maincloud, 32/32 tests pass
 - 2026-03-20: Completed 04.1-01-PLAN.md — schema definitions: MatchOutcome/MatchType enums, 10 table reworks, 2 new tables (PlayerRelationship, MatchParticipantHistory), BracketMatchDescriptor renamed
 - 2026-03-20: Completed 04.1-02-PLAN.md — reducer migration: 6 reducer/helper files updated with new column names, MatchResultParticipant-based confirmation, stub reducers, published to maincloud, 25/25 tests pass
+- 2026-03-20: Completed 04.1-03-PLAN.md — doc updates: 11 files updated with new column names + behavioral narratives (lifecycle, captain confirmation, tournament MMR timing, composite PKs, junction patterns), Phase 04.1 complete

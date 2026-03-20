@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Roster Management** - HSR account and character/lightcone ownership with server-enforced visibility (completed 2026-03-16)
 - [x] **Phase 3: Tournament System** - Tournament lifecycle, participant registration, teams, and referee assignment (completed 2026-03-17)
 - [x] **Phase 4: Bracket Generation** - Single/double elimination and group phase bracket rows with explicit FK advancement (completed 2026-03-18)
-- [ ] **Phase 04.1: Schema Normalization & Match Result Rework** - Retroactive naming cleanup and structural rework before Phase 5 (INSERTED)
+- [x] **Phase 04.1: Schema Normalization & Match Result Rework** - Retroactive naming cleanup and structural rework before Phase 5 (INSERTED) (completed 2026-03-20)
 - [ ] **Phase 5: Match Results and MMR** - Score submission, screenshot verification, ELO calculation, and leaderboard
 - [ ] **Phase 6: Anonymous Play and Player Stats** - Server-enforced anonymous mode and full player statistics tables
 - [ ] **Phase 7: Achievements and Titles** - Achievement definitions, auto-award logic, manual award, and profile titles
@@ -98,7 +98,7 @@ Plans:
 **Goal:** Normalize column naming (Blue/Red over player1/player2), rework MatchResultRecord to use MatchResultParticipant-based confirmation, add MatchType/MatchOutcome enums, restructure history tables (u32 PK, junction table), and create PlayerRelationship + MatchParticipantHistory tables before Phase 5 builds on top
 **Requirements**: NORM-01, NORM-02, NORM-03, NORM-04, NORM-05, NORM-06
 **Depends on:** Phase 4
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 04.1-01-PLAN.md — Enums (MatchOutcome, MatchType), struct removal (PlayerSnapshot), all table definition changes, 2 new tables, schema registration, BracketMatchDescriptor interface rename
@@ -226,7 +226,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 2. Roster Management | 2/2 | Complete   | 2026-03-16 |
 | 3. Tournament System | 5/5 | Complete   | 2026-03-17 |
 | 4. Bracket Generation | 3/3 | Complete   | 2026-03-18 |
-| 04.1. Schema Normalization | 2/3 | In Progress|  |
+| 04.1. Schema Normalization | 3/3 | Complete   | 2026-03-20 |
 | 5. Match Results and MMR | 0/? | Not started | - |
 | 6. Anonymous Play and Player Stats | 0/? | Not started | - |
 | 7. Achievements and Titles | 0/? | Not started | - |
