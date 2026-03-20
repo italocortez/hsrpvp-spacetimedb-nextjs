@@ -1,3 +1,12 @@
+# Git Rules
+
+- **Do NOT auto-commit code changes.** Leave all file changes unstaged so the user can review diffs in VS Code before committing. Only commit when the user explicitly asks.
+- Planning/docs files (.planning/) may be committed by GSD workflows, but code files (spacetimedb/, src/, app/, components/) must NEVER be committed without user review.
+- You are to NEVER delete .env.local
+- You are to NEVER commit .env.local
+- If you need to edit .evn.local, ask for permission
+
+---
 
 # Mandatory Skills
 
@@ -24,16 +33,6 @@ Always load the relevant skill before writing code. The skills contain project-s
 | `severity-review` | Code review at varying depth levels |
 | `uat` | Behavior spec contract, acceptance testing, per-feature specs and test verification |
 | `simplify` | Review changed code for reuse, quality, efficiency |
-
----
-
-# Git Rules
-
-- **Do NOT auto-commit code changes.** Leave all file changes unstaged so the user can review diffs in VS Code before committing. Only commit when the user explicitly asks.
-- Planning/docs files (.planning/) may be committed by GSD workflows, but code files (spacetimedb/, src/, app/, components/) must NEVER be committed without user review.
-- You are to NEVER delete .env.local
-- You are to NEVER commit .env.local
-- If you need to edit .evn.local, ask for permission
 
 ---
 
