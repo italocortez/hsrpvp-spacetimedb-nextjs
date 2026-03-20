@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Roster Management** - HSR account and character/lightcone ownership with server-enforced visibility (completed 2026-03-16)
 - [x] **Phase 3: Tournament System** - Tournament lifecycle, participant registration, teams, and referee assignment (completed 2026-03-17)
 - [x] **Phase 4: Bracket Generation** - Single/double elimination and group phase bracket rows with explicit FK advancement (completed 2026-03-18)
+- [ ] **Phase 04.1: Schema Normalization & Match Result Rework** - Retroactive naming cleanup and structural rework before Phase 5 (INSERTED)
 - [ ] **Phase 5: Match Results and MMR** - Score submission, screenshot verification, ELO calculation, and leaderboard
 - [ ] **Phase 6: Anonymous Play and Player Stats** - Server-enforced anonymous mode and full player statistics tables
 - [ ] **Phase 7: Achievements and Titles** - Achievement definitions, auto-award logic, manual award, and profile titles
@@ -92,14 +93,26 @@ Plans:
 - [ ] 04-02-PLAN.md — Bracket generation helpers (fold seeding, circle scheduling, snake distribution) and generate_bracket, seed_bracket, swap_seeds reducers
 - [ ] 04-03-PLAN.md — Bracket advancement (advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match), DQ auto-advance, architecture docs, publish + bindings
 
+### Phase 04.1: Schema Normalization & Match Result Rework (INSERTED)
+
+**Goal:** Normalize column naming (Blue/Red over player1/player2), rework MatchResultRecord to use MatchResultParticipant-based confirmation, add MatchType/MatchOutcome enums, restructure history tables (u32 PK, junction table), and create PlayerRelationship + MatchParticipantHistory tables before Phase 5 builds on top
+**Requirements**: NORM-01, NORM-02, NORM-03, NORM-04, NORM-05, NORM-06
+**Depends on:** Phase 4
+**Plans:** 1/3 plans executed
+
+Plans:
+- [ ] 04.1-01-PLAN.md — Enums (MatchOutcome, MatchType), struct removal (PlayerSnapshot), all table definition changes, 2 new tables, schema registration, BracketMatchDescriptor interface rename
+- [ ] 04.1-02-PLAN.md — All reducer/helper updates, admin.ts PK type fix, publish --clear-database, generate bindings, test updates, full test suite pass
+- [ ] 04.1-03-PLAN.md — Documentation updates: match-results, brackets, tournament, MMR, player-stats, match-session docs, skill file, codebase map
+
 ### Phase 5: Match Results and MMR
 **Goal**: Players can submit and verify match results with screenshots; validated results trigger ELO updates and bracket advancement atomically in one transaction
-**Depends on**: Phase 4
+**Depends on**: Phase 04.1
 **Requirements**: MTCH-01, MTCH-02, MTCH-03, MTCH-04, MTCH-05, MTCH-06, MTCH-07, MTCH-08, MTCH-09, MMR-01, MMR-02, MMR-03, MMR-04, MMR-05, MMR-06, MMR-07
 **Deferred from Phase 4 UAT**: Tests 9, 10, 11, 12 require MatchResultRecord creation which doesn't exist until Phase 5. Retest as part of Phase 5 UAT once match result reducers are implemented:
-  - Test 9: Advance Bracket Match (needs MatchResultRecord to set BracketMatch.winnerId)
+  - Test 9: Advance Bracket Match (needs MatchResultRecord to set BracketMatch.winnerTeamId)
   - Test 10: Submit and Advance Bracket (needs MatchResultRecord creation)
-  - Test 11: Rollback Bracket Match (needs MatchResultRecord with winnerId)
+  - Test 11: Rollback Bracket Match (needs MatchResultRecord with winnerUserId)
   - Test 12: DQ Auto-Advance (testable in isolation but full verification needs match results)
 **Success Criteria** (what must be TRUE):
   1. Both players can submit a score in the correct game-mode format (cycles for MoC/AA, score for Apocalyptic Shadow) with optional per-boss breakdown and Imgur screenshot URL
@@ -173,7 +186,7 @@ Plans:
   - Test 15: Tournament Admin Operations (override_match_result needs MatchResultRecord; dq + assistants testable but deferred for full coverage)
   - Test 17: Coach Role Management (needs lobby + members)
 **Deferred from Phase 4 UAT**:
-  - Bracket display slot order: `placeParticipantInNextMatch` uses first-empty-slot, not seed order. R2+ slots may flip vs traditional bracket convention. Frontend should sort by `TournamentTeam.seedNumber` for display, not by participant1Id/participant2Id slot position.
+  - Bracket display slot order: `placeParticipantInNextMatch` uses first-empty-slot, not seed order. R2+ slots may flip vs traditional bracket convention. Frontend should sort by `TournamentTeam.seedNumber` for display, not by team1Id/team2Id slot position.
 **Success Criteria** (what must be TRUE):
   1. A player's full XY cursor position is broadcast via reducer while their browser tab is active; the position is visible in subscriptions to all match participants, spectators, and coaches
   2. A coach role player can see cursor tracking data but calling any pick/ban reducer as a coach is rejected with an authorization error
@@ -203,7 +216,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
 
@@ -213,6 +226,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 2. Roster Management | 2/2 | Complete   | 2026-03-16 |
 | 3. Tournament System | 5/5 | Complete   | 2026-03-17 |
 | 4. Bracket Generation | 3/3 | Complete   | 2026-03-18 |
+| 04.1. Schema Normalization | 1/3 | In Progress|  |
 | 5. Match Results and MMR | 0/? | Not started | - |
 | 6. Anonymous Play and Player Stats | 0/? | Not started | - |
 | 7. Achievements and Titles | 0/? | Not started | - |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 04-bracket-generation-and-advancement
-current_plan: 04-01 complete
-status: planning
-last_updated: "2026-03-18T14:36:26.218Z"
+current_phase: 04.1
+current_plan: 2 of 3
+status: executing
+last_updated: "2026-03-20T16:11:41.674Z"
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 15
+  completed_plans: 13
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 04-bracket-generation-and-advancement
-**Current plan:** 04-01 complete
-**Status:** Ready to plan
+**Current phase:** 04.1
+**Current plan:** 2 of 3
+**Status:** Executing Phase 04.1
 
 ## Decisions
 
@@ -59,6 +59,8 @@ See: .planning/PROJECT.md
 - [Phase 04-bracket-generation-and-advancement]: Deterministic seeding hash (tournamentId * 31 + teamId) % 2147483647 for random mode — SpacetimeDB reducers must be deterministic; no Math.random()
 - [Phase 04-bracket-generation-and-advancement]: submit_and_advance_bracket re-reads bracketMatch after update for fresh state in auto-advance logic
 - [Phase 04-bracket-generation-and-advancement]: dq_participant auto-advance is inline code, not a reducer call -- keeps it atomic in one transaction
+- [Phase 04.1]: PlayerSnapshot struct KEPT in structs.ts per user decision -- will be used when history archival is implemented
+- [Phase 04.1]: winnerTeamSide on MatchResultGame is TeamLabel (required, not optional) -- per-game winner is determined at recording time
 
 ### Quick Tasks Completed
 
@@ -69,6 +71,12 @@ See: .planning/PROJECT.md
 | 260318-94t | Migrate feature docs to centralized docs/ directory | 2026-03-18 | unstaged | [260318-94t](./quick/260318-94t-migrate-feature-docs-to-centralized-docs/) |
 | 260318-r63 | Add multi-column btree indexes to 19 composite PK tables, migrate filter+find patterns | 2026-03-19 | 310f9b5 | [260318-r63](./quick/260318-r63-add-multi-column-btree-indexes-to-compos/) |
 | 260319-39z | Organize unstaged files into logical commits | 2026-03-19 | dc7eb25 | [260319-39z](./quick/260319-39z-organize-unstaged-files-into-logical-com/) |
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 04.1 inserted after Phase 04: Schema Normalization & Match Result Rework (URGENT)
 
 ## Session Log
 
@@ -84,3 +92,4 @@ See: .planning/PROJECT.md
 - 2026-03-18: Completed 04-02-PLAN.md — bracket generation algorithms: foldSeeding, circleSchedule, snakeSeedIntoGroups, single/double/group/hybrid bracket helpers, generate_bracket/seed_bracket/swap_seeds reducers
 - 2026-03-18: Completed 04-03-PLAN.md — bracket advancement: advance_bracket_match/submit_and_advance_bracket/rollback_bracket_match reducers, dq_participant auto-advance, group standings Win=2/Draw=1/Loss=0, published to maincloud
 - 2026-03-19: Completed quick task 260318-r63 — 19 multi-column btree indexes added to composite PK tables, 11 reducer/helper files migrated from filter+find to filter([v1,v2])[0], published to maincloud, 32/32 tests pass
+- 2026-03-20: Completed 04.1-01-PLAN.md — schema definitions: MatchOutcome/MatchType enums, 10 table reworks, 2 new tables (PlayerRelationship, MatchParticipantHistory), BracketMatchDescriptor renamed
