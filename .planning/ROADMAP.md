@@ -98,7 +98,7 @@ Plans:
 **Goal:** Normalize column naming (Blue/Red over player1/player2), rework MatchResultRecord to use MatchResultParticipant-based confirmation, add MatchType/MatchOutcome enums, restructure history tables (u32 PK, junction table), and create PlayerRelationship + MatchParticipantHistory tables before Phase 5 builds on top
 **Requirements**: NORM-01, NORM-02, NORM-03, NORM-04, NORM-05, NORM-06
 **Depends on:** Phase 4
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 04.1-01-PLAN.md — Enums (MatchOutcome, MatchType), struct removal (PlayerSnapshot), all table definition changes, 2 new tables, schema registration, BracketMatchDescriptor interface rename
@@ -226,7 +226,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 2. Roster Management | 2/2 | Complete   | 2026-03-16 |
 | 3. Tournament System | 5/5 | Complete   | 2026-03-17 |
 | 4. Bracket Generation | 3/3 | Complete   | 2026-03-18 |
-| 04.1. Schema Normalization | 1/3 | In Progress|  |
+| 04.1. Schema Normalization | 2/3 | In Progress|  |
 | 5. Match Results and MMR | 0/? | Not started | - |
 | 6. Anonymous Play and Player Stats | 0/? | Not started | - |
 | 7. Achievements and Titles | 0/? | Not started | - |
