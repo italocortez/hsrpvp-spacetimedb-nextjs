@@ -20,6 +20,7 @@ export { confirm_match_scores, submit_match_result, dispute_match_result } from 
 export { dq_participant, override_match_result, assign_tournament_assistant, remove_tournament_assistant, mod_promote_to_host, mod_demote_from_host } from './reducers/tournamentAdmin';
 export { generate_bracket, seed_bracket, swap_seeds } from './reducers/bracketGeneration';
 export { advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match } from './reducers/bracketAdvancement';
+export { finalize_match_result, process_tournament_mmr } from './reducers/matchFinalization';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);

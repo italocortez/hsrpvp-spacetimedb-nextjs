@@ -69,6 +69,7 @@ import DqParticipantReducer from "./dq_participant_reducer";
 import EditDraftCharacterCostReducer from "./edit_draft_character_cost_reducer";
 import EditDraftLightconeCostReducer from "./edit_draft_lightcone_cost_reducer";
 import EditDraftSynergyCostReducer from "./edit_draft_synergy_cost_reducer";
+import FinalizeMatchResultReducer from "./finalize_match_result_reducer";
 import GenerateBracketReducer from "./generate_bracket_reducer";
 import LeaveTournamentTeamReducer from "./leave_tournament_team_reducer";
 import LockCostSetReducer from "./lock_cost_set_reducer";
@@ -77,6 +78,7 @@ import MigrateRosterReducer from "./migrate_roster_reducer";
 import ModDemoteFromHostReducer from "./mod_demote_from_host_reducer";
 import ModPromoteToHostReducer from "./mod_promote_to_host_reducer";
 import OverrideMatchResultReducer from "./override_match_result_reducer";
+import ProcessTournamentMmrReducer from "./process_tournament_mmr_reducer";
 import PublishCostSetReducer from "./publish_cost_set_reducer";
 import ReclaimRefereeReducer from "./reclaim_referee_reducer";
 import RegisterForTournamentReducer from "./register_for_tournament_reducer";
@@ -935,6 +937,7 @@ const reducersSchema = __reducers(
   __reducerSchema("edit_draft_character_cost", EditDraftCharacterCostReducer),
   __reducerSchema("edit_draft_lightcone_cost", EditDraftLightconeCostReducer),
   __reducerSchema("edit_draft_synergy_cost", EditDraftSynergyCostReducer),
+  __reducerSchema("finalize_match_result", FinalizeMatchResultReducer),
   __reducerSchema("generate_bracket", GenerateBracketReducer),
   __reducerSchema("leave_tournament_team", LeaveTournamentTeamReducer),
   __reducerSchema("lock_cost_set", LockCostSetReducer),
@@ -943,6 +946,7 @@ const reducersSchema = __reducers(
   __reducerSchema("mod_demote_from_host", ModDemoteFromHostReducer),
   __reducerSchema("mod_promote_to_host", ModPromoteToHostReducer),
   __reducerSchema("override_match_result", OverrideMatchResultReducer),
+  __reducerSchema("process_tournament_mmr", ProcessTournamentMmrReducer),
   __reducerSchema("publish_cost_set", PublishCostSetReducer),
   __reducerSchema("reclaim_referee", ReclaimRefereeReducer),
   __reducerSchema("register_for_tournament", RegisterForTournamentReducer),
