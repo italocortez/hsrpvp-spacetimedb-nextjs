@@ -20,7 +20,7 @@ export default __t.row({
   get gameMode() {
     return GameMode.name("game_mode");
   },
-  matchResultId: __t.u32().name("match_result_id"),
+  matchHistoryId: __t.u32().name("match_history_id"),
   previousRating: __t.u32().name("previous_rating"),
   newRating: __t.u32().name("new_rating"),
   delta: __t.i32(),

@@ -75,12 +75,12 @@ describe('generateSingleElimBracket', () => {
 
     // BYE matches: R1 slots where one participant is undefined
     const byeMatches = result.filter(
-      m => m.roundNumber === 1 && (m.participant1Id === undefined || m.participant2Id === undefined)
+      m => m.roundNumber === 1 && (m.team1Id === undefined || m.team2Id === undefined)
     );
     expect(byeMatches.length).toBe(3); // 8 - 5 = 3 BYEs
-    // BYE matches have winnerId pre-set
+    // BYE matches have winnerTeamId pre-set
     for (const bye of byeMatches) {
-      expect(bye.winnerId).toBeDefined();
+      expect(bye.winnerTeamId).toBeDefined();
     }
   });
 
@@ -251,9 +251,9 @@ describe('generateHybridBracket', () => {
       [1, 2, 3, 4, 5, 6], 3, 3, 'Auto', 'single', 0, false, 1
     );
     for (const match of elimMatches) {
-      expect(match.participant1Id).toBeUndefined();
-      expect(match.participant2Id).toBeUndefined();
-      expect(match.winnerId).toBeUndefined();
+      expect(match.team1Id).toBeUndefined();
+      expect(match.team2Id).toBeUndefined();
+      expect(match.winnerTeamId).toBeUndefined();
     }
   });
 

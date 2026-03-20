@@ -20,6 +20,8 @@ export default __t.row({
   get teamSide() {
     return TeamLabel.name("team_side");
   },
+  isCaptain: __t.bool().name("is_captain"),
+  isConfirmed: __t.bool().name("is_confirmed"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

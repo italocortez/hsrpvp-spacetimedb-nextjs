@@ -25,8 +25,8 @@ export default __t.row({
     return BracketSide.name("bracket_side");
   },
   groupId: __t.option(__t.u32()).name("group_id"),
-  participant1Id: __t.option(__t.u32()).name("participant_1_id"),
-  participant2Id: __t.option(__t.u32()).name("participant_2_id"),
+  team1Id: __t.option(__t.u32()).name("team_1_id"),
+  team2Id: __t.option(__t.u32()).name("team_2_id"),
   nextWinnerMatchId: __t.option(__t.u32()).name("next_winner_match_id"),
   nextLoserMatchId: __t.option(__t.u32()).name("next_loser_match_id"),
   bestOf: __t.u8().name("best_of"),
@@ -37,7 +37,7 @@ export default __t.row({
   scheduledAt: __t.option(__t.timestamp()).name("scheduled_at"),
   lobbyId: __t.option(__t.u32()).name("lobby_id"),
   checkInRequired: __t.bool().name("check_in_required"),
-  winnerId: __t.option(__t.u32()).name("winner_id"),
+  winnerTeamId: __t.option(__t.u32()).name("winner_team_id"),
   get resultStatus() {
     return MatchResultStatus.name("result_status");
   },

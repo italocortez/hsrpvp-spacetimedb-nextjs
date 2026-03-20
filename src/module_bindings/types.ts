@@ -125,8 +125,8 @@ export const BracketMatch = __t.object("BracketMatch", {
     return BracketSide;
   },
   groupId: __t.option(__t.u32()),
-  participant1Id: __t.option(__t.u32()),
-  participant2Id: __t.option(__t.u32()),
+  team1Id: __t.option(__t.u32()),
+  team2Id: __t.option(__t.u32()),
   nextWinnerMatchId: __t.option(__t.u32()),
   nextLoserMatchId: __t.option(__t.u32()),
   bestOf: __t.u8(),
@@ -137,7 +137,7 @@ export const BracketMatch = __t.object("BracketMatch", {
   scheduledAt: __t.option(__t.timestamp()),
   lobbyId: __t.option(__t.u32()),
   checkInRequired: __t.bool(),
-  winnerId: __t.option(__t.u32()),
+  winnerTeamId: __t.option(__t.u32()),
   get resultStatus() {
     return MatchResultStatus;
   },
@@ -189,19 +189,6 @@ export const CharRole = __t.enum("CharRole", {
   Support: __t.unit(),
 });
 export type CharRole = __Infer<typeof CharRole>;
-
-export const CharacterStats = __t.object("CharacterStats", {
-  userId: __t.u32(),
-  characterName: __t.string(),
-  wins: __t.u32(),
-  losses: __t.u32(),
-  matchesPlayed: __t.u32(),
-  createdById: __t.u32(),
-  createdDate: __t.timestamp(),
-  lastModifiedById: __t.u32(),
-  lastModifiedDate: __t.timestamp(),
-});
-export type CharacterStats = __Infer<typeof CharacterStats>;
 
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.u32(),
@@ -363,7 +350,7 @@ export type GroupAssignmentMode = __Infer<typeof GroupAssignmentMode>;
 export const GroupStanding = __t.object("GroupStanding", {
   tournamentId: __t.u32(),
   groupId: __t.u32(),
-  participantTeamId: __t.u32(),
+  teamId: __t.u32(),
   wins: __t.u32(),
   losses: __t.u32(),
   draws: __t.u32(),
@@ -636,14 +623,27 @@ export const LobbyStage = __t.enum("LobbyStage", {
 });
 export type LobbyStage = __Infer<typeof LobbyStage>;
 
-// The tagged union or sum type for the algebraic type `MatchResult`.
-export const MatchResult = __t.enum("MatchResult", {
+// The tagged union or sum type for the algebraic type `MatchOutcome`.
+export const MatchOutcome = __t.enum("MatchOutcome", {
   BlueWins: __t.unit(),
   RedWins: __t.unit(),
   Draw: __t.unit(),
   Aborted: __t.unit(),
 });
-export type MatchResult = __Infer<typeof MatchResult>;
+export type MatchOutcome = __Infer<typeof MatchOutcome>;
+
+export const MatchParticipantHistory = __t.object("MatchParticipantHistory", {
+  userId: __t.u32(),
+  matchHistoryId: __t.u32(),
+  get teamSide() {
+    return TeamLabel;
+  },
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type MatchParticipantHistory = __Infer<typeof MatchParticipantHistory>;
 
 export const MatchResultGame = __t.object("MatchResultGame", {
   matchResultId: __t.u32(),
@@ -651,21 +651,23 @@ export const MatchResultGame = __t.object("MatchResultGame", {
   get gameMode() {
     return GameMode;
   },
-  player1ScreenshotUrl: __t.option(__t.string()),
-  player2ScreenshotUrl: __t.option(__t.string()),
-  player1CyclesUsed: __t.option(__t.u32()),
-  player2CyclesUsed: __t.option(__t.u32()),
-  player1Score: __t.option(__t.u64()),
-  player2Score: __t.option(__t.u64()),
-  player1Boss1Score: __t.option(__t.u64()),
-  player1Boss2Score: __t.option(__t.u64()),
-  player2Boss1Score: __t.option(__t.u64()),
-  player2Boss2Score: __t.option(__t.u64()),
-  winnerId: __t.option(__t.u32()),
+  teamBlueScreenshotUrl: __t.option(__t.string()),
+  teamRedScreenshotUrl: __t.option(__t.string()),
+  teamBlueCyclesUsed: __t.option(__t.u32()),
+  teamRedCyclesUsed: __t.option(__t.u32()),
+  teamBlueScore: __t.option(__t.u64()),
+  teamRedScore: __t.option(__t.u64()),
+  teamBlueBoss1Score: __t.option(__t.u64()),
+  teamBlueBoss2Score: __t.option(__t.u64()),
+  teamRedBoss1Score: __t.option(__t.u64()),
+  teamRedBoss2Score: __t.option(__t.u64()),
+  get winnerTeamSide() {
+    return TeamLabel;
+  },
   get validationStatus() {
     return ValidationStatus;
   },
-  validatedById: __t.option(__t.u32()),
+  validatedByUserId: __t.option(__t.u32()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -679,6 +681,8 @@ export const MatchResultParticipant = __t.object("MatchResultParticipant", {
   get teamSide() {
     return TeamLabel;
   },
+  isCaptain: __t.bool(),
+  isConfirmed: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -690,21 +694,19 @@ export const MatchResultRecord = __t.object("MatchResultRecord", {
   id: __t.u32(),
   bracketMatchId: __t.option(__t.u32()),
   lobbyId: __t.u32(),
-  player1Id: __t.u32(),
-  player2Id: __t.u32(),
-  isTournamentMatch: __t.bool(),
+  isTournamentControlled: __t.bool(),
   get status() {
     return MatchResultStatus;
   },
-  winnerId: __t.option(__t.u32()),
+  winnerUserId: __t.option(__t.u32()),
   mmrProcessedAt: __t.option(__t.timestamp()),
-  team1Confirmed: __t.bool(),
-  team2Confirmed: __t.bool(),
   refereeUserId: __t.option(__t.u32()),
   disputedByUserId: __t.option(__t.u32()),
   disputeReason: __t.option(__t.string()),
   tournamentId: __t.option(__t.u32()),
-  matchType: __t.u8(),
+  get matchType() {
+    return MatchType;
+  },
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -741,7 +743,7 @@ export const MatchSession = __t.object("MatchSession", {
 export type MatchSession = __Infer<typeof MatchSession>;
 
 export const MatchSessionHistory = __t.object("MatchSessionHistory", {
-  id: __t.string(),
+  id: __t.u32(),
   lobbyCode: __t.string(),
   playedAt: __t.timestamp(),
   get draftMode() {
@@ -752,17 +754,11 @@ export const MatchSessionHistory = __t.object("MatchSessionHistory", {
   },
   teamBlueAlias: __t.string(),
   teamRedAlias: __t.string(),
-  get blueTeamMembers() {
-    return __t.array(PlayerSnapshot);
-  },
-  get redTeamMembers() {
-    return __t.array(PlayerSnapshot);
-  },
   get snapshotConfig() {
     return LobbyConfigSnapshot;
   },
-  get result() {
-    return MatchResult;
+  get outcome() {
+    return MatchOutcome;
   },
   rosterBlue: __t.string(),
   rosterRed: __t.string(),
@@ -796,7 +792,7 @@ export const MatchSessionStep = __t.object("MatchSessionStep", {
 export type MatchSessionStep = __Infer<typeof MatchSessionStep>;
 
 export const MatchSessionStepHistory = __t.object("MatchSessionStepHistory", {
-  matchId: __t.string(),
+  matchHistoryId: __t.u32(),
   steps: __t.string(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
@@ -805,13 +801,21 @@ export const MatchSessionStepHistory = __t.object("MatchSessionStepHistory", {
 });
 export type MatchSessionStepHistory = __Infer<typeof MatchSessionStepHistory>;
 
+// The tagged union or sum type for the algebraic type `MatchType`.
+export const MatchType = __t.enum("MatchType", {
+  Casual: __t.unit(),
+  Ranked: __t.unit(),
+  Tournament: __t.unit(),
+});
+export type MatchType = __Infer<typeof MatchType>;
+
 export const MmrHistory = __t.object("MmrHistory", {
   id: __t.u32(),
   userId: __t.u32(),
   get gameMode() {
     return GameMode;
   },
-  matchResultId: __t.u32(),
+  matchHistoryId: __t.u32(),
   previousRating: __t.u32(),
   newRating: __t.u32(),
   delta: __t.i32(),
@@ -890,28 +894,64 @@ export const PickPayload = __t.object("PickPayload", {
 });
 export type PickPayload = __Infer<typeof PickPayload>;
 
-export const PlayerSnapshot = __t.object("PlayerSnapshot", {
+export const PlayerCharacterStat = __t.object("PlayerCharacterStat", {
   userId: __t.u32(),
-  displayName: __t.string(),
-  avatarUrl: __t.string(),
-});
-export type PlayerSnapshot = __Infer<typeof PlayerSnapshot>;
-
-export const PlayerStats = __t.object("PlayerStats", {
-  userId: __t.u32(),
-  matchesPlayed: __t.u32(),
+  characterName: __t.string(),
+  get gameMode() {
+    return GameMode;
+  },
+  get draftMode() {
+    return DraftMode;
+  },
   wins: __t.u32(),
   losses: __t.u32(),
-  draws: __t.u32(),
-  matchesSpectated: __t.u32(),
-  bestAllyUserId: __t.option(__t.u32()),
-  nemesisUserId: __t.option(__t.u32()),
+  matchesPlayed: __t.u32(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
   lastModifiedDate: __t.timestamp(),
 });
-export type PlayerStats = __Infer<typeof PlayerStats>;
+export type PlayerCharacterStat = __Infer<typeof PlayerCharacterStat>;
+
+export const PlayerRelationship = __t.object("PlayerRelationship", {
+  userId: __t.u32(),
+  otherUserId: __t.u32(),
+  get gameMode() {
+    return GameMode;
+  },
+  get draftMode() {
+    return DraftMode;
+  },
+  matchesAsAlly: __t.u32(),
+  winsAsAlly: __t.u32(),
+  matchesAsOpponent: __t.u32(),
+  winsAsOpponent: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type PlayerRelationship = __Infer<typeof PlayerRelationship>;
+
+export const PlayerStat = __t.object("PlayerStat", {
+  userId: __t.u32(),
+  get gameMode() {
+    return GameMode;
+  },
+  get draftMode() {
+    return DraftMode;
+  },
+  matchesPlayed: __t.u32(),
+  wins: __t.u32(),
+  losses: __t.u32(),
+  draws: __t.u32(),
+  matchesSpectated: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type PlayerStat = __Infer<typeof PlayerStat>;
 
 export const RecurrenceRule = __t.object("RecurrenceRule", {
   get recurrenceType() {

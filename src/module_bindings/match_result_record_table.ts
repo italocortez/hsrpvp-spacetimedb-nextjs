@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 import {
   MatchResultStatus,
+  MatchType,
 } from "./types";
 
 
@@ -18,21 +19,19 @@ export default __t.row({
   id: __t.u32().primaryKey(),
   bracketMatchId: __t.option(__t.u32()).name("bracket_match_id"),
   lobbyId: __t.u32().name("lobby_id"),
-  player1Id: __t.u32().name("player_1_id"),
-  player2Id: __t.u32().name("player_2_id"),
-  isTournamentMatch: __t.bool().name("is_tournament_match"),
+  isTournamentControlled: __t.bool().name("is_tournament_controlled"),
   get status() {
     return MatchResultStatus;
   },
-  winnerId: __t.option(__t.u32()).name("winner_id"),
+  winnerUserId: __t.option(__t.u32()).name("winner_user_id"),
   mmrProcessedAt: __t.option(__t.timestamp()).name("mmr_processed_at"),
-  team1Confirmed: __t.bool().name("team_1_confirmed"),
-  team2Confirmed: __t.bool().name("team_2_confirmed"),
   refereeUserId: __t.option(__t.u32()).name("referee_user_id"),
   disputedByUserId: __t.option(__t.u32()).name("disputed_by_user_id"),
   disputeReason: __t.option(__t.string()).name("dispute_reason"),
   tournamentId: __t.option(__t.u32()).name("tournament_id"),
-  matchType: __t.u8().name("match_type"),
+  get matchType() {
+    return MatchType.name("match_type");
+  },
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

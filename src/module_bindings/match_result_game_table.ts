@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
+  TeamLabel,
   ValidationStatus,
 } from "./types";
 
@@ -21,21 +22,23 @@ export default __t.row({
   get gameMode() {
     return GameMode.name("game_mode");
   },
-  player1ScreenshotUrl: __t.option(__t.string()).name("player_1_screenshot_url"),
-  player2ScreenshotUrl: __t.option(__t.string()).name("player_2_screenshot_url"),
-  player1CyclesUsed: __t.option(__t.u32()).name("player_1_cycles_used"),
-  player2CyclesUsed: __t.option(__t.u32()).name("player_2_cycles_used"),
-  player1Score: __t.option(__t.u64()).name("player_1_score"),
-  player2Score: __t.option(__t.u64()).name("player_2_score"),
-  player1Boss1Score: __t.option(__t.u64()).name("player_1_boss_1_score"),
-  player1Boss2Score: __t.option(__t.u64()).name("player_1_boss_2_score"),
-  player2Boss1Score: __t.option(__t.u64()).name("player_2_boss_1_score"),
-  player2Boss2Score: __t.option(__t.u64()).name("player_2_boss_2_score"),
-  winnerId: __t.option(__t.u32()).name("winner_id"),
+  teamBlueScreenshotUrl: __t.option(__t.string()).name("team_blue_screenshot_url"),
+  teamRedScreenshotUrl: __t.option(__t.string()).name("team_red_screenshot_url"),
+  teamBlueCyclesUsed: __t.option(__t.u32()).name("team_blue_cycles_used"),
+  teamRedCyclesUsed: __t.option(__t.u32()).name("team_red_cycles_used"),
+  teamBlueScore: __t.option(__t.u64()).name("team_blue_score"),
+  teamRedScore: __t.option(__t.u64()).name("team_red_score"),
+  teamBlueBoss1Score: __t.option(__t.u64()).name("team_blue_boss_1_score"),
+  teamBlueBoss2Score: __t.option(__t.u64()).name("team_blue_boss_2_score"),
+  teamRedBoss1Score: __t.option(__t.u64()).name("team_red_boss_1_score"),
+  teamRedBoss2Score: __t.option(__t.u64()).name("team_red_boss_2_score"),
+  get winnerTeamSide() {
+    return TeamLabel.name("winner_team_side");
+  },
   get validationStatus() {
     return ValidationStatus.name("validation_status");
   },
-  validatedById: __t.option(__t.u32()).name("validated_by_id"),
+  validatedByUserId: __t.option(__t.u32()).name("validated_by_user_id"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

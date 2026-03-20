@@ -12,5 +12,5 @@ import {
 
 export default {
   matchResultId: __t.u32(),
-  winnerId: __t.u32(),
+  winnerUserId: __t.u32(),
 };
