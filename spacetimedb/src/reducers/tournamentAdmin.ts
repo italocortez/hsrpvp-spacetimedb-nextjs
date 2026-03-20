@@ -54,21 +54,21 @@ export const dq_participant = spacetimedb.reducer(
                 // An "active" match is one where: the team is participant1 or participant2, AND winnerId is not set
                 const bracketMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
                 const activeMatch = bracketMatches.find((m: any) =>
-                    !m.winnerId &&
-                    (m.participant1Id === teamGroupId || m.participant2Id === teamGroupId)
+                    !m.winnerTeamId &&
+                    (m.team1Id === teamGroupId || m.team2Id === teamGroupId)
                 );
 
                 if (activeMatch) {
                     // Determine the opponent (the one who isn't DQ'd)
-                    const opponentTeamId = activeMatch.participant1Id === teamGroupId
-                        ? activeMatch.participant2Id
-                        : activeMatch.participant1Id;
+                    const opponentTeamId = activeMatch.team1Id === teamGroupId
+                        ? activeMatch.team2Id
+                        : activeMatch.team1Id;
 
                     if (opponentTeamId) {
                         // Set opponent as winner
                         ctx.db.BracketMatch.id.update({
                             ...activeMatch,
-                            winnerId: opponentTeamId,
+                            winnerTeamId: opponentTeamId,
                             resultStatus: { tag: 'Validated', value: {} } as any,
                             ...auditUpdate(ctx, activeMatch, user.id),
                         } as any);
@@ -77,16 +77,16 @@ export const dq_participant = spacetimedb.reducer(
                         if (activeMatch.nextWinnerMatchId) {
                             const nextMatch = ctx.db.BracketMatch.id.find(activeMatch.nextWinnerMatchId);
                             if (nextMatch) {
-                                if (!nextMatch.participant1Id) {
+                                if (!nextMatch.team1Id) {
                                     ctx.db.BracketMatch.id.update({
                                         ...nextMatch,
-                                        participant1Id: opponentTeamId,
+                                        team1Id: opponentTeamId,
                                         ...auditUpdate(ctx, nextMatch, user.id),
                                     } as any);
-                                } else if (!nextMatch.participant2Id) {
+                                } else if (!nextMatch.team2Id) {
                                     ctx.db.BracketMatch.id.update({
                                         ...nextMatch,
-                                        participant2Id: opponentTeamId,
+                                        team2Id: opponentTeamId,
                                         ...auditUpdate(ctx, nextMatch, user.id),
                                     } as any);
                                 }
@@ -126,7 +126,7 @@ export const override_match_result = spacetimedb.reducer(
 
         // Check permission based on whether it's a tournament match
         let actingUserId: number;
-        if (matchResult.isTournamentMatch && matchResult.tournamentId !== undefined) {
+        if (matchResult.isTournamentControlled && matchResult.tournamentId !== undefined) {
             // Tournament match: TO/assistant/mod/admin can override
             const { user } = ensureTournamentAccess(ctx, matchResult.tournamentId);
             actingUserId = user.id;
@@ -136,19 +136,23 @@ export const override_match_result = spacetimedb.reducer(
             actingUserId = user.id;
         }
 
-        // For Validated: winnerId must be player1, player2, or 0 for draw
+        // For Validated: winnerId must be a match participant or 0 for draw
         if (newStatusTag === 'Validated') {
-            if (winnerId !== 0 && winnerId !== matchResult.player1Id && winnerId !== matchResult.player2Id) {
-                throw new SenderError('Invalid winner for override: must be player1, player2, or 0 for a draw.');
+            if (winnerId !== 0) {
+                const participants = [...ctx.db.MatchResultParticipant.match_result_id.filter(matchResultId)];
+                const winnerParticipant = participants.find((p: any) => p.userId === winnerId);
+                if (!winnerParticipant) {
+                    throw new SenderError('Invalid winner for override: must be a match participant or 0 for a draw.');
+                }
             }
         }
 
         // Update the MatchResultRecord
-        // For Rejected: clear the winnerId. For Validated: set the provided winnerId.
+        // For Rejected: clear the winnerUserId. For Validated: set the provided winnerId.
         ctx.db.MatchResultRecord.id.update({
             ...matchResult,
             status: { tag: newStatusTag, value: {} } as any,
-            winnerId: newStatusTag === 'Validated' ? (winnerId !== 0 ? winnerId : undefined) : undefined,
+            winnerUserId: newStatusTag === 'Validated' ? (winnerId !== 0 ? winnerId : undefined) : undefined,
             disputeReason: reason, // Reuse disputeReason field to store override reason
             ...auditUpdate(ctx, matchResult, actingUserId),
         } as any);

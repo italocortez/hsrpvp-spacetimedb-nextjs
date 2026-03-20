@@ -112,7 +112,7 @@ export function validateSeedingToInProgress(ctx: any, tournamentId: number): voi
         m.roundNumber === 1 && m.bracketSide.tag !== 'Losers'
     );
     for (const match of firstRoundMatches) {
-        if (match.participant1Id === undefined && match.participant2Id === undefined) {
+        if (match.team1Id === undefined && match.team2Id === undefined) {
             throw new SenderError(`Match ${match.id} has no participants. Seed all bracket slots before advancing.`);
         }
     }

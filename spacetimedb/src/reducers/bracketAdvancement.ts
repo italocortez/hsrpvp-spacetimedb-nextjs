@@ -21,16 +21,16 @@ function placeParticipantInNextMatch(ctx: any, nextMatchId: number, teamId: numb
         return;
     }
 
-    if (!nextMatch.participant1Id) {
+    if (!nextMatch.team1Id) {
         ctx.db.BracketMatch.id.update({
             ...nextMatch,
-            participant1Id: teamId,
+            team1Id: teamId,
             ...auditUpdate(ctx, nextMatch, userId),
         } as any);
-    } else if (!nextMatch.participant2Id) {
+    } else if (!nextMatch.team2Id) {
         ctx.db.BracketMatch.id.update({
             ...nextMatch,
-            participant2Id: teamId,
+            team2Id: teamId,
             ...auditUpdate(ctx, nextMatch, userId),
         } as any);
     } else {
@@ -39,7 +39,7 @@ function placeParticipantInNextMatch(ctx: any, nextMatchId: number, teamId: numb
 }
 
 // ─── Internal helper: removeParticipantFromMatch ──────────────────────────────
-// Removes the slot containing teamId from a BracketMatch. Also clears winnerId if it was that team.
+// Removes the slot containing teamId from a BracketMatch. Also clears winnerTeamId if it was that team.
 
 function removeParticipantFromMatch(ctx: any, matchId: number, teamId: number, userId: number): void {
     const match = ctx.db.BracketMatch.id.find(matchId);
@@ -51,15 +51,15 @@ function removeParticipantFromMatch(ctx: any, matchId: number, teamId: number, u
     };
 
     // Clear the slot containing this teamId
-    if (match.participant1Id === teamId) {
-        updatedMatch.participant1Id = undefined;
-    } else if (match.participant2Id === teamId) {
-        updatedMatch.participant2Id = undefined;
+    if (match.team1Id === teamId) {
+        updatedMatch.team1Id = undefined;
+    } else if (match.team2Id === teamId) {
+        updatedMatch.team2Id = undefined;
     }
 
-    // Also clear winnerId if it was this team
-    if (match.winnerId === teamId) {
-        updatedMatch.winnerId = undefined;
+    // Also clear winnerTeamId if it was this team
+    if (match.winnerTeamId === teamId) {
+        updatedMatch.winnerTeamId = undefined;
     }
 
     ctx.db.BracketMatch.id.update(updatedMatch as any);
@@ -75,16 +75,16 @@ function updateGroupStandings(ctx: any, bracketMatch: any, userId: number): void
 
     const tournamentStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
     const standing1 = tournamentStandings
-        .find((row: any) => row.groupId === groupId && row.participantTeamId === bracketMatch.participant1Id);
+        .find((row: any) => row.groupId === groupId && row.teamId === bracketMatch.team1Id);
     const standing2 = tournamentStandings
-        .find((row: any) => row.groupId === groupId && row.participantTeamId === bracketMatch.participant2Id);
+        .find((row: any) => row.groupId === groupId && row.teamId === bracketMatch.team2Id);
 
     if (!standing1 || !standing2) return;
 
     let updated1: any;
     let updated2: any;
 
-    if (bracketMatch.winnerId === undefined) {
+    if (bracketMatch.winnerTeamId === undefined) {
         // Draw: both get draws+1, points+1
         updated1 = {
             ...standing1,
@@ -98,8 +98,8 @@ function updateGroupStandings(ctx: any, bracketMatch: any, userId: number): void
             points: standing2.points + DRAW_POINTS,
             ...auditUpdate(ctx, standing2, userId),
         };
-    } else if (bracketMatch.winnerId === bracketMatch.participant1Id) {
-        // Participant1 wins
+    } else if (bracketMatch.winnerTeamId === bracketMatch.team1Id) {
+        // Team1 wins
         updated1 = {
             ...standing1,
             wins: standing1.wins + 1,
@@ -112,7 +112,7 @@ function updateGroupStandings(ctx: any, bracketMatch: any, userId: number): void
             ...auditUpdate(ctx, standing2, userId),
         };
     } else {
-        // Participant2 wins
+        // Team2 wins
         updated1 = {
             ...standing1,
             losses: standing1.losses + 1,
@@ -143,16 +143,16 @@ function reverseGroupStandings(ctx: any, bracketMatch: any, userId: number): voi
 
     const tournamentStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
     const standing1 = tournamentStandings
-        .find((row: any) => row.groupId === groupId && row.participantTeamId === bracketMatch.participant1Id);
+        .find((row: any) => row.groupId === groupId && row.teamId === bracketMatch.team1Id);
     const standing2 = tournamentStandings
-        .find((row: any) => row.groupId === groupId && row.participantTeamId === bracketMatch.participant2Id);
+        .find((row: any) => row.groupId === groupId && row.teamId === bracketMatch.team2Id);
 
     if (!standing1 || !standing2) return;
 
     let updated1: any;
     let updated2: any;
 
-    if (bracketMatch.winnerId === undefined) {
+    if (bracketMatch.winnerTeamId === undefined) {
         // Was a draw: reverse draws+1 and points+1 for both
         updated1 = {
             ...standing1,
@@ -166,8 +166,8 @@ function reverseGroupStandings(ctx: any, bracketMatch: any, userId: number): voi
             points: Math.max(0, standing2.points - DRAW_POINTS),
             ...auditUpdate(ctx, standing2, userId),
         };
-    } else if (bracketMatch.winnerId === bracketMatch.participant1Id) {
-        // Was participant1 win: reverse
+    } else if (bracketMatch.winnerTeamId === bracketMatch.team1Id) {
+        // Was team1 win: reverse
         updated1 = {
             ...standing1,
             wins: Math.max(0, standing1.wins - 1),
@@ -180,7 +180,7 @@ function reverseGroupStandings(ctx: any, bracketMatch: any, userId: number): voi
             ...auditUpdate(ctx, standing2, userId),
         };
     } else {
-        // Was participant2 win: reverse
+        // Was team2 win: reverse
         updated1 = {
             ...standing1,
             losses: Math.max(0, standing1.losses - 1),
@@ -225,36 +225,36 @@ export const advance_bracket_match = spacetimedb.reducer(
         }
 
         // Verify winner is set
-        if (bracketMatch.winnerId === undefined) {
+        if (bracketMatch.winnerTeamId === undefined) {
             throw new SenderError('No winner set on this bracket match. Submit a result first.');
         }
 
         // Place winner in nextWinnerMatchId slot (if exists)
         if (bracketMatch.nextWinnerMatchId) {
-            placeParticipantInNextMatch(ctx, bracketMatch.nextWinnerMatchId, bracketMatch.winnerId, user.id);
+            placeParticipantInNextMatch(ctx, bracketMatch.nextWinnerMatchId, bracketMatch.winnerTeamId, user.id);
         }
 
         // Route loser to nextLoserMatchId (for double elim, 3rd place)
         if (bracketMatch.nextLoserMatchId) {
-            const loserId = bracketMatch.participant1Id === bracketMatch.winnerId
-                ? bracketMatch.participant2Id
-                : bracketMatch.participant1Id;
+            const loserId = bracketMatch.team1Id === bracketMatch.winnerTeamId
+                ? bracketMatch.team2Id
+                : bracketMatch.team1Id;
             if (loserId) {
                 placeParticipantInNextMatch(ctx, bracketMatch.nextLoserMatchId, loserId, user.id);
             }
         }
 
         // Update group standings if this is a group match
-        if (bracketMatch.bracketSide.tag === 'Group' && bracketMatch.participant1Id && bracketMatch.participant2Id) {
+        if (bracketMatch.bracketSide.tag === 'Group' && bracketMatch.team1Id && bracketMatch.team2Id) {
             updateGroupStandings(ctx, bracketMatch, user.id);
         }
 
-        console.log(`[BRACKET] Bracket match #${bracketMatchId} advanced: winner team #${bracketMatch.winnerId}`);
+        console.log(`[BRACKET] Bracket match #${bracketMatchId} advanced: winner team #${bracketMatch.winnerTeamId}`);
     }
 );
 
 // ─── submit_and_advance_bracket ───────────────────────────────────────────────
-// Wrapper reducer for tournament bracket matches. Maps winnerId (userId) to teamId
+// Wrapper reducer for tournament bracket matches. Maps winnerUserId (userId) to teamId
 // and auto-advances in one transaction. Frontend calls this for tournament matches
 // instead of submit_match_result directly.
 // Permission: Authenticated user (referee/TO authority validated inline).
@@ -277,8 +277,8 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
             throw new SenderError('Not a bracket match -- use submit_match_result for non-tournament matches.');
         }
 
-        // Verify it has winnerId set (userId)
-        if (matchResult.winnerId === undefined) {
+        // Verify it has winnerUserId set (userId)
+        if (matchResult.winnerUserId === undefined) {
             throw new SenderError('No winner on match result. Submit scores first.');
         }
 
@@ -296,20 +296,20 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
             throw new SenderError('Bracket advancement is only allowed during InProgress stage.');
         }
 
-        // Map winnerId (userId) to teamId via TournamentParticipant
-        const winnerParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([matchResult.tournamentId, matchResult.winnerId])][0];
+        // Map winnerUserId (userId) to teamId via TournamentParticipant
+        const winnerParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([matchResult.tournamentId, matchResult.winnerUserId])][0];
         if (!winnerParticipant || !winnerParticipant.teamGroupId) {
             throw new SenderError('Winner participant or team not found in tournament.');
         }
         const winnerTeamId = winnerParticipant.teamGroupId;
 
-        // Find the BracketMatch and set winnerId to winnerTeamId
+        // Find the BracketMatch and set winnerTeamId
         const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
         if (!bracketMatch) throw new SenderError('Bracket match not found.');
 
         ctx.db.BracketMatch.id.update({
             ...bracketMatch,
-            winnerId: winnerTeamId,
+            winnerTeamId: winnerTeamId,
             resultStatus: { tag: 'Validated', value: {} } as any,
             ...auditUpdate(ctx, bracketMatch, user.id),
         } as any);
@@ -327,9 +327,9 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
 
             // Route loser to nextLoserMatchId
             if (updatedBracketMatch.nextLoserMatchId) {
-                const loserId = updatedBracketMatch.participant1Id === winnerTeamId
-                    ? updatedBracketMatch.participant2Id
-                    : updatedBracketMatch.participant1Id;
+                const loserId = updatedBracketMatch.team1Id === winnerTeamId
+                    ? updatedBracketMatch.team2Id
+                    : updatedBracketMatch.team1Id;
                 if (loserId) {
                     placeParticipantInNextMatch(ctx, updatedBracketMatch.nextLoserMatchId, loserId, user.id);
                 }
@@ -337,8 +337,8 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
 
             // Update group standings if group match
             if (updatedBracketMatch.bracketSide.tag === 'Group' &&
-                updatedBracketMatch.participant1Id &&
-                updatedBracketMatch.participant2Id) {
+                updatedBracketMatch.team1Id &&
+                updatedBracketMatch.team2Id) {
                 updateGroupStandings(ctx, updatedBracketMatch, user.id);
             }
         }
@@ -348,7 +348,7 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
 );
 
 // ─── rollback_bracket_match ───────────────────────────────────────────────────
-// Reverses one step of bracket advancement. Clears winnerId, removes winner/loser
+// Reverses one step of bracket advancement. Clears winnerTeamId, removes winner/loser
 // from next matches. Blocks if mmrProcessedAt is set on MatchResultRecord.
 // Permission: Tournament Access (TO/assistant/mod/admin).
 
@@ -370,7 +370,7 @@ export const rollback_bracket_match = spacetimedb.reducer(
         }
 
         // Verify there is a winner to rollback
-        if (bracketMatch.winnerId === undefined) {
+        if (bracketMatch.winnerTeamId === undefined) {
             throw new SenderError('No winner to rollback.');
         }
 
@@ -383,7 +383,7 @@ export const rollback_bracket_match = spacetimedb.reducer(
             }
         }
 
-        const winnerId = bracketMatch.winnerId;
+        const winnerId = bracketMatch.winnerTeamId;
 
         // Reverse advancement — remove winner from next winner match
         if (bracketMatch.nextWinnerMatchId) {
@@ -392,16 +392,16 @@ export const rollback_bracket_match = spacetimedb.reducer(
 
         // Reverse loser routing — remove loser from losers bracket next match
         if (bracketMatch.nextLoserMatchId) {
-            const loserId = bracketMatch.participant1Id === winnerId
-                ? bracketMatch.participant2Id
-                : bracketMatch.participant1Id;
+            const loserId = bracketMatch.team1Id === winnerId
+                ? bracketMatch.team2Id
+                : bracketMatch.team1Id;
             if (loserId) {
                 removeParticipantFromMatch(ctx, bracketMatch.nextLoserMatchId, loserId, user.id);
             }
         }
 
         // Reverse group standings if group match
-        if (bracketMatch.bracketSide.tag === 'Group' && bracketMatch.participant1Id && bracketMatch.participant2Id) {
+        if (bracketMatch.bracketSide.tag === 'Group' && bracketMatch.team1Id && bracketMatch.team2Id) {
             reverseGroupStandings(ctx, bracketMatch, user.id);
         }
 
@@ -409,10 +409,10 @@ export const rollback_bracket_match = spacetimedb.reducer(
         const currentBracketMatch = ctx.db.BracketMatch.id.find(bracketMatchId);
         if (!currentBracketMatch) throw new SenderError('Bracket match not found after reversal.');
 
-        // Clear winnerId and reset resultStatus to Pending
+        // Clear winnerTeamId and reset resultStatus to Pending
         ctx.db.BracketMatch.id.update({
             ...currentBracketMatch,
-            winnerId: undefined,
+            winnerTeamId: undefined,
             resultStatus: { tag: 'Pending', value: {} } as any,
             ...auditUpdate(ctx, currentBracketMatch, user.id),
         } as any);

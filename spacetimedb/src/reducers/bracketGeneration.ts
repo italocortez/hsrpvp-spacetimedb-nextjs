@@ -34,8 +34,8 @@ function insertBracketMatches(
             matchNumber: desc.matchNumber,
             bracketSide: { tag: desc.bracketSide, value: {} } as any,
             groupId: desc.groupId,
-            participant1Id: desc.participant1Id,
-            participant2Id: desc.participant2Id,
+            team1Id: desc.team1Id,
+            team2Id: desc.team2Id,
             nextWinnerMatchId: undefined,
             nextLoserMatchId: undefined,
             bestOf: desc.bestOf,
@@ -44,8 +44,8 @@ function insertBracketMatches(
             scheduledAt: undefined,
             lobbyId: undefined,
             checkInRequired: tournament.checkInEnabled,
-            winnerId: desc.winnerId,
-            resultStatus: desc.winnerId
+            winnerTeamId: desc.winnerTeamId,
+            resultStatus: desc.winnerTeamId
                 ? { tag: 'Validated', value: {} } as any
                 : { tag: 'Pending', value: {} } as any,
             ...auditInsert(ctx, userId),
@@ -79,7 +79,7 @@ function insertBracketMatches(
     // Pass 3: Auto-advance BYE matches
     // BYE matches have winnerId set but need to place the winner in the next match
     for (const desc of descriptors) {
-        if (desc.winnerId && desc.nextWinnerRef) {
+        if (desc.winnerTeamId && desc.nextWinnerRef) {
             const matchId = idMap.get(desc.positionKey);
             const nextMatchId = idMap.get(desc.nextWinnerRef);
             if (!matchId || !nextMatchId) continue;
@@ -88,17 +88,17 @@ function insertBracketMatches(
             if (!nextMatch) continue;
 
             // Place BYE winner in the appropriate slot of the next match
-            if (!nextMatch.participant1Id) {
+            if (!nextMatch.team1Id) {
                 ctx.db.BracketMatch.id.update({
                     ...nextMatch,
-                    participant1Id: desc.winnerId,
+                    team1Id: desc.winnerTeamId,
                     lastModifiedById: userId,
                     lastModifiedDate: ctx.timestamp,
                 } as any);
-            } else if (!nextMatch.participant2Id) {
+            } else if (!nextMatch.team2Id) {
                 ctx.db.BracketMatch.id.update({
                     ...nextMatch,
-                    participant2Id: desc.winnerId,
+                    team2Id: desc.winnerTeamId,
                     lastModifiedById: userId,
                     lastModifiedDate: ctx.timestamp,
                 } as any);
@@ -121,7 +121,7 @@ function insertGroupStandings(
             ctx.db.GroupStanding.insert({
                 tournamentId,
                 groupId,
-                participantTeamId: teamId,
+                teamId: teamId,
                 wins: 0,
                 losses: 0,
                 draws: 0,
@@ -154,7 +154,7 @@ export const generate_bracket = spacetimedb.reducer(
             (ctx.db.GroupStanding as any).primaryKey.delete({
                 tournamentId: gs.tournamentId,
                 groupId: gs.groupId,
-                participantTeamId: gs.participantTeamId,
+                teamId: gs.teamId,
             });
         }
 

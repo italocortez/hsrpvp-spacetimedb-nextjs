@@ -4,8 +4,8 @@ import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermission
 import { auditUpdate } from '../helpers/auditColumns';
 
 // ─── confirm_match_scores ─────────────────────────────────────────────────────
-// Allows a match participant to confirm their team's scores.
-// Permission: authenticated match participant (player1 or player2).
+// Allows a match participant's team captain to confirm their team's scores.
+// Permission: authenticated match participant who is a captain.
 
 export const confirm_match_scores = spacetimedb.reducer(
     {
@@ -25,22 +25,24 @@ export const confirm_match_scores = spacetimedb.reducer(
             throw new SenderError('Scores can only be confirmed when the match is in Pending status.');
         }
 
-        // Determine which team the caller is on and set the corresponding confirmed flag
-        if (user.id === matchResult.player1Id) {
-            ctx.db.MatchResultRecord.id.update({
-                ...matchResult,
-                team1Confirmed: true,
-                ...auditUpdate(ctx, matchResult, user.id),
-            } as any);
-        } else if (user.id === matchResult.player2Id) {
-            ctx.db.MatchResultRecord.id.update({
-                ...matchResult,
-                team2Confirmed: true,
-                ...auditUpdate(ctx, matchResult, user.id),
-            } as any);
-        } else {
+        // Look up MatchResultParticipant by [matchResultId, userId]
+        const participant = [...ctx.db.MatchResultParticipant.by_result_and_user.filter([matchResultId, user.id])][0];
+        if (!participant) {
             throw new SenderError('You are not a participant of this match.');
         }
+
+        // Only captains can confirm
+        if (!participant.isCaptain) {
+            throw new SenderError('Only the team captain can confirm match scores.');
+        }
+
+        // Update isConfirmed using delete+insert (composite PK pattern)
+        ctx.db.MatchResultParticipant.delete(participant);
+        ctx.db.MatchResultParticipant.insert({
+            ...participant,
+            isConfirmed: true,
+            ...auditUpdate(ctx, participant, user.id),
+        } as any);
 
         console.log(`[MATCH] Player #${user.id} confirmed scores for match result #${matchResultId}`);
     }
@@ -49,14 +51,14 @@ export const confirm_match_scores = spacetimedb.reducer(
 // ─── submit_match_result ──────────────────────────────────────────────────────
 // Submits the final match result with a winner.
 // Permission: lobby referee OR Moderator/Admin (for tournament matches also the TO/assistant).
-// Requires: both teams must have confirmed scores first.
+// Requires: all team captains must have confirmed scores first.
 
 export const submit_match_result = spacetimedb.reducer(
     {
         matchResultId: t.u32(),
-        winnerId: t.u32(),
+        winnerUserId: t.u32(),
     },
-    (ctx, { matchResultId, winnerId }) => {
+    (ctx, { matchResultId, winnerUserId }) => {
         const user = getAuthenticatedUser(ctx);
 
         // Find the MatchResultRecord
@@ -70,14 +72,23 @@ export const submit_match_result = spacetimedb.reducer(
             throw new SenderError('Match result can only be submitted when in Pending status.');
         }
 
-        // Validate both teams have confirmed
-        if (!matchResult.team1Confirmed || !matchResult.team2Confirmed) {
-            throw new SenderError('Both teams must confirm scores before submission.');
+        // Check all captain participants have confirmed
+        const participants = [...ctx.db.MatchResultParticipant.match_result_id.filter(matchResultId)];
+        const captains = participants.filter((p: any) => p.isCaptain);
+        if (captains.length === 0) {
+            throw new SenderError('No captain participants found for this match.');
+        }
+        const allConfirmed = captains.every((p: any) => p.isConfirmed);
+        if (!allConfirmed) {
+            throw new SenderError('All team captains must confirm scores before submission.');
         }
 
-        // Validate winnerId is a valid participant (or 0 for draw)
-        if (winnerId !== 0 && winnerId !== matchResult.player1Id && winnerId !== matchResult.player2Id) {
-            throw new SenderError('Invalid winner: must be player1, player2, or 0 for a draw.');
+        // Validate winnerUserId is a valid participant (or 0 for draw)
+        if (winnerUserId !== 0) {
+            const winnerParticipant = participants.find((p: any) => p.userId === winnerUserId);
+            if (!winnerParticipant) {
+                throw new SenderError('Invalid winner: must be a match participant or 0 for a draw.');
+            }
         }
 
         // Validate caller has referee authority:
@@ -95,7 +106,7 @@ export const submit_match_result = spacetimedb.reducer(
         }
 
         // 3. For tournament matches, also check tournament access (TO/assistant)
-        if (!hasAuthority && matchResult.isTournamentMatch && matchResult.tournamentId !== undefined) {
+        if (!hasAuthority && matchResult.isTournamentControlled && matchResult.tournamentId !== undefined) {
             const tournament = ctx.db.Tournament.id.find(matchResult.tournamentId);
             if (tournament && tournament.organizerId === user.id) {
                 hasAuthority = true;
@@ -118,18 +129,18 @@ export const submit_match_result = spacetimedb.reducer(
         ctx.db.MatchResultRecord.id.update({
             ...matchResult,
             status: { tag: 'Submitted', value: {} } as any,
-            winnerId: winnerId !== 0 ? winnerId : undefined,
+            winnerUserId: winnerUserId !== 0 ? winnerUserId : undefined,
             refereeUserId: user.id,
             ...auditUpdate(ctx, matchResult, user.id),
         } as any);
 
-        console.log(`[MATCH] Match result #${matchResultId} submitted by user #${user.id}, winner: #${winnerId}`);
+        console.log(`[MATCH] Match result #${matchResultId} submitted by user #${user.id}, winner: #${winnerUserId}`);
     }
 );
 
 // ─── dispute_match_result ─────────────────────────────────────────────────────
 // Allows a match participant to dispute the submitted result.
-// Permission: match participant (player1 or player2).
+// Permission: match participant.
 // Constraints: status must be Submitted, only one dispute per match.
 
 export const dispute_match_result = spacetimedb.reducer(
@@ -151,8 +162,9 @@ export const dispute_match_result = spacetimedb.reducer(
             throw new SenderError('A match result can only be disputed after it has been submitted.');
         }
 
-        // Validate caller is a match participant
-        if (user.id !== matchResult.player1Id && user.id !== matchResult.player2Id) {
+        // Validate caller is a match participant via MatchResultParticipant
+        const participant = [...ctx.db.MatchResultParticipant.by_result_and_user.filter([matchResultId, user.id])][0];
+        if (!participant) {
             throw new SenderError('You are not a participant of this match.');
         }
 
