@@ -334,7 +334,7 @@ spacetime call <name> <reducer_name> [args...]     # Call a reducer
 | `groupSize` | `group_size` |
 | `autoAdvanceBracket` | `auto_advance_bracket` |
 | `has3rdPlaceMatch` | `has_3_rd_place_match` (not `has_3rd_place_match`) |
-| `participantTeamId` | `participant_team_id` |
+| `teamId` | `team_id` |
 
 **When in doubt, use `SELECT * FROM table LIMIT 1`** to see the actual column names before writing filtered queries.
 

@@ -20,15 +20,15 @@ Browser
               │
               ▼
 SpacetimeDB Module (spacetimedb/src/)
-  ├─ schema.ts          — registers all 38 tables
+  ├─ schema.ts          — registers all 41 tables
   ├─ index.ts           — exports reducers, clientConnected/clientDisconnected hooks
-  ├─ tables/            — 38 table definitions
+  ├─ tables/            — 41 table definitions
   ├─ reducers/          — 5 reducer files (auth, profile, server, admin, cursor, userDeletion)
   ├─ helpers/           — auditColumns, ensurePermissions
   └─ types/             — enums.ts (27 enums), structs.ts (14 struct types)
 ```
 
-## Database Schema (38 tables)
+## Database Schema (41 tables)
 
 **User/Auth (3):** User, UserIdentity, ServerIdentity
 **Static Game Data (3):** HsrCharacter, HsrLightcone
@@ -36,13 +36,13 @@ SpacetimeDB Module (spacetimedb/src/)
 **Roster Management (3):** HsrAccount, HsrAccountCharacter, HsrAccountLightcone
 **Lobby System (3):** Lobby, LobbyMember, LobbyCursorEvent
 **Active Game (2):** MatchSession, MatchSessionStep
-**History (2):** MatchSessionHistory, MatchSessionStepHistory
+**History (3):** MatchSessionHistory, MatchSessionStepHistory, MatchParticipantHistory
 **Tournament (3):** Tournament, TournamentParticipant, TournamentAssistant
 **Teams (3):** Team, TeamMember, TeamInvite
 **Brackets (2):** BracketMatch, GroupStanding
-**Match Results (2):** MatchResultRecord, MatchResultGame
+**Match Results (3):** MatchResultRecord, MatchResultParticipant, MatchResultGame
 **MMR (2):** MmrRating, MmrHistory
-**Player Stats (2):** PlayerStats, CharacterStats
+**Player Stats (3):** PlayerStat, PlayerCharacterStat, PlayerRelationship
 **Achievements (2):** Achievement, UserAchievement
 **Calendar (4):** AvailabilitySlot, SavedCalendar, CalendarEvent, CalendarEventInvite
 **Chat (1):** ChatMessage
