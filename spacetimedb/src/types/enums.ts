@@ -70,11 +70,17 @@ export const TeamLabel = t.enum('TeamLabel', {
     Red: t.unit(),
 });
 
-export const MatchResult = t.enum('MatchResult', {
+export const MatchOutcome = t.enum('MatchOutcome', {
     BlueWins: t.unit(),
     RedWins: t.unit(),
     Draw: t.unit(),
     Aborted: t.unit(),
+});
+
+export const MatchType = t.enum('MatchType', {
+    Casual: t.unit(),
+    Ranked: t.unit(),
+    Tournament: t.unit(),
 });
 
 export const ActionType = t.enum('ActionType', {
