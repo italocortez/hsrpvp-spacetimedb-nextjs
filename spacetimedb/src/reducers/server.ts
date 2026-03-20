@@ -257,7 +257,7 @@ export const server_set_mmr = spacetimedb.reducer({
         throw new SenderError(`User #${userId} not found`);
     }
 
-    const validModes = ['MemoryOfChaos', 'ApocalypticShadow'];
+    const validModes = ['MemoryOfChaos', 'ApocalypticShadow', 'AnomalyArbitration'];
     if (!validModes.includes(gameMode)) {
         throw new SenderError(`Invalid gameMode "${gameMode}". Must be one of: ${validModes.join(', ')}`);
     }

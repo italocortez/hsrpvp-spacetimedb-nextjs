@@ -13,10 +13,12 @@
 
 import { DbConnection } from '@/src/module_bindings';
 
-// Default to maincloud, overridable via env
-const SPACETIMEDB_URI = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-const SPACETIMEDB_DB = process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1';
-const SERVER_TOKEN = process.env.SPACETIMEDB_SERVER_TOKEN || '';
+// Default to maincloud, overridable via env.
+// Read lazily via getters so standalone scripts can parse .env.local
+// before first use (static imports evaluate before top-level side effects).
+function getUri() { return process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com'; }
+function getDb() { return process.env.SPACETIMEDB_DB || process.env.SPACETIMEDB_DB_NAME || process.env.PUBLIC_SPACETIMEDB_DB_NAME || 'hsrpvp-spacetimedb-nextjs-test1'; }
+function getServerToken() { return process.env.SPACETIMEDB_SERVER_TOKEN || ''; }
 
 export interface TestHarness {
   conn: DbConnection;
@@ -32,7 +34,7 @@ export interface TestHarness {
 
 /** Check if a server token is available for verified user tests */
 export function hasServerToken(): boolean {
-  return SERVER_TOKEN.length > 0;
+  return getServerToken().length > 0;
 }
 
 /**
@@ -63,8 +65,8 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
     const timeout = setTimeout(() => reject(new Error('Connection timeout (15s)')), 15000);
 
     const builder = DbConnection.builder()
-      .withUri(SPACETIMEDB_URI)
-      .withDatabaseName(SPACETIMEDB_DB);
+      .withUri(getUri())
+      .withDatabaseName(getDb());
 
     builder
       .onConnect(async (connInner, identity, _token) => {
@@ -75,7 +77,7 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
         // Login as guest first
         await connInner.reducers.loginAsGuest({});
 
-        if (opts.verify && SERVER_TOKEN) {
+        if (opts.verify && getServerToken()) {
           // Create a second connection with the server token to call server_link_discord
           await verifyUserViaServerConnection(identityHex);
           // Re-login to refresh the user data in subscription cache
@@ -130,9 +132,9 @@ function verifyUserViaServerConnection(targetIdentityHex: string): Promise<void>
     const testDiscordId = `test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     DbConnection.builder()
-      .withUri(SPACETIMEDB_URI)
-      .withDatabaseName(SPACETIMEDB_DB)
-      .withToken(SERVER_TOKEN)
+      .withUri(getUri())
+      .withDatabaseName(getDb())
+      .withToken(getServerToken())
       .onConnect(async (serverConn) => {
         try {
           await serverConn.reducers.serverLinkDiscord({
