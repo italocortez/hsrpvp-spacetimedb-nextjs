@@ -45,14 +45,16 @@ import { GroupStanding } from './tables/groupStanding';
 import { MatchResultRecord } from './tables/matchResult';
 import { MatchResultGame } from './tables/matchResultGame';
 import { MatchResultParticipant } from './tables/matchResultParticipant';
+import { PlayerRelationship } from './tables/playerRelationship';
+import { MatchParticipantHistory } from './tables/matchParticipantHistory';
 
 // MMR
 import { MmrRating } from './tables/mmrRating';
 import { MmrHistory } from './tables/mmrHistory';
 
 // Player Stats
-import { PlayerStats } from './tables/playerStats';
-import { CharacterStats } from './tables/characterStats';
+import { PlayerStat } from './tables/playerStats';
+import { PlayerCharacterStat } from './tables/characterStats';
 
 // Achievements
 import { Achievement } from './tables/achievement';
@@ -136,14 +138,15 @@ const spacetimedb = schema({
     MatchResultRecord,
     MatchResultGame,
     MatchResultParticipant,
+    PlayerRelationship,
 
     // MMR
     MmrRating,
     MmrHistory,
 
     // Player Stats
-    PlayerStats,
-    CharacterStats,
+    PlayerStat,
+    PlayerCharacterStat,
 
     // Achievements
     Achievement,
@@ -171,6 +174,7 @@ const spacetimedb = schema({
     // History
     MatchSessionHistory,
     MatchSessionStepHistory,
+    MatchParticipantHistory,
 
     // Scheduled Jobs
     UserDeletionJob,

@@ -1,23 +1,19 @@
 import { table, t } from 'spacetimedb/server';
-import { MatchResultStatus } from '../types/enums';
+import { MatchResultStatus, MatchType } from '../types/enums';
 
 export const matchResultColumns = {
     id: t.u32().primaryKey().autoInc(),
     bracketMatchId: t.u32().optional(),
     lobbyId: t.u32(),
-    player1Id: t.u32(),
-    player2Id: t.u32(),
-    isTournamentMatch: t.bool(),
+    isTournamentControlled: t.bool(),
     status: MatchResultStatus,
-    winnerId: t.u32().optional(),
+    winnerUserId: t.u32().optional(),
     mmrProcessedAt: t.timestamp().optional(),
-    team1Confirmed: t.bool(),
-    team2Confirmed: t.bool(),
     refereeUserId: t.u32().optional(),
     disputedByUserId: t.u32().optional(),
     disputeReason: t.string().optional(),
     tournamentId: t.u32().optional(),
-    matchType: t.u8(),
+    matchType: MatchType,
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
@@ -29,8 +25,6 @@ export const MatchResultRecord = table({
     public: true,
     indexes: [
         { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
-        { accessor: 'player_1_id', algorithm: 'btree', columns: ['player1Id'] },
-        { accessor: 'player_2_id', algorithm: 'btree', columns: ['player2Id'] },
         { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
     ],
 }, matchResultColumns);

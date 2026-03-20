@@ -3,7 +3,7 @@ import { table, t } from 'spacetimedb/server';
 export const groupStandingColumns = {
     tournamentId: t.u32(),
     groupId: t.u32(),
-    participantTeamId: t.u32(),
+    teamId: t.u32(),
     wins: t.u32(),
     losses: t.u32(),
     draws: t.u32(),
@@ -17,9 +17,9 @@ export const groupStandingColumns = {
 export const GroupStanding = table({
     name: 'group_standing',
     public: true,
-    primaryKey: ['tournamentId', 'groupId', 'participantTeamId'],
+    primaryKey: ['tournamentId', 'groupId', 'teamId'],
     indexes: [
         { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
-        { accessor: 'by_tournament_group_and_team', algorithm: 'btree', columns: ['tournamentId', 'groupId', 'participantTeamId'] },
+        { accessor: 'by_tournament_group_and_team', algorithm: 'btree', columns: ['tournamentId', 'groupId', 'teamId'] },
     ],
 }, groupStandingColumns);

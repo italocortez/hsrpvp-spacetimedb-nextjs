@@ -1,8 +1,11 @@
 import { table, t } from 'spacetimedb/server';
+import { GameMode, DraftMode } from '../types/enums';
 
-export const characterStatsColumns = {
+export const playerCharacterStatColumns = {
     userId: t.u32(),
     characterName: t.string(),
+    gameMode: GameMode,
+    draftMode: DraftMode,
     wins: t.u32(),
     losses: t.u32(),
     matchesPlayed: t.u32(),
@@ -12,12 +15,12 @@ export const characterStatsColumns = {
     lastModifiedDate: t.timestamp(),
 };
 
-export const CharacterStats = table({
-    name: 'character_stats',
+export const PlayerCharacterStat = table({
+    name: 'player_character_stat',
     public: true,
-    primaryKey: ['userId', 'characterName'],
+    primaryKey: ['userId', 'characterName', 'gameMode', 'draftMode'],
     indexes: [
-        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
-        { accessor: 'by_user_and_character', algorithm: 'btree', columns: ['userId', 'characterName'] },
+        { accessor: 'by_user', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'by_user_and_character_mode_draft', algorithm: 'btree', columns: ['userId', 'characterName', 'gameMode', 'draftMode'] },
     ],
-}, characterStatsColumns);
+}, playerCharacterStatColumns);

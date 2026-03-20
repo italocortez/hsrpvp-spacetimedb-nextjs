@@ -11,11 +11,11 @@ export interface BracketMatchDescriptor {
     matchNumber: number;
     bracketSide: string;        // 'Winners' | 'Losers' | 'GrandFinals' | 'ThirdPlace' | 'Group'
     groupId?: number;
-    participant1Id?: number;    // TournamentTeam.id
-    participant2Id?: number;    // TournamentTeam.id
+    team1Id?: number;           // TournamentTeam.id
+    team2Id?: number;           // TournamentTeam.id
     bestOf: number;
     winnerAdvantage: number;
-    winnerId?: number;          // Pre-set for BYE matches
+    winnerTeamId?: number;      // Pre-set for BYE matches
     // Position-based references for FK wiring (resolved to real IDs by reducer):
     positionKey: string;        // Unique key like "W-R1-M1" (bracket side initial + round + match)
     nextWinnerRef?: string;     // positionKey of match winner advances to
@@ -64,7 +64,7 @@ export function foldSeeding(bracketSize: number): number[][] {
 /**
  * Generates match descriptors for a single elimination bracket.
  * teamIds: sorted by seed (index 0 = seed 1). Length can be any number >= 2.
- * BYE matches have winnerId pre-set to the non-BYE participant.
+ * BYE matches have winnerTeamId pre-set to the non-BYE participant.
  */
 export function generateSingleElimBracket(
     teamIds: number[],
@@ -95,23 +95,23 @@ export function generateSingleElimBracket(
         const nextWinnerRef = totalRounds >= 2 ? `W-R2-M${nextMatchNumber}` : undefined;
         const isParticipant1Slot = matchNumber % 2 === 1; // odd -> slot 1, even -> slot 2
 
-        let winnerId: number | undefined;
+        let winnerTeamId: number | undefined;
         // If exactly one participant (the other is BYE), pre-set winner
         if (team1 !== undefined && team2 === undefined) {
-            winnerId = team1;
+            winnerTeamId = team1;
         } else if (team1 === undefined && team2 !== undefined) {
-            winnerId = team2;
+            winnerTeamId = team2;
         }
 
         descriptors.push({
             roundNumber: 1,
             matchNumber,
             bracketSide: 'Winners',
-            participant1Id: team1,
-            participant2Id: team2,
+            team1Id: team1,
+            team2Id: team2,
             bestOf,
             winnerAdvantage: 0,
-            winnerId,
+            winnerTeamId,
             positionKey,
             nextWinnerRef,
             isParticipant1Slot,
@@ -131,8 +131,8 @@ export function generateSingleElimBracket(
                 roundNumber: round,
                 matchNumber: m,
                 bracketSide: 'Winners',
-                participant1Id: undefined,
-                participant2Id: undefined,
+                team1Id: undefined,
+                team2Id: undefined,
                 bestOf,
                 winnerAdvantage: 0,
                 positionKey,
@@ -161,8 +161,8 @@ export function generateSingleElimBracket(
             roundNumber: totalRounds,
             matchNumber: 1,
             bracketSide: 'ThirdPlace',
-            participant1Id: undefined,
-            participant2Id: undefined,
+            team1Id: undefined,
+            team2Id: undefined,
             bestOf,
             winnerAdvantage: 0,
             positionKey: thirdPlaceKey,
@@ -215,19 +215,19 @@ export function generateDoubleElimBracket(
             ? `L-R1-M${crossedLosersPosition(matchNumber, bracketSize / 2, lbMatchesR1)}`
             : undefined;
 
-        let winnerId: number | undefined;
-        if (team1 !== undefined && team2 === undefined) winnerId = team1;
-        else if (team1 === undefined && team2 !== undefined) winnerId = team2;
+        let winnerTeamId: number | undefined;
+        if (team1 !== undefined && team2 === undefined) winnerTeamId = team1;
+        else if (team1 === undefined && team2 !== undefined) winnerTeamId = team2;
 
         descriptors.push({
             roundNumber: 1,
             matchNumber,
             bracketSide: 'Winners',
-            participant1Id: team1,
-            participant2Id: team2,
+            team1Id: team1,
+            team2Id: team2,
             bestOf,
             winnerAdvantage: 0,
-            winnerId,
+            winnerTeamId,
             positionKey,
             nextWinnerRef,
             nextLoserRef,
@@ -257,8 +257,8 @@ export function generateDoubleElimBracket(
                 roundNumber: round,
                 matchNumber: m,
                 bracketSide: 'Winners',
-                participant1Id: undefined,
-                participant2Id: undefined,
+                team1Id: undefined,
+                team2Id: undefined,
                 bestOf,
                 winnerAdvantage: 0,
                 positionKey,
@@ -293,8 +293,8 @@ export function generateDoubleElimBracket(
                 roundNumber: lbRound,
                 matchNumber: m,
                 bracketSide: 'Losers',
-                participant1Id: undefined,
-                participant2Id: undefined,
+                team1Id: undefined,
+                team2Id: undefined,
                 bestOf,
                 winnerAdvantage: 0,
                 positionKey,
@@ -309,8 +309,8 @@ export function generateDoubleElimBracket(
         roundNumber: 1,
         matchNumber: 1,
         bracketSide: 'GrandFinals',
-        participant1Id: undefined,
-        participant2Id: undefined,
+        team1Id: undefined,
+        team2Id: undefined,
         bestOf,
         winnerAdvantage,
         positionKey: 'GF-R1-M1',
@@ -334,8 +334,8 @@ export function generateDoubleElimBracket(
             roundNumber: 1,
             matchNumber: 1,
             bracketSide: 'ThirdPlace',
-            participant1Id: undefined,
-            participant2Id: undefined,
+            team1Id: undefined,
+            team2Id: undefined,
             bestOf,
             winnerAdvantage: 0,
             positionKey: thirdPlaceKey,
@@ -491,8 +491,8 @@ export function generateGroupPhaseBracket(
                     matchNumber: globalMatchCounter,
                     bracketSide: 'Group',
                     groupId,
-                    participant1Id: team1,
-                    participant2Id: team2,
+                    team1Id: team1,
+                    team2Id: team2,
                     bestOf,
                     winnerAdvantage: 0,
                     positionKey,
@@ -554,9 +554,9 @@ export function generateHybridBracket(
         positionKey: `E-${desc.positionKey}`,
         nextWinnerRef: desc.nextWinnerRef ? `E-${desc.nextWinnerRef}` : undefined,
         nextLoserRef: desc.nextLoserRef ? `E-${desc.nextLoserRef}` : undefined,
-        participant1Id: undefined,
-        participant2Id: undefined,
-        winnerId: undefined,
+        team1Id: undefined,
+        team2Id: undefined,
+        winnerTeamId: undefined,
     }));
 
     return { groupMatches, elimMatches, groupAssignments };

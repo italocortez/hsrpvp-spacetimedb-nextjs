@@ -1,9 +1,9 @@
 import { table, t } from 'spacetimedb/server';
-import { DraftMode, GameMode, MatchResult } from '../types/enums';
-import { PlayerSnapshot, LobbyConfigSnapshot } from '../types/structs';
+import { DraftMode, GameMode, MatchOutcome } from '../types/enums';
+import { LobbyConfigSnapshot } from '../types/structs';
 
 export const matchSessionHistoryColumns = {
-    id: t.string().primaryKey(), // UUID generated at game end
+    id: t.u32().primaryKey().autoInc(),
     lobbyCode: t.string(),       // Kept for reference (e.g. "X7K9P2")
     playedAt: t.timestamp(),
 
@@ -13,13 +13,9 @@ export const matchSessionHistoryColumns = {
     teamBlueAlias: t.string(),
     teamRedAlias: t.string(),
 
-    // Full snapshots of players at the time of the match
-    blueTeamMembers: t.array(PlayerSnapshot),
-    redTeamMembers: t.array(PlayerSnapshot),
-
     snapshotConfig: LobbyConfigSnapshot, // The exact rules used (Snapshot)
 
-    result: MatchResult,
+    outcome: MatchOutcome,
 
     // Serialized JSON blobs containing the final team comps
     // (Character Name, Eidolon, Cost Paid, etc.)

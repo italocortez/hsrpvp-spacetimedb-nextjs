@@ -5,7 +5,7 @@ export const mmrHistoryColumns = {
     id: t.u32().primaryKey().autoInc(),
     userId: t.u32(),
     gameMode: GameMode,
-    matchResultId: t.u32(),
+    matchHistoryId: t.u32(),
     previousRating: t.u32(),
     newRating: t.u32(),
     delta: t.i32(),
@@ -21,6 +21,6 @@ export const MmrHistory = table({
     public: true,
     indexes: [
         { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
-        { accessor: 'match_result_id', algorithm: 'btree', columns: ['matchResultId'] },
+        { accessor: 'match_history_id', algorithm: 'btree', columns: ['matchHistoryId'] },
     ],
 }, mmrHistoryColumns);

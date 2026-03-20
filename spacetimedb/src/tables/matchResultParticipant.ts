@@ -5,6 +5,8 @@ export const matchResultParticipantColumns = {
     matchResultId: t.u32(),
     userId: t.u32(),
     teamSide: TeamLabel,
+    isCaptain: t.bool(),
+    isConfirmed: t.bool(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

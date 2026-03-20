@@ -1,7 +1,7 @@
 import { table, t } from 'spacetimedb/server';
 
 export const matchSessionStepHistoryColumns = {
-    matchId: t.string().primaryKey(), // FK to MatchSessionHistory.id
+    matchHistoryId: t.u32().primaryKey(), // FK to MatchSessionHistory.id
 
     // A single massive JSON string containing the full array of steps.
     // Clients fetch this only when "Watch Replay" is clicked.
