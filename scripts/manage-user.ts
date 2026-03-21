@@ -72,7 +72,14 @@ if (host.startsWith('https://')) {
     host = host.replace('http://', 'ws://');
 }
 
-const dbName = process.env.SPACETIMEDB_DB_NAME ?? process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ?? 'nextjs-ts';
+let dbName: string;
+try {
+    const stConfig = JSON.parse(readFileSync(resolve(process.cwd(), 'spacetime.json'), 'utf-8'));
+    dbName = stConfig.database;
+} catch {
+    console.error('spacetime.json not found — run from project root');
+    process.exit(1);
+}
 
 console.log(`Connecting to ${host} / ${dbName} ...`);
 

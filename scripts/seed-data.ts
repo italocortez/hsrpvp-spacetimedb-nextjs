@@ -239,7 +239,14 @@ export async function seedAll(serverToken: string): Promise<void> {
     if (host.startsWith('https://')) host = host.replace('https://', 'wss://');
     else if (host.startsWith('http://')) host = host.replace('http://', 'ws://');
 
-    const dbName = process.env.SPACETIMEDB_DB_NAME ?? process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ?? 'nextjs-ts';
+    let dbName: string;
+    try {
+        const stConfig = JSON.parse(readFileSync(resolve(process.cwd(), 'spacetime.json'), 'utf-8'));
+        dbName = stConfig.database;
+    } catch {
+        console.error('[seed] spacetime.json not found — run from project root');
+        throw new Error('spacetime.json not found');
+    }
 
     console.log(`[seed] Connecting to ${host} / ${dbName} ...`);
 

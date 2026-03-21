@@ -60,13 +60,27 @@ function writeTokenToEnvLocal(token: string): void {
     console.log(`\n[bootstrap] Token written to .env.local`);
 }
 
+// ─── Read spacetime.json (single source of truth) ───────────────────────────
+
+function readSpacetimeJson(): { database: string; server?: string } {
+    const path = resolve(process.cwd(), 'spacetime.json');
+    try {
+        return JSON.parse(readFileSync(path, 'utf-8'));
+    } catch {
+        console.error('[bootstrap] spacetime.json not found — run from project root');
+        process.exit(1);
+    }
+}
+
+const spacetimeConfig = readSpacetimeJson();
+
 // ─── Main bootstrap ────────────────────────────────────────────────────────────
 
 let host = process.env.SPACETIMEDB_HOST ?? process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ?? 'wss://maincloud.spacetimedb.com';
 if (host.startsWith('https://')) host = host.replace('https://', 'wss://');
 else if (host.startsWith('http://')) host = host.replace('http://', 'ws://');
 
-const dbName = process.env.SPACETIMEDB_DB_NAME ?? process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ?? 'nextjs-ts';
+const dbName = spacetimeConfig.database;
 
 console.log(`[bootstrap] Connecting to ${host} / ${dbName} ...`);
 console.log('[bootstrap] Step 1/3: registering server identity');
