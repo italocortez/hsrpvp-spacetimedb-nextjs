@@ -80,7 +80,6 @@ export const MatchOutcome = t.enum('MatchOutcome', {
 export const MatchType = t.enum('MatchType', {
     Casual: t.unit(),
     Ranked: t.unit(),
-    Tournament: t.unit(),
 });
 
 export const ActionType = t.enum('ActionType', {

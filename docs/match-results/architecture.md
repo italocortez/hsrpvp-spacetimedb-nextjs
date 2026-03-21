@@ -19,16 +19,21 @@ Architecture documentation for match result submission, confirmation, disputes, 
   ALL captains confirmed? (every MatchResultParticipant with isCaptain=true has isConfirmed=true)
           |
           v
-  Referee calls submit_match_result --> status: Submitted
+  submit_match_result --> status depends on matchType:
           |
-          +---- Any participant can dispute once (dispute_match_result) --> status: Disputed
-          |                                                                        |
-          v                                                                        v
-  status: Validated (TO/Mod validates)                             TO/Mod: override_match_result
-          |                                                           (Validated or Rejected)
-          v
-  Finalization path triggered [Phase 5 scope -- see Match Result Lifecycle]
-  Bracket advancement triggered [Phase 4 scope]
+          +---- Casual: status -> Validated (auto) -> finalize immediately (no MMR)
+          |
+          +---- Ranked: status -> Submitted -> awaits Admin/Mod/TO validation
+                    |
+                    +---- Any participant can dispute once --> status: Disputed
+                    |                                                   |
+                    v                                                   v
+            override_match_result("Validated")            override_match_result
+            (screenshots required for Ranked)             (Validated or Rejected)
+                    |
+                    v
+            Finalization path triggered [see Match Result Lifecycle]
+            Bracket advancement triggered [Phase 4 scope]
 ```
 
 ---
@@ -37,44 +42,57 @@ Architecture documentation for match result submission, confirmation, disputes, 
 
 | matchType | Description |
 |-----------|-------------|
-| Casual | Non-competitive lobby match |
-| Ranked | Ranked competitive match (counts toward MMR) |
-| Tournament | Tournament bracket match (isTournamentControlled = true) |
+| Casual | Non-competitive match. Auto-validates on submit. No MMR. Screenshots optional. |
+| Ranked | Competitive match. Requires Admin/Mod/TO validation. Counts toward MMR. Screenshots required. |
+
+### matchType Derivation for Tournament Matches
+
+For tournament-controlled matches, matchType is derived from the tournament's `countTowardsMmr` setting:
+- `countTowardsMmr = true` → matchType = **Ranked**
+- `countTowardsMmr = false` → matchType = **Casual**
+
+This derivation happens at MatchResultRecord creation time. After creation, matchType on the
+record is self-contained -- no need to re-check the tournament setting.
 
 ### isTournamentControlled vs matchType
 
 These two fields serve different purposes and both remain on MatchResultRecord:
 
-- **matchType** (MatchType enum: Casual, Ranked, Tournament) -- Client-facing filter category.
-  Used for match history filtering, stat breakdowns, and UI display.
+- **matchType** (MatchType enum: Casual, Ranked) -- Determines validation and MMR behavior.
+  Casual auto-validates and skips MMR. Ranked requires manual validation and processes MMR.
+  Also used for match history filtering, stat breakdowns, and UI display.
 
 - **isTournamentControlled** (bool) -- Behavioral flag that changes how the match operates:
   - When true: lobby inherits tournament configuration (game mode, draft mode, cost set, disconnect policy)
   - When true: TO and assistants (canValidateResults) gain override/submission authority
   - When true: settings are locked -- players cannot change inherited config
 
-A match can have matchType=Tournament but isTournamentControlled=false (e.g., a custom match
-labeled "tournament" for organizational purposes without actual tournament integration).
+A match can be isTournamentControlled=true with matchType=Casual (tournament with
+countTowardsMmr=false) or matchType=Ranked (tournament with countTowardsMmr=true).
 
 ---
 
 ## Status Lifecycle
 
 ```
-Pending --> Submitted --> Validated
-                 |
-                 +--> Disputed --> Validated
-                 |             \-> Rejected
-                 |
-                 (TO/Mod can also override directly)
+                    Casual: auto-Validated on submit
+                   /
+Pending --> Submitted
+                   \
+                    Ranked: stays Submitted until Admin/Mod/TO validates
+                         |
+                         +--> Disputed --> Validated
+                         |             \-> Rejected
+                         |
+                         (TO/Mod can also override directly)
 ```
 
 | Status | Description |
 |--------|-------------|
 | Pending | Match is in progress; captains can confirm scores |
-| Submitted | Referee has submitted the result; can be disputed |
+| Submitted | Result submitted; Casual auto-validates here, Ranked awaits Admin/Mod/TO |
 | Disputed | A player has contested the result; awaiting TO/Mod review |
-| Validated | TO/Mod confirmed the result as official |
+| Validated | Result confirmed as official (auto for Casual, manual for Ranked) |
 | Rejected | TO/Mod rejected the result (rematch may be needed) |
 
 ---
@@ -87,14 +105,15 @@ and all permanent data lives in history tables.
 
 ### Finalization Paths
 
-**Non-MMR path (MMR disabled on tournament/lobby):**
-Validated -> finalize_match_result -> write MatchSessionHistory + MatchParticipantHistory + update PlayerStat/PlayerCharacterStat/PlayerRelationship -> delete MatchResultRecord
+**Casual path (matchType=Casual):**
+Submit -> auto-Validated -> finalize_match_result -> write MatchSessionHistory + MatchParticipantHistory + update PlayerStat/PlayerCharacterStat/PlayerRelationship -> delete MatchResultRecord
+No MMR processing. Screenshots optional.
 
-**Casual/Ranked MMR path:**
-Validated -> process MMR immediately -> stamp mmrProcessedAt -> finalize_match_result -> write history + stats -> delete MatchResultRecord
+**Ranked path (matchType=Ranked, standalone):**
+Submit -> Submitted -> Admin/Mod validates (screenshots required) -> Validated -> process MMR immediately -> stamp mmrProcessedAt -> finalize_match_result -> write history + stats -> delete MatchResultRecord
 
-**Tournament MMR path:**
-Validated -> match stays (tournament still in progress) -> tournament ends or cancelled -> process_tournament_mmr (batch all Validated matches) -> stamp mmrProcessedAt on each -> finalize_match_result per match -> write history + stats -> delete all MatchResultRecords
+**Ranked tournament path (matchType=Ranked, isTournamentControlled=true):**
+Submit -> Submitted -> TO/referee validates (screenshots required) -> Validated -> match stays (tournament in progress) -> tournament ends or cancelled -> process_tournament_mmr (batch all Validated matches) -> stamp mmrProcessedAt on each -> finalize_match_result per match -> write history + stats -> delete all MatchResultRecords
 
 ### Implementation Status
 - finalize_match_result reducer: stub exists (Phase 04.1), implementation Phase 5
@@ -120,6 +139,21 @@ Validated -> match stays (tournament still in progress) -> tournament ends or ca
 2. Any user with `Moderator` or `Admin` role
 3. For tournament matches: the tournament organizer or an assistant with `canValidateResults = true`
 
+For **Casual** matches, submit also auto-validates — no separate validation step needed.
+For **Ranked** matches, submit sets status to Submitted; a separate `override_match_result("Validated")` is required (by Admin/Mod/TO), and all MatchResultGame rows must have both screenshot URLs.
+
+### Referee Full Control (refereeFullControl)
+
+When `refereeFullControl=true` (default) and the referee is a **spectator** (not a participant):
+- Referee can fill scores for either side via `record_game_scores`
+- Referee can confirm both sides at once via `confirm_match_scores` (sets both blueConfirmed and redConfirmed)
+
+When the referee IS a **participant** (has a MatchResultParticipant row):
+- `refereeFullControl` is ignored for confirmation — they can only confirm their own side
+- They still have submission authority via `submit_match_result`
+
+This setting is inherited from the lobby/tournament configuration.
+
 ---
 
 ## Tournament Admin Overrides
@@ -127,7 +161,7 @@ Validated -> match stays (tournament still in progress) -> tournament ends or ca
 | Reducer | Who Can Call | When |
 |---------|-------------|------|
 | `dq_participant` | TO, tournament assistant, Moderator, Admin | Any time participant is not already DQ/Withdrawn |
-| `override_match_result` | TO/assistant/Mod/Admin (tournament); Mod/Admin (casual) | Any time; use `newStatusTag: Validated` or `Rejected` |
+| `override_match_result` | TO/assistant/Mod/Admin (tournament); Mod/Admin (standalone Ranked) | Any time; `newStatusTag: Validated` (screenshots required for Ranked) or `Rejected` |
 
 ### Override Reason Storage
 
@@ -137,12 +171,14 @@ The `disputeReason` column on `MatchResultRecord` is reused to store the overrid
 
 ## Key Rules
 
-1. **All captains must confirm before referee can submit** -- All MatchResultParticipant rows with isCaptain=true must have isConfirmed=true
+1. **Both sides must confirm before referee can submit** -- MatchResultRecord.blueConfirmed and redConfirmed must both be true. Captains confirm their own side; spectator referee with refereeFullControl=true can confirm both.
 2. **One dispute per match** -- `disputedByUserId` acts as a lock; once set, further disputes are blocked
 3. **Dispute requires Submitted status** -- cannot dispute a Pending or already-disputed result
 4. **Score confirmation requires Pending status** -- cannot re-confirm after submission
-5. **MMR calculation deferred to Phase 5** -- `submit_match_result` only sets status to `Submitted`; no MMR change happens in Phase 3
-6. **Bracket advancement deferred to Phase 4** -- the bracket is not updated when a match result is submitted in Phase 3
+5. **Casual matches auto-validate on submit** -- `submit_match_result` sets status directly to Validated for Casual matches; Ranked stays at Submitted
+6. **Ranked validation requires screenshots** -- `override_match_result("Validated")` rejects if any MatchResultGame row is missing teamBlueScreenshotUrl or teamRedScreenshotUrl
+7. **MMR only for Ranked matches** -- Casual matches skip MMR entirely; Ranked matches process MMR (immediate for standalone, batched for tournaments)
+8. **Bracket advancement deferred to Phase 4** -- the bracket is not updated when a match result is submitted in Phase 3
 
 ---
 
@@ -163,7 +199,10 @@ The `disputeReason` column on `MatchResultRecord` is reused to store the overrid
 | disputedByUserId | u32? | User who raised the dispute |
 | disputeReason | string? | Dispute reason or admin override reason |
 | tournamentId | u32? | FK to Tournament (if isTournamentControlled) |
-| matchType | MatchType enum | Casual, Ranked, Tournament (client-facing filter category) |
+| blueConfirmed | bool | True when Blue side captain (or spectator referee) has confirmed scores |
+| redConfirmed | bool | True when Red side captain (or spectator referee) has confirmed scores |
+| refereeFullControl | bool | When true, spectator referee can fill scores and confirm both sides (default true) |
+| matchType | MatchType enum | Casual or Ranked (derived from tournament.countTowardsMmr for tournament matches) |
 
 ### Indexes
 
@@ -177,12 +216,11 @@ The `disputeReason` column on `MatchResultRecord` is reused to store the overrid
 | matchResultId | u32 | FK to MatchResultRecord.id |
 | userId | u32 | FK to User.id |
 | teamSide | TeamLabel enum | Blue or Red team assignment |
-| isCaptain | bool | True if this participant confirms scores on behalf of their team |
-| isConfirmed | bool | True when captain has confirmed scores for their side |
+| isCaptain | bool | True if this participant can confirm scores on behalf of their team |
 
 PK: [matchResultId, userId]
 
-Confirmation pattern: In 1v1, both participants have isCaptain=true (each confirms for themselves). In team formats, only the designated team captain confirms on behalf of their side.
+Captain pattern: In 1v1, both participants have isCaptain=true (each confirms for themselves). In team formats, only the designated team captain can confirm. Confirmation state is stored on MatchResultRecord (blueConfirmed/redConfirmed), not on participants.
 
 ### Indexes
 

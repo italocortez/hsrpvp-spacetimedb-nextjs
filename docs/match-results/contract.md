@@ -4,10 +4,20 @@
 
 ## Acceptance Scenarios
 
-### Score Confirmation
+### Score Confirmation (Captain)
 **Given:** MatchResultRecord in Pending status, caller is a captain (MatchResultParticipant.isCaptain=true)
 **When:** `confirm_match_scores(matchResultId)`
-**Then:** Caller's MatchResultParticipant.isConfirmed set to true. In 1v1, both participants have isCaptain=true. In team formats, only the designated team captain confirms on behalf of their side.
+**Then:** Caller's side flag set on MatchResultRecord (blueConfirmed or redConfirmed based on teamSide). In 1v1, both participants have isCaptain=true. In team formats, only the designated team captain confirms on behalf of their side.
+
+### Score Confirmation (Spectator Referee)
+**Given:** MatchResultRecord in Pending status with refereeFullControl=true, caller is a spectator referee (isReferee=true on LobbyMember, no MatchResultParticipant row)
+**When:** `confirm_match_scores(matchResultId)`
+**Then:** Both blueConfirmed and redConfirmed set to true on MatchResultRecord.
+
+### Score Confirmation by Participant Referee (own side only)
+**Given:** MatchResultRecord in Pending status, caller is both a participant AND referee
+**When:** `confirm_match_scores(matchResultId)`
+**Then:** Only their own side's flag is set (same as captain path). refereeFullControl is ignored for participant referees.
 
 ### Submit Match Result
 **Given:** MatchResultRecord with all captains confirmed, caller has referee authority
@@ -15,7 +25,7 @@
 **Then:** Status changes to Submitted. winnerUserId and refereeUserId set.
 
 ### Submit Without All Confirmations (blocked)
-**Given:** MatchResultRecord where not all captains have confirmed
+**Given:** MatchResultRecord where blueConfirmed or redConfirmed is false
 **When:** Referee calls `submit_match_result`
 **Then:** Throws "All team captains must confirm scores before submission."
 
@@ -35,11 +45,21 @@
 **Then:** Status changes to Validated. winnerUserId updated. disputeReason stores override reason.
 
 ### Match Finalization (Phase 5)
-**Given:** MatchResultRecord in Validated status, MMR processed (or MMR disabled)
+**Given:** MatchResultRecord in Validated status, MMR processed (or matchType=Casual)
 **When:** `finalize_match_result(matchResultId)` is called
 **Then:** MatchSessionHistory row written with match outcome. MatchParticipantHistory rows written for each participant. PlayerStat and PlayerCharacterStat incremented. PlayerRelationship updated for ally/opponent pairs. MatchResultRecord, MatchResultParticipant, and MatchResultGame rows all deleted.
 
 **Note:** This reducer is a stub in Phase 04.1. Full implementation in Phase 5. Documenting the contract here so Phase 5 has a behavioral spec to implement against.
+
+### Casual Auto-Validation (Phase 5)
+**Given:** MatchResultRecord with matchType=Casual, all captains confirmed
+**When:** `submit_match_result(matchResultId, winnerUserId)` is called
+**Then:** Status changes directly to Validated (skips Submitted). Finalization can proceed immediately (no MMR gate).
+
+### Ranked Screenshot Requirement (Phase 5)
+**Given:** MatchResultRecord with matchType=Ranked, status=Submitted
+**When:** Admin/Mod/TO calls `override_match_result(matchResultId, "Validated", ...)`
+**Then:** Validation rejects if any MatchResultGame row is missing teamBlueScreenshotUrl or teamRedScreenshotUrl. All games must have both screenshots before a Ranked match can be validated.
 
 ### Referee Transfer
 **Given:** Lobby with host and members, host has isReferee=true
@@ -63,8 +83,10 @@
 | Case | Expected Behavior |
 |------|-------------------|
 | Confirm scores on non-Pending match | Throws "Scores can only be confirmed when Pending" |
-| Non-participant confirms scores | Throws "You are not a participant" |
-| Confirm by non-captain in team match | Throws "Only the team captain can confirm match scores." |
+| Non-participant, non-referee confirms scores | Throws "You are not a participant or referee of this match." |
+| Confirm by non-captain participant | Throws "Only the team captain can confirm match scores." |
+| Non-spectator referee tries full control confirm | Confirms own side only (participant path) |
+| Spectator referee confirms without refereeFullControl | Throws "Referee full control is not enabled for this match." |
 | Submit without referee authority | Throws "You do not have referee authority" |
 | Dispute a Pending match | Throws "Can only dispute after submission" |
 | Dispute with empty reason | Throws "Dispute reason cannot be empty" |
@@ -111,6 +133,17 @@
 | Match Finalization scenario documented (Phase 5 contract) | Phase 04.1 execution | 2026-03-20 |
 | winnerTeamSide (TeamLabel) replaces winnerId on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
 | teamBlue*/teamRed* replaces player1*/player2* on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
+| MatchType.Tournament variant removed — only Casual and Ranked remain | Phase 5 discussion | 2026-03-20 |
+| Tournament matchType derived from tournament.countTowardsMmr (true=Ranked, false=Casual) | Phase 5 discussion | 2026-03-20 |
+| Casual auto-validates on submit, no MMR, screenshots optional | Phase 5 discussion | 2026-03-20 |
+| Ranked requires Admin/Mod/TO validation, screenshots required for validation | Phase 5 discussion | 2026-03-20 |
+| EloConfig becomes single-row admin-tunable table (not hardcoded) | Phase 5 discussion | 2026-03-20 |
+| Initial MMR rating = 1000, higher = better | Phase 5 discussion | 2026-03-20 |
+| Team size modifier: sizeBonus(150) per extra player, spread penalty stdev/spreadDivisor(2) | Phase 5 discussion | 2026-03-20 |
+| Account rating modifier: maxAccountBonus(200), whale chooses Fair MMR or Handicap Play per match | Phase 5 discussion | 2026-03-20 |
+| isConfirmed moved from MatchResultParticipant to MatchResultRecord (blueConfirmed/redConfirmed) | Phase 5 discussion | 2026-03-20 |
+| refereeFullControl (default true): spectator referee can fill scores + confirm both sides | Phase 5 discussion | 2026-03-20 |
+| Participant referee ignores refereeFullControl — confirms own side only | Phase 5 discussion | 2026-03-20 |
 
 ---
 

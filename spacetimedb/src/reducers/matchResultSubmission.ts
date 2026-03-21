@@ -4,8 +4,10 @@ import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermission
 import { auditUpdate } from '../helpers/auditColumns';
 
 // ─── confirm_match_scores ─────────────────────────────────────────────────────
-// Allows a match participant's team captain to confirm their team's scores.
-// Permission: authenticated match participant who is a captain.
+// Confirms scores for a team side. Two paths:
+// 1. Participant captain: confirms their own side only.
+// 2. Spectator referee (refereeFullControl=true): confirms both sides at once.
+//    A participant referee can only confirm their own side like any captain.
 
 export const confirm_match_scores = spacetimedb.reducer(
     {
@@ -25,26 +27,44 @@ export const confirm_match_scores = spacetimedb.reducer(
             throw new SenderError('Scores can only be confirmed when the match is in Pending status.');
         }
 
-        // Look up MatchResultParticipant by [matchResultId, userId]
+        // Check if caller is a participant
         const participant = [...ctx.db.MatchResultParticipant.by_result_and_user.filter([matchResultId, user.id])][0];
-        if (!participant) {
-            throw new SenderError('You are not a participant of this match.');
+
+        if (participant) {
+            // Participant path: must be a captain, confirms their own side
+            if (!participant.isCaptain) {
+                throw new SenderError('Only the team captain can confirm match scores.');
+            }
+
+            const sideFlag = participant.teamSide.tag === 'Blue' ? 'blueConfirmed' : 'redConfirmed';
+            ctx.db.MatchResultRecord.id.update({
+                ...matchResult,
+                [sideFlag]: true,
+                ...auditUpdate(ctx, matchResult, user.id),
+            } as any);
+
+            console.log(`[MATCH] Captain #${user.id} confirmed ${participant.teamSide.tag} scores for match result #${matchResultId}`);
+        } else {
+            // Non-participant path: must be a spectator referee with refereeFullControl
+            if (!matchResult.refereeFullControl) {
+                throw new SenderError('Referee full control is not enabled for this match.');
+            }
+
+            const lobbyMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([matchResult.lobbyId, user.id])][0];
+            if (!lobbyMember || !lobbyMember.isReferee) {
+                throw new SenderError('You are not a participant or referee of this match.');
+            }
+
+            // Spectator referee confirms both sides
+            ctx.db.MatchResultRecord.id.update({
+                ...matchResult,
+                blueConfirmed: true,
+                redConfirmed: true,
+                ...auditUpdate(ctx, matchResult, user.id),
+            } as any);
+
+            console.log(`[MATCH] Spectator referee #${user.id} confirmed both sides for match result #${matchResultId}`);
         }
-
-        // Only captains can confirm
-        if (!participant.isCaptain) {
-            throw new SenderError('Only the team captain can confirm match scores.');
-        }
-
-        // Update isConfirmed using delete+insert (composite PK pattern)
-        ctx.db.MatchResultParticipant.delete(participant);
-        ctx.db.MatchResultParticipant.insert({
-            ...participant,
-            isConfirmed: true,
-            ...auditUpdate(ctx, participant, user.id),
-        } as any);
-
-        console.log(`[MATCH] Player #${user.id} confirmed scores for match result #${matchResultId}`);
     }
 );
 
@@ -72,18 +92,13 @@ export const submit_match_result = spacetimedb.reducer(
             throw new SenderError('Match result can only be submitted when in Pending status.');
         }
 
-        // Check all captain participants have confirmed
-        const participants = [...ctx.db.MatchResultParticipant.match_result_id.filter(matchResultId)];
-        const captains = participants.filter((p: any) => p.isCaptain);
-        if (captains.length === 0) {
-            throw new SenderError('No captain participants found for this match.');
-        }
-        const allConfirmed = captains.every((p: any) => p.isConfirmed);
-        if (!allConfirmed) {
+        // Check both sides have confirmed (record-level flags)
+        if (!matchResult.blueConfirmed || !matchResult.redConfirmed) {
             throw new SenderError('All team captains must confirm scores before submission.');
         }
 
         // Validate winnerUserId is a valid participant (or 0 for draw)
+        const participants = [...ctx.db.MatchResultParticipant.match_result_id.filter(matchResultId)];
         if (winnerUserId !== 0) {
             const winnerParticipant = participants.find((p: any) => p.userId === winnerUserId);
             if (!winnerParticipant) {

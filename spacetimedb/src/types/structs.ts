@@ -137,4 +137,7 @@ export const EloConfig = t.object('EloConfig', {
     newThreshold: t.u32(),
     midThreshold: t.u32(),
     initialRating: t.u32(),
+    sizeBonus: t.u32(),
+    spreadDivisor: t.u8(),
+    maxAccountBonus: t.u32(),
 });
