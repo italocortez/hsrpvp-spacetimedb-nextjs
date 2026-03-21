@@ -188,6 +188,20 @@ Plans:
   - Test 17: Coach Role Management (needs lobby + members)
 **Deferred from Phase 4 UAT**:
   - Bracket display slot order: `placeParticipantInNextMatch` uses first-empty-slot, not seed order. R2+ slots may flip vs traditional bracket convention. Frontend should sort by `TournamentTeam.seedNumber` for display, not by team1Id/team2Id slot position.
+  - Tests 9-12 (advance/submit_and_advance/rollback bracket match, DQ auto-advance): require MatchResultRecord creation which depends on lobby lifecycle
+**Deferred from Phase 5 UAT**: Tests 3-14 require MatchResultRecord, Lobby, LobbyMember prerequisite data that only exists once lobby lifecycle reducers are implemented:
+  - Test 3: Score Entry (Captain — Own Side)
+  - Test 4: Score Entry (Spectator Referee Full Control)
+  - Test 5: Casual Match Auto-Validation
+  - Test 6: Ranked Screenshot Gate
+  - Test 7: Finalize Casual Match (Full Lifecycle)
+  - Test 8: Finalize Standalone Ranked Match (Full Lifecycle)
+  - Test 9: ELO Rating Correctness
+  - Test 10: Global Composite MMR
+  - Test 11: Leaderboard Top 100
+  - Test 12: mmrProcessedAt Double-Processing Guard
+  - Test 13: Tournament Batch MMR
+  - Test 14: Bracket Advancement via Finalization (MTCH-08)
 **Success Criteria** (what must be TRUE):
   1. A player's full XY cursor position is broadcast via reducer while their browser tab is active; the position is visible in subscriptions to all match participants, spectators, and coaches
   2. A coach role player can see cursor tracking data but calling any pick/ban reducer as a coach is rejected with an authorization error

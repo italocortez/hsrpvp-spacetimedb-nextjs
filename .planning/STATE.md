@@ -66,7 +66,7 @@ See: .planning/PROJECT.md
 - [Phase 04.1]: PlayerSnapshot references retained as historical context in match-session docs (not current table)
 - [Phase 05-match-results-and-mmr]: EloConfig table flattens struct fields directly into columns (not using EloConfig struct as column type) for single-row config table
 - [Phase 05-match-results-and-mmr]: Leaderboard category is string ('MemoryOfChaos', 'ApocalypticShadow', 'AnomalyArbitration', 'Global') -- not adding Global to GameMode enum
-- [Phase 05-match-results-and-mmr]: accountRating uses MemoryOfChaos as reference mode and costSetId=0 for cost lookups, MAX_EXPECTED_VALUE=500 normalization constant
+- [Phase 05-match-results-and-mmr]: accountRating TEMPORARY formula: each character = 5 × (1 + eidolonLevel), capped at 1000. Wired into batch_upsert/remove_characters and admin variants during UAT. Will be replaced with cost-table-based formula later.
 - [Phase 05-match-results-and-mmr]: Captain side enforcement in record_game_scores rejects ALL opposite-side fields (scores, cycles, boss scores, screenshots)
 - [Phase 05-match-results-and-mmr]: EloConfigValues uses type-only import to avoid SpacetimeDB build warning (interface erased at runtime)
 - [Phase 05-match-results-and-mmr]: bracketAdvancement.ts keeps rollback-specific helpers (removeParticipantFromMatch, reverseGroupStandings) file-local; shared helpers extracted to bracketHelpers.ts
