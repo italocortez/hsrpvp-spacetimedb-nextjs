@@ -44,3 +44,6 @@ next-env.d.ts
 .claude/settings.local.json
 notes
 notes/
+
+#quell
+quell.exe
