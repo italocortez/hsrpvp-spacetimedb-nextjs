@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Tournament System** - Tournament lifecycle, participant registration, teams, and referee assignment (completed 2026-03-17)
 - [x] **Phase 4: Bracket Generation** - Single/double elimination and group phase bracket rows with explicit FK advancement (completed 2026-03-18)
 - [x] **Phase 04.1: Schema Normalization & Match Result Rework** - Retroactive naming cleanup and structural rework before Phase 5 (INSERTED) (completed 2026-03-20)
-- [ ] **Phase 5: Match Results and MMR** - Score submission, screenshot verification, ELO calculation, and leaderboard
+- [x] **Phase 5: Match Results and MMR** - Score submission, screenshot verification, ELO calculation, and leaderboard (completed 2026-03-21)
 - [ ] **Phase 6: Anonymous Play and Player Stats** - Server-enforced anonymous mode and full player statistics tables
 - [ ] **Phase 7: Achievements and Titles** - Achievement definitions, auto-award logic, manual award, and profile titles
 - [ ] **Phase 8: Calendar and Scheduling** - Recurring availability slots, calendar events, auto-sync, and TO scheduling
@@ -123,11 +123,11 @@ Plans:
   6. A global composite MMR (equal-weight average across game modes) is stored alongside per-mode ratings
   7. An MMR history row is written for every rating change with a reference to the source match
   8. A leaderboard table or view is queryable sorted by per-mode MMR and by global composite MMR; schema includes seasonId column
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 05-01-PLAN.md — Schema additions (EloConfig table, Leaderboard table, accountRating column), record_game_scores reducer, ELO admin reducers, Casual auto-validation in submit_match_result, Ranked screenshot gate in override_match_result
-- [ ] 05-02-PLAN.md — ELO calculation helpers, stats increment helpers, leaderboard rebuild, finalize_match_result implementation, process_tournament_mmr implementation, publish + bindings, doc updates
+- [x] 05-02-PLAN.md — ELO calculation helpers, stats increment helpers, leaderboard rebuild, finalize_match_result implementation, process_tournament_mmr implementation, publish + bindings, doc updates
 
 ### Phase 6: Anonymous Play and Player Stats
 **Goal**: Anonymous mode is enforced at the data write layer, and complete player statistics are tracked and queryable
@@ -228,7 +228,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 3. Tournament System | 5/5 | Complete   | 2026-03-17 |
 | 4. Bracket Generation | 3/3 | Complete   | 2026-03-18 |
 | 04.1. Schema Normalization | 3/3 | Complete    | 2026-03-20 |
-| 5. Match Results and MMR | 0/2 | Planned | - |
+| 5. Match Results and MMR | 2/2 | Complete | 2026-03-21 |
 | 6. Anonymous Play and Player Stats | 0/? | Not started | - |
 | 7. Achievements and Titles | 0/? | Not started | - |
 | 8. Calendar and Scheduling | 0/? | Not started | - |

@@ -65,8 +65,8 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 - [x] **MTCH-05**: Casual matches auto-confirm when both players agree on scores
 - [x] **MTCH-06**: Tournament matches require referee or admin validation before confirmation
 - [x] **MTCH-07**: Match result has explicit verification status (Pending → Submitted → Disputed → Validated → Rejected)
-- [ ] **MTCH-08**: Validated results trigger ELO update and bracket advancement in same transaction
-- [ ] **MTCH-09**: mmrProcessedAt guard prevents duplicate ELO application
+- [x] **MTCH-08**: Validated results trigger ELO update and bracket advancement in same transaction
+- [x] **MTCH-09**: mmrProcessedAt guard prevents duplicate ELO application
 
 ### Anonymous Play
 
@@ -77,12 +77,12 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### MMR System
 
-- [ ] **MMR-01**: Per-game-mode ELO rating stored for each player (MoC, Apocalyptic Shadow, Anomaly Arbitration)
-- [ ] **MMR-02**: Global composite MMR calculated as equal-weight average of per-mode ratings
+- [x] **MMR-01**: Per-game-mode ELO rating stored for each player (MoC, Apocalyptic Shadow, Anomaly Arbitration)
+- [x] **MMR-02**: Global composite MMR calculated as equal-weight average of per-mode ratings
 - [x] **MMR-03**: Tiered K-factor: K=40 for first 20 matches, K=20 for 21-100, K=10 for 100+
-- [ ] **MMR-04**: MMR history log records every rating change with match reference
-- [ ] **MMR-05**: matchesPlayedPerMode counter tracked from day one for K-factor tiering
-- [ ] **MMR-06**: Leaderboard table/view sorted by MMR per game mode and global
+- [x] **MMR-04**: MMR history log records every rating change with match reference
+- [x] **MMR-05**: matchesPlayedPerMode counter tracked from day one for K-factor tiering
+- [x] **MMR-06**: Leaderboard table/view sorted by MMR per game mode and global
 - [x] **MMR-07**: Season ID column in schema (seasons not implemented yet, but schema supports it)
 
 ### Player Stats & Profile
@@ -217,14 +217,14 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | MTCH-05 | Phase 5 | Complete |
 | MTCH-06 | Phase 5 | Complete |
 | MTCH-07 | Phase 5 | Complete |
-| MTCH-08 | Phase 5 | Pending |
-| MTCH-09 | Phase 5 | Pending |
-| MMR-01 | Phase 5 | Pending |
-| MMR-02 | Phase 5 | Pending |
+| MTCH-08 | Phase 5 | Complete |
+| MTCH-09 | Phase 5 | Complete |
+| MMR-01 | Phase 5 | Complete |
+| MMR-02 | Phase 5 | Complete |
 | MMR-03 | Phase 5 | Complete |
-| MMR-04 | Phase 5 | Pending |
-| MMR-05 | Phase 5 | Pending |
-| MMR-06 | Phase 5 | Pending |
+| MMR-04 | Phase 5 | Complete |
+| MMR-05 | Phase 5 | Complete |
+| MMR-06 | Phase 5 | Complete |
 | MMR-07 | Phase 5 | Complete |
 | ANON-01 | Phase 6 | Pending |
 | ANON-02 | Phase 6 | Pending |

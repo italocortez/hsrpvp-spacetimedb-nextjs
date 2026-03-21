@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 05
-current_plan: 2
-status: executing
-last_updated: "2026-03-21T10:02:36.984Z"
+current_phase: 6
+current_plan: Not started
+status: planning
+last_updated: "2026-03-21T10:18:07.470Z"
 progress:
   total_phases: 11
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 05
-**Current plan:** 2
-**Status:** Executing Phase 05 (Plan 01 complete, Plan 02 next)
+**Current phase:** 6
+**Current plan:** Not started
+**Status:** Ready to plan
 
 ## Decisions
 
@@ -68,6 +68,10 @@ See: .planning/PROJECT.md
 - [Phase 05-match-results-and-mmr]: Leaderboard category is string ('MemoryOfChaos', 'ApocalypticShadow', 'AnomalyArbitration', 'Global') -- not adding Global to GameMode enum
 - [Phase 05-match-results-and-mmr]: accountRating uses MemoryOfChaos as reference mode and costSetId=0 for cost lookups, MAX_EXPECTED_VALUE=500 normalization constant
 - [Phase 05-match-results-and-mmr]: Captain side enforcement in record_game_scores rejects ALL opposite-side fields (scores, cycles, boss scores, screenshots)
+- [Phase 05-match-results-and-mmr]: EloConfigValues uses type-only import to avoid SpacetimeDB build warning (interface erased at runtime)
+- [Phase 05-match-results-and-mmr]: bracketAdvancement.ts keeps rollback-specific helpers (removeParticipantFromMatch, reverseGroupStandings) file-local; shared helpers extracted to bracketHelpers.ts
+- [Phase 05-match-results-and-mmr]: Fair MMR always applied in Phase 5 -- per-match choice (D-23) deferred to Phase 9/10 when Handicap Play gameplay effects are implemented
+- [Phase 05-match-results-and-mmr]: Leaderboard rebuild runs inline within reducer transaction -- acceptable at 100-user scale
 
 ### Quick Tasks Completed
 
@@ -103,3 +107,4 @@ See: .planning/PROJECT.md
 - 2026-03-20: Completed 04.1-02-PLAN.md — reducer migration: 6 reducer/helper files updated with new column names, MatchResultParticipant-based confirmation, stub reducers, published to maincloud, 25/25 tests pass
 - 2026-03-20: Completed 04.1-03-PLAN.md — doc updates: 11 files updated with new column names + behavioral narratives (lifecycle, captain confirmation, tournament MMR timing, composite PKs, junction patterns), Phase 04.1 complete
 - 2026-03-21: Completed 05-01-PLAN.md — schema foundation: EloConfig/Leaderboard tables, record_game_scores reducer, admin ELO reducers, Casual auto-validation (D-04), Ranked screenshot gate (D-07), accountRating on HsrAccount
+- 2026-03-21: Completed 05-02-PLAN.md — MMR finalization: finalize_match_result (history+stats+bracket+ephemeral deletion), process_tournament_mmr (batch), 4 helper files (eloCalculation, statsIncrement, leaderboardRebuild, bracketHelpers), published to maincloud, 38/38 tests pass, Phase 05 complete
