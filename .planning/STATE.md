@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 04.1
-current_plan: 3 of 3 (complete)
-status: planning
-last_updated: "2026-03-20T16:39:51.261Z"
+current_phase: 05
+current_plan: 2
+status: executing
+last_updated: "2026-03-21T10:02:36.984Z"
 progress:
   total_phases: 11
   completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 17
+  completed_plans: 16
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 04.1
-**Current plan:** 3 of 3 (complete)
-**Status:** Ready to plan
+**Current phase:** 05
+**Current plan:** 2
+**Status:** Executing Phase 05 (Plan 01 complete, Plan 02 next)
 
 ## Decisions
 
@@ -64,6 +64,10 @@ See: .planning/PROJECT.md
 - [Phase 04.1]: submit_match_result reducer arg renamed winnerId->winnerUserId to avoid confusion with BracketMatch.winnerTeamId
 - [Phase 04.1]: override_match_result validates winnerId against MatchResultParticipant instead of removed player1Id/player2Id
 - [Phase 04.1]: PlayerSnapshot references retained as historical context in match-session docs (not current table)
+- [Phase 05-match-results-and-mmr]: EloConfig table flattens struct fields directly into columns (not using EloConfig struct as column type) for single-row config table
+- [Phase 05-match-results-and-mmr]: Leaderboard category is string ('MemoryOfChaos', 'ApocalypticShadow', 'AnomalyArbitration', 'Global') -- not adding Global to GameMode enum
+- [Phase 05-match-results-and-mmr]: accountRating uses MemoryOfChaos as reference mode and costSetId=0 for cost lookups, MAX_EXPECTED_VALUE=500 normalization constant
+- [Phase 05-match-results-and-mmr]: Captain side enforcement in record_game_scores rejects ALL opposite-side fields (scores, cycles, boss scores, screenshots)
 
 ### Quick Tasks Completed
 
@@ -98,3 +102,4 @@ See: .planning/PROJECT.md
 - 2026-03-20: Completed 04.1-01-PLAN.md — schema definitions: MatchOutcome/MatchType enums, 10 table reworks, 2 new tables (PlayerRelationship, MatchParticipantHistory), BracketMatchDescriptor renamed
 - 2026-03-20: Completed 04.1-02-PLAN.md — reducer migration: 6 reducer/helper files updated with new column names, MatchResultParticipant-based confirmation, stub reducers, published to maincloud, 25/25 tests pass
 - 2026-03-20: Completed 04.1-03-PLAN.md — doc updates: 11 files updated with new column names + behavioral narratives (lifecycle, captain confirmation, tournament MMR timing, composite PKs, junction patterns), Phase 04.1 complete
+- 2026-03-21: Completed 05-01-PLAN.md — schema foundation: EloConfig/Leaderboard tables, record_game_scores reducer, admin ELO reducers, Casual auto-validation (D-04), Ranked screenshot gate (D-07), accountRating on HsrAccount

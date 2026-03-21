@@ -126,7 +126,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Schema additions (EloConfig table, Leaderboard table, accountRating column), record_game_scores reducer, ELO admin reducers, Casual auto-validation in submit_match_result, Ranked screenshot gate in override_match_result
+- [x] 05-01-PLAN.md — Schema additions (EloConfig table, Leaderboard table, accountRating column), record_game_scores reducer, ELO admin reducers, Casual auto-validation in submit_match_result, Ranked screenshot gate in override_match_result
 - [ ] 05-02-PLAN.md — ELO calculation helpers, stats increment helpers, leaderboard rebuild, finalize_match_result implementation, process_tournament_mmr implementation, publish + bindings, doc updates
 
 ### Phase 6: Anonymous Play and Player Stats

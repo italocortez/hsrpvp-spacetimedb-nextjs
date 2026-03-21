@@ -58,13 +58,13 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Match Results & Scoring
 
-- [ ] **MTCH-01**: Both players can submit their score for a match
-- [ ] **MTCH-02**: Score format is game-mode-specific: cycles for MoC and Anomaly Arbitration, score for Apocalyptic Shadow
-- [ ] **MTCH-03**: Both players can upload score screenshots (stored as Imgur URLs)
-- [ ] **MTCH-04**: Support for per-boss scoring (2 bosses per game mode) and combined scoring
-- [ ] **MTCH-05**: Casual matches auto-confirm when both players agree on scores
-- [ ] **MTCH-06**: Tournament matches require referee or admin validation before confirmation
-- [ ] **MTCH-07**: Match result has explicit verification status (Pending → Submitted → Disputed → Validated → Rejected)
+- [x] **MTCH-01**: Both players can submit their score for a match
+- [x] **MTCH-02**: Score format is game-mode-specific: cycles for MoC and Anomaly Arbitration, score for Apocalyptic Shadow
+- [x] **MTCH-03**: Both players can upload score screenshots (stored as Imgur URLs)
+- [x] **MTCH-04**: Support for per-boss scoring (2 bosses per game mode) and combined scoring
+- [x] **MTCH-05**: Casual matches auto-confirm when both players agree on scores
+- [x] **MTCH-06**: Tournament matches require referee or admin validation before confirmation
+- [x] **MTCH-07**: Match result has explicit verification status (Pending → Submitted → Disputed → Validated → Rejected)
 - [ ] **MTCH-08**: Validated results trigger ELO update and bracket advancement in same transaction
 - [ ] **MTCH-09**: mmrProcessedAt guard prevents duplicate ELO application
 
@@ -79,11 +79,11 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 - [ ] **MMR-01**: Per-game-mode ELO rating stored for each player (MoC, Apocalyptic Shadow, Anomaly Arbitration)
 - [ ] **MMR-02**: Global composite MMR calculated as equal-weight average of per-mode ratings
-- [ ] **MMR-03**: Tiered K-factor: K=40 for first 20 matches, K=20 for 21-100, K=10 for 100+
+- [x] **MMR-03**: Tiered K-factor: K=40 for first 20 matches, K=20 for 21-100, K=10 for 100+
 - [ ] **MMR-04**: MMR history log records every rating change with match reference
 - [ ] **MMR-05**: matchesPlayedPerMode counter tracked from day one for K-factor tiering
 - [ ] **MMR-06**: Leaderboard table/view sorted by MMR per game mode and global
-- [ ] **MMR-07**: Season ID column in schema (seasons not implemented yet, but schema supports it)
+- [x] **MMR-07**: Season ID column in schema (seasons not implemented yet, but schema supports it)
 
 ### Player Stats & Profile
 
@@ -210,22 +210,22 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | BRKT-04 | Phase 4 | Complete |
 | BRKT-05 | Phase 4 | Complete |
 | BRKT-06 | Phase 4 | Complete |
-| MTCH-01 | Phase 5 | Pending |
-| MTCH-02 | Phase 5 | Pending |
-| MTCH-03 | Phase 5 | Pending |
-| MTCH-04 | Phase 5 | Pending |
-| MTCH-05 | Phase 5 | Pending |
-| MTCH-06 | Phase 5 | Pending |
-| MTCH-07 | Phase 5 | Pending |
+| MTCH-01 | Phase 5 | Complete |
+| MTCH-02 | Phase 5 | Complete |
+| MTCH-03 | Phase 5 | Complete |
+| MTCH-04 | Phase 5 | Complete |
+| MTCH-05 | Phase 5 | Complete |
+| MTCH-06 | Phase 5 | Complete |
+| MTCH-07 | Phase 5 | Complete |
 | MTCH-08 | Phase 5 | Pending |
 | MTCH-09 | Phase 5 | Pending |
 | MMR-01 | Phase 5 | Pending |
 | MMR-02 | Phase 5 | Pending |
-| MMR-03 | Phase 5 | Pending |
+| MMR-03 | Phase 5 | Complete |
 | MMR-04 | Phase 5 | Pending |
 | MMR-05 | Phase 5 | Pending |
 | MMR-06 | Phase 5 | Pending |
-| MMR-07 | Phase 5 | Pending |
+| MMR-07 | Phase 5 | Complete |
 | ANON-01 | Phase 6 | Pending |
 | ANON-02 | Phase 6 | Pending |
 | ANON-03 | Phase 6 | Pending |
