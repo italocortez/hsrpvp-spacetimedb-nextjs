@@ -44,6 +44,8 @@ import AdminDeleteArchetypeReducer from "./admin_delete_archetype_reducer";
 import AdminDeleteHsrAccountReducer from "./admin_delete_hsr_account_reducer";
 import AdminDeleteRowReducer from "./admin_delete_row_reducer";
 import AdminRemoveCharacterArchetypesReducer from "./admin_remove_character_archetypes_reducer";
+import AdminSeedEloConfigReducer from "./admin_seed_elo_config_reducer";
+import AdminUpdateEloConfigReducer from "./admin_update_elo_config_reducer";
 import AdminUpdateHsrAccountReducer from "./admin_update_hsr_account_reducer";
 import AdminUpdateUserReducer from "./admin_update_user_reducer";
 import AdminUpsertArchetypeReducer from "./admin_upsert_archetype_reducer";
@@ -81,6 +83,7 @@ import OverrideMatchResultReducer from "./override_match_result_reducer";
 import ProcessTournamentMmrReducer from "./process_tournament_mmr_reducer";
 import PublishCostSetReducer from "./publish_cost_set_reducer";
 import ReclaimRefereeReducer from "./reclaim_referee_reducer";
+import RecordGameScoresReducer from "./record_game_scores_reducer";
 import RegisterForTournamentReducer from "./register_for_tournament_reducer";
 import RegisterServerReducer from "./register_server_reducer";
 import RejectTeamRequestReducer from "./reject_team_request_reducer";
@@ -119,6 +122,7 @@ import CalendarEventRow from "./calendar_event_table";
 import CalendarEventInviteRow from "./calendar_event_invite_table";
 import ChatMessageRow from "./chat_message_table";
 import CostSetRow from "./cost_set_table";
+import EloConfigTableRow from "./elo_config_table_table";
 import GroupStandingRow from "./group_standing_table";
 import HsrAccountRow from "./hsr_account_table";
 import HsrAccountCharacterRow from "./hsr_account_character_table";
@@ -129,6 +133,7 @@ import HsrCharacterCostRow from "./hsr_character_cost_table";
 import HsrLightconeRow from "./hsr_lightcone_table";
 import HsrLightconeCostRow from "./hsr_lightcone_cost_table";
 import HsrSynergyCostRow from "./hsr_synergy_cost_table";
+import LeaderboardRow from "./leaderboard_table";
 import LobbyRow from "./lobby_table";
 import LobbyCursorEventRow from "./lobby_cursor_event_table";
 import LobbyMemberRow from "./lobby_member_table";
@@ -288,6 +293,17 @@ const tablesSchema = __schema({
       { name: 'cost_set_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, CostSetRow),
+  EloConfigTable: __table({
+    name: 'elo_config',
+    indexes: [
+      { accessor: 'id', name: 'elo_config_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'elo_config_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, EloConfigTableRow),
   GroupStanding: __table({
     name: 'group_standing',
     indexes: [
@@ -450,6 +466,20 @@ const tablesSchema = __schema({
       { name: 'hsr_synergy_cost_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, HsrSynergyCostRow),
+  Leaderboard: __table({
+    name: 'leaderboard',
+    indexes: [
+      { accessor: 'by_category_and_rank', name: 'leaderboard_category_rank_idx_btree', algorithm: 'btree', columns: [
+        'category',
+        'rank',
+      ] },
+      { accessor: 'by_user', name: 'leaderboard_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, LeaderboardRow),
   Lobby: __table({
     name: 'lobby',
     indexes: [
@@ -912,6 +942,8 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_delete_hsr_account", AdminDeleteHsrAccountReducer),
   __reducerSchema("admin_delete_row", AdminDeleteRowReducer),
   __reducerSchema("admin_remove_character_archetypes", AdminRemoveCharacterArchetypesReducer),
+  __reducerSchema("admin_seed_elo_config", AdminSeedEloConfigReducer),
+  __reducerSchema("admin_update_elo_config", AdminUpdateEloConfigReducer),
   __reducerSchema("admin_update_hsr_account", AdminUpdateHsrAccountReducer),
   __reducerSchema("admin_update_user", AdminUpdateUserReducer),
   __reducerSchema("admin_upsert_archetype", AdminUpsertArchetypeReducer),
@@ -949,6 +981,7 @@ const reducersSchema = __reducers(
   __reducerSchema("process_tournament_mmr", ProcessTournamentMmrReducer),
   __reducerSchema("publish_cost_set", PublishCostSetReducer),
   __reducerSchema("reclaim_referee", ReclaimRefereeReducer),
+  __reducerSchema("record_game_scores", RecordGameScoresReducer),
   __reducerSchema("register_for_tournament", RegisterForTournamentReducer),
   __reducerSchema("register_server", RegisterServerReducer),
   __reducerSchema("reject_team_request", RejectTeamRequestReducer),

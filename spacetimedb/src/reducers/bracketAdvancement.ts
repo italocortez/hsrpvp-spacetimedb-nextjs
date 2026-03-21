@@ -3,40 +3,13 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
 import { auditUpdate } from '../helpers/auditColumns';
+import { placeParticipantInNextMatch, updateGroupStandings } from '../helpers/bracketHelpers';
 
 // ─── Group standings points ────────────────────────────────────────────────────
 // Win=2, Draw=1, Loss=0 (per CONTEXT.md)
 const WIN_POINTS = 2;
 const DRAW_POINTS = 1;
 // const LOSS_POINTS = 0;  // implied
-
-// ─── Internal helper: placeParticipantInNextMatch ─────────────────────────────
-// Places a teamId into the next available slot of a given BracketMatch.
-// If no next match ID resolves, does nothing (this was the final match).
-
-function placeParticipantInNextMatch(ctx: any, nextMatchId: number, teamId: number, userId: number): void {
-    const nextMatch = ctx.db.BracketMatch.id.find(nextMatchId);
-    if (!nextMatch) {
-        // Could be the final match with no next — silently return
-        return;
-    }
-
-    if (!nextMatch.team1Id) {
-        ctx.db.BracketMatch.id.update({
-            ...nextMatch,
-            team1Id: teamId,
-            ...auditUpdate(ctx, nextMatch, userId),
-        } as any);
-    } else if (!nextMatch.team2Id) {
-        ctx.db.BracketMatch.id.update({
-            ...nextMatch,
-            team2Id: teamId,
-            ...auditUpdate(ctx, nextMatch, userId),
-        } as any);
-    } else {
-        throw new SenderError('Next match already has both participants assigned.');
-    }
-}
 
 // ─── Internal helper: removeParticipantFromMatch ──────────────────────────────
 // Removes the slot containing teamId from a BracketMatch. Also clears winnerTeamId if it was that team.
@@ -63,75 +36,6 @@ function removeParticipantFromMatch(ctx: any, matchId: number, teamId: number, u
     }
 
     ctx.db.BracketMatch.id.update(updatedMatch as any);
-}
-
-// ─── Internal helper: updateGroupStandings ────────────────────────────────────
-// Updates GroupStanding rows for both participants after a group match resolves.
-// Win=2, Draw=1, Loss=0
-
-function updateGroupStandings(ctx: any, bracketMatch: any, userId: number): void {
-    const groupId = bracketMatch.groupId;
-    const tournamentId = bracketMatch.tournamentId;
-
-    const tournamentStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
-    const standing1 = tournamentStandings
-        .find((row: any) => row.groupId === groupId && row.teamId === bracketMatch.team1Id);
-    const standing2 = tournamentStandings
-        .find((row: any) => row.groupId === groupId && row.teamId === bracketMatch.team2Id);
-
-    if (!standing1 || !standing2) return;
-
-    let updated1: any;
-    let updated2: any;
-
-    if (bracketMatch.winnerTeamId === undefined) {
-        // Draw: both get draws+1, points+1
-        updated1 = {
-            ...standing1,
-            draws: standing1.draws + 1,
-            points: standing1.points + DRAW_POINTS,
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
-            draws: standing2.draws + 1,
-            points: standing2.points + DRAW_POINTS,
-            ...auditUpdate(ctx, standing2, userId),
-        };
-    } else if (bracketMatch.winnerTeamId === bracketMatch.team1Id) {
-        // Team1 wins
-        updated1 = {
-            ...standing1,
-            wins: standing1.wins + 1,
-            points: standing1.points + WIN_POINTS,
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
-            losses: standing2.losses + 1,
-            ...auditUpdate(ctx, standing2, userId),
-        };
-    } else {
-        // Team2 wins
-        updated1 = {
-            ...standing1,
-            losses: standing1.losses + 1,
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
-            wins: standing2.wins + 1,
-            points: standing2.points + WIN_POINTS,
-            ...auditUpdate(ctx, standing2, userId),
-        };
-    }
-
-    // Delete + insert pattern for composite PK tables
-    ctx.db.GroupStanding.delete(standing1);
-    ctx.db.GroupStanding.insert(updated1 as any);
-
-    ctx.db.GroupStanding.delete(standing2);
-    ctx.db.GroupStanding.insert(updated2 as any);
 }
 
 // ─── Internal helper: reverseGroupStandings ───────────────────────────────────

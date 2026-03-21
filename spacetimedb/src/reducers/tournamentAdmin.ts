@@ -147,6 +147,22 @@ export const override_match_result = spacetimedb.reducer(
             }
         }
 
+        // For Ranked matches being validated: require all screenshots (per D-07)
+        if (newStatusTag === 'Validated' && matchResult.matchType.tag === 'Ranked') {
+            const games = [...ctx.db.MatchResultGame.match_result_id.filter(matchResultId)];
+            if (games.length === 0) {
+                throw new SenderError('Cannot validate: no game scores have been recorded.');
+            }
+            for (const game of games) {
+                if (!game.teamBlueScreenshotUrl || !game.teamRedScreenshotUrl) {
+                    throw new SenderError(
+                        `Cannot validate Ranked match: game ${game.gameNumber} is missing screenshot(s). ` +
+                        'All games must have both teamBlueScreenshotUrl and teamRedScreenshotUrl.'
+                    );
+                }
+            }
+        }
+
         // Update the MatchResultRecord
         // For Rejected: clear the winnerUserId. For Validated: set the provided winnerId.
         ctx.db.MatchResultRecord.id.update({

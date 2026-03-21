@@ -29,6 +29,9 @@ export default __t.row({
   disputedByUserId: __t.option(__t.u32()).name("disputed_by_user_id"),
   disputeReason: __t.option(__t.string()).name("dispute_reason"),
   tournamentId: __t.option(__t.u32()).name("tournament_id"),
+  blueConfirmed: __t.bool().name("blue_confirmed"),
+  redConfirmed: __t.bool().name("red_confirmed"),
+  refereeFullControl: __t.bool().name("referee_full_control"),
   get matchType() {
     return MatchType.name("match_type");
   },

@@ -251,8 +251,52 @@ mmrProcessedAt serves as a two-purpose guard for Ranked matches:
 - **For finalization:** finalize_match_result checks mmrProcessedAt is set (Ranked) or matchType=Casual before deleting
 
 ### Implementation Status
-- process_tournament_mmr reducer: stub exists (Phase 04.1), implementation Phase 5
-- finalize_match_result reducer: stub exists (Phase 04.1), implementation Phase 5
+- process_tournament_mmr reducer: implemented (Phase 5)
+- finalize_match_result reducer: implemented (Phase 5)
+
+## Leaderboard
+
+Materialized table rebuilt after MMR processing.
+
+### Schema
+- category (string): "MemoryOfChaos", "ApocalypticShadow", "AnomalyArbitration", "Global"
+- rank (u16): 1-based rank within category
+- userId (u32): FK to User
+- rating (u32): MMR rating value
+- matchesPlayed (u32): total matches in this mode
+- wins (u32): total wins (joined from PlayerStat)
+- seasonId (u32?): future season support
+
+PK: [category, rank]. Max 400 rows (100 per category x 4).
+
+### Rebuild Trigger
+Leaderboard is rebuilt inline after:
+- finalize_match_result (standalone Ranked)
+- process_tournament_mmr (tournament batch)
+
+### Minimum Matches
+A player must have matchesPlayed >= 2 in a game mode to appear on that mode's leaderboard.
+Global leaderboard uses globalCompositeRating from MmrRating.
+
+## EloConfig Table
+
+Single-row admin table (sentinel PK id=1). Admin-editable via admin_update_elo_config.
+
+| Field | Type | Default | Purpose |
+|-------|------|---------|---------|
+| kFactorNew | u8 | 40 | K-factor for 0-20 matches |
+| kFactorMid | u8 | 20 | K-factor for 21-100 matches |
+| kFactorVet | u8 | 10 | K-factor for 100+ matches |
+| newThreshold | u32 | 20 | Match count boundary for placement |
+| midThreshold | u32 | 100 | Match count boundary for settling |
+| initialRating | u32 | 1000 | Starting rating for new players |
+| sizeBonus | u32 | 150 | Rating points per extra team member |
+| spreadDivisor | u8 | 2 | Spread penalty = stdev / this |
+| maxAccountBonus | u32 | 200 | Max ELO modifier from account rating gap |
+
+Config changes apply to future matches only.
+
+**Note:** Phase 5 always applies Fair MMR (account modifier active). The per-match choice between Fair MMR and Handicap Play (D-23) is deferred to Phase 9/10 when gameplay handicaps are implemented. No accountModifierMode column is needed on MatchResultRecord until then.
 
 ## Key Decisions
 

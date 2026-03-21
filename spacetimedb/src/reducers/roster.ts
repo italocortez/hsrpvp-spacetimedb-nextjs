@@ -3,6 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { ensureVerifiedUser } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { validateUid, deriveRegion, recalcDuplicateUid } from '../helpers/rosterHelpers';
+import { updateAccountRating } from '../helpers/accountRating';
 
 // ─── create_hsr_account ───────────────────────────────────────────────────────
 // Creates a new HSR account entry for the authenticated user.
@@ -177,6 +178,8 @@ export const batch_upsert_characters = spacetimedb.reducer(
                 ...(existing ? auditUpdate(ctx, existing, user.id) : auditInsert(ctx, user.id)),
             } as any);
         }
+
+        updateAccountRating(ctx, hsrAccountId, user.id);
     }
 );
 
@@ -214,6 +217,8 @@ export const batch_remove_characters = spacetimedb.reducer(
             const row = accountChars.find(row => row.characterName === name)!;
             ctx.db.HsrAccountCharacter.delete(row);
         }
+
+        updateAccountRating(ctx, hsrAccountId, user.id);
     }
 );
 

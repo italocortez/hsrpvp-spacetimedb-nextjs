@@ -11,16 +11,13 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  id: __t.u32().primaryKey(),
+  category: __t.string(),
+  rank: __t.u16(),
   userId: __t.u32().name("user_id"),
-  uid: __t.string(),
-  region: __t.string(),
-  displayLabel: __t.string().name("display_label"),
-  isActive: __t.bool().name("is_active"),
-  isRosterPublic: __t.bool().name("is_roster_public"),
-  isRatingPublic: __t.bool().name("is_rating_public"),
-  isDuplicateUid: __t.bool().name("is_duplicate_uid"),
-  accountRating: __t.u32().name("account_rating"),
+  rating: __t.u32(),
+  matchesPlayed: __t.u32().name("matches_played"),
+  wins: __t.u32(),
+  seasonId: __t.option(__t.u32()).name("season_id"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

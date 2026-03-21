@@ -116,8 +116,8 @@ Submit -> Submitted -> Admin/Mod validates (screenshots required) -> Validated -
 Submit -> Submitted -> TO/referee validates (screenshots required) -> Validated -> match stays (tournament in progress) -> tournament ends or cancelled -> process_tournament_mmr (batch all Validated matches) -> stamp mmrProcessedAt on each -> finalize_match_result per match -> write history + stats -> delete all MatchResultRecords
 
 ### Implementation Status
-- finalize_match_result reducer: stub exists (Phase 04.1), implementation Phase 5
-- process_tournament_mmr reducer: stub exists (Phase 04.1), implementation Phase 5
+- finalize_match_result reducer: implemented (Phase 5) -- writes history, increments stats, advances bracket, deletes ephemeral records
+- process_tournament_mmr reducer: implemented (Phase 5) -- batch processes MMR for tournament matches, stamps mmrProcessedAt
 - mmrProcessedAt column: present on MatchResultRecord, used as finalization gate
 
 ---
@@ -178,7 +178,7 @@ The `disputeReason` column on `MatchResultRecord` is reused to store the overrid
 5. **Casual matches auto-validate on submit** -- `submit_match_result` sets status directly to Validated for Casual matches; Ranked stays at Submitted
 6. **Ranked validation requires screenshots** -- `override_match_result("Validated")` rejects if any MatchResultGame row is missing teamBlueScreenshotUrl or teamRedScreenshotUrl
 7. **MMR only for Ranked matches** -- Casual matches skip MMR entirely; Ranked matches process MMR (immediate for standalone, batched for tournaments)
-8. **Bracket advancement deferred to Phase 4** -- the bracket is not updated when a match result is submitted in Phase 3
+8. **Bracket advancement runs atomically during finalization** -- finalize_match_result calls advanceBracketMatch when bracketMatchId is set and winnerTeamId isn't already assigned (idempotent with submit_and_advance_bracket)
 
 ---
 
@@ -280,6 +280,20 @@ Games track WHAT happened in each game of the series.
 The Record tracks the overall lifecycle and administrative state.
 
 All three are deleted together when finalize_match_result runs.
+
+---
+
+## Reducer Reference
+
+| Reducer | Permission | Description |
+|---------|-----------|-------------|
+| confirm_match_scores | Captain or spectator referee | Confirms scores for a side |
+| submit_match_result | Referee/Mod/Admin/TO | Submits result; Casual auto-validates (D-04) |
+| dispute_match_result | Match participant | Disputes submitted result |
+| override_match_result | TO/Mod/Admin | Override to Validated/Rejected; Ranked requires screenshots |
+| record_game_scores | Captain or spectator referee | Upserts per-game scores and screenshots |
+| finalize_match_result | Referee/Mod/Admin/TO | Writes history, stats, advances bracket, deletes ephemeral; inline MMR for standalone Ranked |
+| process_tournament_mmr | TO/Mod/Admin | Batch MMR for completed tournament |
 
 ---
 

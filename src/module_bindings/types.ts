@@ -332,6 +332,24 @@ export const Element = __t.enum("Element", {
 });
 export type Element = __Infer<typeof Element>;
 
+export const EloConfig = __t.object("EloConfig", {
+  id: __t.u32(),
+  kFactorNew: __t.u8(),
+  kFactorMid: __t.u8(),
+  kFactorVet: __t.u8(),
+  newThreshold: __t.u32(),
+  midThreshold: __t.u32(),
+  initialRating: __t.u32(),
+  sizeBonus: __t.u32(),
+  spreadDivisor: __t.u8(),
+  maxAccountBonus: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type EloConfig = __Infer<typeof EloConfig>;
+
 // The tagged union or sum type for the algebraic type `GameMode`.
 export const GameMode = __t.enum("GameMode", {
   MemoryOfChaos: __t.unit(),
@@ -372,6 +390,7 @@ export const HsrAccount = __t.object("HsrAccount", {
   isRosterPublic: __t.bool(),
   isRatingPublic: __t.bool(),
   isDuplicateUid: __t.bool(),
+  accountRating: __t.u32(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -505,6 +524,21 @@ export const HsrSynergyCost = __t.object("HsrSynergyCost", {
   lastModifiedDate: __t.timestamp(),
 });
 export type HsrSynergyCost = __Infer<typeof HsrSynergyCost>;
+
+export const Leaderboard = __t.object("Leaderboard", {
+  category: __t.string(),
+  rank: __t.u16(),
+  userId: __t.u32(),
+  rating: __t.u32(),
+  matchesPlayed: __t.u32(),
+  wins: __t.u32(),
+  seasonId: __t.option(__t.u32()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type Leaderboard = __Infer<typeof Leaderboard>;
 
 export const Lobby = __t.object("Lobby", {
   id: __t.u32(),
@@ -682,7 +716,6 @@ export const MatchResultParticipant = __t.object("MatchResultParticipant", {
     return TeamLabel;
   },
   isCaptain: __t.bool(),
-  isConfirmed: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -704,6 +737,9 @@ export const MatchResultRecord = __t.object("MatchResultRecord", {
   disputedByUserId: __t.option(__t.u32()),
   disputeReason: __t.option(__t.string()),
   tournamentId: __t.option(__t.u32()),
+  blueConfirmed: __t.bool(),
+  redConfirmed: __t.bool(),
+  refereeFullControl: __t.bool(),
   get matchType() {
     return MatchType;
   },
@@ -805,7 +841,6 @@ export type MatchSessionStepHistory = __Infer<typeof MatchSessionStepHistory>;
 export const MatchType = __t.enum("MatchType", {
   Casual: __t.unit(),
   Ranked: __t.unit(),
-  Tournament: __t.unit(),
 });
 export type MatchType = __Infer<typeof MatchType>;
 

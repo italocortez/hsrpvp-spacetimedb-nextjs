@@ -3,6 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { ensureAdmin } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { validateUid, deriveRegion, recalcDuplicateUid } from '../helpers/rosterHelpers';
+import { updateAccountRating } from '../helpers/accountRating';
 
 // ─── admin_create_hsr_account ─────────────────────────────────────────────────
 // Admin proxy: creates an HSR account on behalf of any target user.
@@ -147,6 +148,8 @@ export const admin_batch_upsert_characters = spacetimedb.reducer(
                 ...(existing ? auditUpdate(ctx, existing, admin.id) : auditInsert(ctx, admin.id)),
             } as any);
         }
+
+        updateAccountRating(ctx, hsrAccountId, admin.id);
     }
 );
 
@@ -156,7 +159,7 @@ export const admin_batch_upsert_characters = spacetimedb.reducer(
 export const admin_batch_remove_characters = spacetimedb.reducer(
     { hsrAccountId: t.u32(), characterNamesJson: t.string() },
     (ctx, { hsrAccountId, characterNamesJson }) => {
-        ensureAdmin(ctx);
+        const admin = ensureAdmin(ctx);
 
         const account = ctx.db.HsrAccount.id.find(hsrAccountId);
         if (!account) throw new SenderError('HSR account not found');
@@ -179,6 +182,8 @@ export const admin_batch_remove_characters = spacetimedb.reducer(
             const row = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([hsrAccountId, name])][0];
             ctx.db.HsrAccountCharacter.delete(row!);
         }
+
+        updateAccountRating(ctx, hsrAccountId, admin.id);
     }
 );
 

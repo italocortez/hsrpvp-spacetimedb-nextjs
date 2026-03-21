@@ -10,6 +10,7 @@ export const hsrAccountColumns = {
     isRosterPublic: t.bool(),
     isRatingPublic: t.bool(),
     isDuplicateUid: t.bool(),
+    accountRating: t.u32(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

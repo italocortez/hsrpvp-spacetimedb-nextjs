@@ -138,18 +138,24 @@ export const submit_match_result = spacetimedb.reducer(
             throw new SenderError('You do not have referee authority to submit this match result.');
         }
 
-        // Update the MatchResultRecord
-        // NOTE: Phase 3 only records the submission. MMR calculation (Phase 5) and bracket
-        // advancement (Phase 4) are triggered by separate downstream processes.
+        // Determine status based on matchType (per D-04, D-05)
+        // NOTE: D-04 (locked decision) supersedes MTCH-05's mismatch clause for Casual matches.
+        // Casual matches auto-validate on submit -- there is no mismatch detection path for Casual.
+        // Mismatch detection only applies to Ranked matches (both sides submit, referee validates).
+        const newStatus = matchResult.matchType.tag === 'Casual'
+            ? { tag: 'Validated', value: {} }
+            : { tag: 'Submitted', value: {} };
+
         ctx.db.MatchResultRecord.id.update({
             ...matchResult,
-            status: { tag: 'Submitted', value: {} } as any,
+            status: newStatus as any,
             winnerUserId: winnerUserId !== 0 ? winnerUserId : undefined,
             refereeUserId: user.id,
             ...auditUpdate(ctx, matchResult, user.id),
         } as any);
 
-        console.log(`[MATCH] Match result #${matchResultId} submitted by user #${user.id}, winner: #${winnerUserId}`);
+        const statusLabel = matchResult.matchType.tag === 'Casual' ? 'Validated (auto)' : 'Submitted';
+        console.log(`[MATCH] Match result #${matchResultId} ${statusLabel} by user #${user.id}, winner: #${winnerUserId}`);
     }
 );
 
