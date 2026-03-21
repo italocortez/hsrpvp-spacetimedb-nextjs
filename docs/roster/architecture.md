@@ -107,7 +107,7 @@ All admin_* reducers mirror user reducers but:
 - admin_update_hsr_account(hsrAccountId, displayLabel, isRosterPublic, isRatingPublic)
 - admin_delete_hsr_account(hsrAccountId)
 - admin_batch_upsert_characters(hsrAccountId, charactersJson)
-- admin_batch_remove_characters(hsrAccountId, charactersJson)
+- admin_batch_remove_characters(hsrAccountId, characterNamesJson)
 
 ## Archetype System
 

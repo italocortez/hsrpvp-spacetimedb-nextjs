@@ -17,7 +17,7 @@
 ### Submit Without All Confirmations (blocked)
 **Given:** MatchResultRecord where not all captains have confirmed
 **When:** Referee calls `submit_match_result`
-**Then:** Throws "Both teams must confirm scores before submission"
+**Then:** Throws "All team captains must confirm scores before submission."
 
 ### Dispute Match Result
 **Given:** MatchResultRecord in Submitted status, caller is a match participant (has MatchResultParticipant row)
@@ -64,7 +64,7 @@
 |------|-------------------|
 | Confirm scores on non-Pending match | Throws "Scores can only be confirmed when Pending" |
 | Non-participant confirms scores | Throws "You are not a participant" |
-| Confirm by non-captain in team match | Throws "Only the team captain can confirm scores" |
+| Confirm by non-captain in team match | Throws "Only the team captain can confirm match scores." |
 | Submit without referee authority | Throws "You do not have referee authority" |
 | Dispute a Pending match | Throws "Can only dispute after submission" |
 | Dispute with empty reason | Throws "Dispute reason cannot be empty" |

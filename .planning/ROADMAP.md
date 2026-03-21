@@ -226,7 +226,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 2. Roster Management | 2/2 | Complete   | 2026-03-16 |
 | 3. Tournament System | 5/5 | Complete   | 2026-03-17 |
 | 4. Bracket Generation | 3/3 | Complete   | 2026-03-18 |
-| 04.1. Schema Normalization | 3/3 | Complete   | 2026-03-20 |
+| 04.1. Schema Normalization | 3/3 | Complete    | 2026-03-20 |
 | 5. Match Results and MMR | 0/? | Not started | - |
 | 6. Anonymous Play and Player Stats | 0/? | Not started | - |
 | 7. Achievements and Titles | 0/? | Not started | - |
