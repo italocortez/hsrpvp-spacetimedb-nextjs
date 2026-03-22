@@ -142,10 +142,12 @@ Plans:
   6. Best Ally (userId with most shared wins) and Nemesis (userId with most losses against) are computable from stored match data
   7. Per-character win rate, loss rate, and character-vs-character win ratio are tracked in a character stats table
   8. Match history supports step-by-step replay by reading MatchSessionStepHistory; final result with game-mode-specific scoring is readable from the match result table
-**Plans:** 2 plans
+**Plans:** 3 plans
+
 Plans:
-- [ ] 06-01-PLAN.md — [To be planned]
-- [ ] 06-02-PLAN.md — [To be planned]
+- [ ] 06-01-PLAN.md — Schema foundation: PK expansions (PlayerStat, PlayerCharacterStat, PlayerRelationship, MmrRating, Leaderboard), column changes (Lobby, LobbyCursorEvent, MatchSessionStep, MatchSessionHistory, MatchSessionStepHistory, MatchParticipantHistory), 4 new tables (Season, GlobalCharacterStat, TournamentPlayerAccount, MatchResultGameHistory), Season admin reducers, publish --clear-database
+- [ ] 06-02-PLAN.md — Anonymous play helpers (label computation, ownership validation), broadcast_cursor anonymous enforcement, roster/stat visibility views, TournamentPlayerAccount wiring into registration
+- [ ] 06-03-PLAN.md — Finalization pipeline rewrite (18-step shared helper), character/global stat increments, match replay archival, auto-finalize casual, publish + doc updates
 
 ### Phase 7: Achievements and Titles
 **Goal**: Admins can define achievements, the system auto-awards them on condition, and players can display earned titles on their profile
@@ -243,7 +245,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 4. Bracket Generation | 3/3 | Complete   | 2026-03-18 |
 | 04.1. Schema Normalization | 3/3 | Complete    | 2026-03-20 |
 | 5. Match Results and MMR | 2/2 | Complete | 2026-03-21 |
-| 6. Anonymous Play and Player Stats | 0/? | Not started | - |
+| 6. Anonymous Play and Player Stats | 0/3 | Planning complete | - |
 | 7. Achievements and Titles | 0/? | Not started | - |
 | 8. Calendar and Scheduling | 0/? | Not started | - |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 0/? | Not started | - |
