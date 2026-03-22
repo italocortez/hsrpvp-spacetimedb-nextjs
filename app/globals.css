@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 @source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+@import "./tokens.css";
 
 :root {
     /* Tells the browser to use dark scrollbars and native inputs */
@@ -141,8 +142,6 @@ header {
 }
 
 main {
-    width: min(94%, 90rem);
-    margin-inline: auto;
     display: flex;
     flex-direction: column;
     gap: 1rem;
