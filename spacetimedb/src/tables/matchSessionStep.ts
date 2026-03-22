@@ -9,6 +9,7 @@ export const matchSessionStepColumns = {
     sequence: t.u32(),     // 1, 2, 3... (Strict ordering)
 
     actorUserId: t.u32(), // Who performed the action (persistent User ID)
+    anonymousLabel: t.string().optional(),
     actorSlot: TeamLabel,  // Blue/Red/Spectator
 
     action: ActionType,    // Pick, Ban, Bid...

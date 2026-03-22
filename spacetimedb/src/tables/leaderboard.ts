@@ -7,7 +7,7 @@ export const leaderboardColumns = {
     rating: t.u32(),
     matchesPlayed: t.u32(),
     wins: t.u32(),
-    seasonId: t.u32().optional(),
+    seasonId: t.u32(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
@@ -17,9 +17,9 @@ export const leaderboardColumns = {
 export const Leaderboard = table({
     name: 'leaderboard',
     public: true,
-    primaryKey: ['category', 'rank'],
+    primaryKey: ['category', 'rank', 'seasonId'],
     indexes: [
-        { accessor: 'by_category_and_rank', algorithm: 'btree', columns: ['category', 'rank'] },
+        { accessor: 'by_category_rank_season', algorithm: 'btree', columns: ['category', 'rank', 'seasonId'] },
         { accessor: 'by_user', algorithm: 'btree', columns: ['userId'] },
     ],
 }, leaderboardColumns);

@@ -87,6 +87,18 @@ import { MatchSessionStep } from './tables/matchSessionStep';
 import { MatchSessionHistory } from './tables/matchSessionHistory';
 import { MatchSessionStepHistory } from './tables/matchSessionStepHistory';
 
+// Season
+import { Season } from './tables/season';
+
+// Global Stats
+import { GlobalCharacterStat } from './tables/globalCharacterStat';
+
+// Tournament Player Accounts
+import { TournamentPlayerAccount } from './tables/tournamentPlayerAccount';
+
+// Match Result Game History
+import { MatchResultGameHistory } from './tables/matchResultGameHistory';
+
 // Scheduled Jobs
 import { UserDeletionJob } from './tables/userDeletionJob';
 
@@ -183,6 +195,16 @@ const spacetimedb = schema({
     MatchSessionHistory,
     MatchSessionStepHistory,
     MatchParticipantHistory,
+    MatchResultGameHistory,
+
+    // Season
+    Season,
+
+    // Global Stats
+    GlobalCharacterStat,
+
+    // Tournament Player Accounts
+    TournamentPlayerAccount,
 
     // Scheduled Jobs
     UserDeletionJob,

@@ -231,8 +231,12 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'MatchSessionStepHistory': {
-                if (!ctx.db.MatchSessionStepHistory.matchHistoryId.find(Number(primaryKeyJson))) throw new SenderError('Row not found');
-                ctx.db.MatchSessionStepHistory.matchHistoryId.delete(Number(primaryKeyJson));
+                // Composite PK [matchHistoryId, sequence] — parse JSON array
+                const stepPK = JSON.parse(primaryKeyJson);
+                const stepRow = [...ctx.db.MatchSessionStepHistory.by_match_history.filter(stepPK[0])]
+                    .find((r: any) => r.sequence === stepPK[1]);
+                if (!stepRow) throw new SenderError('Row not found');
+                ctx.db.MatchSessionStepHistory.delete(stepRow);
                 break;
             }
             default:

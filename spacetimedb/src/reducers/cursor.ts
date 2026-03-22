@@ -23,6 +23,7 @@ export const broadcast_cursor = spacetimedb.reducer({
     ctx.db.LobbyCursorEvent.insert({
         lobbyId,
         senderUserId: mapping.userId,
+        anonymousLabel: undefined,
         x,
         y,
         timestamp: ctx.timestamp,

@@ -5,6 +5,7 @@ export const matchParticipantHistoryColumns = {
     userId: t.u32(),
     matchHistoryId: t.u32(),
     teamSide: TeamLabel,
+    displayName: t.string(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

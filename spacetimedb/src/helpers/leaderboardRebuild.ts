@@ -53,7 +53,7 @@ export function rebuildLeaderboard(ctx: any, actingUserId: number): void {
                 rating: entry.rating,
                 matchesPlayed: entry.matchesPlayed,
                 wins,
-                seasonId: entry.seasonId,
+                seasonId: entry.seasonId ?? 0,
                 ...auditInsert(ctx, actingUserId),
             } as any);
         }
@@ -96,7 +96,7 @@ export function rebuildLeaderboard(ctx: any, actingUserId: number): void {
             rating: entry.globalRating,
             matchesPlayed: entry.totalMatches,
             wins: entry.totalWins,
-            seasonId: undefined,
+            seasonId: 0,
             ...auditInsert(ctx, actingUserId),
         } as any);
     }

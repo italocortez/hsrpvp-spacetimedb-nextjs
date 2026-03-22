@@ -17,10 +17,6 @@ export const matchSessionHistoryColumns = {
 
     outcome: MatchOutcome,
 
-    // Serialized JSON blobs containing the final team comps
-    // (Character Name, Eidolon, Cost Paid, etc.)
-    rosterBlue: t.string(),
-    rosterRed: t.string(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

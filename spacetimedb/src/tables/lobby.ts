@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { DraftMode, BanMode, LobbyStage, DisconnectPolicy, GameMode } from '../types/enums';
+import { DraftMode, BanMode, LobbyStage, DisconnectPolicy, GameMode, RosterVisibility } from '../types/enums';
 
 export const lobbyColumns = {
     id: t.u32().primaryKey().autoInc(),
@@ -24,13 +24,15 @@ export const lobbyColumns = {
     // Tournament linkage:
     tournamentId: t.u32().optional(),
     bracketMatchId: t.u32().optional(),
+    isTournamentControlled: t.bool(),
 
     // Anonymous play:
     isAnonymousPlayers: t.bool(),
     isAnonymousSpectators: t.bool(),
 
     // Roster:
-    isOpenRoster: t.bool(),
+    rosterVisibility: RosterVisibility,
+    requireOwnership: t.bool(),
     costSetId: t.u32(),
 
     // Visibility:

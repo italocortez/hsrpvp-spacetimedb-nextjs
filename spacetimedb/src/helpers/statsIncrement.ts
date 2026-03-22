@@ -5,18 +5,21 @@ import { auditInsert, auditUpdate } from './auditColumns';
 
 /**
  * Increments PlayerStat for a participant after match finalization.
- * Creates a new row if none exists for this (userId, gameMode, draftMode) tuple.
+ * Creates a new row if none exists for this (userId, gameMode, draftMode, seasonId, matchType, teamSize) tuple.
  */
 export function incrementPlayerStat(
     ctx: any,
     userId: number,
     gameMode: any,
     draftMode: any,
+    seasonId: number,
+    matchType: any,
+    teamSize: number,
     isWin: boolean,
     isDraw: boolean,
     actingUserId: number
 ): void {
-    const existing = [...ctx.db.PlayerStat.by_user_mode_draft.filter([userId, gameMode, draftMode])][0];
+    const existing = [...ctx.db.PlayerStat.by_user_mode_draft_season_type_size.filter([userId, gameMode, draftMode, seasonId, matchType, teamSize])][0];
 
     if (existing) {
         ctx.db.PlayerStat.delete(existing);
@@ -29,6 +32,9 @@ export function incrementPlayerStat(
             losses: existing.losses + (!isWin && !isDraw ? 1 : 0),
             draws: existing.draws + (isDraw ? 1 : 0),
             matchesSpectated: existing.matchesSpectated,
+            seasonId,
+            matchType,
+            teamSize,
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
@@ -41,6 +47,9 @@ export function incrementPlayerStat(
             losses: !isWin && !isDraw ? 1 : 0,
             draws: isDraw ? 1 : 0,
             matchesSpectated: 0,
+            seasonId,
+            matchType,
+            teamSize,
             ...auditInsert(ctx, actingUserId),
         } as any);
     }
@@ -57,11 +66,14 @@ export function incrementPlayerRelationship(
     otherUserId: number,
     gameMode: any,
     draftMode: any,
+    seasonId: number,
+    matchType: any,
+    teamSize: number,
     isAlly: boolean,
     didWin: boolean,
     actingUserId: number
 ): void {
-    const existing = [...ctx.db.PlayerRelationship.by_user_and_other_mode_draft.filter([userId, otherUserId, gameMode, draftMode])][0];
+    const existing = [...ctx.db.PlayerRelationship.by_user_other_mode_draft_season_type_size.filter([userId, otherUserId, gameMode, draftMode, seasonId, matchType, teamSize])][0];
 
     if (existing) {
         ctx.db.PlayerRelationship.delete(existing);
@@ -74,6 +86,9 @@ export function incrementPlayerRelationship(
             winsAsAlly: existing.winsAsAlly + (isAlly && didWin ? 1 : 0),
             matchesAsOpponent: existing.matchesAsOpponent + (!isAlly ? 1 : 0),
             winsAsOpponent: existing.winsAsOpponent + (!isAlly && didWin ? 1 : 0),
+            seasonId,
+            matchType,
+            teamSize,
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
@@ -86,6 +101,9 @@ export function incrementPlayerRelationship(
             winsAsAlly: isAlly && didWin ? 1 : 0,
             matchesAsOpponent: !isAlly ? 1 : 0,
             winsAsOpponent: !isAlly && didWin ? 1 : 0,
+            seasonId,
+            matchType,
+            teamSize,
             ...auditInsert(ctx, actingUserId),
         } as any);
     }

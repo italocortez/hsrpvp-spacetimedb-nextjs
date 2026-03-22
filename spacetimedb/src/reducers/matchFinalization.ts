@@ -12,8 +12,8 @@ import { advanceBracketMatch } from '../helpers/bracketHelpers';
 // ─── Internal helper: getOrCreateRating ─────────────────────────────────────
 // Returns existing MmrRating row for user+mode, or creates a new one at initialRating.
 
-function getOrCreateRating(ctx: any, userId: number, gameMode: any, initialRating: number, actingUserId: number): any {
-    const existing = [...ctx.db.MmrRating.by_user_and_mode.filter([userId, gameMode])][0];
+function getOrCreateRating(ctx: any, userId: number, gameMode: any, seasonId: number, initialRating: number, actingUserId: number): any {
+    const existing = [...ctx.db.MmrRating.by_user_mode_season.filter([userId, gameMode, seasonId])][0];
     if (existing) return existing;
 
     // Create new rating row for first-time ranked player
@@ -23,7 +23,7 @@ function getOrCreateRating(ctx: any, userId: number, gameMode: any, initialRatin
         rating: initialRating,
         matchesPlayed: 0,
         globalCompositeRating: undefined,
-        seasonId: undefined,
+        seasonId,
         ...auditInsert(ctx, actingUserId),
     };
     ctx.db.MmrRating.insert(newRow as any);
@@ -40,6 +40,7 @@ function processMatchMmr(
     matchResult: any,
     participants: any[],
     gameMode: any,
+    seasonId: number,
     matchHistoryId: number,
     actingUserId: number
 ): void {
@@ -68,10 +69,10 @@ function processMatchMmr(
 
     // 4. Get or create MmrRating for each participant and collect team ratings
     const blueRatings = blueParticipants.map((p: any) =>
-        getOrCreateRating(ctx, p.userId, gameMode, cv.initialRating, actingUserId).rating
+        getOrCreateRating(ctx, p.userId, gameMode, seasonId, cv.initialRating, actingUserId).rating
     );
     const redRatings = redParticipants.map((p: any) =>
-        getOrCreateRating(ctx, p.userId, gameMode, cv.initialRating, actingUserId).rating
+        getOrCreateRating(ctx, p.userId, gameMode, seasonId, cv.initialRating, actingUserId).rating
     );
 
     // 5-6. Calculate team effective ratings (D-18)
@@ -122,7 +123,7 @@ function processMatchMmr(
 
     // 9-12. For each participant, calculate and apply rating change
     for (const participant of participants) {
-        const playerRating = getOrCreateRating(ctx, participant.userId, gameMode, cv.initialRating, actingUserId);
+        const playerRating = getOrCreateRating(ctx, participant.userId, gameMode, seasonId, cv.initialRating, actingUserId);
         const isBlue = participant.teamSide.tag === 'Blue';
         const playerEffective = isBlue ? blueEffective : redEffective;
         const opponentEffective = isBlue ? redEffective : blueEffective;
@@ -133,7 +134,7 @@ function processMatchMmr(
         const newRating = Math.max(0, playerRating.rating + delta); // Floor at 0
 
         // 10. Update MmrRating (delete + insert for composite PK)
-        const currentRating = [...ctx.db.MmrRating.by_user_and_mode.filter([participant.userId, gameMode])][0];
+        const currentRating = [...ctx.db.MmrRating.by_user_mode_season.filter([participant.userId, gameMode, seasonId])][0];
         if (currentRating) {
             ctx.db.MmrRating.delete(currentRating);
         }
@@ -143,7 +144,7 @@ function processMatchMmr(
             rating: newRating,
             matchesPlayed: (currentRating?.matchesPlayed ?? 0) + 1,
             globalCompositeRating: currentRating?.globalCompositeRating,
-            seasonId: currentRating?.seasonId,
+            seasonId,
             ...(currentRating ? auditUpdate(ctx, currentRating, actingUserId) : auditInsert(ctx, actingUserId)),
         } as any);
 
@@ -170,7 +171,7 @@ function processMatchMmr(
             previousRating: playerRating.rating,
             newRating,
             delta,
-            seasonId: currentRating?.seasonId,
+            seasonId,
             ...auditInsert(ctx, actingUserId),
         } as any);
     }
@@ -224,6 +225,12 @@ export const finalize_match_result = spacetimedb.reducer(
         const games = [...ctx.db.MatchResultGame.match_result_id.filter(matchResultId)];
         const lobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
 
+        // Read active season (seasonId defaults to 0 for pre-season per D-45)
+        const activeSeason = [...ctx.db.Season.is_active.filter(true)][0];
+        const seasonId = activeSeason ? activeSeason.id : 0;
+        const matchType = matchResult.matchType;
+        const teamSize = lobby ? lobby.teamSize : 1;
+
         // 8. Determine match outcome
         let matchOutcome: any;
         if (matchResult.winnerUserId === undefined) {
@@ -272,14 +279,12 @@ export const finalize_match_result = spacetimedb.reducer(
                 deathPenalty: 0,
             },
             outcome: matchOutcome,
-            rosterBlue: '[]', // Roster snapshot deferred -- would need MatchSessionStep data
-            rosterRed: '[]',
             ...auditInsert(ctx, user.id),
         } as any);
 
         // 10. Standalone Ranked: process MMR inline
         if (matchResult.matchType.tag === 'Ranked' && !matchResult.isTournamentControlled) {
-            processMatchMmr(ctx, matchResult, participants, lobby?.gameMode ?? games[0]?.gameMode, historyRow.id, user.id);
+            processMatchMmr(ctx, matchResult, participants, lobby?.gameMode ?? games[0]?.gameMode, seasonId, historyRow.id, user.id);
             // Stamp mmrProcessedAt
             const freshResult = ctx.db.MatchResultRecord.id.find(matchResultId)!;
             ctx.db.MatchResultRecord.id.update({
@@ -309,12 +314,14 @@ export const finalize_match_result = spacetimedb.reducer(
             }
         }
 
-        // 12. Write MatchParticipantHistory per participant
+        // 12. Write MatchParticipantHistory per participant (denormalize displayName per D-53/D-64)
         for (const p of participants) {
+            const participantUser = ctx.db.User.id.find(p.userId);
             ctx.db.MatchParticipantHistory.insert({
                 userId: p.userId,
                 matchHistoryId: historyRow.id,
                 teamSide: p.teamSide,
+                displayName: participantUser?.displayName ?? `User#${p.userId}`,
                 ...auditInsert(ctx, user.id),
             } as any);
         }
@@ -329,7 +336,7 @@ export const finalize_match_result = spacetimedb.reducer(
                 participantWon = winnerParticipant ? winnerParticipant.teamSide.tag === p.teamSide.tag : false;
             }
             const isDraw = matchResult.winnerUserId === undefined;
-            incrementPlayerStat(ctx, p.userId, gameMode, draftMode, participantWon, isDraw, user.id);
+            incrementPlayerStat(ctx, p.userId, gameMode, draftMode, seasonId, matchType, teamSize, participantWon, isDraw, user.id);
         }
 
         // 14. Increment PlayerRelationship per participant pair
@@ -346,8 +353,8 @@ export const finalize_match_result = spacetimedb.reducer(
                     bWon = winnerP ? winnerP.teamSide.tag === b.teamSide.tag : false;
                 }
                 // Bidirectional: A -> B and B -> A
-                incrementPlayerRelationship(ctx, a.userId, b.userId, gameMode, draftMode, isAlly, aWon, user.id);
-                incrementPlayerRelationship(ctx, b.userId, a.userId, gameMode, draftMode, isAlly, bWon, user.id);
+                incrementPlayerRelationship(ctx, a.userId, b.userId, gameMode, draftMode, seasonId, matchType, teamSize, isAlly, aWon, user.id);
+                incrementPlayerRelationship(ctx, b.userId, a.userId, gameMode, draftMode, seasonId, matchType, teamSize, isAlly, bWon, user.id);
             }
         }
 
@@ -415,6 +422,10 @@ export const process_tournament_mmr = spacetimedb.reducer(
             throw new SenderError('ELO config not initialized. Call admin_seed_elo_config first.');
         }
 
+        // Read active season (seasonId defaults to 0 for pre-season per D-45)
+        const activeSeason = [...ctx.db.Season.is_active.filter(true)][0];
+        const tournamentSeasonId = activeSeason ? activeSeason.id : 0;
+
         // 7. For each match result, process MMR
         for (const mr of matchResults) {
             const participants = [...ctx.db.MatchResultParticipant.match_result_id.filter(mr.id)];
@@ -423,7 +434,7 @@ export const process_tournament_mmr = spacetimedb.reducer(
             const gameMode = lobby?.gameMode ?? games[0]?.gameMode ?? { tag: 'MemoryOfChaos', value: {} };
 
             // MmrHistory rows inserted with matchHistoryId=0 as sentinel
-            processMatchMmr(ctx, mr, participants, gameMode, 0, user.id);
+            processMatchMmr(ctx, mr, participants, gameMode, tournamentSeasonId, 0, user.id);
 
             // Stamp mmrProcessedAt
             const freshMr = ctx.db.MatchResultRecord.id.find(mr.id);

@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { GameMode, DraftMode } from '../types/enums';
+import { GameMode, DraftMode, MatchType } from '../types/enums';
 
 export const playerRelationshipColumns = {
     userId: t.u32(),
@@ -10,6 +10,9 @@ export const playerRelationshipColumns = {
     winsAsAlly: t.u32(),
     matchesAsOpponent: t.u32(),
     winsAsOpponent: t.u32(),
+    seasonId: t.u32(),
+    matchType: MatchType,
+    teamSize: t.u8(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
@@ -18,10 +21,10 @@ export const playerRelationshipColumns = {
 
 export const PlayerRelationship = table({
     name: 'player_relationship',
-    public: true,
-    primaryKey: ['userId', 'otherUserId', 'gameMode', 'draftMode'],
+    public: false,
+    primaryKey: ['userId', 'otherUserId', 'gameMode', 'draftMode', 'seasonId', 'matchType', 'teamSize'],
     indexes: [
         { accessor: 'by_user', algorithm: 'btree', columns: ['userId'] },
-        { accessor: 'by_user_and_other_mode_draft', algorithm: 'btree', columns: ['userId', 'otherUserId', 'gameMode', 'draftMode'] },
+        { accessor: 'by_user_other_mode_draft_season_type_size', algorithm: 'btree', columns: ['userId', 'otherUserId', 'gameMode', 'draftMode', 'seasonId', 'matchType', 'teamSize'] },
     ],
 }, playerRelationshipColumns);
