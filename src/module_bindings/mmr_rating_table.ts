@@ -22,7 +22,7 @@ export default __t.row({
   rating: __t.u32(),
   matchesPlayed: __t.u32().name("matches_played"),
   globalCompositeRating: __t.option(__t.u32()).name("global_composite_rating"),
-  seasonId: __t.option(__t.u32()).name("season_id"),
+  seasonId: __t.u32().name("season_id"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

@@ -9,25 +9,13 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  GameMode,
-  DraftMode,
-} from "./types";
-
 
 export default __t.row({
-  userId: __t.u32().name("user_id"),
-  get gameMode() {
-    return GameMode.name("game_mode");
-  },
-  get draftMode() {
-    return DraftMode.name("draft_mode");
-  },
-  matchesPlayed: __t.u32().name("matches_played"),
-  wins: __t.u32(),
-  losses: __t.u32(),
-  draws: __t.u32(),
-  matchesSpectated: __t.u32().name("matches_spectated"),
+  id: __t.u32().primaryKey(),
+  name: __t.string(),
+  startDate: __t.timestamp().name("start_date"),
+  endDate: __t.option(__t.timestamp()).name("end_date"),
+  isActive: __t.bool().name("is_active"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

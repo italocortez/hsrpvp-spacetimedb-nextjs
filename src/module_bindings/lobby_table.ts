@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
+  RosterVisibility,
   DisconnectPolicy,
   DraftMode,
   BanMode,
@@ -41,9 +42,13 @@ export default __t.row({
   deathPenalty: __t.f32().name("death_penalty"),
   tournamentId: __t.option(__t.u32()).name("tournament_id"),
   bracketMatchId: __t.option(__t.u32()).name("bracket_match_id"),
+  isTournamentControlled: __t.bool().name("is_tournament_controlled"),
   isAnonymousPlayers: __t.bool().name("is_anonymous_players"),
   isAnonymousSpectators: __t.bool().name("is_anonymous_spectators"),
-  isOpenRoster: __t.bool().name("is_open_roster"),
+  get rosterVisibility() {
+    return RosterVisibility.name("roster_visibility");
+  },
+  requireOwnership: __t.bool().name("require_ownership"),
   costSetId: __t.u32().name("cost_set_id"),
   isPublic: __t.bool().name("is_public"),
   get disconnectPolicy() {

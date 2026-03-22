@@ -11,12 +11,12 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
+  MatchType,
   DraftMode,
 } from "./types";
 
 
 export default __t.row({
-  userId: __t.u32().name("user_id"),
   characterName: __t.string().name("character_name"),
   get gameMode() {
     return GameMode.name("game_mode");
@@ -24,6 +24,13 @@ export default __t.row({
   get draftMode() {
     return DraftMode.name("draft_mode");
   },
+  seasonId: __t.u32().name("season_id"),
+  get matchType() {
+    return MatchType.name("match_type");
+  },
+  teamSize: __t.u8().name("team_size"),
+  timesPicked: __t.u32().name("times_picked"),
+  timesBanned: __t.u32().name("times_banned"),
   wins: __t.u32(),
   losses: __t.u32(),
   matchesPlayed: __t.u32().name("matches_played"),

@@ -60,6 +60,7 @@ import CancelTournamentReducer from "./cancel_tournament_reducer";
 import ConfirmMatchScoresReducer from "./confirm_match_scores_reducer";
 import CreateCostSetReducer from "./create_cost_set_reducer";
 import CreateHsrAccountReducer from "./create_hsr_account_reducer";
+import CreateSeasonReducer from "./create_season_reducer";
 import CreateTournamentReducer from "./create_tournament_reducer";
 import CreateTournamentTeamReducer from "./create_tournament_team_reducer";
 import DeleteCostSetReducer from "./delete_cost_set_reducer";
@@ -97,6 +98,7 @@ import ServerLinkDiscordReducer from "./server_link_discord_reducer";
 import ServerSetMmrReducer from "./server_set_mmr_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
+import SetActiveSeasonReducer from "./set_active_season_reducer";
 import SetCoachReducer from "./set_coach_reducer";
 import SubmitAndAdvanceBracketReducer from "./submit_and_advance_bracket_reducer";
 import SubmitMatchResultReducer from "./submit_match_result_reducer";
@@ -123,6 +125,7 @@ import CalendarEventInviteRow from "./calendar_event_invite_table";
 import ChatMessageRow from "./chat_message_table";
 import CostSetRow from "./cost_set_table";
 import EloConfigTableRow from "./elo_config_table_table";
+import GlobalCharacterStatRow from "./global_character_stat_table";
 import GroupStandingRow from "./group_standing_table";
 import HsrAccountRow from "./hsr_account_table";
 import HsrAccountCharacterRow from "./hsr_account_character_table";
@@ -139,6 +142,7 @@ import LobbyCursorEventRow from "./lobby_cursor_event_table";
 import LobbyMemberRow from "./lobby_member_table";
 import MatchParticipantHistoryRow from "./match_participant_history_table";
 import MatchResultGameRow from "./match_result_game_table";
+import MatchResultGameHistoryRow from "./match_result_game_history_table";
 import MatchResultParticipantRow from "./match_result_participant_table";
 import MatchResultRecordRow from "./match_result_record_table";
 import MatchSessionRow from "./match_session_table";
@@ -147,16 +151,15 @@ import MatchSessionStepRow from "./match_session_step_table";
 import MatchSessionStepHistoryRow from "./match_session_step_history_table";
 import MmrHistoryRow from "./mmr_history_table";
 import MmrRatingRow from "./mmr_rating_table";
-import PlayerCharacterStatRow from "./player_character_stat_table";
-import PlayerRelationshipRow from "./player_relationship_table";
-import PlayerStatRow from "./player_stat_table";
 import SavedCalendarRow from "./saved_calendar_table";
+import SeasonRow from "./season_table";
 import TeamRow from "./team_table";
 import TeamInviteRow from "./team_invite_table";
 import TeamMemberRow from "./team_member_table";
 import TournamentRow from "./tournament_table";
 import TournamentAssistantRow from "./tournament_assistant_table";
 import TournamentParticipantRow from "./tournament_participant_table";
+import TournamentPlayerAccountRow from "./tournament_player_account_table";
 import TournamentTeamRow from "./tournament_team_table";
 import TournamentTeamRequestRow from "./tournament_team_request_table";
 import UserRow from "./user_table";
@@ -304,6 +307,20 @@ const tablesSchema = __schema({
       { name: 'elo_config_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, EloConfigTableRow),
+  GlobalCharacterStat: __table({
+    name: 'global_character_stat',
+    indexes: [
+      { accessor: 'by_char_mode', name: 'global_character_stat_character_name_game_mode_idx_btree', algorithm: 'btree', columns: [
+        'characterName',
+        'gameMode',
+      ] },
+      { accessor: 'by_season', name: 'global_character_stat_season_id_idx_btree', algorithm: 'btree', columns: [
+        'seasonId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, GlobalCharacterStatRow),
   GroupStanding: __table({
     name: 'group_standing',
     indexes: [
@@ -469,9 +486,10 @@ const tablesSchema = __schema({
   Leaderboard: __table({
     name: 'leaderboard',
     indexes: [
-      { accessor: 'by_category_and_rank', name: 'leaderboard_category_rank_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_category_rank_season', name: 'leaderboard_category_rank_season_id_idx_btree', algorithm: 'btree', columns: [
         'category',
         'rank',
+        'seasonId',
       ] },
       { accessor: 'by_user', name: 'leaderboard_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
@@ -560,6 +578,16 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MatchResultGameRow),
+  MatchResultGameHistory: __table({
+    name: 'match_result_game_history',
+    indexes: [
+      { accessor: 'by_match_history', name: 'match_result_game_history_match_history_id_idx_btree', algorithm: 'btree', columns: [
+        'matchHistoryId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MatchResultGameHistoryRow),
   MatchResultParticipant: __table({
     name: 'match_result_participant',
     indexes: [
@@ -639,12 +667,11 @@ const tablesSchema = __schema({
   MatchSessionStepHistory: __table({
     name: 'match_session_step_history',
     indexes: [
-      { accessor: 'matchHistoryId', name: 'match_session_step_history_match_history_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_match_history', name: 'match_session_step_history_match_history_id_idx_btree', algorithm: 'btree', columns: [
         'matchHistoryId',
       ] },
     ],
     constraints: [
-      { name: 'match_session_step_history_match_history_id_key', constraint: 'unique', columns: ['matchHistoryId'] },
     ],
   }, MatchSessionStepHistoryRow),
   MmrHistory: __table({
@@ -670,9 +697,10 @@ const tablesSchema = __schema({
       { accessor: 'rating', name: 'mmr_rating_rating_idx_btree', algorithm: 'btree', columns: [
         'rating',
       ] },
-      { accessor: 'by_user_and_mode', name: 'mmr_rating_user_id_game_mode_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_user_mode_season', name: 'mmr_rating_user_id_game_mode_season_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
         'gameMode',
+        'seasonId',
       ] },
       { accessor: 'user_id', name: 'mmr_rating_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
@@ -681,53 +709,6 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MmrRatingRow),
-  PlayerCharacterStat: __table({
-    name: 'player_character_stat',
-    indexes: [
-      { accessor: 'by_user_and_character_mode_draft', name: 'player_character_stat_user_id_character_name_game_mode_draft_mode_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-        'characterName',
-        'gameMode',
-        'draftMode',
-      ] },
-      { accessor: 'by_user', name: 'player_character_stat_user_id_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-      ] },
-    ],
-    constraints: [
-    ],
-  }, PlayerCharacterStatRow),
-  PlayerRelationship: __table({
-    name: 'player_relationship',
-    indexes: [
-      { accessor: 'by_user', name: 'player_relationship_user_id_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-      ] },
-      { accessor: 'by_user_and_other_mode_draft', name: 'player_relationship_user_id_other_user_id_game_mode_draft_mode_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-        'otherUserId',
-        'gameMode',
-        'draftMode',
-      ] },
-    ],
-    constraints: [
-    ],
-  }, PlayerRelationshipRow),
-  PlayerStat: __table({
-    name: 'player_stat',
-    indexes: [
-      { accessor: 'by_user_mode_draft', name: 'player_stat_user_id_game_mode_draft_mode_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-        'gameMode',
-        'draftMode',
-      ] },
-      { accessor: 'by_user', name: 'player_stat_user_id_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-      ] },
-    ],
-    constraints: [
-    ],
-  }, PlayerStatRow),
   SavedCalendar: __table({
     name: 'saved_calendar',
     indexes: [
@@ -742,6 +723,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, SavedCalendarRow),
+  Season: __table({
+    name: 'season',
+    indexes: [
+      { accessor: 'id', name: 'season_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'is_active', name: 'season_is_active_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+      ] },
+    ],
+    constraints: [
+      { name: 'season_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SeasonRow),
   Team: __table({
     name: 'team',
     indexes: [
@@ -845,6 +840,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, TournamentParticipantRow),
+  TournamentPlayerAccount: __table({
+    name: 'tournament_player_account',
+    indexes: [
+      { accessor: 'by_tournament_and_user', name: 'tournament_player_account_tournament_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+        'userId',
+      ] },
+      { accessor: 'by_user', name: 'tournament_player_account_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentPlayerAccountRow),
   TournamentTeam: __table({
     name: 'tournament_team',
     indexes: [
@@ -958,6 +967,7 @@ const reducersSchema = __reducers(
   __reducerSchema("confirm_match_scores", ConfirmMatchScoresReducer),
   __reducerSchema("create_cost_set", CreateCostSetReducer),
   __reducerSchema("create_hsr_account", CreateHsrAccountReducer),
+  __reducerSchema("create_season", CreateSeasonReducer),
   __reducerSchema("create_tournament", CreateTournamentReducer),
   __reducerSchema("create_tournament_team", CreateTournamentTeamReducer),
   __reducerSchema("delete_cost_set", DeleteCostSetReducer),
@@ -995,6 +1005,7 @@ const reducersSchema = __reducers(
   __reducerSchema("server_set_mmr", ServerSetMmrReducer),
   __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
+  __reducerSchema("set_active_season", SetActiveSeasonReducer),
   __reducerSchema("set_coach", SetCoachReducer),
   __reducerSchema("submit_and_advance_bracket", SubmitAndAdvanceBracketReducer),
   __reducerSchema("submit_match_result", SubmitMatchResultReducer),

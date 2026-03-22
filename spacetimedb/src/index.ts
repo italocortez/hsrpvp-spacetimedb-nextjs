@@ -23,6 +23,7 @@ export { dq_participant, override_match_result, assign_tournament_assistant, rem
 export { generate_bracket, seed_bracket, swap_seeds } from './reducers/bracketGeneration';
 export { advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match } from './reducers/bracketAdvancement';
 export { finalize_match_result, process_tournament_mmr } from './reducers/matchFinalization';
+export { create_season, set_active_season } from './reducers/seasonAdmin';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);
