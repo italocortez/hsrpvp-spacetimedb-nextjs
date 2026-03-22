@@ -63,6 +63,16 @@
 **When:** `register_for_tournament(id, teamGroupId=0)`
 **Then:** TournamentTeam auto-created (name=displayName). Participant inserted with teamGroupId=team.id
 
+### Registration with Account Locking (Phase 6)
+**Given:** Player with 2 HSR accounts registers for tournament in Registration stage
+**When:** `register_for_tournament(tournamentId)`
+**Then:** TournamentParticipant created AND TournamentPlayerAccount rows created for ALL user HSR accounts (not just active). Accounts locked to this tournament for pick validation during matches. (D-21)
+
+### Withdrawal Cleans Up Account Locks
+**Given:** Player registered for tournament with locked accounts
+**When:** `withdraw_from_tournament(tournamentId)`
+**Then:** Participant status=Withdrawn AND all TournamentPlayerAccount rows for this user+tournament deleted.
+
 ### Team Join Request
 **Given:** Team tournament, Team A (1 member), Player B registered individually
 **When:** Player B calls `request_join_team(teamId)`
@@ -175,7 +185,10 @@
 | Stage guard: Seeding->InProgress requires bracket rows | Phase 4 execution | 2026-03-18 |
 | server_set_mmr reducer for test seeding | Phase 4 UAT | 2026-03-19 |
 | participantTeamId -> teamId in GroupStanding references | Phase 04.1 execution | 2026-03-20 |
+| TournamentPlayerAccount locks all HSR accounts at registration (D-21) | Phase 6 CONTEXT.md | 2026-03-21 |
+| TPA rows cleaned up on withdrawal | Phase 6 execution | 2026-03-22 |
+| requireOwnership inherited from tournament.requireRoster (D-19) | Phase 6 CONTEXT.md | 2026-03-21 |
 
 ---
 
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-22*

@@ -61,6 +61,16 @@
 **When:** Admin/Mod/TO calls `override_match_result(matchResultId, "Validated", ...)`
 **Then:** Validation rejects if any MatchResultGame row is missing teamBlueScreenshotUrl or teamRedScreenshotUrl. All games must have both screenshots before a Ranked match can be validated.
 
+### Casual Auto-Finalize (Phase 6)
+**Given:** MatchResultRecord with matchType=Casual, all captains confirmed
+**When:** `submit_match_result(matchResultId, winnerUserId)` is called
+**Then:** Status changes to Validated AND finalization runs inline in same transaction -- stats, history, MMR all written atomically. No separate finalize_match_result call needed. (D-37)
+
+### Finalization Pipeline (Phase 6)
+**Given:** MatchResultRecord in Validated status
+**When:** `finalize_match_result` (ranked) or auto-finalize (casual)
+**Then:** 18-step pipeline runs: reads participants/games/lobby/steps/season, then writes MatchSessionHistory, MatchSessionStepHistory (individual rows), MatchResultGameHistory, MatchParticipantHistory (with displayName), processes MMR (ranked only), increments PlayerStat, PlayerCharacterStat, PlayerRelationship, GlobalCharacterStat, advances bracket (tournament), deletes ephemeral records. Single transaction -- full rollback on failure. (D-56)
+
 ### Referee Transfer
 **Given:** Lobby with host and members, host has isReferee=true
 **When:** Host calls `transfer_referee(lobbyId, targetUserId)`
@@ -115,6 +125,10 @@
 | MatchSessionHistory | Finalization writes history | Phase 5 writes |
 | MatchParticipantHistory | Finalization writes participant records | Phase 5 writes |
 | PlayerStat / PlayerCharacterStat | Finalization increments stats | Phase 5 writes |
+| GlobalCharacterStat | Finalization increments community stats | Phase 6 writes |
+| PlayerRelationship | Finalization increments ally/opponent stats | Phase 6 writes |
+| Season.id | Active season read at finalization | Phase 6 reads |
+| TournamentPlayerAccount | Ownership validation for picks | Phase 6 reads |
 
 ## Phase History
 
@@ -144,7 +158,14 @@
 | isConfirmed moved from MatchResultParticipant to MatchResultRecord (blueConfirmed/redConfirmed) | Phase 5 discussion | 2026-03-20 |
 | refereeFullControl (default true): spectator referee can fill scores + confirm both sides | Phase 5 discussion | 2026-03-20 |
 | Participant referee ignores refereeFullControl — confirms own side only | Phase 5 discussion | 2026-03-20 |
+| Casual auto-finalize inline in submit_match_result (D-37) | Phase 6 CONTEXT.md | 2026-03-21 |
+| 18-step finalization pipeline extracted to shared helper | Phase 6 execution | 2026-03-22 |
+| Character stat increments (pick/ban/faced) during finalization | Phase 6 execution | 2026-03-22 |
+| GlobalCharacterStat increments during finalization | Phase 6 execution | 2026-03-22 |
+| Match replay archival: step rows + game history + participant history | Phase 6 execution | 2026-03-22 |
+| Spectated count increment at finalization | Phase 6 execution | 2026-03-22 |
+| requireOwnership on Lobby for pick validation helper | Phase 6 CONTEXT.md | 2026-03-21 |
 
 ---
 
-*Last updated: 2026-03-20*
+*Last updated: 2026-03-22*

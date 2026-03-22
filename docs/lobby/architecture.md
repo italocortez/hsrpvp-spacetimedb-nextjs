@@ -17,7 +17,10 @@ Lobby
 │    bracketMatchId? → BracketMatch.id
 │
 │  Settings:
-│    isAnonymousPlayers, isAnonymousSpectators, isOpenRoster
+│    isAnonymousPlayers, isAnonymousSpectators
+│    rosterVisibility (RosterVisibility enum: OpenRoster/ClosedWithRating/ClosedNoRating)
+│    requireOwnership (bool, default true — auto-defaults from matchType: Casual=false, Ranked=true)
+│    isTournamentControlled (bool — inherits settings from tournament)
 │    isPublic, disconnectPolicy, gameMode
 │
 │  Lifecycle:
@@ -36,8 +39,9 @@ Lobby
 │     (never sent to clients)
 │
 └── LobbyCursorEvent (ephemeral cursor broadcast)
-      lobbyId       → Lobby.id
-      senderUserId  → User.id
+      lobbyId         → Lobby.id
+      senderUserId    → User.id (sentinel 0 when anonymous)
+      anonymousLabel  (Phase 6 — e.g. "Blue-1", "Spectator-2")
       x, y coordinates
 ```
 
@@ -49,3 +53,7 @@ Lobby
 - Visibility: public or private (password-protected), both have joinCode for Jackbox-style quick invite
 - Password hashes stored in private `LobbyPassword` table (never broadcast to clients)
 - `lastActivityAt` tracks lobby activity (cursor, chat, picks) for GC timeout — separate from `lastModifiedDate` audit column
+- `rosterVisibility` enum replaces `isOpenRoster` bool — OpenRoster/ClosedWithRating/ClosedNoRating for parity with Tournament (D-10)
+- `requireOwnership` auto-defaults from matchType (Casual=false, Ranked=true), locked after creation (D-17/D-18)
+- `isTournamentControlled` enables tournament config inheritance for anonymous mode, roster visibility, and ownership (D-06/D-19)
+- LobbyCursorEvent gains `anonymousLabel` for anonymous mode — senderUserId=0 when anonymous (D-01/D-62)
