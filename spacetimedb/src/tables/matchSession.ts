@@ -16,6 +16,10 @@ export const matchSessionColumns = {
     // Auction Mode Budgets (Ignored in Classic)
     teamBlueBudget: t.f32(),
     teamRedBudget: t.f32(),
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const MatchSession = table({

@@ -21,6 +21,7 @@ export default __t.row({
   lobbyId: __t.u32().name("lobby_id"),
   sequence: __t.u32(),
   actorUserId: __t.u32().name("actor_user_id"),
+  anonymousLabel: __t.option(__t.string()).name("anonymous_label"),
   get actorSlot() {
     return TeamLabel.name("actor_slot");
   },
@@ -31,4 +32,8 @@ export default __t.row({
     return StepPayload;
   },
   timestamp: __t.timestamp(),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

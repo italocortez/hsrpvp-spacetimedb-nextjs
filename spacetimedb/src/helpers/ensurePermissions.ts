@@ -1,5 +1,28 @@
 import { SenderError } from 'spacetimedb/server';
 
+const ROLE_LEVEL: Record<string, number> = {
+    Admin: 100,
+    Moderator: 75,
+    TournamentHost: 50,
+    User: 25,
+};
+// Guest (no role / isGuest) = 0
+
+/**
+ * Returns the numeric level for a role value.
+ * role.tag maps to ROLE_LEVEL. Unknown/guest roles return 0.
+ */
+export function getRoleLevel(role: any): number {
+    return ROLE_LEVEL[role?.tag] ?? 0;
+}
+
+/**
+ * Returns true if the given userRole meets or exceeds the requiredRole threshold.
+ */
+export function isRoleAtLeast(userRole: any, requiredRole: string): boolean {
+    return getRoleLevel(userRole) >= (ROLE_LEVEL[requiredRole] ?? 0);
+}
+
 /**
  * Resolves ctx.sender (identity) → UserIdentity → User.
  * Returns both the mapping row and the User row.
@@ -22,19 +45,42 @@ export function getAuthenticatedUser(ctx: any) {
  */
 export function ensureAdmin(ctx: any) {
     const user = getAuthenticatedUser(ctx);
-    if (user.role.tag !== 'Admin') {
+    if (!isRoleAtLeast(user.role, 'Admin')) {
         throw new SenderError("Forbidden: Requires Admin privileges.");
     }
     return user;
 }
 
 /**
- * Ensures the sender is a TournamentHost OR an Admin.
+ * Ensures the sender is a Moderator OR an Admin.
+ */
+export function ensureModerator(ctx: any) {
+    const user = getAuthenticatedUser(ctx);
+    if (!isRoleAtLeast(user.role, 'Moderator')) {
+        throw new SenderError("Forbidden: Requires Moderator or Admin privileges.");
+    }
+    return user;
+}
+
+/**
+ * Ensures the sender is a TournamentHost, Moderator, or Admin.
  */
 export function ensureTournamentHost(ctx: any) {
     const user = getAuthenticatedUser(ctx);
-    if (user.role.tag !== 'TournamentHost' && user.role.tag !== 'Admin') {
-        throw new SenderError("Forbidden: Requires Tournament Host or Admin privileges.");
+    if (!isRoleAtLeast(user.role, 'TournamentHost')) {
+        throw new SenderError("Forbidden: Requires Tournament Host, Moderator, or Admin privileges.");
+    }
+    return user;
+}
+
+/**
+ * Ensures the sender is a verified (non-guest) user.
+ * Guests can browse public data but cannot modify roster.
+ */
+export function ensureVerifiedUser(ctx: any) {
+    const user = getAuthenticatedUser(ctx);
+    if (user.isGuest) {
+        throw new SenderError("Roster management requires a verified account. Link your Discord first.");
     }
     return user;
 }

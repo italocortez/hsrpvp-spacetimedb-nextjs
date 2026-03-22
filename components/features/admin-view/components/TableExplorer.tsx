@@ -15,7 +15,7 @@ import { Chip } from '@heroui/chip';
 // Map display name → tables accessor
 const TABLE_MAP: Record<PublicTableName, any> = {
     User: tables.User,
-    UserIdentity: (tables as any).UserIdentity,
+    UserIdentity: tables.UserIdentity,
     HsrCharacter: tables.HsrCharacter,
     HsrLightcone: tables.HsrLightcone,
     HsrCharacterCost: tables.HsrCharacterCost,
@@ -251,7 +251,7 @@ export default function TableExplorer() {
                 </TableHeader>
                 <TableBody items={filteredRows} emptyContent={`No rows in ${selectedTable}`}>
                     {(row: any) => (
-                        <TableRow key={filteredRows.indexOf(row)}>
+                        <TableRow key={getPrimaryKeyJson(selectedTable, row)}>
                             {(columnKey) => (
                                 <TableCell>{renderCell(row, columnKey)}</TableCell>
                             )}

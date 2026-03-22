@@ -10,16 +10,25 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
+  GameMode,
   SuperimpositionCost,
 } from "./types";
 
 
 export default __t.row({
-  lightconeName: __t.string().primaryKey().name("lightcone_name"),
+  lightconeName: __t.string().name("lightcone_name"),
+  get gameMode() {
+    return GameMode.name("game_mode");
+  },
   get classicCosts() {
     return SuperimpositionCost.name("classic_costs");
   },
   get auctionBaseBid() {
     return SuperimpositionCost.name("auction_base_bid");
   },
+  costSetId: __t.u32().name("cost_set_id"),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

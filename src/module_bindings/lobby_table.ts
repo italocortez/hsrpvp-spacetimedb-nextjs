@@ -10,8 +10,12 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
+  GameMode,
+  RosterVisibility,
+  DisconnectPolicy,
+  DraftMode,
+  BanMode,
   LobbyStage,
-  LobbyConfig,
 } from "./types";
 
 
@@ -21,12 +25,47 @@ export default __t.row({
   hostUserId: __t.u32().name("host_user_id"),
   teamBlueAlias: __t.string().name("team_blue_alias"),
   teamRedAlias: __t.string().name("team_red_alias"),
+  teamSize: __t.u8().name("team_size"),
+  get draftMode() {
+    return DraftMode.name("draft_mode");
+  },
+  get banMode() {
+    return BanMode.name("ban_mode");
+  },
+  standardTurnSeconds: __t.u32().name("standard_turn_seconds"),
+  reserveBankSeconds: __t.u32().name("reserve_bank_seconds"),
+  auctionBudget: __t.option(__t.f32()).name("auction_budget"),
+  rosterDiffAdvantage: __t.f32().name("roster_diff_advantage"),
+  rosterThreshold: __t.f32().name("roster_threshold"),
+  underThresholdAdvantage: __t.f32().name("under_threshold_advantage"),
+  aboveThresholdPenalty: __t.f32().name("above_threshold_penalty"),
+  deathPenalty: __t.f32().name("death_penalty"),
+  tournamentId: __t.option(__t.u32()).name("tournament_id"),
+  bracketMatchId: __t.option(__t.u32()).name("bracket_match_id"),
+  isTournamentControlled: __t.bool().name("is_tournament_controlled"),
+  isAnonymousPlayers: __t.bool().name("is_anonymous_players"),
+  isAnonymousSpectators: __t.bool().name("is_anonymous_spectators"),
+  get rosterVisibility() {
+    return RosterVisibility.name("roster_visibility");
+  },
+  requireOwnership: __t.bool().name("require_ownership"),
+  costSetId: __t.u32().name("cost_set_id"),
+  isPublic: __t.bool().name("is_public"),
+  get disconnectPolicy() {
+    return DisconnectPolicy.name("disconnect_policy");
+  },
+  disconnectForfeitSeconds: __t.option(__t.u32()).name("disconnect_forfeit_seconds"),
+  disconnectForfeitAt: __t.option(__t.timestamp()).name("disconnect_forfeit_at"),
+  get gameMode() {
+    return GameMode.name("game_mode");
+  },
   hostDisconnectTime: __t.option(__t.timestamp()).name("host_disconnect_time"),
   lastActivityAt: __t.timestamp().name("last_activity_at"),
   get stage() {
     return LobbyStage;
   },
-  get config() {
-    return LobbyConfig;
-  },
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

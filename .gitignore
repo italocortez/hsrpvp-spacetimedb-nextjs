@@ -7,6 +7,11 @@
 
 # testing
 /coverage
+/tmp
+
+# test: ignore raw game data (private) but commit infra and templates
+test/data/
+!test/data-templates/
 
 # next.js
 /.next/
@@ -35,4 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.claude
+#claude context
+.claude/settings.local.json
+notes
+notes/
+
+#quell
+quell.exe
