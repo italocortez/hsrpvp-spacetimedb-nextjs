@@ -10,6 +10,9 @@ import { CostSetDraftSynergy } from '../tables/costSetDraftSynergy';
 import { PlayerStat } from '../tables/playerStats';
 import { PlayerCharacterStat } from '../tables/characterStats';
 import { PlayerRelationship } from '../tables/playerRelationship';
+import { LobbyMember } from '../tables/lobbyMember';
+import { HsrAccount } from '../tables/hsrAccount';
+import { HsrAccountCharacter } from '../tables/hsrAccountCharacter';
 
 // ---------------------------------------------------------------------------
 // 1. Lobby Browser (anonymous view) — all public lobbies, no passwordHash
@@ -215,5 +218,119 @@ spacetimedb.view(
         const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
         if (!mapping) return [];
         return [...ctx.db.PlayerRelationship.by_user.filter(mapping.userId)];
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 13. My Roster Visibility (per-user view) — returns HsrAccountCharacter rows
+//     the calling user is allowed to see, based on their lobby memberships and
+//     each lobby's rosterVisibility setting (D-10 through D-16, ANON-04).
+//
+//     Visibility rules:
+//     - Referee: sees all rosters regardless of setting (D-14)
+//     - Self + own team: always see full roster and rating
+//     - OpenRoster: all rosters visible (D-11)
+//     - ClosedWithRating: opponent roster hidden, rating visible (D-12)
+//     - ClosedNoRating: opponent roster AND rating hidden (D-13)
+//     - Spectators follow same rules as opponents (D-16)
+// ---------------------------------------------------------------------------
+const RosterVisibilityRow = t.object('RosterVisibilityRow', {
+    lobbyId: t.u32(),
+    memberUserId: t.u32(),
+    hsrAccountId: t.u32(),
+    characterName: t.string(),
+    eidolonLevel: t.u8(),
+    accountRating: t.u32().optional(),
+});
+
+spacetimedb.view(
+    { name: 'view_my_roster_visibility', public: true },
+    t.array(RosterVisibilityRow),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const myUserId = mapping.userId;
+
+        // Get all lobbies the user is a member of
+        const myMemberships = [...ctx.db.LobbyMember.user_id.filter(myUserId)];
+        const results: any[] = [];
+
+        for (const myMembership of myMemberships) {
+            const lobby = ctx.db.Lobby.id.find(myMembership.lobbyId);
+            if (!lobby) continue;
+
+            const allMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobby.id)];
+            const myTeam = myMembership.teamSlot.tag;
+            const isReferee = myMembership.isReferee;
+
+            for (const member of allMembers) {
+                const isOwnTeam = member.teamSlot.tag === myTeam;
+                const isSelf = member.userId === myUserId;
+
+                // Determine if we can see this member's roster
+                let canSeeRoster = false;
+                let canSeeRating = false;
+
+                if (isReferee) {
+                    // D-14: Referee sees all rosters regardless of setting
+                    canSeeRoster = true;
+                    canSeeRating = true;
+                } else if (isSelf || isOwnTeam) {
+                    // Own + allies' rosters always visible
+                    canSeeRoster = true;
+                    canSeeRating = true;
+                } else {
+                    // Opponent visibility depends on rosterVisibility setting
+                    const vis = lobby.rosterVisibility.tag;
+                    if (vis === 'OpenRoster') {
+                        // D-11: All rosters visible
+                        canSeeRoster = true;
+                        canSeeRating = true;
+                    } else if (vis === 'ClosedWithRating') {
+                        // D-12: Opponent roster hidden, rating visible
+                        canSeeRoster = false;
+                        canSeeRating = true;
+                    } else {
+                        // ClosedNoRating (D-13): Opponent roster AND rating hidden
+                        canSeeRoster = false;
+                        canSeeRating = false;
+                    }
+                }
+
+                if (!canSeeRoster && !canSeeRating) continue;
+
+                // Get member's HSR accounts
+                const memberAccounts = [...ctx.db.HsrAccount.user_id.filter(member.userId)];
+
+                for (const account of memberAccounts) {
+                    if (canSeeRoster) {
+                        // Return full character roster
+                        const characters = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(account.id)];
+                        for (const char of characters) {
+                            results.push({
+                                lobbyId: lobby.id,
+                                memberUserId: member.userId,
+                                hsrAccountId: account.id,
+                                characterName: char.characterName,
+                                eidolonLevel: char.eidolonLevel,
+                                accountRating: canSeeRating ? account.accountRating : undefined,
+                            });
+                        }
+                    } else if (canSeeRating) {
+                        // ClosedWithRating: no characters but include a sentinel row with rating
+                        results.push({
+                            lobbyId: lobby.id,
+                            memberUserId: member.userId,
+                            hsrAccountId: account.id,
+                            characterName: '',  // Sentinel: no roster data, rating only
+                            eidolonLevel: 0,
+                            accountRating: account.accountRating,
+                        });
+                    }
+                }
+            }
+        }
+
+        return results;
     }
 );
