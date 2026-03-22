@@ -18,11 +18,13 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Bracket Generation** - Single/double elimination and group phase bracket rows with explicit FK advancement (completed 2026-03-18)
 - [x] **Phase 04.1: Schema Normalization & Match Result Rework** - Retroactive naming cleanup and structural rework before Phase 5 (INSERTED) (completed 2026-03-20)
 - [x] **Phase 5: Match Results and MMR** - Score submission, screenshot verification, ELO calculation, and leaderboard (completed 2026-03-21)
-- [ ] **Phase 6: Anonymous Play and Player Stats** - Server-enforced anonymous mode and full player statistics tables
+- [x] **Phase 6: Anonymous Play and Player Stats** - Server-enforced anonymous mode and full player statistics tables (completed 2026-03-22)
+- [x] **Phase 06.1: Landing Page Migration** - Design tokens, NavBar, hero/features/contact sections from design reference (INSERTED) (completed 2026-03-22)
 - [ ] **Phase 7: Achievements and Titles** - Achievement definitions, auto-award logic, manual award, and profile titles
 - [ ] **Phase 8: Calendar and Scheduling** - Recurring availability slots, calendar events, auto-sync, and TO scheduling
 - [ ] **Phase 9: Mouse Tracking, Chat, and Lobby Browser** - Cursor broadcast, ephemeral chat, and lobby browsing filters
 - [ ] **Phase 10: Disconnect Handling and Cost Parity** - Disconnect policies, rejoin logic, liveness checks, and lightcone cost fix
+- [ ] **Phase 11: Archetype Playstyle Stats** - PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag, same PK pattern as stat tables
 
 ## Phase Details
 
@@ -241,10 +243,22 @@ Plans:
 - [ ] 10-01-PLAN.md — [To be planned]
 - [ ] 10-02-PLAN.md — [To be planned]
 
+### Phase 11: Archetype Playstyle Stats
+**Goal**: Track playstyle stats when 3+ picks in a draft share an archetype tag; auto-increment during finalization pipeline
+**Depends on**: Phase 6 (player stats infrastructure), Phase 2 (archetype tables)
+**Requirements**: ARCH-01, ARCH-02
+**Success Criteria** (what must be TRUE):
+  1. PlayerArchetypeStat table exists with same PK pattern as other stat tables (userId, gameMode, draftMode, seasonId, matchType, teamSize, archetypeId)
+  2. During finalization, if a player's picked characters include 3+ that share an archetype tag, the corresponding PlayerArchetypeStat row is incremented
+  3. Stats track matches played, wins, losses per archetype per player
+**Plans:** 1 plan
+Plans:
+- [ ] 11-01-PLAN.md — [To be planned]
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 11
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
 
@@ -262,3 +276,4 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 8. Calendar and Scheduling | 0/? | Not started | - |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 0/? | Not started | - |
 | 10. Disconnect Handling and Cost Parity | 0/? | Not started | - |
+| 11. Archetype Playstyle Stats | 0/? | Not started | - |

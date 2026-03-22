@@ -139,6 +139,11 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 - [ ] **COST-01**: HsrLightconeCost gains gameMode composite key (parity with HsrCharacterCost)
 
+### Archetype Playstyle Stats
+
+- [ ] **ARCH-01**: PlayerArchetypeStat table tracks playstyle stats when 3+ picks in a draft share an archetype tag
+- [ ] **ARCH-02**: Auto-increment archetype stats during finalization pipeline (same PK pattern as PlayerStat: seasonId, matchType, teamSize)
+
 ## v1 Requirements (Frontend Milestone — Future)
 
 Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
@@ -260,10 +265,12 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | DISC-03 | Phase 10 | Pending |
 | DISC-04 | Phase 10 | Pending |
 | COST-01 | Phase 10 | Pending |
+| ARCH-01 | Phase 11 | Pending |
+| ARCH-02 | Phase 11 | Pending |
 
 **Coverage:**
-- v0.5 requirements: 84 total
-- Mapped to phases: 81
+- v0.5 requirements: 86 total
+- Mapped to phases: 83
 - Out of scope: 3 (TEAM-01, TEAM-02, TEAM-03)
 - Unmapped: 0
 
