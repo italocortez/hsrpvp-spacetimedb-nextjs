@@ -149,6 +149,17 @@ Plans:
 - [x] 06-02-PLAN.md — Anonymous play helpers (label computation, ownership validation), broadcast_cursor anonymous enforcement, roster/stat visibility views, TournamentPlayerAccount wiring into registration
 - [x] 06-03-PLAN.md — Finalization pipeline rewrite (18-step shared helper), character/global stat increments, match replay archival, auto-finalize casual, publish + doc updates
 
+### Phase 06.1: Landing Page Migration (INSERTED)
+
+**Goal:** Migrate the designed landing page from the reference project into HSRPVP, replacing the existing Header and landing page with a new NavBar, video hero, feature carousel, and contact section -- integrating the design token system and auth context
+**Requirements**: LP-INFRA, LP-NAV, LP-SECTIONS, LP-PAGE
+**Depends on:** Phase 6
+**Plans:** 2 plans
+
+Plans:
+- [ ] 06.1-01-PLAN.md — Design tokens, fonts, video asset, NavBar + Logo + GearIcon components, Header replacement in all layouts
+- [ ] 06.1-02-PLAN.md — HeroSection, FeaturesSection, ContactSection migration with icon-lucide SVG conversion, landing page composition, visual checkpoint
+
 ### Phase 7: Achievements and Titles
 **Goal**: Admins can define achievements, the system auto-awards them on condition, and players can display earned titles on their profile
 **Depends on**: Phase 6
@@ -233,7 +244,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
 
@@ -245,7 +256,8 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 4. Bracket Generation | 3/3 | Complete   | 2026-03-18 |
 | 04.1. Schema Normalization | 3/3 | Complete    | 2026-03-20 |
 | 5. Match Results and MMR | 2/2 | Complete | 2026-03-21 |
-| 6. Anonymous Play and Player Stats | 0/3 | Planning complete | - |
+| 6. Anonymous Play and Player Stats | 3/3 | Complete | 2026-03-22 |
+| 06.1. Landing Page Migration | 0/2 | Planning complete | - |
 | 7. Achievements and Titles | 0/? | Not started | - |
 | 8. Calendar and Scheduling | 0/? | Not started | - |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 0/? | Not started | - |
