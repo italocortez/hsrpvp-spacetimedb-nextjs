@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 7
-current_plan: Not started
-status: planning
-last_updated: "2026-03-22T02:38:34.415Z"
+current_phase: 06.1
+current_plan: 2
+status: executing
+last_updated: "2026-03-22T10:54:24.639Z"
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 7
-  total_plans: 20
-  completed_plans: 20
+  total_plans: 22
+  completed_plans: 21
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 7
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current phase:** 06.1
+**Current plan:** 2
+**Status:** Executing Phase 06.1
 
 ## Decisions
 
@@ -79,6 +79,8 @@ See: .planning/PROJECT.md
 - [Phase 06]: runFinalization extracts processMatchMmr into finalizationHelpers.ts for shared use by finalize and auto-finalize
 - [Phase 06]: Character name from StepPayload via variant-specific access (Pick/Ban/AuctionSold/Nominate -> characterName, Bid -> targetCharacter)
 - [Phase 06]: GlobalCharacterStat uses by_char_mode 2-col index + post-filter (no full 6-col btree index)
+- [Phase 06.1]: NavBar uses usePathname() for selection state — routing is source of truth, no useState needed for nav selection
+- [Phase 06.1]: loginGuest() called directly from NavBar LOG IN button — no modal, matches existing Header pattern
 
 ### Quick Tasks Completed
 
@@ -95,6 +97,7 @@ See: .planning/PROJECT.md
 ### Roadmap Evolution
 
 - Phase 04.1 inserted after Phase 04: Schema Normalization & Match Result Rework (URGENT)
+- Phase 06.1 inserted after Phase 06: Landing Page Migration (INSERTED)
 
 ## Session Log
 
@@ -118,3 +121,4 @@ See: .planning/PROJECT.md
 - 2026-03-22: Completed 06-01-PLAN.md — schema foundation: 5 PK expansions (+seasonId/matchType/teamSize), 4 new tables (Season, GlobalCharacterStat, TournamentPlayerAccount, MatchResultGameHistory), Lobby rosterVisibility/requireOwnership/isTournamentControlled, MatchSessionStepHistory reworked to flat rows, Season admin reducers, published to maincloud with --clear-database, 61/61 tests pass
 - 2026-03-22: Completed 06-02-PLAN.md — anonymous play enforcement: computeAnonymousLabel + validateCharacterOwnership helpers, broadcast_cursor anonymous mode (userId=0 + label), 4 per-user views (stats + roster visibility), TournamentPlayerAccount wired into registration/withdrawal
 - 2026-03-22: Completed 06-03-PLAN.md — 18-step finalization pipeline rewrite: runFinalization shared helper, character stat increments (pick/ban/faced), global character stats, match replay archival (step rows, game history, participant history), spectated count, auto-finalize casual, season-aware leaderboard, published to maincloud, 61/61 tests pass, Phase 06 complete
+- 2026-03-22: Completed 06.1-01-PLAN.md — design tokens (~89 CSS variables), JetBrains Mono + Inter font variables, NavBar replacing Header globally (route-aware nav items + auth wiring), Logo + GearIcon components, video asset copied
