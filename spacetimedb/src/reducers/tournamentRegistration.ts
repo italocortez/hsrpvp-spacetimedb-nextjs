@@ -117,6 +117,19 @@ export const register_for_tournament = spacetimedb.reducer(
                 } as any);
             }
         }
+
+        // Lock in player's HSR accounts for this tournament (per D-21)
+        // All accounts are locked — during tournament matches, pick validation
+        // checks against these locked accounts, not whatever account is active at match time.
+        const allAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
+        for (const account of allAccounts) {
+            ctx.db.TournamentPlayerAccount.insert({
+                tournamentId,
+                userId: user.id,
+                hsrAccountId: account.id,
+                ...auditInsert(ctx, user.id),
+            } as any);
+        }
     }
 );
 
@@ -149,6 +162,12 @@ export const withdraw_from_tournament = spacetimedb.reducer(
             status: { tag: 'Withdrawn', value: {} } as any,
             ...auditUpdate(ctx, participant, user.id),
         } as any);
+
+        // Clean up locked accounts on withdrawal (per D-21)
+        const lockedAccounts = [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, user.id])];
+        for (const la of lockedAccounts) {
+            ctx.db.TournamentPlayerAccount.delete(la);
+        }
     }
 );
 

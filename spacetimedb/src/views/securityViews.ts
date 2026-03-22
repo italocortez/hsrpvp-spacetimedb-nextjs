@@ -7,6 +7,9 @@ import { CostSet } from '../tables/costSet';
 import { CostSetDraftCharacter } from '../tables/costSetDraftCharacter';
 import { CostSetDraftLightcone } from '../tables/costSetDraftLightcone';
 import { CostSetDraftSynergy } from '../tables/costSetDraftSynergy';
+import { PlayerStat } from '../tables/playerStats';
+import { PlayerCharacterStat } from '../tables/characterStats';
+import { PlayerRelationship } from '../tables/playerRelationship';
 
 // ---------------------------------------------------------------------------
 // 1. Lobby Browser (anonymous view) — all public lobbies, no passwordHash
@@ -169,5 +172,48 @@ spacetimedb.view(
             }
         }
         return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 10. My Player Stats (per-user view) — returns caller's own PlayerStat rows.
+//     PlayerStat is private (public: false), so this view is the only way
+//     for clients to access their own stats. (D-33)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_player_stats', public: true },
+    t.array(PlayerStat.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        return [...ctx.db.PlayerStat.by_user.filter(mapping.userId)];
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 11. My Character Stats (per-user view) — returns caller's own
+//     PlayerCharacterStat rows. Private table accessible via this view. (D-33)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_character_stats', public: true },
+    t.array(PlayerCharacterStat.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        return [...ctx.db.PlayerCharacterStat.by_user.filter(mapping.userId)];
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 12. My Relationships (per-user view) — returns caller's own
+//     PlayerRelationship rows. Private table accessible via this view. (D-33)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_relationships', public: true },
+    t.array(PlayerRelationship.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        return [...ctx.db.PlayerRelationship.by_user.filter(mapping.userId)];
     }
 );
