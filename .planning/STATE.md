@@ -4,8 +4,8 @@ milestone: v0.5
 milestone_name: milestone
 current_phase: 06.1
 current_plan: 2
-status: executing
-last_updated: "2026-03-22T11:01:47.589Z"
+status: complete
+last_updated: "2026-03-22T11:15:00.000Z"
 progress:
   total_phases: 12
   completed_phases: 8
@@ -83,6 +83,8 @@ See: .planning/PROJECT.md
 - [Phase 06.1]: loginGuest() called directly from NavBar LOG IN button — no modal, matches existing Header pattern
 - [Phase 06.1]: icon-lucide CDN font replaced with inline SVGs in ContactSection — CSP-safe, no external dependency required
 - [Phase 06.1]: page.tsx uses <div> not <main> for landing page container — avoids any global max-width rules on main element
+- [Phase 06.1]: icon-lucide CDN font replaced with inline SVGs in ContactSection — CSP-safe, no external dependency required
+- [Phase 06.1]: server carousel icons stored as React.ReactNode (JSX) in SERVERS array instead of HTML entity strings
 
 ### Quick Tasks Completed
 
@@ -124,3 +126,4 @@ See: .planning/PROJECT.md
 - 2026-03-22: Completed 06-02-PLAN.md — anonymous play enforcement: computeAnonymousLabel + validateCharacterOwnership helpers, broadcast_cursor anonymous mode (userId=0 + label), 4 per-user views (stats + roster visibility), TournamentPlayerAccount wired into registration/withdrawal
 - 2026-03-22: Completed 06-03-PLAN.md — 18-step finalization pipeline rewrite: runFinalization shared helper, character stat increments (pick/ban/faced), global character stats, match replay archival (step rows, game history, participant history), spectated count, auto-finalize casual, season-aware leaderboard, published to maincloud, 61/61 tests pass, Phase 06 complete
 - 2026-03-22: Completed 06.1-01-PLAN.md — design tokens (~89 CSS variables), JetBrains Mono + Inter font variables, NavBar replacing Header globally (route-aware nav items + auth wiring), Logo + GearIcon components, video asset copied
+- 2026-03-22: Completed 06.1-02-PLAN.md — HeroSection (video hero + loader + HUD), FeaturesSection (rotating carousel + auto-rotate), ContactSection (3-card community grid + inline SVGs + click-to-copy), landing page composed, FeatureCards deleted, visual checkpoint approved, Phase 06.1 complete
