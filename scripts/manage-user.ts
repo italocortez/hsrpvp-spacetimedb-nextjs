@@ -5,7 +5,7 @@
  *   npx tsx scripts/manage-user.ts set-role <username> <newRole>
  *   npx tsx scripts/manage-user.ts delete <username>
  *
- * Roles: Admin, TournamentHost, User
+ * Roles: Admin, Moderator, TournamentHost, User
  *
  * Requires SPACETIMEDB_SERVER_TOKEN in .env.local (from register-server.ts).
  */
@@ -36,7 +36,7 @@ function loadEnvFile(filename: string) {
 loadEnvFile('.env.local');
 loadEnvFile('.env');
 
-const VALID_ROLES = ['Admin', 'TournamentHost', 'User'];
+const VALID_ROLES = ['Admin', 'Moderator', 'TournamentHost', 'User'];
 
 const action = process.argv[2];
 const username = process.argv[3];
@@ -72,7 +72,14 @@ if (host.startsWith('https://')) {
     host = host.replace('http://', 'ws://');
 }
 
-const dbName = process.env.SPACETIMEDB_DB_NAME ?? process.env.NEXT_PUBLIC_SPACETIMEDB_DB_NAME ?? 'nextjs-ts';
+let dbName: string;
+try {
+    const stConfig = JSON.parse(readFileSync(resolve(process.cwd(), 'spacetime.json'), 'utf-8'));
+    dbName = stConfig.database;
+} catch {
+    console.error('spacetime.json not found — run from project root');
+    process.exit(1);
+}
 
 console.log(`Connecting to ${host} / ${dbName} ...`);
 

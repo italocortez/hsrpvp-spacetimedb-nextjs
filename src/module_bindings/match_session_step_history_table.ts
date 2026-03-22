@@ -9,8 +9,27 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
+import {
+  TeamLabel,
+  ActionType,
+} from "./types";
+
 
 export default __t.row({
-  matchId: __t.string().primaryKey().name("match_id"),
-  steps: __t.string(),
+  matchHistoryId: __t.u32().name("match_history_id"),
+  sequence: __t.u32(),
+  actorUserId: __t.u32().name("actor_user_id"),
+  actorDisplayName: __t.string().name("actor_display_name"),
+  get teamSide() {
+    return TeamLabel.name("team_side");
+  },
+  get action() {
+    return ActionType;
+  },
+  characterName: __t.option(__t.string()).name("character_name"),
+  payload: __t.option(__t.string()),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
-import Header from "@/components/globals/layout/Header";
 import Footer from "@/components/globals/layout/Footer";
+import { NavBar } from "@/components/globals/layout/NavBar";
 
-// 1. Configure the Inter font
-const inter = Inter({ subsets: ["latin"] });
+// 1. Configure fonts as CSS variables
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
+const jetbrainsMono = JetBrains_Mono({ variable: "--font-jetbrains-mono", subsets: ["latin"] });
 
 // 2. Update the metadata for SEO and browser tabs
 export const metadata: Metadata = {
@@ -21,14 +22,11 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html lang="en" className="dark">
-			<body 
-                // className={inter.className}
-                >
-				{/* 3. Apply the font class globally to the body */}
+		<html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+			<body>
 				{/* Providers wrapper for SpacetimeDB connection and context */}
 				<Providers>
-					<Header />
+					<NavBar />
 
 					<main>
                         {children}

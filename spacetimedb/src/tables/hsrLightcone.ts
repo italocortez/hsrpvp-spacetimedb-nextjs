@@ -13,12 +13,16 @@ export const hsrLightconeColumns = {
     posX: t.i32(),
     posY: t.i32(),
     width: t.i32(),
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const HsrLightcone = table({
     name: 'hsr_lightcone',
     public: true,
     indexes: [
-        { name: 'lightcone_by_path', accessor: 'lightcone_by_path', algorithm: 'btree', columns: ['path'] },
+        { accessor: 'by_path', algorithm: 'btree', columns: ['path'] },
     ]
 }, hsrLightconeColumns);

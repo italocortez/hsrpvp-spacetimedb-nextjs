@@ -20,8 +20,10 @@ export default function ProfileCard({ user, avatarImageUrl }: ProfileCardProps) 
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     // Sync local state when user prop updates (e.g. after a successful save)
-    useEffect(() => { setUsername(user.username); }, [user.username]);
-    useEffect(() => { setDisplayName(user.displayName); }, [user.displayName]);
+    useEffect(() => {
+        setUsername(user.username);
+        setDisplayName(user.displayName);
+    }, [user.username, user.displayName]);
 
     const usernameChanged = username.trim() !== user.username;
     const displayNameChanged = displayName.trim() !== user.displayName;

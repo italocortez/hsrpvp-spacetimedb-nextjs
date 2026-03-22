@@ -14,7 +14,7 @@ export function useAuth() {
 
     // 2. Subscribe to UserIdentity and User tables
     // Note: tables.UserIdentity requires regenerated bindings after publish
-    const [identityRows, identitiesReady] = useTable((tables as any).UserIdentity);
+    const [identityRows, identitiesReady] = useTable(tables.UserIdentity);
     const allIdentities = (identityRows || []) as unknown as UserIdentityRow[];
 
     const [userRows, usersReady] = useTable(tables.User);
@@ -47,9 +47,25 @@ export function useAuth() {
     //    If the user already has a mapping + linked Discord, the flag is cleared and
     //    subsequent visits with a stale NextAuth cookie won't auto-register.
     const DISCORD_INTENT_KEY = 'discord_login_intent';
+    const DISCORD_INTENT_TIMEOUT_KEY = 'discord_login_intent_ts';
+    const DISCORD_INTENT_TTL_MS = 5 * 60 * 1000; // 5 minutes
     const linkingRef = useRef(false);
     const autoRegisteredRef = useRef(false);
-    const hasDiscordIntent = typeof window !== 'undefined' && !!sessionStorage.getItem(DISCORD_INTENT_KEY);
+
+    // Discord intent flag with expiry — prevents stale flags from persisting
+    const hasDiscordIntent = useMemo(() => {
+        if (typeof window === 'undefined') return false;
+        const flag = sessionStorage.getItem(DISCORD_INTENT_KEY);
+        if (!flag) return false;
+        const ts = Number(sessionStorage.getItem(DISCORD_INTENT_TIMEOUT_KEY) || '0');
+        if (Date.now() - ts > DISCORD_INTENT_TTL_MS) {
+            // Expired — clear stale intent
+            sessionStorage.removeItem(DISCORD_INTENT_KEY);
+            sessionStorage.removeItem(DISCORD_INTENT_TIMEOUT_KEY);
+            return false;
+        }
+        return true;
+    }, [nextAuthStatus]);
 
     useEffect(() => {
         if (nextAuthStatus !== "authenticated" || !session?.user) return;
@@ -97,6 +113,7 @@ export function useAuth() {
         // Linking complete (or not needed) — clear the intent flag
         if (!needsSync) {
             sessionStorage.removeItem(DISCORD_INTENT_KEY);
+            sessionStorage.removeItem(DISCORD_INTENT_TIMEOUT_KEY);
         }
     }, [nextAuthStatus, session, isActive, identity, hasMapping, hasDiscordIntent, currentUser, getConnection]);
 
@@ -164,6 +181,7 @@ export function useAuth() {
 
     const loginDiscord = useCallback(() => {
         sessionStorage.setItem(DISCORD_INTENT_KEY, '1');
+        sessionStorage.setItem(DISCORD_INTENT_TIMEOUT_KEY, String(Date.now()));
         signIn("discord");
     }, []);
 

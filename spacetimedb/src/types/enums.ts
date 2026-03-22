@@ -2,6 +2,7 @@ import { t } from 'spacetimedb/server';
 
 export const Role = t.enum('Role', {
     Admin: t.unit(),
+    Moderator: t.unit(),
     TournamentHost: t.unit(),
     User: t.unit(),
 });
@@ -69,11 +70,16 @@ export const TeamLabel = t.enum('TeamLabel', {
     Red: t.unit(),
 });
 
-export const MatchResult = t.enum('MatchResult', {
+export const MatchOutcome = t.enum('MatchOutcome', {
     BlueWins: t.unit(),
     RedWins: t.unit(),
     Draw: t.unit(),
     Aborted: t.unit(),
+});
+
+export const MatchType = t.enum('MatchType', {
+    Casual: t.unit(),
+    Ranked: t.unit(),
 });
 
 export const ActionType = t.enum('ActionType', {
@@ -84,4 +90,101 @@ export const ActionType = t.enum('ActionType', {
     AuctionSold: t.unit(),
     Pause: t.unit(),
     Undo: t.unit(),
+});
+
+export const TournamentStage = t.enum('TournamentStage', {
+    Draft: t.unit(),
+    Registration: t.unit(),
+    Seeding: t.unit(),
+    InProgress: t.unit(),
+    Completed: t.unit(),
+    Cancelled: t.unit(),
+});
+
+export const RosterVisibility = t.enum('RosterVisibility', {
+    OpenRoster: t.unit(),
+    ClosedWithRating: t.unit(),
+    ClosedNoRating: t.unit(),
+});
+
+export const TournamentFormat = t.enum('TournamentFormat', {
+    SingleElimination: t.unit(),
+    DoubleElimination: t.unit(),
+    GroupOnly: t.unit(),
+    GroupIntoSingleElim: t.unit(),
+    GroupIntoDoubleElim: t.unit(),
+});
+
+export const MatchResultStatus = t.enum('MatchResultStatus', {
+    Pending: t.unit(),
+    Submitted: t.unit(),
+    Disputed: t.unit(),
+    Validated: t.unit(),
+    Rejected: t.unit(),
+});
+
+export const ValidationStatus = t.enum('ValidationStatus', {
+    Pending: t.unit(),
+    Confirmed: t.unit(),
+    Disputed: t.unit(),
+});
+
+export const DisconnectPolicy = t.enum('DisconnectPolicy', {
+    Pause: t.unit(),
+    TimerThenForfeit: t.unit(),
+    NoAction: t.unit(),
+});
+
+export const RecurrenceType = t.enum('RecurrenceType', {
+    Daily: t.unit(),
+    Weekly: t.unit(),
+    Monthly: t.unit(),
+});
+
+
+export const ParticipantStatus = t.enum('ParticipantStatus', {
+    Registered: t.unit(),
+    CheckedIn: t.unit(),
+    Active: t.unit(),
+    Eliminated: t.unit(),
+    Disqualified: t.unit(),
+    Withdrawn: t.unit(),
+});
+
+// ParticipantType removed — redundant with teamGroupId (Phase 3 UAT decision)
+
+export const AchievementRarity = t.enum('AchievementRarity', {
+    Rare: t.unit(),
+    Epic: t.unit(),
+    Legendary: t.unit(),
+});
+
+export const AchievementTriggerType = t.enum('AchievementTriggerType', {
+    StatThreshold: t.unit(),
+    CharacterSpecific: t.unit(),
+    Manual: t.unit(),
+});
+
+export const ChatSenderType = t.enum('ChatSenderType', {
+    Player: t.unit(),
+    System: t.unit(),
+});
+
+export const TeamMemberRole = t.enum('TeamMemberRole', {
+    Owner: t.unit(),
+    Player: t.unit(),
+    Coach: t.unit(),
+});
+
+export const GroupAssignmentMode = t.enum('GroupAssignmentMode', {
+    Auto: t.unit(),
+    Manual: t.unit(),
+});
+
+export const BracketSide = t.enum('BracketSide', {
+    Winners: t.unit(),
+    Losers: t.unit(),
+    GrandFinals: t.unit(),
+    ThirdPlace: t.unit(),
+    Group: t.unit(),
 });

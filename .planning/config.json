@@ -1,10 +1,14 @@
 {
+  "mode": "yolo",
+  "granularity": "fine",
+  "parallelization": true,
+  "commit_docs": false,
   "model_profile": "balanced",
-  "commit_docs": true,
-  "search_gitignored": false,
-  "branching_strategy": "none",
-  "research": true,
-  "plan_checker": true,
-  "verifier": true,
-  "parallelization": true
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "nyquist_validation": true,
+    "_auto_chain_active": false
+  }
 }

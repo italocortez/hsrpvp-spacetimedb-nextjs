@@ -8,7 +8,12 @@ export const lobbyMemberColumns = {
     isOnline: t.bool(),
     participationRole: ParticipationRole, // Player vs Spectator
     isReferee: t.bool(),    // Admin powers within this lobby
+    isCoach: t.bool(),
     teamSlot: TeamLabel,    // Blue, Red, or Spectator
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
 };
 
 export const LobbyMember = table({
@@ -16,6 +21,8 @@ export const LobbyMember = table({
     public: true,
     primaryKey: ['lobbyId', 'userId'],
     indexes: [
-        { name: 'lobby_member_lobby_id', accessor: 'lobby_member_lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
+        { accessor: 'by_lobby_and_user', algorithm: 'btree', columns: ['lobbyId', 'userId'] },
     ]
 }, lobbyMemberColumns);

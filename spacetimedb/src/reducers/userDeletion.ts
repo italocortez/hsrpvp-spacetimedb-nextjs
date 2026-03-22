@@ -9,15 +9,22 @@ export const run_user_deletion = spacetimedb.reducer(
         const user = ctx.db.User.id.find(arg.userId);
         if (!user) return; // Already gone
 
-        // Cascade: delete all UserIdentity rows for this user
-        const identitiesToDelete: any[] = [];
-        for (const ui of ctx.db.UserIdentity.iter()) {
-            if (ui.userId === arg.userId) {
-                identitiesToDelete.push(ui.identity);
-            }
+        // Cascade: delete all UserIdentity rows for this user (use btree index)
+        const identities = [...ctx.db.UserIdentity.user_id.filter(arg.userId)];
+        for (const ui of identities) {
+            ctx.db.UserIdentity.identity.delete(ui.identity);
         }
-        for (const identity of identitiesToDelete) {
-            ctx.db.UserIdentity.identity.delete(identity);
+
+        // Cascade: delete all HSR accounts and their characters for this user
+        const hsrAccounts = [...ctx.db.HsrAccount.user_id.filter(arg.userId)];
+        for (const account of hsrAccounts) {
+            // Delete all characters owned by this account
+            const characters = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(account.id)];
+            for (const char of characters) {
+                ctx.db.HsrAccountCharacter.delete(char);
+            }
+            // Delete the account itself
+            ctx.db.HsrAccount.id.delete(account.id);
         }
 
         // Hard-delete the user

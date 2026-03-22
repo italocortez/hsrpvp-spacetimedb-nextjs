@@ -1,0 +1,422 @@
+/* ── Features Section ── */
+
+.section {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 40px 60px;
+}
+
+/* ── Featured Feature ── */
+
+.featured {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 48px;
+}
+
+/* All layers reference the SAME element dimensions (parent width/height).
+   Each layer uses calc(base% + Npx) in its clip-path so diagonals are
+   perfectly parallel at any zoom level or viewport size.
+   - Parent bg = outer gold, outermost clip-path
+   - ::before  = black gap, clip-path inset 3px
+   - ::after   = inner gold, clip-path inset 7px
+   - Content   = clip-path inset 10px */
+.featuredAccent {
+  position: relative;
+  flex-shrink: 0;
+  width: 55%;
+  background: var(--color-cta-yellow);
+  clip-path: polygon(13.3% 0, 100% 0, 86.7% 100%, 0 100%);
+}
+
+.featuredAccent::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #0D0D0F;
+  clip-path: polygon(
+    calc(13.3% + 3px) 3px,
+    calc(100% - 3px) 3px,
+    calc(86.7% - 3px) calc(100% - 3px),
+    3px calc(100% - 3px)
+  );
+  z-index: 1;
+}
+
+.featuredAccent::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-cta-yellow);
+  clip-path: polygon(
+    calc(13.3% + 7px) 7px,
+    calc(100% - 7px) 7px,
+    calc(86.7% - 7px) calc(100% - 7px),
+    7px calc(100% - 7px)
+  );
+  z-index: 2;
+}
+
+.featuredImageInner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  z-index: 3;
+  clip-path: polygon(
+    calc(13.3% + 10px) 10px,
+    calc(100% - 10px) 10px,
+    calc(86.7% - 10px) calc(100% - 10px),
+    10px calc(100% - 10px)
+  );
+  background: #0D0D0F; /* prevents gold flash during content slide-up animation */
+}
+
+.featuredPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 24px;
+  gap: 16px;
+  animation: featuredSlideUp 0.5s ease-out;
+}
+
+@keyframes featuredSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.featuredIcon {
+  font-size: 48px;
+}
+
+.featuredPlaceholderText {
+  font-family: var(--font-secondary);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-snow);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+/* Featured content — right side */
+.featuredContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Animated wrapper for title + description text */
+.featuredTextAnim {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: featuredFadeIn 0.5s ease-out;
+}
+
+@keyframes featuredFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* FEATURES label with diagonal styling */
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.sectionLabelText {
+  font-family: var(--font-secondary);
+  font-size: 42px;
+  font-weight: 800;
+  font-style: italic;
+  color: var(--color-cta-yellow);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.sectionLabelLine {
+  flex: 1;
+  height: 2px;
+  background: var(--color-cta-yellow);
+  margin-top: 4px;
+}
+
+.featuredTitle {
+  font-family: var(--font-secondary);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-snow);
+  line-height: 1.25;
+  margin: 0;
+}
+
+.featuredDescription {
+  font-family: var(--font-secondary);
+  font-size: 14px;
+  color: var(--color-ash);
+  line-height: 1.6;
+  margin: 4px 0 0;
+}
+
+/* ── More Features Header ── */
+
+.latestHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.latestLabelGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.latestLabelDashes {
+  width: 20px;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--color-ash) 0, var(--color-ash) 4px,
+    transparent 4px, transparent 8px
+  );
+}
+
+.latestLabel {
+  font-family: var(--font-secondary);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-snow);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.latestLine {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Features Carousel ── */
+
+.latestCarousel {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.carouselArrow {
+  position: absolute;
+  /* Align with card image center, not full card.
+     Images are 16:10 aspect at ~25% container width — center ≈ 70px from top. */
+  top: 85px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 13, 15, 0.85);
+  border: 1px solid rgba(245, 197, 24, 0.2);
+  color: transparent;
+  font-family: var(--font-secondary);
+  font-size: 18px;
+  font-weight: 700;
+  cursor: default;
+  pointer-events: none;
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+  z-index: 5;
+  padding: 0;
+  opacity: 0;
+}
+
+.carouselArrowLeft {
+  left: -12px;
+}
+
+.carouselArrowRight {
+  right: -12px;
+}
+
+.carouselArrowVisible {
+  color: var(--color-ash);
+  cursor: pointer;
+  pointer-events: auto;
+  border-color: rgba(245, 197, 24, 0.3);
+  opacity: 1;
+}
+
+.carouselArrowVisible:hover {
+  color: var(--color-cta-yellow);
+  background: rgba(13, 13, 15, 0.95);
+  border-color: var(--color-cta-yellow);
+}
+
+.latestCards {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 0;
+  width: 100%;
+}
+
+.latestCards::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Feature Card ── */
+
+.latestCard {
+  flex-shrink: 0;
+  width: calc(25% - 15px);
+  min-width: 200px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.4s ease, opacity 0.4s ease, max-height 0.4s ease;
+  cursor: pointer;
+}
+
+.latestCard:hover {
+  transform: translateY(-3px);
+}
+
+/* Card slides in from the right when returning from featured */
+.latestCardEntering {
+  animation: cardSlideInRight 0.5s ease-out;
+}
+
+@keyframes cardSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(80px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Card image container — NO clip-path here, children clip themselves */
+.latestCardImage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: visible;
+}
+
+.latestCardPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 12px;
+  gap: 8px;
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+
+/* L-shape gold border — sits behind content at inset -2px.
+   clip-path adjusted with calc() so diagonals align with content. */
+/* ── Card L-shape SVG borders ── */
+
+/* Opacity on the element (not color alpha) so overlapping strokes
+   at the L corner don't double-brighten */
+.latestCardLShape {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  color: var(--color-cta-yellow);
+  opacity: 0.4;
+  overflow: hidden;
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  transition: opacity 0.2s ease;
+}
+
+/* Top-right L: rotate the same SVG 180° */
+.latestCardLShapeFlipped {
+  transform: rotate(180deg);
+}
+
+.latestCard:hover .latestCardLShape {
+  opacity: 1;
+}
+
+.latestCardIcon {
+  font-size: 28px;
+}
+
+.latestCardPlaceholderText {
+  font-family: var(--font-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-snow);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+
+/* Card text block — matches Marvel Rivals .txt structure */
+.latestCardText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.latestCardTitle {
+  font-family: var(--font-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-snow);
+  line-height: 1.4;
+  transition: color 0.15s ease;
+}
+
+.latestCard:hover .latestCardTitle {
+  color: var(--color-cta-yellow);
+}
+
+.latestCardDesc {
+  font-family: var(--font-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-ash);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

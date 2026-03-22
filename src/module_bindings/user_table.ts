@@ -19,11 +19,18 @@ export default __t.row({
   username: __t.string(),
   displayName: __t.string().name("display_name"),
   isGuest: __t.bool().name("is_guest"),
+  isOnline: __t.bool().name("is_online"),
+  isPrivate: __t.bool().name("is_private"),
   lastLoginAt: __t.timestamp().name("last_login_at"),
   get role() {
     return Role;
   },
   discordId: __t.option(__t.string()).name("discord_id"),
   avatarCharacterName: __t.string().name("avatar_character_name"),
+  displayedAchievementId: __t.option(__t.u32()).name("displayed_achievement_id"),
   deletedAt: __t.option(__t.timestamp()).name("deleted_at"),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

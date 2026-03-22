@@ -2,12 +2,14 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ScheduleAt } from 'spacetimedb';
 import { ensureAdmin } from '../helpers/ensurePermissions';
+import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { Path, Element, CharRole, GameMode, Role } from '../types/enums';
 import { hsrCharacterColumns } from '../tables/hsrCharacter';
 import { hsrLightconeColumns } from '../tables/hsrLightcone';
 import { hsrCharacterCostColumns } from '../tables/hsrCharacterCost';
 import { hsrLightconeCostColumns } from '../tables/hsrLightconeCost';
 import { hsrSynergyCostUpsertKeys } from '../tables/hsrSynergyCost';
+import { archetypeColumns } from '../tables/archetype';
 
 // ─── Strict enum validator ───────────────────────────────────────────────────
 // Enum values must match exactly (case-sensitive). No coercion.
@@ -32,13 +34,17 @@ function validateEnum(field: string, value: string, ctx: any, tableName: string)
 
 // ─── Strict key validator ────────────────────────────────────────────────────
 // Every row must have exactly the expected keys — no more, no less.
+// Audit columns are excluded from validation (they are set server-side).
+
+const AUDIT_KEYS = new Set(['createdById', 'createdDate', 'lastModifiedById', 'lastModifiedDate']);
 
 const EXPECTED_KEYS: Record<string, string[]> = {
-    HsrCharacter: Object.keys(hsrCharacterColumns),
-    HsrLightcone: Object.keys(hsrLightconeColumns),
-    HsrCharacterCost: Object.keys(hsrCharacterCostColumns),
-    HsrLightconeCost: Object.keys(hsrLightconeCostColumns),
+    HsrCharacter: Object.keys(hsrCharacterColumns).filter(k => !AUDIT_KEYS.has(k)),
+    HsrLightcone: Object.keys(hsrLightconeColumns).filter(k => !AUDIT_KEYS.has(k)),
+    HsrCharacterCost: Object.keys(hsrCharacterCostColumns).filter(k => !AUDIT_KEYS.has(k)),
+    HsrLightconeCost: Object.keys(hsrLightconeCostColumns).filter(k => !AUDIT_KEYS.has(k)),
     HsrSynergyCost: hsrSynergyCostUpsertKeys,
+    Archetype: Object.keys(archetypeColumns).filter(k => k !== 'id' && !AUDIT_KEYS.has(k)),
 };
 
 function validateKeys(rows: any[], tableName: string, ctx: any): void {
@@ -68,7 +74,7 @@ function validateKeys(rows: any[], tableName: string, ctx: any): void {
 export const admin_delete_row = spacetimedb.reducer(
     { tableName: t.string(), primaryKeyJson: t.string() },
     (ctx, { tableName, primaryKeyJson }) => {
-        ensureAdmin(ctx);
+        const admin = ensureAdmin(ctx);
 
         switch (tableName) {
             case 'User': {
@@ -79,22 +85,20 @@ export const admin_delete_row = spacetimedb.reducer(
                 // Already pending deletion
                 if (user.deletedAt) throw new SenderError(`User #${id} is already pending deletion.`);
 
-                // Block deletion if user is hosting an active lobby
-                for (const lobby of ctx.db.Lobby.iter()) {
-                    if (lobby.hostUserId === id) {
-                        throw new SenderError(
-                            `Cannot delete user #${id}: they are hosting lobby "${lobby.joinCode}". Remove the lobby first.`
-                        );
-                    }
+                // Block deletion if user is hosting an active lobby (use btree index)
+                const hostedLobbies = [...ctx.db.Lobby.host_user_id.filter(id)];
+                if (hostedLobbies.length > 0) {
+                    throw new SenderError(
+                        `Cannot delete user #${id}: they are hosting lobby "${hostedLobbies[0].joinCode}". Remove the lobby first.`
+                    );
                 }
 
-                // Block deletion if user is a member of an active lobby
-                for (const member of ctx.db.LobbyMember.iter()) {
-                    if (member.userId === id) {
-                        throw new SenderError(
-                            `Cannot delete user #${id}: they are in active lobby #${member.lobbyId}. Remove them from the lobby first.`
-                        );
-                    }
+                // Block deletion if user is a member of an active lobby (use btree index)
+                const memberships = [...ctx.db.LobbyMember.user_id.filter(id)];
+                if (memberships.length > 0) {
+                    throw new SenderError(
+                        `Cannot delete user #${id}: they are in active lobby #${memberships[0].lobbyId}. Remove them from the lobby first.`
+                    );
                 }
 
                 // Block deletion if user is in an active match step
@@ -107,7 +111,11 @@ export const admin_delete_row = spacetimedb.reducer(
                 }
 
                 // Soft-delete: set deletedAt so the client can show a notification
-                ctx.db.User.id.update({ ...user, deletedAt: ctx.timestamp });
+                ctx.db.User.id.update({
+                    ...user,
+                    deletedAt: ctx.timestamp,
+                    ...auditUpdate(ctx, user, admin.id),
+                });
 
                 // Schedule hard-delete in 5 seconds (5_000_000 microseconds)
                 const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
@@ -115,13 +123,14 @@ export const admin_delete_row = spacetimedb.reducer(
                     scheduledId: 0n,
                     scheduledAt: ScheduleAt.time(deleteAt),
                     userId: id,
+                    ...auditInsert(ctx, admin.id),
                 });
 
                 console.log(`[ADMIN] User #${id} soft-deleted. Hard-delete scheduled in 5s.`);
                 break;
             }
             case 'UserIdentity': {
-                // Identity PKs are hex strings — find via iter
+                // Identity PKs are hex strings — must iterate (no hex→Identity conversion)
                 let found = false;
                 for (const row of ctx.db.UserIdentity.iter()) {
                     if (row.identity.toHexString() === primaryKeyJson) {
@@ -157,14 +166,38 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'HsrLightconeCost': {
-                if (!ctx.db.HsrLightconeCost.lightconeName.find(primaryKeyJson)) throw new SenderError('Row not found');
-                ctx.db.HsrLightconeCost.lightconeName.delete(primaryKeyJson);
+                const key = JSON.parse(primaryKeyJson);
+                let found = false;
+                for (const row of ctx.db.HsrLightconeCost.iter()) {
+                    if (row.lightconeName === key.lightconeName && row.gameMode.tag === key.gameModeTag) {
+                        ctx.db.HsrLightconeCost.delete(row);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) throw new SenderError('Row not found');
                 break;
             }
             case 'HsrSynergyCost': {
                 const id = Number(primaryKeyJson);
                 if (!ctx.db.HsrSynergyCost.id.find(id)) throw new SenderError('Row not found');
                 ctx.db.HsrSynergyCost.id.delete(id);
+                break;
+            }
+            case 'Archetype': {
+                const id = Number(primaryKeyJson);
+                if (!ctx.db.Archetype.id.find(id)) throw new SenderError('Row not found');
+                // Cascade: delete all HsrCharacterArchetype rows for this archetype
+                const junctions = [...ctx.db.HsrCharacterArchetype.archetype_id.filter(id)];
+                for (const j of junctions) { ctx.db.HsrCharacterArchetype.delete(j); }
+                ctx.db.Archetype.id.delete(id);
+                break;
+            }
+            case 'HsrCharacterArchetype': {
+                const key = JSON.parse(primaryKeyJson);
+                const row = [...ctx.db.HsrCharacterArchetype.by_character_and_archetype.filter([key.characterName, key.archetypeId])][0];
+                if (!row) throw new SenderError('Row not found');
+                ctx.db.HsrCharacterArchetype.delete(row);
                 break;
             }
             case 'Lobby': {
@@ -175,15 +208,9 @@ export const admin_delete_row = spacetimedb.reducer(
             }
             case 'LobbyMember': {
                 const key = JSON.parse(primaryKeyJson);
-                let found = false;
-                for (const row of ctx.db.LobbyMember.iter()) {
-                    if (row.lobbyId === key.lobbyId && row.userId === key.userId) {
-                        ctx.db.LobbyMember.delete(row);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) throw new SenderError('Row not found');
+                const row = [...ctx.db.LobbyMember.by_lobby_and_user.filter([key.lobbyId, key.userId])][0];
+                if (!row) throw new SenderError('Row not found');
+                ctx.db.LobbyMember.delete(row);
                 break;
             }
             case 'MatchSession': {
@@ -199,13 +226,17 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'MatchSessionHistory': {
-                if (!ctx.db.MatchSessionHistory.id.find(primaryKeyJson)) throw new SenderError('Row not found');
-                ctx.db.MatchSessionHistory.id.delete(primaryKeyJson);
+                if (!ctx.db.MatchSessionHistory.id.find(Number(primaryKeyJson))) throw new SenderError('Row not found');
+                ctx.db.MatchSessionHistory.id.delete(Number(primaryKeyJson));
                 break;
             }
             case 'MatchSessionStepHistory': {
-                if (!ctx.db.MatchSessionStepHistory.matchId.find(primaryKeyJson)) throw new SenderError('Row not found');
-                ctx.db.MatchSessionStepHistory.matchId.delete(primaryKeyJson);
+                // Composite PK [matchHistoryId, sequence] — parse JSON array
+                const stepPK = JSON.parse(primaryKeyJson);
+                const stepRow = [...ctx.db.MatchSessionStepHistory.by_match_history.filter(stepPK[0])]
+                    .find((r: any) => r.sequence === stepPK[1]);
+                if (!stepRow) throw new SenderError('Row not found');
+                ctx.db.MatchSessionStepHistory.delete(stepRow);
                 break;
             }
             default:
@@ -219,7 +250,7 @@ export const admin_delete_row = spacetimedb.reducer(
 export const admin_bulk_upsert = spacetimedb.reducer(
     { tableName: t.string(), jsonData: t.string() },
     (ctx, { tableName, jsonData }) => {
-        ensureAdmin(ctx);
+        const admin = ensureAdmin(ctx);
 
         const rows: any[] = JSON.parse(jsonData);
         if (!Array.isArray(rows)) throw new SenderError('jsonData must be a JSON array');
@@ -244,9 +275,9 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         imageUrl: r.imageUrl || '',
                     };
                     if (existing) {
-                        ctx.db.HsrCharacter.name.update({ ...existing, ...row } as any);
+                        ctx.db.HsrCharacter.name.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
                     } else {
-                        ctx.db.HsrCharacter.insert(row as any);
+                        ctx.db.HsrCharacter.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
                 break;
@@ -267,9 +298,9 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         width: r.width || 0,
                     };
                     if (existing) {
-                        ctx.db.HsrLightcone.name.update({ ...existing, ...row } as any);
+                        ctx.db.HsrLightcone.name.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
                     } else {
-                        ctx.db.HsrLightcone.insert(row as any);
+                        ctx.db.HsrLightcone.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
                 break;
@@ -283,6 +314,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         gameMode,
                         classicCosts: r.classicCosts,
                         auctionBaseBid: r.auctionBaseBid,
+                        costSetId: r.costSetId || 0,
                     };
                     let existing = null;
                     for (const e of ctx.db.HsrCharacterCost.iter()) {
@@ -294,23 +326,38 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                     if (existing) {
                         ctx.db.HsrCharacterCost.delete(existing);
                     }
-                    ctx.db.HsrCharacterCost.insert(row as any);
+                    ctx.db.HsrCharacterCost.insert({
+                        ...row,
+                        ...(existing ? auditUpdate(ctx, existing, admin.id) : auditInsert(ctx, admin.id)),
+                    } as any);
                 }
                 break;
             }
             case 'HsrLightconeCost': {
                 for (const r of rows) {
-                    const existing = ctx.db.HsrLightconeCost.lightconeName.find(r.lightconeName);
+                    validateEnum('gameMode', r.gameMode, ctx, tableName);
+                    // Composite PK: lightconeName + gameMode — use iter() to find existing
+                    let existing: any = null;
+                    for (const e of ctx.db.HsrLightconeCost.iter()) {
+                        if (e.lightconeName === r.lightconeName && e.gameMode.tag === r.gameMode) {
+                            existing = e;
+                            break;
+                        }
+                    }
                     const row = {
                         lightconeName: r.lightconeName,
+                        gameMode: { tag: r.gameMode, value: undefined } as any,
                         classicCosts: r.classicCosts,
                         auctionBaseBid: r.auctionBaseBid,
+                        costSetId: r.costSetId || 0,
                     };
                     if (existing) {
-                        ctx.db.HsrLightconeCost.lightconeName.update({ ...existing, ...row });
-                    } else {
-                        ctx.db.HsrLightconeCost.insert(row as any);
+                        ctx.db.HsrLightconeCost.delete(existing);
                     }
+                    ctx.db.HsrLightconeCost.insert({
+                        ...row,
+                        ...(existing ? auditUpdate(ctx, existing, admin.id) : auditInsert(ctx, admin.id)),
+                    } as any);
                 }
                 break;
             }
@@ -324,6 +371,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         targetName: r.targetName,
                         gameMode,
                         costModifier: r.costModifier,
+                        costSetId: r.costSetId || 0,
                     };
                     let existing = null;
                     for (const e of ctx.db.HsrSynergyCost.iter()) {
@@ -333,9 +381,28 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         }
                     }
                     if (existing) {
-                        ctx.db.HsrSynergyCost.id.update({ ...existing, costModifier: r.costModifier });
+                        ctx.db.HsrSynergyCost.id.update({
+                            ...existing,
+                            costModifier: r.costModifier,
+                            ...auditUpdate(ctx, existing, admin.id),
+                        });
                     } else {
-                        ctx.db.HsrSynergyCost.insert(row as any);
+                        ctx.db.HsrSynergyCost.insert({
+                            ...row,
+                            ...auditInsert(ctx, admin.id),
+                        } as any);
+                    }
+                }
+                break;
+            }
+            case 'Archetype': {
+                for (const r of rows) {
+                    const existing = ctx.db.Archetype.name.find(r.name);
+                    const row = { id: 0, name: r.name, description: r.description };
+                    if (existing) {
+                        ctx.db.Archetype.id.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
+                    } else {
+                        ctx.db.Archetype.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
                 break;
@@ -351,7 +418,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
 export const admin_update_user = spacetimedb.reducer(
     { userId: t.u32(), displayName: t.string(), username: t.string(), roleTag: t.string() },
     (ctx, { userId, displayName, username, roleTag }) => {
-        ensureAdmin(ctx);
+        const admin = ensureAdmin(ctx);
 
         const user = ctx.db.User.id.find(userId);
         if (!user) throw new SenderError('User not found');
@@ -370,6 +437,7 @@ export const admin_update_user = spacetimedb.reducer(
             displayName,
             username,
             role: { tag: roleTag, value: {} } as any,
+            ...auditUpdate(ctx, user, admin.id),
         });
     }
 );

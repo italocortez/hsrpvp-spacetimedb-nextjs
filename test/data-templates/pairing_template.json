@@ -1,0 +1,18 @@
+[
+  {
+    "source": "cerydra",
+    "pair_target": "anaxa",
+    "cost": {
+      "memoryofchaos": 3.0,
+      "apocalypticshadow": 3.0
+    }
+  },
+  {
+    "source": "feixiao",
+    "pair_target": "moze",
+    "cost": {
+      "memoryofchaos": 4.0,
+      "apocalypticshadow": 4.0
+    }
+  }
+]

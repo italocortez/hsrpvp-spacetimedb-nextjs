@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
+import { auditUpdate } from '../helpers/auditColumns';
 
 /**
  * Helper: resolve ctx.sender → UserIdentity → User.
@@ -31,7 +32,7 @@ export const delete_guest_account = spacetimedb.reducer((ctx) => {
     ctx.db.UserIdentity.identity.delete(ctx.sender);
 
     // Check if any other identities still point to this user
-    const remainingLinks = [...ctx.db.UserIdentity.user_identity_user_id.filter(resolved.user.id)];
+    const remainingLinks = [...ctx.db.UserIdentity.user_id.filter(resolved.user.id)];
     if (remainingLinks.length === 0) {
         // No more identities linked — safe to delete the User row
         ctx.db.User.id.delete(resolved.user.id);
@@ -61,7 +62,27 @@ export const update_display_name = spacetimedb.reducer({
     ctx.db.User.id.update({
         ...resolved.user,
         displayName: trimmed,
+        ...auditUpdate(ctx, resolved.user, resolved.user.id),
     });
+
+    // Lazy sync: update TournamentTeam.name for active solo non-anonymous tournaments
+    // A solo player's team name = their displayName (invisible team for bracket purposes)
+    for (const team of [...ctx.db.TournamentTeam.captain_user_id.filter(resolved.user.id)]) {
+        const tournament = ctx.db.Tournament.id.find(team.tournamentId);
+        if (!tournament) continue;
+        // Only sync if: tournament is active (not Completed/Cancelled), solo tournament, and not anonymous
+        const isActive = tournament.stage.tag !== 'Completed' && tournament.stage.tag !== 'Cancelled';
+        const isSolo = tournament.teamSize === 1;
+        const isNotAnonymous = !tournament.isAnonymousDefault;
+        if (isActive && isSolo && isNotAnonymous) {
+            ctx.db.TournamentTeam.id.update({
+                ...team,
+                name: trimmed,
+                lastModifiedById: resolved.user.id,
+                lastModifiedDate: ctx.timestamp,
+            } as any);
+        }
+    }
 });
 
 /**
@@ -91,12 +112,13 @@ export const update_username = spacetimedb.reducer({
     ctx.db.User.id.update({
         ...resolved.user,
         username: trimmed,
+        ...auditUpdate(ctx, resolved.user, resolved.user.id),
     });
 });
 
 /**
  * Update the caller's avatar character.
- * The characterName should reference an existing HsrCharacter name.
+ * Validates that the characterName exists in the HsrCharacter table.
  */
 export const update_avatar = spacetimedb.reducer({
     characterName: t.string(),
@@ -106,8 +128,15 @@ export const update_avatar = spacetimedb.reducer({
         throw new SenderError('User not found — login first');
     }
 
+    // Validate character exists in the HsrCharacter table
+    const character = ctx.db.HsrCharacter.name.find(characterName);
+    if (!character) {
+        throw new SenderError(`Character "${characterName}" not found. Please select a valid character.`);
+    }
+
     ctx.db.User.id.update({
         ...resolved.user,
         avatarCharacterName: characterName,
+        ...auditUpdate(ctx, resolved.user, resolved.user.id),
     });
 });

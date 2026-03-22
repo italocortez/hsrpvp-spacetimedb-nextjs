@@ -1,0 +1,123 @@
+/* src/app/tokens.css */
+/* Source: reference/pallete.md */
+
+:root {
+  /* ── PALETTE COLORS ── */
+  --color-void: #0A0A0B;
+  --color-space: #121214;
+  --color-charcoal: #1E1E22;
+  --color-graphite: #2A2A30;
+  --color-steel-blue: #2A2E38;
+  --color-iron: #3D3D45;
+  --color-pewter: #5A5E6A;
+  --color-ash: #A8AEBB;
+  --color-mist: #C8CDD6;
+  --color-snow: #F0F0F5;
+  --color-ocean-blue: #4E8CF2;
+  --color-periwinkle: #6B7FE8;
+  --color-iris: #8B6CE8;
+  --color-deep-violet: #8A4EF2;
+  --color-amethyst: #A64EF2;
+  --color-orchid: #C94EE0;
+  --color-coral-red: #F24E4E;
+  --color-success: #34D399;
+  --color-warning: #FBBF24;
+  --color-cta-yellow: #F5C518;
+  --color-cta-yellow-hover: #FFD740;
+  --color-error: #F24E4E;
+  --color-info: #4E8CF2;
+
+  /* ── SEMANTIC BACKGROUND ALIASES ── */
+  --bg-page: var(--color-void);
+  --bg-nav: var(--color-space);
+  --bg-card: var(--color-charcoal);
+  --bg-panel: var(--color-graphite);
+  --bg-element: var(--color-steel-blue);
+  --bg-elevated: var(--color-iron);
+
+  /* ── SEMANTIC TEXT ALIASES ── */
+  --text-heading: var(--color-snow);
+  --text-body: var(--color-mist);
+  --text-muted: var(--color-ash);
+  --text-disabled: var(--color-pewter);
+  --text-link: var(--color-ocean-blue);
+  --text-link-hover: var(--color-periwinkle);
+  --text-accent: var(--color-iris);
+
+  /* ── SEMANTIC STATUS ── */
+  --color-status-success: var(--color-success);
+  --color-status-warning: var(--color-warning);
+  --color-status-error: var(--color-error);
+  --color-status-info: var(--color-info);
+
+  /* ── SEMANTIC CALENDAR COLORS ── */
+  --calendar-available: var(--color-iris);              /* #8B6CE8 */
+  --calendar-blocked: var(--color-coral-red);           /* #F24E4E */
+  --calendar-other-avail: var(--color-success);         /* #34D399 */
+  --calendar-other-blocked: var(--color-warning);       /* #FBBF24 */
+
+  /* ── STROKES ── */
+  --stroke-light-edge: rgba(255, 255, 255, 0.30);
+  --stroke-shadow-edge: #3A3F4B;
+  --stroke-deep-shadow: #1A1D24;
+  --stroke-side-edge: rgba(255, 255, 255, 0.10);
+
+  /* ── SEMANTIC BORDER ALIASES ── */
+  --border-subtle: var(--stroke-shadow-edge);          /* #3A3F4B -- semantic alias */
+  --border-subtle-alpha: rgba(58, 63, 75, 0.267);      /* #3A3F4B at ~27% opacity */
+  --border-selected: #3a3520;                           /* selected row highlight */
+
+  /* ── GRADIENTS ── */
+  --gradient-nav: linear-gradient(180deg, #121214 0%, #1E1E22 50%, #2A2A30 100%);
+  --gradient-menu: linear-gradient(180deg, #3D3D45 0%, #2A2E38 100%);
+  --gradient-home-icon: linear-gradient(135deg, #F24E4E 0%, #A64EF2 50%, #4E8CF2 100%);
+  --gradient-iris-spectrum: linear-gradient(135deg, #4E8CF2 0%, #8B6CE8 50%, #F24E4E 100%);
+  --gradient-iris-glow: linear-gradient(135deg, #8B6CE8 0%, #A64EF2 100%);
+  --gradient-iris-warm: linear-gradient(135deg, #8B6CE8 0%, #C94EE0 50%, #F24E4E 100%);
+  --gradient-periwinkle-spectrum: linear-gradient(135deg, #4E8CF2 0%, #6B7FE8 50%, #F24E4E 100%);
+  --gradient-periwinkle-glow: linear-gradient(135deg, #6B7FE8 0%, #A64EF2 100%);
+  --gradient-periwinkle-cool: linear-gradient(135deg, #4E8CF2 0%, #6B7FE8 50%, #8B6CE8 100%);
+  --gradient-accent-line-top: linear-gradient(90deg, rgba(139, 108, 232, 0) 0%, rgba(139, 108, 232, 1) 50%, rgba(139, 108, 232, 0) 100%);
+  --gradient-accent-line-bottom: linear-gradient(90deg, rgba(78, 140, 242, 0) 0%, rgba(78, 140, 242, 1) 50%, rgba(78, 140, 242, 0) 100%);
+  --gradient-iris-to-periwinkle: linear-gradient(180deg, var(--color-iris) 0%, var(--color-periwinkle) 100%);
+  /* Used by: LoggedLogin background, CalendarViewToggle active, PlayerRow avatar, SavedCalendarCard active, StartJoinButton start */
+
+  /* ── SHADOWS / GLOWS ── */
+  --shadow-glow-blue: 0 0 20px rgba(78, 140, 242, 0.25);
+  --shadow-glow-violet: 0 0 20px rgba(166, 78, 242, 0.25);
+  --shadow-glow-red: 0 0 20px rgba(242, 78, 78, 0.25);
+  --shadow-glow-yellow: 0 0 20px rgba(251, 191, 36, 0.25);
+  --shadow-glow-green: 0 0 20px rgba(52, 211, 153, 0.25);
+  --shadow-glow-blue-lg: 0 0 40px rgba(78, 140, 242, 0.35);
+  --shadow-glow-violet-lg: 0 0 40px rgba(166, 78, 242, 0.35);
+
+  /* ── BORDER RADIUS ── */
+  --radius-panel: 8px;
+  --radius-card: 12px;
+  --radius-button: 6px;
+  --radius-none: 0px;
+  --radius-pill: 999px;
+
+  /* ── DIAGONAL CUTS ── */
+  --diagonal-angle: 19.7deg;
+  --diagonal-tan: 0.358;
+
+  /* ── FONTS ── */
+  --font-primary: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+  --font-secondary: var(--font-inter), "Inter", sans-serif;
+
+  /* ── BUTTON-SPECIFIC STROKES ── */
+  --stroke-lobby-button-black: #3A3F4B;
+  --stroke-lobby-button-gray: #3A3F4B;
+  --stroke-start-join-button: rgba(255, 255, 255, 0.20);
+  --stroke-play-button: transparent;
+
+  /* ── LOBBY BROWSER COLUMN WIDTHS ── */
+  --lobby-col-name: 280px;
+  --lobby-col-code: 150px;
+  --lobby-col-access: 120px;
+  --lobby-col-draft: 160px;
+  --lobby-col-game: 280px;
+  --lobby-col-players: 100px;
+  /* SPECTATORS uses flex: 1 — no fixed token */
+}
