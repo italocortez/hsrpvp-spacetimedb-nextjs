@@ -28,6 +28,13 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 - ✓ Admin bulk upsert and row deletion for cost management — existing
 - ✓ Guest account cleanup via UserDeletionJob — existing
 - ✓ Team composition builder — existing (needs verification)
+- ✓ Roster management (accounts, characters, lightcones, visibility, account rating) — Validated in Phase 2
+- ✓ Tournament lifecycle (creation, registration, teams, referee, cost sets, stage transitions) — Validated in Phase 3
+- ✓ Bracket generation and advancement (single/double/group/hybrid, seeding, auto-advance) — Validated in Phase 4
+- ✓ Schema normalization (Blue/Red naming, MatchResultParticipant confirmation, MatchType/MatchOutcome enums) — Validated in Phase 04.1
+- ✓ Match results and MMR (score submission, ELO calculation, leaderboard, bracket advancement via finalization) — Validated in Phase 5
+- ✓ Anonymous play enforcement (label computation, cursor anonymization, roster/stat visibility, tournament account locking) — Validated in Phase 6
+- ✓ Player statistics (win/loss/spectated tracking, character stats, global character stats, match replay archival, auto-finalize casual) — Validated in Phase 6
 
 ### Active
 
@@ -154,4 +161,4 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 | Backend-only milestone | Solid table design first, UI in separate milestone | — Pending |
 
 ---
-*Last updated: 2026-03-15 after initialization*
+*Last updated: 2026-03-22 after Phase 6 completion (Anonymous Play and Player Stats)*
