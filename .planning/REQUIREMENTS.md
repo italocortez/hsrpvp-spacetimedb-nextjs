@@ -70,10 +70,10 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Anonymous Play
 
-- [ ] **ANON-01**: Per-lobby/match toggle for anonymous player names
-- [ ] **ANON-02**: Per-tournament default for anonymous play (individual matches can override)
-- [ ] **ANON-03**: Anonymous mode enforced at data write layer — cursor events and match events carry anonymousLabel instead of userId
-- [ ] **ANON-04**: Open/closed roster visibility toggle independent of anonymous names
+- [x] **ANON-01**: Per-lobby/match toggle for anonymous player names
+- [x] **ANON-02**: Per-tournament default for anonymous play (individual matches can override)
+- [x] **ANON-03**: Anonymous mode enforced at data write layer — cursor events and match events carry anonymousLabel instead of userId
+- [x] **ANON-04**: Open/closed roster visibility toggle independent of anonymous names
 
 ### MMR System
 
@@ -87,14 +87,14 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Player Stats & Profile
 
-- [ ] **STAT-01**: Matches played, wins, losses, win rate tracked per player
-- [ ] **STAT-02**: Matches spectated count tracked
+- [x] **STAT-01**: Matches played, wins, losses, win rate tracked per player
+- [x] **STAT-02**: Matches spectated count tracked
 - [ ] **STAT-03**: Best Ally calculated (user with most shared wins)
 - [ ] **STAT-04**: Nemesis calculated (user with most losses against)
-- [ ] **STAT-05**: Character-level stats: win rate, loss rate per character
-- [ ] **STAT-06**: Character-vs-character win ratio tracked
-- [ ] **STAT-07**: Match history supports step-by-step replay from archived MatchSessionStepHistory
-- [ ] **STAT-08**: Match replay shows final result with game-mode-specific scoring at the end
+- [x] **STAT-05**: Character-level stats: win rate, loss rate per character
+- [x] **STAT-06**: Character-vs-character win ratio tracked
+- [x] **STAT-07**: Match history supports step-by-step replay from archived MatchSessionStepHistory
+- [x] **STAT-08**: Match replay shows final result with game-mode-specific scoring at the end
 
 ### Achievements & Titles
 
@@ -226,18 +226,18 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | MMR-05 | Phase 5 | Complete |
 | MMR-06 | Phase 5 | Complete |
 | MMR-07 | Phase 5 | Complete |
-| ANON-01 | Phase 6 | Pending |
-| ANON-02 | Phase 6 | Pending |
-| ANON-03 | Phase 6 | Pending |
-| ANON-04 | Phase 6 | Pending |
-| STAT-01 | Phase 6 | Pending |
-| STAT-02 | Phase 6 | Pending |
+| ANON-01 | Phase 6 | Complete |
+| ANON-02 | Phase 6 | Complete |
+| ANON-03 | Phase 6 | Complete |
+| ANON-04 | Phase 6 | Complete |
+| STAT-01 | Phase 6 | Complete |
+| STAT-02 | Phase 6 | Complete |
 | STAT-03 | Phase 6 | Pending |
 | STAT-04 | Phase 6 | Pending |
-| STAT-05 | Phase 6 | Pending |
-| STAT-06 | Phase 6 | Pending |
-| STAT-07 | Phase 6 | Pending |
-| STAT-08 | Phase 6 | Pending |
+| STAT-05 | Phase 6 | Complete |
+| STAT-06 | Phase 6 | Complete |
+| STAT-07 | Phase 6 | Complete |
+| STAT-08 | Phase 6 | Complete |
 | ACHV-01 | Phase 7 | Pending |
 | ACHV-02 | Phase 7 | Pending |
 | ACHV-03 | Phase 7 | Pending |

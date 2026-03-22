@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 6
-current_plan: Not started
-status: planning
-last_updated: "2026-03-21T10:18:07.470Z"
+current_phase: 06
+current_plan: 2
+status: executing
+last_updated: "2026-03-22T02:20:04.984Z"
 progress:
   total_phases: 11
   completed_phases: 6
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 20
+  completed_plans: 18
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 6
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current phase:** 06
+**Current plan:** 1
+**Status:** Executing Phase 06
 
 ## Decisions
 
@@ -72,6 +72,8 @@ See: .planning/PROJECT.md
 - [Phase 05-match-results-and-mmr]: bracketAdvancement.ts keeps rollback-specific helpers (removeParticipantFromMatch, reverseGroupStandings) file-local; shared helpers extracted to bracketHelpers.ts
 - [Phase 05-match-results-and-mmr]: Fair MMR always applied in Phase 5 -- per-match choice (D-23) deferred to Phase 9/10 when Handicap Play gameplay effects are implemented
 - [Phase 05-match-results-and-mmr]: Leaderboard rebuild runs inline within reducer transaction -- acceptable at 100-user scale
+- [Phase 06]: Active season lookup via btree index on isActive; seasonId defaults to 0 for pre-season (D-45)
+- [Phase 06]: set_active_season deactivates all active seasons before activating target (single-active guarantee)
 
 ### Quick Tasks Completed
 
@@ -108,3 +110,4 @@ See: .planning/PROJECT.md
 - 2026-03-20: Completed 04.1-03-PLAN.md — doc updates: 11 files updated with new column names + behavioral narratives (lifecycle, captain confirmation, tournament MMR timing, composite PKs, junction patterns), Phase 04.1 complete
 - 2026-03-21: Completed 05-01-PLAN.md — schema foundation: EloConfig/Leaderboard tables, record_game_scores reducer, admin ELO reducers, Casual auto-validation (D-04), Ranked screenshot gate (D-07), accountRating on HsrAccount
 - 2026-03-21: Completed 05-02-PLAN.md — MMR finalization: finalize_match_result (history+stats+bracket+ephemeral deletion), process_tournament_mmr (batch), 4 helper files (eloCalculation, statsIncrement, leaderboardRebuild, bracketHelpers), published to maincloud, 38/38 tests pass, Phase 05 complete
+- 2026-03-22: Completed 06-01-PLAN.md — schema foundation: 5 PK expansions (+seasonId/matchType/teamSize), 4 new tables (Season, GlobalCharacterStat, TournamentPlayerAccount, MatchResultGameHistory), Lobby rosterVisibility/requireOwnership/isTournamentControlled, MatchSessionStepHistory reworked to flat rows, Season admin reducers, published to maincloud with --clear-database, 61/61 tests pass
