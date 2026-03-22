@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 06
 current_plan: 1
 status: executing
-last_updated: "2026-03-22T02:27:32.198Z"
+last_updated: "2026-03-22T02:32:13.286Z"
 progress:
   total_phases: 11
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Session State
@@ -76,6 +76,9 @@ See: .planning/PROJECT.md
 - [Phase 06]: set_active_season deactivates all active seasons before activating target (single-active guarantee)
 - [Phase 06]: Used t.object() for RosterVisibilityRow struct type instead of t.product() (which does not exist in SpacetimeDB SDK)
 - [Phase 06]: All HSR accounts (not just active) locked at registration per D-21 -- tournament validation checks any locked account
+- [Phase 06]: runFinalization extracts processMatchMmr into finalizationHelpers.ts for shared use by finalize and auto-finalize
+- [Phase 06]: Character name from StepPayload via variant-specific access (Pick/Ban/AuctionSold/Nominate -> characterName, Bid -> targetCharacter)
+- [Phase 06]: GlobalCharacterStat uses by_char_mode 2-col index + post-filter (no full 6-col btree index)
 
 ### Quick Tasks Completed
 
@@ -114,3 +117,4 @@ See: .planning/PROJECT.md
 - 2026-03-21: Completed 05-02-PLAN.md — MMR finalization: finalize_match_result (history+stats+bracket+ephemeral deletion), process_tournament_mmr (batch), 4 helper files (eloCalculation, statsIncrement, leaderboardRebuild, bracketHelpers), published to maincloud, 38/38 tests pass, Phase 05 complete
 - 2026-03-22: Completed 06-01-PLAN.md — schema foundation: 5 PK expansions (+seasonId/matchType/teamSize), 4 new tables (Season, GlobalCharacterStat, TournamentPlayerAccount, MatchResultGameHistory), Lobby rosterVisibility/requireOwnership/isTournamentControlled, MatchSessionStepHistory reworked to flat rows, Season admin reducers, published to maincloud with --clear-database, 61/61 tests pass
 - 2026-03-22: Completed 06-02-PLAN.md — anonymous play enforcement: computeAnonymousLabel + validateCharacterOwnership helpers, broadcast_cursor anonymous mode (userId=0 + label), 4 per-user views (stats + roster visibility), TournamentPlayerAccount wired into registration/withdrawal
+- 2026-03-22: Completed 06-03-PLAN.md — 18-step finalization pipeline rewrite: runFinalization shared helper, character stat increments (pick/ban/faced), global character stats, match replay archival (step rows, game history, participant history), spectated count, auto-finalize casual, season-aware leaderboard, published to maincloud, 61/61 tests pass, Phase 06 complete

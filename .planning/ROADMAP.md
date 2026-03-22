@@ -147,7 +147,7 @@ Plans:
 Plans:
 - [x] 06-01-PLAN.md — Schema foundation: PK expansions (PlayerStat, PlayerCharacterStat, PlayerRelationship, MmrRating, Leaderboard), column changes (Lobby, LobbyCursorEvent, MatchSessionStep, MatchSessionHistory, MatchSessionStepHistory, MatchParticipantHistory), 4 new tables (Season, GlobalCharacterStat, TournamentPlayerAccount, MatchResultGameHistory), Season admin reducers, publish --clear-database
 - [x] 06-02-PLAN.md — Anonymous play helpers (label computation, ownership validation), broadcast_cursor anonymous enforcement, roster/stat visibility views, TournamentPlayerAccount wiring into registration
-- [ ] 06-03-PLAN.md — Finalization pipeline rewrite (18-step shared helper), character/global stat increments, match replay archival, auto-finalize casual, publish + doc updates
+- [x] 06-03-PLAN.md — Finalization pipeline rewrite (18-step shared helper), character/global stat increments, match replay archival, auto-finalize casual, publish + doc updates
 
 ### Phase 7: Achievements and Titles
 **Goal**: Admins can define achievements, the system auto-awards them on condition, and players can display earned titles on their profile

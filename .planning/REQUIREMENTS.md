@@ -89,8 +89,8 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 - [x] **STAT-01**: Matches played, wins, losses, win rate tracked per player
 - [x] **STAT-02**: Matches spectated count tracked
-- [ ] **STAT-03**: Best Ally calculated (user with most shared wins)
-- [ ] **STAT-04**: Nemesis calculated (user with most losses against)
+- [x] **STAT-03**: Best Ally calculated (user with most shared wins)
+- [x] **STAT-04**: Nemesis calculated (user with most losses against)
 - [x] **STAT-05**: Character-level stats: win rate, loss rate per character
 - [x] **STAT-06**: Character-vs-character win ratio tracked
 - [x] **STAT-07**: Match history supports step-by-step replay from archived MatchSessionStepHistory
@@ -232,8 +232,8 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | ANON-04 | Phase 6 | Complete |
 | STAT-01 | Phase 6 | Complete |
 | STAT-02 | Phase 6 | Complete |
-| STAT-03 | Phase 6 | Pending |
-| STAT-04 | Phase 6 | Pending |
+| STAT-03 | Phase 6 | Complete |
+| STAT-04 | Phase 6 | Complete |
 | STAT-05 | Phase 6 | Complete |
 | STAT-06 | Phase 6 | Complete |
 | STAT-07 | Phase 6 | Complete |
