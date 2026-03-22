@@ -297,6 +297,87 @@ All three are deleted together when finalize_match_result runs.
 
 ---
 
+## Auto-Finalize Casual (Phase 6 execution — D-37)
+
+For Casual matches, `submit_match_result` runs the full finalization pipeline inline:
+
+1. Status set to Validated (auto)
+2. `runFinalization()` called immediately within the same transaction
+3. All history archival, stat increments, and ephemeral cleanup happen atomically
+4. No separate `finalize_match_result` call needed for Casual matches
+
+This eliminates the gap between submit and finalize for Casual matches. Both sides have already agreed via captain confirmation, so there is no dispute window.
+
+---
+
+## MatchResultGameHistory (Phase 6 execution — D-51)
+
+Archival mirror of `MatchResultGame`. Created during finalization (step 9 of the pipeline).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| matchHistoryId | u32 | FK to MatchSessionHistory.id |
+| gameNumber | u8 | Game number in the series |
+| gameMode | GameMode enum | MoC, AS, AA |
+| teamBlueScreenshotUrl | string? | Screenshot proof for blue team |
+| teamRedScreenshotUrl | string? | Screenshot proof for red team |
+| teamBlueCyclesUsed | u32? | Cycles used by blue team |
+| teamRedCyclesUsed | u32? | Cycles used by red team |
+| teamBlueScore | u64? | Blue team score |
+| teamRedScore | u64? | Red team score |
+| teamBlueBoss1Score | u64? | Blue team boss 1 score |
+| teamBlueBoss2Score | u64? | Blue team boss 2 score |
+| teamRedBoss1Score | u64? | Red team boss 1 score |
+| teamRedBoss2Score | u64? | Red team boss 2 score |
+| winnerTeamSide | TeamLabel enum | Which team won this game |
+
+PK: [matchHistoryId, gameNumber]
+
+---
+
+## Finalization Pipeline (Phase 6 execution — D-56)
+
+Extracted to `helpers/finalizationHelpers.ts` as `runFinalization()`. Called by both `finalize_match_result` (ranked/tournament) and `submit_match_result` (casual auto-finalize).
+
+### 18-Step Pipeline
+
+**Reads (1-6):**
+1. Read MatchResultParticipant rows
+2. Read MatchResultGame rows
+3. Read Lobby
+4. Read MatchSessionStep rows (sorted by sequence)
+5. Read active Season (seasonId defaults to 0 for pre-season)
+6. Determine gameMode, draftMode, matchType, teamSize
+
+**Writes (7-18):**
+7. Write MatchSessionHistory row (no rosterBlue/rosterRed per D-52)
+8. Write MatchSessionStepHistory rows — individual rows per step (per D-50/D-54)
+9. Write MatchResultGameHistory rows — mirror of MatchResultGame (per D-51)
+10. Write MatchParticipantHistory rows — with denormalized displayName (per D-53)
+11. Process MMR (standalone Ranked only) — call processMatchMmr, stamp mmrProcessedAt, rebuild leaderboard with seasonId
+12. Tournament batch back-fill — update MmrHistory sentinel matchHistoryId
+13. Increment PlayerStat per participant (wins/losses/draws)
+14. Increment matchesSpectated for lobby spectators (per D-30)
+15. Increment PlayerRelationship per participant pair (ally/opponent)
+16. Increment character stats — PlayerCharacterStat (pick/ban/faced), GlobalCharacterStat (per D-54)
+17. Bracket advancement (tournament-controlled matches)
+18. Delete ephemeral records (games, participants, steps, MatchResultRecord)
+
+---
+
+## Lobby requireOwnership (Phase 6 execution — D-17/D-18/D-19)
+
+| Column | Type | Default | Description |
+|--------|------|---------|-------------|
+| requireOwnership | bool | true (Ranked) / false (Casual) | When true, pick reducer validates against HsrAccountCharacter |
+
+- Auto-defaults from matchType at lobby creation (D-18)
+- Tournament lobbies inherit from tournament.requireRoster (D-19)
+- Locked once lobby is created
+- Phase 6 adds the column; Phase 9 wires it into pick/ban reducers
+
+---
+
 ## Phase 3 Scope Notes
 
 - Table name is `match_result_record` (not `match_result`) to avoid PascalCase collision with the `MatchResult` enum

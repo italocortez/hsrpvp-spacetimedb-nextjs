@@ -2,6 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { auditUpdate } from '../helpers/auditColumns';
+import { runFinalization } from '../helpers/finalizationHelpers';
 
 // ─── confirm_match_scores ─────────────────────────────────────────────────────
 // Confirms scores for a team side. Two paths:
@@ -156,6 +157,12 @@ export const submit_match_result = spacetimedb.reducer(
 
         const statusLabel = matchResult.matchType.tag === 'Casual' ? 'Validated (auto)' : 'Submitted';
         console.log(`[MATCH] Match result #${matchResultId} ${statusLabel} by user #${user.id}, winner: #${winnerUserId}`);
+
+        // Auto-finalize casual matches inline (per D-37)
+        if (matchResult.matchType.tag === 'Casual') {
+            const updatedResult = ctx.db.MatchResultRecord.id.find(matchResultId)!;
+            runFinalization(ctx, updatedResult, user.id);
+        }
     }
 );
 

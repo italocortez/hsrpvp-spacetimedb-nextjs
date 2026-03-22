@@ -5,14 +5,15 @@
 ```
 User
 |
-+-- MmrRating (current rating snapshot -- one row per user per game mode)
-|     PK: [userId, gameMode]
++-- MmrRating (current rating snapshot -- one row per user per game mode per season)
+|     PK: [userId, gameMode, seasonId]   (Phase 6: seasonId now part of PK)
 |     userId              -> User.id
 |     gameMode            -> GameMode enum (MoC, AS, AA)
 |     rating              -> current ELO (e.g., 1120)
 |     matchesPlayed       -> for K-factor tiering
 |     globalCompositeRating? -> average across all 3 modes
-|     seasonId?           -> future season support
+|     seasonId            -> Season.id (u32, required; 0 = pre-season)
+|     Indexes: user_id, rating, by_user_mode_season [userId, gameMode, seasonId]
 |
 +-- MmrHistory (changelog -- one row per rating change)
 |     id (PK, autoInc)
@@ -22,7 +23,7 @@ User
 |     previousRating -> e.g., 1000
 |     newRating      -> e.g., 1028
 |     delta          -> e.g., +28 (i32, can be negative)
-|     seasonId?     -> future season support
+|     seasonId       -> Season.id (u32, required; 0 = pre-season)
 |
 +-- EloConfig (single-row config table -- admin-tunable)
       id (PK)             -> sentinel value 1
@@ -35,6 +36,14 @@ User
       sizeBonus           -> 150 (rating points per extra team member)
       spreadDivisor       -> 2 (spread penalty = stdev(team ratings) / this)
       maxAccountBonus     -> 200 (max ELO modifier from account rating gap)
+
++-- Season (admin-managed season definitions)
+      id (PK, autoInc)
+      name              -> e.g., "Patch 3.0"
+      startDate         -> timestamp
+      endDate?          -> timestamp (null = current/ongoing)
+      isActive          -> bool (single-active guarantee)
+      Index: is_active [isActive]
 ```
 
 ## ELO Calculation
@@ -265,9 +274,17 @@ Materialized table rebuilt after MMR processing.
 - rating (u32): MMR rating value
 - matchesPlayed (u32): total matches in this mode
 - wins (u32): total wins (joined from PlayerStat)
-- seasonId (u32?): future season support
+- seasonId (u32): Season.id (required; Phase 6: now part of PK)
 
-PK: [category, rank]. Max 400 rows (100 per category x 4).
+PK: [category, rank, seasonId]. Max 400 rows per season (100 per category x 4).
+
+### Season-Aware Rebuild (Phase 6 execution)
+
+`rebuildLeaderboard(ctx, actingUserId, seasonId?)` now accepts an optional seasonId parameter:
+- If provided, rebuilds only that season's leaderboard entries
+- If omitted, reads the active Season from the Season table (defaults to 0 for pre-season)
+- MmrRating rows are filtered by seasonId before ranking
+- PlayerStat wins lookup also filtered by seasonId
 
 ### Rebuild Trigger
 Leaderboard is rebuilt inline after:
@@ -307,6 +324,7 @@ Config changes apply to future matches only.
 - `globalCompositeRating` stored (not computed on-the-fly) because it needs btree index for leaderboard sorting
 - Tournament `countTowardsMmr` setting determines matchType: true → Ranked (MMR processed), false → Casual (no MMR)
 - `delta` is stored in MmrHistory for dashboard display ("+15", "-12") without recalculation
-- `seasonId` column exists but seasons are deferred to v1
+- seasonId is now part of MmrRating PK [userId, gameMode, seasonId] and Leaderboard PK [category, rank, seasonId] (Phase 6 — D-41/D-42/D-60)
 - `mmr_rating_value` index name (not `mmr_rating`) to avoid namespace collision with the table name
 - MmrHistory.matchHistoryId FKs to MatchSessionHistory.id (permanent) because MmrHistory is permanent and MatchResultRecord is ephemeral (deleted after finalization)
+- Season table with isActive btree index; getActiveSeasonId helper reads active season at finalization time (Phase 6 — D-47/D-48)

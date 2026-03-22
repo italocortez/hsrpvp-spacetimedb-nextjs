@@ -202,6 +202,30 @@ Every table in this domain follows the standard audit pattern:
 
 ---
 
+## TournamentPlayerAccount (Phase 6 execution — D-21)
+
+Junction table that locks which HSR accounts a player will use in a tournament. Created at registration time.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| tournamentId | u32 | FK to Tournament.id |
+| userId | u32 | FK to User.id |
+| hsrAccountId | u32 | FK to HsrAccount.id |
+
+PK: [tournamentId, userId, hsrAccountId]
+
+During tournament matches, pick validation checks against registered accounts (TournamentPlayerAccount), not whatever account is currently active. This prevents mid-tournament account switching for competitive integrity.
+
+### requireOwnership Inheritance (Phase 6 — D-19)
+
+Tournament lobbies inherit `requireOwnership` from `tournament.requireRoster`:
+- `requireRoster=true` → lobby `requireOwnership=true` (draft picks validated against HsrAccountCharacter)
+- `requireRoster=false` → lobby `requireOwnership=false` (any character allowed)
+
+These are separate concepts: `requireRoster` gates signup eligibility, `requireOwnership` gates draft enforcement. Phase 6 adds the column; Phase 9 wires it into pick/ban reducers.
+
+---
+
 ## Bracket Generation (Phase 4)
 
 After Registration closes and Seeding begins:
