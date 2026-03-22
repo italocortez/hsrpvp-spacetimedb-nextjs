@@ -156,10 +156,10 @@ export const NavBar = ({ className }: NavBarProps) => {
           </Link>
         )}
 
-        {/* Settings gear (placeholder per D-23) */}
-        <button className={`${styles.iconButton} ${styles.gearButton}`} type="button" aria-label="Settings">
+        {/* Admin panel link */}
+        <Link href="/admin-view" className={`${styles.iconButton} ${styles.gearButton}`} aria-label="Admin Panel">
           <GearIcon size={20} color="currentColor" />
-        </button>
+        </Link>
 
         {/* Auth: user display or login CTA */}
         {isAuthenticated ? (
