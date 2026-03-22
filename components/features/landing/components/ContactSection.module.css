@@ -1,0 +1,273 @@
+/* ContactSection — Community-grid layout from ScrollTest 005 */
+
+/* ── Section ── */
+.section {
+  position: relative;
+  padding: clamp(6rem, 14vh, 10rem) clamp(1.5rem, 6vw, 5rem);
+  overflow: hidden;
+  background: var(--bg-nav);
+}
+
+.centeredContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* ── Label ── */
+.sectionLabel {
+  display: block;
+  font-family: var(--font-primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-iris);
+  opacity: 0.6;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Heading ── */
+.sectionHeading {
+  font-family: var(--font-secondary);
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--text-heading);
+  margin: 0 0 1.5rem;
+}
+
+.textAccent {
+  color: var(--color-iris);
+  text-shadow: 0 0 30px rgba(139, 108, 232, 0.4);
+}
+
+/* ── Body ── */
+.sectionBody {
+  font-family: var(--font-secondary);
+  font-size: clamp(0.9375rem, 1.2vw, 1.0625rem);
+  font-weight: 400;
+  line-height: 1.75;
+  color: var(--text-muted);
+  max-width: 52ch;
+  margin: 0 auto 3rem;
+  text-align: center;
+}
+
+/* ── Community Grid ── */
+.communityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+/* ── Community Card — parallelogram ── */
+.communityCard {
+  padding: 2.5rem 2rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  text-align: center;
+  clip-path: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.communityCard:hover {
+  border-color: rgba(139, 108, 232, 0.2);
+  background: var(--bg-elevated);
+}
+
+/* ── Card Icon ── */
+.communityIcon {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto 1.25rem;
+  color: var(--color-iris);
+}
+
+.communityIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Card Typography ── */
+.communityCard h3 {
+  font-family: var(--font-secondary);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-heading);
+  margin: 0 0 0.75rem;
+}
+
+.communityCard p {
+  font-family: var(--font-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Copy Button (Discord card) ── */
+.copyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  margin-top: 1rem;
+  cursor: pointer;
+  background: rgba(139, 108, 232, 0.08);
+  border: 1px solid rgba(139, 108, 232, 0.2);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  transition: background 0.2s ease, border-color 0.2s ease, filter 0.2s ease;
+}
+
+.copyBtn:hover {
+  background: rgba(139, 108, 232, 0.18);
+  border-color: rgba(139, 108, 232, 0.45);
+  filter: drop-shadow(0 0 6px rgba(139, 108, 232, 0.25));
+}
+
+/* SVG copy icon — sized via width/height attrs on the element */
+.copyIcon {
+  display: block;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.copyUsername {
+  font-family: var(--font-primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-iris);
+}
+
+.copyHint {
+  font-family: var(--font-primary);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--text-disabled);
+}
+
+/* ── Server Carousel (inside servers card) ── */
+.carousel {
+  position: relative;
+  height: 48px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.serverItem {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--server-bg);
+  border-left: 2px solid var(--accent);
+  cursor: pointer;
+  transition:
+    transform 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.4s ease;
+}
+
+.serverItem:hover {
+  filter: brightness(1.3);
+}
+
+.active {
+  transform: translateY(0);
+  opacity: 1;
+  z-index: 3;
+}
+
+.next {
+  transform: translateY(100%);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.prev {
+  transform: translateY(-100%);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* SVG server icon — display flex + explicit dimensions for inline SVG rendering */
+.serverIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.serverIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.serverInfo {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.serverName {
+  font-family: var(--font-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-snow);
+}
+
+.serverSubtitle {
+  font-family: var(--font-secondary);
+  font-size: 0.625rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* ── Dot Indicators ── */
+.dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dot:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.dotActive {
+  background: var(--color-iris);
+  transform: scale(1.4);
+  box-shadow: 0 0 6px rgba(139, 108, 232, 0.5);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .communityGrid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+    margin: 3rem auto 0;
+  }
+}
