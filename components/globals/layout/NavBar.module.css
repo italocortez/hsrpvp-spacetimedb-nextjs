@@ -1,0 +1,327 @@
+/* NavBar — Marvel Rivals-style flat header bar */
+
+.navbar {
+  width: 100%;
+  height: 56px;
+  background: #0D0D0F;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px 6px;
+  position: relative;
+  z-index: 100;
+}
+
+/* Separator line — rendered as pseudo so gold bottom bars can overlap it */
+.navbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.10);
+  z-index: 0;
+  bottom: 0;
+}
+
+/* ── Left section: Logo ── */
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 6px rgba(139, 108, 232, 0.6));
+  transform: scale(1.08);
+}
+
+/* ── Scroll chevrons ── */
+
+.chevron {
+  width: 20px;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: transparent;
+  font-size: 18px;
+  cursor: default;
+  pointer-events: none;
+  transition: color 0.2s ease;
+  padding: 0;
+  position: relative;
+  z-index: 20;
+}
+
+.chevronLeft {
+  margin-right: 4px;
+}
+
+.chevronRight {
+  margin-left: 4px;
+}
+
+.chevronVisible {
+  color: var(--color-ash);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.chevronVisible:hover {
+  color: var(--color-snow);
+}
+
+/* ── Center section: Scrollable nav links ── */
+
+.centerNav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Bottom padding extends clipping box for the gold bottom bar. */
+  padding-bottom: 12px;
+  margin-bottom: -12px;
+}
+
+.centerNav::-webkit-scrollbar {
+  display: none;
+}
+
+.navItem {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 20px 8px 24px;
+  font-family: var(--font-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: var(--color-ash);
+  text-transform: uppercase;
+  transition: color 0.15s ease, letter-spacing 0.2s ease, text-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  height: 40px;
+  overflow: visible;
+  text-decoration: none;
+}
+
+.navItem:hover {
+  letter-spacing: 1.8px;
+  text-shadow: 0 0 8px rgba(240, 240, 245, 0.3);
+}
+
+.navItem.selected {
+  text-shadow: 0 0 10px rgba(245, 197, 24, 0.4);
+  animation: selectPop 0.3s ease-out;
+}
+
+.navItem.selected .navItemBorder {
+  animation: selectFlash 0.4s ease-out;
+}
+
+@keyframes selectPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes selectFlash {
+  0% { filter: brightness(1); }
+  30% { filter: brightness(2) drop-shadow(0 0 6px rgba(245, 197, 24, 0.8)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+/* Combined U-shaped border: side bars + bottom bar as one polygon.
+   Single mask animation sweeps bottom-to-top — no seams. */
+.navItemBorder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: -8px;
+  background: var(--color-cta-yellow);
+  clip-path: polygon(
+    17px 0,
+    3px calc(100% - 8px),
+    0 100%,
+    calc(100% - 15px) calc(100% - 5px),
+    calc(100% - 14px) calc(100% - 8px),
+    100% 0,
+    calc(100% - 16px) calc(100% - 8px),
+    5px calc(100% - 8px)
+  );
+  -webkit-mask-image: linear-gradient(to top, black, black);
+  mask-image: linear-gradient(to top, black, black);
+  -webkit-mask-size: 100% 0%;
+  mask-size: 100% 0%;
+  -webkit-mask-position: bottom;
+  mask-position: bottom;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  transition: mask-size 0.25s ease-out, -webkit-mask-size 0.25s ease-out;
+  z-index: 2;
+}
+
+/* Hover & selected: sweep fill bottom to top */
+.navItem:hover .navItemBorder,
+.navItem.selected .navItemBorder {
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+/* Hover: bright text */
+.navItem:hover {
+  color: var(--color-snow);
+}
+
+/* Selected: yellow text */
+.navItem.selected {
+  color: var(--color-cta-yellow);
+}
+
+/* Angled separator between nav items */
+.navItem + .navItem::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  transform: skewX(-19.7deg);
+}
+
+/* ── Right section: Icons + CTA ── */
+
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.iconButton {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  color: var(--color-ash);
+  transition: color 0.15s ease;
+  display: flex;
+  align-items: center;
+}
+
+.iconButton:hover {
+  color: var(--color-snow);
+}
+
+.gearButton:hover svg {
+  transform: rotate(90deg);
+  transition: transform 0.3s ease;
+}
+
+.gearButton svg {
+  transition: transform 0.3s ease;
+}
+
+.loginCta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  background: var(--color-cta-yellow);
+  color: var(--color-void);
+  /* 50px * tan(19.7deg) ≈ 18px — left diagonal only, flush right to page edge */
+  clip-path: polygon(18px 0, 100% 0, 100% 100%, 0 100%);
+  padding: 0 32px 0 40px;
+  margin-right: -24px; /* negate navbar right padding to reach page edge */
+  font-family: var(--font-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s ease, letter-spacing 0.2s ease, padding 0.2s ease, filter 0.2s ease, transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.loginCta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -200%;
+  width: 200%;
+  height: 100%;
+  background:
+    linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.5) 24%, transparent 28%),
+    linear-gradient(95deg, transparent 35%, rgba(255, 255, 255, 0.35) 38%, transparent 42%),
+    linear-gradient(108deg, transparent 50%, rgba(255, 255, 255, 0.6) 53%, transparent 57%);
+  transition: left 0.5s ease;
+}
+
+.loginCta:hover::before {
+  left: 100%;
+}
+
+.loginCta:hover {
+  background: var(--color-cta-yellow-hover);
+  letter-spacing: 2.5px;
+  padding-right: 34px;
+  filter: brightness(1.1) drop-shadow(0 0 8px rgba(245, 197, 24, 0.5));
+}
+
+.loginCta:active {
+  transform: scale(0.96);
+  filter: brightness(0.9);
+  transition: transform 0.08s ease, background 0.08s ease, filter 0.08s ease;
+}
+
+/* Selected nav item gold glow pulse */
+.navItem.selected .navItemBottomBar {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(245, 197, 24, 0.4)); }
+  50% { filter: drop-shadow(0 0 8px rgba(245, 197, 24, 0.7)); }
+}
+
+/* ── User info (authenticated display name) ── */
+
+.userInfo {
+  font-family: var(--font-primary);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-heading);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-button);
+  transition: color 0.2s;
+}
+
+.userInfo:hover {
+  color: var(--color-iris);
+}
