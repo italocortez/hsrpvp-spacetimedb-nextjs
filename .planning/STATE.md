@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 06.1
 current_plan: 2
 status: executing
-last_updated: "2026-03-22T10:54:24.639Z"
+last_updated: "2026-03-22T11:01:47.589Z"
 progress:
   total_phases: 12
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 22
-  completed_plans: 21
+  completed_plans: 22
 ---
 
 # Session State
@@ -81,6 +81,8 @@ See: .planning/PROJECT.md
 - [Phase 06]: GlobalCharacterStat uses by_char_mode 2-col index + post-filter (no full 6-col btree index)
 - [Phase 06.1]: NavBar uses usePathname() for selection state — routing is source of truth, no useState needed for nav selection
 - [Phase 06.1]: loginGuest() called directly from NavBar LOG IN button — no modal, matches existing Header pattern
+- [Phase 06.1]: icon-lucide CDN font replaced with inline SVGs in ContactSection — CSP-safe, no external dependency required
+- [Phase 06.1]: page.tsx uses <div> not <main> for landing page container — avoids any global max-width rules on main element
 
 ### Quick Tasks Completed
 
