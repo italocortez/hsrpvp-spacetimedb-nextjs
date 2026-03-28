@@ -42,6 +42,7 @@ next-env.d.ts
 
 #claude context
 .claude/settings.local.json
+.claude/gsd-local-patches/
 notes
 notes/
 
