@@ -99,8 +99,8 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 ### Achievements & Titles
 
 - [x] **ACHV-01**: Admin can create achievement definitions with name, description, criteria type, and threshold
-- [ ] **ACHV-02**: System auto-awards achievements when conditions are met (e.g., "Win 10 matches")
-- [ ] **ACHV-03**: Admin/TO can manually award achievements to specific players
+- [x] **ACHV-02**: System auto-awards achievements when conditions are met (e.g., "Win 10 matches")
+- [x] **ACHV-03**: Admin/TO can manually award achievements to specific players
 - [x] **ACHV-04**: User can view their collected achievements and select a title for display on profile
 
 ### Calendar & Scheduling
@@ -244,8 +244,8 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | STAT-07 | Phase 6 | Complete |
 | STAT-08 | Phase 6 | Complete |
 | ACHV-01 | Phase 7 | Complete |
-| ACHV-02 | Phase 7 | Pending |
-| ACHV-03 | Phase 7 | Pending |
+| ACHV-02 | Phase 7 | Complete |
+| ACHV-03 | Phase 7 | Complete |
 | ACHV-04 | Phase 7 | Complete |
 | CAL-01 | Phase 8 | Pending |
 | CAL-02 | Phase 8 | Pending |

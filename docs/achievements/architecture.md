@@ -41,13 +41,13 @@ User.displayedAchievementId → Achievement.id (title display FK)
 
 | Reducer | Permission | Description |
 |---------|-----------|-------------|
-| create_achievement | Admin | Create achievement definition |
-| update_achievement | Admin | Edit name/description/rarity (always editable) |
-| delete_achievement | Admin | Cascade delete: criteria, awards, displayed title refs |
-| add_achievement_criteria | Admin | Add criteria row (locked after first award) |
-| remove_achievement_criteria | Admin | Remove criteria row (locked after first award) |
+| create_achievement | Moderator+ | Create achievement definition |
+| update_achievement | Moderator+ | Edit name/description/rarity (always editable) |
+| delete_achievement | Admin only | Cascade delete: criteria, awards, displayed title refs |
+| add_achievement_criteria | Moderator+ | Add criteria row (locked after first award) |
+| remove_achievement_criteria | Moderator+ | Remove criteria row (locked after first award) |
 | manual_award_achievement | Admin/Mod: any; TO: own tournament participants | Award achievement to a user |
-| set_displayed_achievement | User: own title; Admin: any user | Set or clear profile title |
+| set_displayed_achievement | User: own title; Admin only: any user | Set or clear profile title |
 
 ## Auto-Award Pipeline
 

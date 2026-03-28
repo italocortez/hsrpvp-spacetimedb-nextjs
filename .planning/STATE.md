@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 07
-current_plan: 2
-status: complete
-last_updated: "2026-03-28T05:26:15.975Z"
+current_phase: 8
+current_plan: Not started
+status: planning
+last_updated: "2026-03-28T05:30:14.731Z"
 progress:
   total_phases: 13
   completed_phases: 9
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 07
-**Current plan:** 2
-**Status:** Phase 07 Complete
+**Current phase:** 8
+**Current plan:** Not started
+**Status:** Ready to plan
 
 ## Decisions
 
@@ -89,6 +89,7 @@ See: .planning/PROJECT.md
 - [Phase 07-achievements-and-titles]: AchievementCriteria filter columns (filterGameMode, filterMatchType) use t.string().optional() not enum types — SpacetimeDB enum types do not support .optional()
 - [Phase 07-achievements-and-titles]: update_achievement rarity param required (not optional) — AchievementRarity enum type does not support .optional() in SpacetimeDB SDK
 - [Phase 07-achievements-and-titles]: Achievement checker uses iter() on Achievement table (admin content <100 rows) and Math.max for MmrRating (best-mode semantics vs sum for PlayerStat)
+- [Phase 07-achievements-and-titles]: Moderators have same achievement permissions as Admins EXCEPT delete_achievement (Admin only) and set_displayed_achievement for other users (Admin only)
 
 ### Quick Tasks Completed
 

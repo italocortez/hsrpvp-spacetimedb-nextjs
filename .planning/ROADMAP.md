@@ -218,6 +218,8 @@ Plans:
   - Test 12: mmrProcessedAt Double-Processing Guard
   - Test 13: Tournament Batch MMR
   - Test 14: Bracket Advancement via Finalization (MTCH-08)
+**Deferred from Phase 7 UAT**: Auto-award via finalization requires full match lifecycle (lobby → match → scores → finalize) to trigger `checkAndAwardAchievements` at step 16.5:
+  - Test 11: Auto-Award via Finalization Pipeline (achievement checker fires after stat increments, inserts UserAchievement for satisfied criteria)
 **Success Criteria** (what must be TRUE):
   1. A player's full XY cursor position is broadcast via reducer while their browser tab is active; the position is visible in subscriptions to all match participants, spectators, and coaches
   2. A coach role player can see cursor tracking data but calling any pick/ban reducer as a coach is rejected with an authorization error

@@ -35,6 +35,7 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 - ✓ Match results and MMR (score submission, ELO calculation, leaderboard, bracket advancement via finalization) — Validated in Phase 5
 - ✓ Anonymous play enforcement (label computation, cursor anonymization, roster/stat visibility, tournament account locking) — Validated in Phase 6
 - ✓ Player statistics (win/loss/spectated tracking, character stats, global character stats, match replay archival, auto-finalize casual) — Validated in Phase 6
+- ✓ Achievements and titles (flexible criteria definitions, auto-award during finalization, manual award, profile title display) — Validated in Phase 7
 
 ### Active
 
@@ -47,12 +48,6 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 - [ ] Admin can add/edit roster entries on behalf of users
 - [ ] User can set roster visibility (public/private), overridden by lobby/tournament settings
 - [ ] Account rating calculated from roster (characters + eidolons owned)
-
-**Achievements & Titles**
-- [ ] Admin can create achievement definitions with criteria
-- [ ] System auto-awards achievements when conditions are met (e.g., "Win 10 matches")
-- [ ] Admin/TO can manually award achievements to players
-- [ ] User can collect and display titles on their profile
 
 **Tournament System**
 - [ ] Role-based tournament creation (users request TO role, admins approve)
