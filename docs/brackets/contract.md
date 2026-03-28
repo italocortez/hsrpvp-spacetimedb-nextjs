@@ -52,14 +52,14 @@
 ### Rollback Bracket Match
 **Given:** Tournament InProgress, BracketMatch with winnerTeamId set, no MMR processed
 **When:** `rollback_bracket_match(bracketMatchId)`
-**Then:** winnerTeamId cleared, winner removed from next match slot, loser removed from losers bracket slot. Group standings reversed.
+**Then:** winnerTeamId cleared, winner removed from next match slot, loser removed from losers bracket slot. Group standings reversed. If a CalendarEvent is linked to this bracketMatchId, it and its CalendarEventInvite rows are cascade-deleted.
 
 During an active tournament, rollback is FREE because MMR has not been processed yet (tournament MMR is batched at tournament end via process_tournament_mmr). The mmrProcessedAt guard only blocks rollback AFTER the tournament ends and the MMR batch has run. For casual/ranked matches, the guard applies immediately since MMR is processed per-match.
 
 ### DQ Auto-Advance
 **Given:** Tournament InProgress, autoAdvanceBracket=true, team A vs team B in bracket
 **When:** `dq_participant(tournamentId, playerA)`
-**Then:** Player A status=Disqualified. Team B auto-advanced to next bracket match.
+**Then:** Player A status=Disqualified. Team B auto-advanced to next bracket match. If a CalendarEvent is linked to this bracket match, it and its CalendarEventInvite rows are cascade-deleted.
 
 ## Edge Cases
 
@@ -120,7 +120,9 @@ During an active tournament, rollback is FREE because MMR has not been processed
 | team1Id/team2Id replace participant1Id/participant2Id, winnerTeamId replaces winnerId | Phase 04.1 execution | 2026-03-20 |
 | teamId replaces participantTeamId (GroupStanding) | Phase 04.1 execution | 2026-03-20 |
 | Rollback during tournament is free -- MMR not yet processed (batched at tournament end) | Phase 04.1 execution | 2026-03-20 |
+| rollback_bracket_match cascade-deletes linked CalendarEvent + CalendarEventInvite | Phase 08 CONTEXT.md (D-22) | 2026-03-28 |
+| dq_participant cascade-deletes linked CalendarEvent + CalendarEventInvite | Phase 08 CONTEXT.md (D-22) | 2026-03-28 |
 
 ---
 
-*Last updated: 2026-03-20*
+*Last updated: 2026-03-28*

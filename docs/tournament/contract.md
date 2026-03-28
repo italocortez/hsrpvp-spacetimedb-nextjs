@@ -37,12 +37,12 @@
 ### Cancel Tournament
 **Given:** Tournament in Registration stage with teams, assistants, and pending requests
 **When:** `cancel_tournament(id)`
-**Then:** Stage changes to Cancelled. Cascade deletes: TournamentTeamRequest, GroupStanding, BracketMatch, TournamentPlayerAccount, TournamentTeam, TournamentAssistant. TournamentParticipant rows preserved (audit trail). MatchResultRecord rows preserved (player history).
+**Then:** Stage changes to Cancelled. Cascade deletes: TournamentTeamRequest, GroupStanding, BracketMatch, TournamentPlayerAccount, TournamentTeam, TournamentAssistant, CalendarEvent + CalendarEventInvite (for all linked bracket matches). TournamentParticipant rows preserved (audit trail). MatchResultRecord rows preserved (player history).
 
 ### Cancel InProgress Tournament
 **Given:** Tournament in InProgress with generated bracket, group standings, and match results
 **When:** `cancel_tournament(id)`
-**Then:** Stage=Cancelled. BracketMatch and GroupStanding rows deleted. MatchResultRecord rows preserved. TournamentParticipant rows preserved with their current status unchanged.
+**Then:** Stage=Cancelled. BracketMatch and GroupStanding rows deleted. CalendarEvent + CalendarEventInvite rows for linked bracket matches deleted. MatchResultRecord rows preserved. TournamentParticipant rows preserved with their current status unchanged.
 
 ### Player Registration
 **Given:** Tournament in Registration, verified user with active roster
@@ -61,7 +61,7 @@
 ### Withdraw from Tournament
 **Given:** Registered participant
 **When:** `withdraw_from_tournament(id)`
-**Then:** Participant row status set to Withdrawn, teamGroupId cleared (row preserved for audit). TournamentPlayerAccount rows deleted. Pending TournamentTeamRequest rows from this user deleted.
+**Then:** Participant row status set to Withdrawn, teamGroupId cleared (row preserved for audit). TournamentPlayerAccount rows deleted. Pending TournamentTeamRequest rows from this user deleted. CalendarEventInvite rows for this user on any CalendarEvents linked to this tournament's bracket matches deleted.
 
 ### Captain Withdrawal Auto-Disbands Team
 **Given:** Captain of a team with 2 members, Player C has pending request
@@ -206,6 +206,8 @@
 | accept_team_request cleans up user's other pending requests in tournament | Retroactive cleanup | 2026-03-28 |
 | Registration→Seeding cleans up pending team requests | Retroactive cleanup | 2026-03-28 |
 | TournamentParticipant and MatchResultRecord preserved on cancellation (audit trail / player history) | Retroactive cleanup | 2026-03-28 |
+| cancel_tournament cascade-deletes CalendarEvent + CalendarEventInvite for linked bracket matches | Phase 08 CONTEXT.md (D-21) | 2026-03-28 |
+| withdraw_from_tournament deletes player's CalendarEventInvite rows for tournament's scheduled matches | Phase 08 CONTEXT.md (D-24) | 2026-03-28 |
 
 ---
 

@@ -44,7 +44,7 @@ User
 | `admin_delete_row` | admin.ts | Admin | Generic row deletion with table-specific guards (User soft-delete, lobby/match blocking) |
 | `admin_bulk_upsert` | admin.ts | Admin | Bulk upsert rows into game data tables (HsrCharacter, HsrLightcone, costs, archetypes). Used by seed-data script |
 | `admin_update_user` | admin.ts | Admin | Field-level user updates (role, displayName, avatarCharacterName, etc.) |
-| `run_user_deletion` | userDeletion.ts | Scheduled | Hard-delete cascade: UserIdentity → HsrAccountCharacter → HsrAccount → User. Note: HsrAccountLightcone NOT cascaded (lightcone reducers descoped from Phase 2) |
+| `run_user_deletion` | userDeletion.ts | Scheduled | Hard-delete cascade: UserIdentity → HsrAccountCharacter → HsrAccount → AvailabilitySlot → SavedCalendar (both directions) → CalendarEventInvite (as invitee) → CalendarEvent (as organizer, + cascade invites) → User. Note: HsrAccountLightcone NOT cascaded (lightcone reducers descoped from Phase 2) |
 
 ## Key Patterns
 

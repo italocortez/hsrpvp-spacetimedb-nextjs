@@ -138,7 +138,13 @@ run_user_deletion (reducers/userDeletion.ts) cascades in order:
 1. Delete UserIdentity rows
 2. Delete HsrAccountCharacter rows for each HsrAccount owned by user
 3. Delete HsrAccount rows
-4. Hard-delete User row
+4. Delete AvailabilitySlot rows (Phase 8)
+5. Delete SavedCalendar rows — both as subscriber and as target (Phase 8)
+6. Delete CalendarEventInvite rows as invitee (Phase 8)
+7. Delete CalendarEvent rows as organizer + cascade their invites (Phase 8)
+8. Hard-delete User row
+
+Note: Step 8 hard-deletes the User row, but multiple history tables (MatchParticipantHistory, MmrHistory, PlayerStat, Leaderboard, TournamentParticipant) reference userId. This may need rework to preserve the User row — tracked separately from Phase 8.
 
 Note: HsrAccountLightcone rows are NOT cascaded yet (lightcone reducers descoped from Phase 2).
 A comment in userDeletion.ts marks where to extend when lightcone reducers are added.
