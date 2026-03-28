@@ -24,6 +24,7 @@ export { generate_bracket, seed_bracket, swap_seeds } from './reducers/bracketGe
 export { advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match } from './reducers/bracketAdvancement';
 export { finalize_match_result, process_tournament_mmr } from './reducers/matchFinalization';
 export { create_season, set_active_season } from './reducers/seasonAdmin';
+export { create_achievement, update_achievement, delete_achievement, add_achievement_criteria, remove_achievement_criteria, manual_award_achievement, set_displayed_achievement } from './reducers/achievementManagement';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);
