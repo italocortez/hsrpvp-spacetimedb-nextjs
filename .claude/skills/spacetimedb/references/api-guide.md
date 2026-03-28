@@ -1,6 +1,6 @@
 <!-- Sources:
   - SpacetimeDB TypeScript SDK docs: https://spacetimedb.com/docs
-  - SpacetimeDB v2.0.5 release: https://github.com/clockworklabs/SpacetimeDB/releases/tag/v2.0.5
+  - SpacetimeDB v2.1.0 release: https://github.com/clockworklabs/SpacetimeDB/releases/tag/v2.1.0
 -->
 
 # SpacetimeDB Rules (All Languages)
@@ -20,9 +20,8 @@
 | 7 | [Data Visibility & Subscriptions](#7-data-visibility--subscriptions) | Public/private tables, views, query builder, subscription handles |
 | 8 | [React Integration](#8-react-integration) | Provider, useTable, useReducer, callbacks, event tables |
 | 9 | [Procedures (Beta)](#9-procedures-beta) | HTTP/side effects, ctx.withTx(), timeouts |
-| 10 | [Project Structure](#10-project-structure) | Server + client layout, circular import avoidance |
-| 11 | [Commands](#11-commands) | CLI reference |
-| 12 | [Hard Requirements](#12-hard-requirements) | 12 TypeScript-specific rules |
+| 10 | [Project Structure & Commands](#10-project-structure--commands) | Defers to SKILL.md (always in context) |
+| 11 | [Hard Requirements](#11-hard-requirements) | 12 TypeScript-specific rules |
 
 ---
 
@@ -59,50 +58,9 @@ You can add explicit indexes on non-unique columns for query performance.
 
 ---
 
-## Commands
+## Commands, Deployment, Debugging
 
-```bash
-# Login to allow remote database deployment e.g. to maincloud
-spacetime login
-
-# Start local SpacetimeDB
-spacetime start
-
-# Publish module
-spacetime publish <db-name> --module-path <module-path>
-
-# Clear and republish
-spacetime publish <db-name> --clear-database -y --module-path <module-path>
-
-# Generate client bindings
-spacetime generate --lang <lang> --out-dir <out> --module-path <module-path>
-
-# View logs
-spacetime logs <db-name>
-```
-
----
-
-## Deployment
-
-- Maincloud is the spacetimedb hosted cloud and the default location for module publishing
-- The default server marked by *** in `spacetime server list` should be used when publishing
-- If the default server is maincloud you should publish to maincloud
-- Publishing to maincloud is free of charge
-- When publishing to maincloud the database dashboard will be at the url: https://spacetimedb.com/@<username>/<database-name>
-- The database owner can view utilization and performance metrics on the dashboard
-
----
-
-## Debugging Checklist
-
-1. Is SpacetimeDB server running? (`spacetime start`)
-2. Is the module published? (`spacetime publish`)
-3. Are client bindings generated? (`spacetime generate`)
-4. Check server logs for errors (`spacetime logs <db-name>`)
-5. **Is the reducer actually being called from the client?**
-
----
+See SKILL.md for CLI commands, deployment rules, and debugging checklist — those are project-specific (this is a **maincloud-only** project, no local server).
 
 ## Editing Behavior
 
@@ -995,19 +953,9 @@ Default timeout: **30s**. Maximum ceiling: **180s** (3 minutes). These limits ap
 
 ---
 
-## 10) Project Structure
+## 10) Project Structure & Commands
 
-### Server (`spacetimedb/`)
-```
-src/schema.ts   → Imports all tables, exports spacetimedb via schema({...})
-src/index.ts    → Imports all reducers, lifecycle hooks (clientConnected/Disconnected)
-src/tables/     → One file per table (e.g. user.ts, lobby.ts)
-src/reducers/   → One file per domain (e.g. auth.ts, admin.ts)
-src/helpers/    → Shared utilities (e.g. ensurePermissions.ts, auditColumns.ts)
-src/types/      → enums.ts, structs.ts
-package.json    → { "type": "module", "dependencies": { "spacetimedb": "^2.0.0" } }
-tsconfig.json   → Standard config
-```
+See SKILL.md for project structure, CLI commands, and naming conventions — those are project-specific and always in context.
 
 ### Avoiding circular imports
 ```
@@ -1015,38 +963,9 @@ schema.ts → defines tables AND exports spacetimedb
 index.ts  → imports spacetimedb from ./schema, defines reducers
 ```
 
-### Client (Next.js)
-```
-src/module_bindings/ → Generated (spacetime generate — don't edit!)
-app/                 → Next.js App Router pages
-components/features/ → Feature-based component organization
-lib/                 → Shared utilities and configuration
-```
-
 ---
 
-## 11) Commands
-
-```bash
-# Start local server
-spacetime start
-
-# Publish module
-spacetime publish <module-name> --module-path <backend-dir>
-
-# Clear database and republish
-spacetime publish <module-name> --clear-database -y --module-path <backend-dir>
-
-# Generate bindings
-spacetime generate --lang typescript --out-dir <client>/src/module_bindings --module-path <backend-dir>
-
-# View logs
-spacetime logs <module-name>
-```
-
----
-
-## 12) Hard Requirements
+## 11) Hard Requirements
 
 **TypeScript-specific:**
 

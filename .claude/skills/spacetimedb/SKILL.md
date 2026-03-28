@@ -110,12 +110,13 @@ If you genuinely need immediate response data (rare once you adopt the pattern),
 2. **Event tables** — reducer inserts into an event table, client gets it via onInsert. Event tables auto-delete after delivery (insert + delete), acting as ephemeral response channels. This project uses this pattern with `LobbyCursorEvent`.
 
 ### High latency? Disable confirmed reads
-If reducer round-trips feel slow (200ms+ even locally), the likely cause is confirmed reads — the default in SpacetimeDB 2.0. Add `.withConfirmedReads(false)` to the connection builder for games and real-time apps. This applies to both local dev and maincloud. See `references/how-to-guides.md` § Confirmed Reads for the full trade-off.
+If reducer round-trips feel slow (200ms+ even locally), the likely cause is confirmed reads. As of v2.1.0, the TypeScript SDK defaults to confirmed reads enabled (previously opt-in on the client side). Add `.withConfirmedReads(false)` to the connection builder for games and real-time apps. This applies to both local dev and maincloud. See `references/how-to-guides.md` § Confirmed Reads for the full trade-off.
 
 ### Reconnection workaround (temporary)
 SpacetimeDB's reconnect API is being improved. For the current workaround (unmount/remount provider via key prop), see `references/how-to-guides.md` § Reconnection.
 
 ### Data access in React
+**v2.1.0 fix:** `useTable`'s `isReady` previously could revert to `false` after initial sync due to a stale closure in `useSyncExternalStore`. Fixed in v2.1.0 — no code changes needed on your side.
 ```typescript
 const [rows, isReady] = useTable(tables.myTable);  // Tuple!
 
@@ -559,7 +560,7 @@ When proposing any design that adds tables, columns, or changes visibility:
 
 ## Updating docs from SpacetimeDB GitHub
 
-The skill references are currently based on **SpacetimeDB v2.0.5**. When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped past this version:
+The skill references are currently based on **SpacetimeDB v2.1.0**. When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped past this version:
 
 1. **Check the latest release** — fetch `https://github.com/clockworklabs/SpacetimeDB/releases/latest` and compare the version against what's documented in our references
 2. **Fetch upstream how-to docs** — each reference file has `<!-- Sources: ... -->` comments at the top with the exact GitHub URLs. Fetch the raw versions of those URLs (swap `github.com/.../blob/` to `raw.githubusercontent.com/.../`) and compare against our current content
