@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 07
-current_plan: 1
-status: executing
-last_updated: "2026-03-28T05:12:45.572Z"
+current_plan: 2
+status: complete
+last_updated: "2026-03-28T05:26:15.975Z"
 progress:
   total_phases: 13
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Session State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 07
-**Current plan:** 1
-**Status:** Executing Phase 07
+**Current plan:** 2
+**Status:** Phase 07 Complete
 
 ## Decisions
 
@@ -87,6 +87,8 @@ See: .planning/PROJECT.md
 - [Phase 06.1]: server carousel icons stored as React.ReactNode (JSX) in SERVERS array instead of HTML entity strings
 - [Phase 07-achievements-and-titles]: AchievementTriggerType enum dropped; replaced by isManualOnly bool + ComparisonOperator enum for criteria-driven achievement system (D-03, D-07)
 - [Phase 07-achievements-and-titles]: AchievementCriteria filter columns (filterGameMode, filterMatchType) use t.string().optional() not enum types — SpacetimeDB enum types do not support .optional()
+- [Phase 07-achievements-and-titles]: update_achievement rarity param required (not optional) — AchievementRarity enum type does not support .optional() in SpacetimeDB SDK
+- [Phase 07-achievements-and-titles]: Achievement checker uses iter() on Achievement table (admin content <100 rows) and Math.max for MmrRating (best-mode semantics vs sum for PlayerStat)
 
 ### Quick Tasks Completed
 
@@ -130,3 +132,4 @@ See: .planning/PROJECT.md
 - 2026-03-22: Completed 06.1-01-PLAN.md — design tokens (~89 CSS variables), JetBrains Mono + Inter font variables, NavBar replacing Header globally (route-aware nav items + auth wiring), Logo + GearIcon components, video asset copied
 - 2026-03-22: Completed 06.1-02-PLAN.md — HeroSection (video hero + loader + HUD), FeaturesSection (rotating carousel + auto-rotate), ContactSection (3-card community grid + inline SVGs + click-to-copy), landing page composed, FeatureCards deleted, visual checkpoint approved, Phase 06.1 complete
 - 2026-03-28: Completed 07-01-PLAN.md — achievement schema foundation: AchievementTriggerType dropped, ComparisonOperator enum added, Achievement/UserAchievement tables reworked (isManualOnly, maxAwards, by_user_achievement index), new AchievementCriteria table created, published to maincloud with --clear-database, bindings regenerated
+- 2026-03-28: Completed 07-02-PLAN.md — 7 achievement reducers (create/update/delete, add/remove criteria, manual_award, set_displayed_achievement), checkAndAwardAchievements helper hooked into finalization step 16.5, published to maincloud, 61/61 tests pass, 3 starter achievements seeded in bootstrap, Phase 07 complete

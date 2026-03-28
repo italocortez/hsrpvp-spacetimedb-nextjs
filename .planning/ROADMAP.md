@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Match Results and MMR** - Score submission, screenshot verification, ELO calculation, and leaderboard (completed 2026-03-21)
 - [x] **Phase 6: Anonymous Play and Player Stats** - Server-enforced anonymous mode and full player statistics tables (completed 2026-03-22)
 - [x] **Phase 06.1: Landing Page Migration** - Design tokens, NavBar, hero/features/contact sections from design reference (INSERTED) (completed 2026-03-22)
-- [ ] **Phase 7: Achievements and Titles** - Achievement definitions, auto-award logic, manual award, and profile titles
+- [x] **Phase 7: Achievements and Titles** - Achievement definitions, auto-award logic, manual award, and profile titles (completed 2026-03-28)
 - [ ] **Phase 8: Calendar and Scheduling** - Recurring availability slots, calendar events, auto-sync, and TO scheduling
 - [ ] **Phase 9: Mouse Tracking, Chat, and Lobby Browser** - Cursor broadcast, ephemeral chat, and lobby browsing filters
 - [ ] **Phase 10: Disconnect Handling and Cost Parity** - Disconnect policies, rejoin logic, liveness checks, and lightcone cost fix
@@ -171,11 +171,11 @@ Plans:
   2. At the end of a `validate_match_result` call, an achievement checker runs and inserts a PlayerAchievement row for any newly satisfied thresholds
   3. An admin or TO can call a reducer to manually award an achievement to a specific player
   4. A player can read their collected achievements and call a reducer to set which title is displayed on their profile
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 07-01-PLAN.md — Schema rework: drop AchievementTriggerType enum, add ComparisonOperator enum, rework Achievement/UserAchievement tables, create AchievementCriteria table, publish --clear-database
-- [ ] 07-02-PLAN.md — Achievement checker helper, 7 CRUD/award/title reducers, finalization pipeline hook at step 16.5, architecture docs rewrite, publish + bindings
+- [x] 07-02-PLAN.md — Achievement checker helper, 7 CRUD/award/title reducers, finalization pipeline hook at step 16.5, architecture docs rewrite, publish + bindings
 
 ### Phase 8: Calendar and Scheduling
 **Goal**: Players can record recurring availability, view others' calendars, find common windows, and tournament organizers can schedule matches via calendar events
@@ -273,7 +273,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 5. Match Results and MMR | 2/2 | Complete | 2026-03-21 |
 | 6. Anonymous Play and Player Stats | 3/3 | Complete | 2026-03-22 |
 | 06.1. Landing Page Migration | 2/2 | Complete    | 2026-03-22 |
-| 7. Achievements and Titles | 0/2 | Planning complete | - |
+| 7. Achievements and Titles | 2/2 | Complete   | 2026-03-28 |
 | 8. Calendar and Scheduling | 0/? | Not started | - |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 0/? | Not started | - |
 | 10. Disconnect Handling and Cost Parity | 0/? | Not started | - |
