@@ -188,9 +188,10 @@ Plans:
   4. A player can create a CalendarEvent and invite other players; invitees can accept or decline
   5. A TO can create calendar events linked to tournament matches and send invites to participants
 **Plans:** 2 plans
+
 Plans:
-- [ ] 08-01-PLAN.md — [To be planned]
-- [ ] 08-02-PLAN.md — [To be planned]
+- [ ] 08-01-PLAN.md — Schema modifications (InviteStatus enum, description column, inviteStatus+respondedAt columns), calendar cleanup and cascade helpers, 12 standalone calendar reducers (availability CRUD, saved calendar CRUD, event CRUD + invites, invite response), publish + bindings
+- [ ] 08-02-PLAN.md — Cross-feature cascade integrations (cancel_tournament, rollback_bracket_match, dq_participant, withdraw_from_tournament, user deletion), architecture doc update, publish + tests
 
 ### Phase 9: Mouse Tracking, Chat, and Lobby Browser
 **Goal**: Full cursor broadcast works for all match roles, ephemeral chat is available per lobby, and players can browse and filter available lobbies
@@ -218,7 +219,7 @@ Plans:
   - Test 12: mmrProcessedAt Double-Processing Guard
   - Test 13: Tournament Batch MMR
   - Test 14: Bracket Advancement via Finalization (MTCH-08)
-**Deferred from Phase 7 UAT**: Auto-award via finalization requires full match lifecycle (lobby → match → scores → finalize) to trigger `checkAndAwardAchievements` at step 16.5:
+**Deferred from Phase 7 UAT**: Auto-award via finalization requires full match lifecycle (lobby -> match -> scores -> finalize) to trigger `checkAndAwardAchievements` at step 16.5:
   - Test 11: Auto-Award via Finalization Pipeline (achievement checker fires after stat increments, inserts UserAchievement for satisfied criteria)
 **Success Criteria** (what must be TRUE):
   1. A player's full XY cursor position is broadcast via reducer while their browser tab is active; the position is visible in subscriptions to all match participants, spectators, and coaches
@@ -276,7 +277,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 6. Anonymous Play and Player Stats | 3/3 | Complete | 2026-03-22 |
 | 06.1. Landing Page Migration | 2/2 | Complete    | 2026-03-22 |
 | 7. Achievements and Titles | 2/2 | Complete   | 2026-03-28 |
-| 8. Calendar and Scheduling | 0/? | Not started | - |
+| 8. Calendar and Scheduling | 0/2 | Planned | - |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 0/? | Not started | - |
 | 10. Disconnect Handling and Cost Parity | 0/? | Not started | - |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
