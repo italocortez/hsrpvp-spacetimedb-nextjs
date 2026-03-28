@@ -78,24 +78,19 @@ const spacetimeConfig = readSpacetimeJson();
 // ─── Achievement seeding (D-27) ──────────────────────────────────────────────
 
 async function seedAchievements(connection: DbConnection): Promise<void> {
-    // Track auto-generated IDs via onInsert subscription.
-    // SpacetimeDB onInsert fires when the server confirms the insert and
-    // pushes the row back to the subscribing client.
-    const achievementIds = new Map<string, number>();
-    const onInsertCb = (_ctx: any, row: any) => {
-        achievementIds.set(row.name, row.id);
-    };
-    connection.db.Achievement.onInsert(onInsertCb);
+    // Subscribe so we can read back auto-generated IDs from the cache
+    connection.subscriptionBuilder().subscribeToAllTables();
+    await new Promise(res => setTimeout(res, 2000));
 
-    // Helper: wait for subscription to deliver the inserted row (up to timeoutMs)
+    // Helper: create achievement then poll subscription cache for the row by name
     const waitForId = (name: string, timeoutMs = 5000): Promise<number> =>
         new Promise((resolve, reject) => {
             const start = Date.now();
             const check = () => {
-                const id = achievementIds.get(name);
-                if (id !== undefined) return resolve(id);
+                const row = connection.db.Achievement.name.find(name);
+                if (row) return resolve(row.id);
                 if (Date.now() - start > timeoutMs) return reject(new Error(`Timeout waiting for achievement "${name}" ID`));
-                setTimeout(check, 100);
+                setTimeout(check, 200);
             };
             check();
         });
@@ -168,8 +163,6 @@ async function seedAchievements(connection: DbConnection): Promise<void> {
         console.error('[bootstrap] Failed to seed Solar First Tournament Winner:', err);
     }
 
-    // Cleanup subscription
-    connection.db.Achievement.removeOnInsert(onInsertCb);
 }
 
 // ─── Main bootstrap ────────────────────────────────────────────────────────────
