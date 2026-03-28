@@ -87,7 +87,7 @@ async function seedAchievements(connection: DbConnection): Promise<void> {
         new Promise((resolve, reject) => {
             const start = Date.now();
             const check = () => {
-                const row = connection.db.Achievement.name.find(name);
+                const row = connection.db.Achievement.name.filter(name).next().value;
                 if (row) return resolve(row.id);
                 if (Date.now() - start > timeoutMs) return reject(new Error(`Timeout waiting for achievement "${name}" ID`));
                 setTimeout(check, 200);
