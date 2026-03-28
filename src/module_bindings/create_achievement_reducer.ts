@@ -9,22 +9,17 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
+
 import {
   AchievementRarity,
 } from "./types";
 
-
-export default __t.row({
-  id: __t.u32().primaryKey(),
+export default {
   name: __t.string(),
   description: __t.string(),
   get rarity() {
     return AchievementRarity;
   },
-  isManualOnly: __t.bool().name("is_manual_only"),
-  maxAwards: __t.option(__t.u32()).name("max_awards"),
-  createdById: __t.u32().name("created_by_id"),
-  createdDate: __t.timestamp().name("created_date"),
-  lastModifiedById: __t.u32().name("last_modified_by_id"),
-  lastModifiedDate: __t.timestamp().name("last_modified_date"),
-});
+  isManualOnly: __t.bool(),
+  maxAwards: __t.option(__t.u32()),
+};

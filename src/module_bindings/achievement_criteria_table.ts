@@ -10,19 +10,22 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  AchievementRarity,
+  ComparisonOperator,
 } from "./types";
 
 
 export default __t.row({
   id: __t.u32().primaryKey(),
-  name: __t.string(),
-  description: __t.string(),
-  get rarity() {
-    return AchievementRarity;
+  achievementId: __t.u32().name("achievement_id"),
+  statTable: __t.string().name("stat_table"),
+  statField: __t.string().name("stat_field"),
+  get operator() {
+    return ComparisonOperator;
   },
-  isManualOnly: __t.bool().name("is_manual_only"),
-  maxAwards: __t.option(__t.u32()).name("max_awards"),
+  thresholdValue: __t.u32().name("threshold_value"),
+  filterGameMode: __t.option(__t.string()).name("filter_game_mode"),
+  filterCharacterName: __t.option(__t.string()).name("filter_character_name"),
+  filterMatchType: __t.option(__t.string()).name("filter_match_type"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

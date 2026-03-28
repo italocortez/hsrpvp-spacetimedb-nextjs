@@ -35,6 +35,7 @@ import {
 
 // Import all reducer arg schemas
 import AcceptTeamRequestReducer from "./accept_team_request_reducer";
+import AddAchievementCriteriaReducer from "./add_achievement_criteria_reducer";
 import AdminAssignCharacterArchetypesReducer from "./admin_assign_character_archetypes_reducer";
 import AdminBatchRemoveCharactersReducer from "./admin_batch_remove_characters_reducer";
 import AdminBatchUpsertCharactersReducer from "./admin_batch_upsert_characters_reducer";
@@ -58,11 +59,13 @@ import BatchUpsertCharactersReducer from "./batch_upsert_characters_reducer";
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
 import CancelTournamentReducer from "./cancel_tournament_reducer";
 import ConfirmMatchScoresReducer from "./confirm_match_scores_reducer";
+import CreateAchievementReducer from "./create_achievement_reducer";
 import CreateCostSetReducer from "./create_cost_set_reducer";
 import CreateHsrAccountReducer from "./create_hsr_account_reducer";
 import CreateSeasonReducer from "./create_season_reducer";
 import CreateTournamentReducer from "./create_tournament_reducer";
 import CreateTournamentTeamReducer from "./create_tournament_team_reducer";
+import DeleteAchievementReducer from "./delete_achievement_reducer";
 import DeleteCostSetReducer from "./delete_cost_set_reducer";
 import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
 import DeleteHsrAccountReducer from "./delete_hsr_account_reducer";
@@ -77,6 +80,7 @@ import GenerateBracketReducer from "./generate_bracket_reducer";
 import LeaveTournamentTeamReducer from "./leave_tournament_team_reducer";
 import LockCostSetReducer from "./lock_cost_set_reducer";
 import LoginAsGuestReducer from "./login_as_guest_reducer";
+import ManualAwardAchievementReducer from "./manual_award_achievement_reducer";
 import MigrateRosterReducer from "./migrate_roster_reducer";
 import ModDemoteFromHostReducer from "./mod_demote_from_host_reducer";
 import ModPromoteToHostReducer from "./mod_promote_to_host_reducer";
@@ -88,6 +92,7 @@ import RecordGameScoresReducer from "./record_game_scores_reducer";
 import RegisterForTournamentReducer from "./register_for_tournament_reducer";
 import RegisterServerReducer from "./register_server_reducer";
 import RejectTeamRequestReducer from "./reject_team_request_reducer";
+import RemoveAchievementCriteriaReducer from "./remove_achievement_criteria_reducer";
 import RemoveCoachReducer from "./remove_coach_reducer";
 import RemoveTournamentAssistantReducer from "./remove_tournament_assistant_reducer";
 import RequestJoinTeamReducer from "./request_join_team_reducer";
@@ -100,11 +105,13 @@ import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
 import SetActiveSeasonReducer from "./set_active_season_reducer";
 import SetCoachReducer from "./set_coach_reducer";
+import SetDisplayedAchievementReducer from "./set_displayed_achievement_reducer";
 import SubmitAndAdvanceBracketReducer from "./submit_and_advance_bracket_reducer";
 import SubmitMatchResultReducer from "./submit_match_result_reducer";
 import SwapSeedsReducer from "./swap_seeds_reducer";
 import TransferRefereeReducer from "./transfer_referee_reducer";
 import UnpublishCostSetReducer from "./unpublish_cost_set_reducer";
+import UpdateAchievementReducer from "./update_achievement_reducer";
 import UpdateAvatarReducer from "./update_avatar_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
 import UpdateHsrAccountReducer from "./update_hsr_account_reducer";
@@ -117,6 +124,7 @@ import WithdrawFromTournamentReducer from "./withdraw_from_tournament_reducer";
 
 // Import all table schema definitions
 import AchievementRow from "./achievement_table";
+import AchievementCriteriaRow from "./achievement_criteria_table";
 import ArchetypeRow from "./archetype_table";
 import AvailabilitySlotRow from "./availability_slot_table";
 import BracketMatchRow from "./bracket_match_table";
@@ -179,12 +187,32 @@ const tablesSchema = __schema({
       { accessor: 'name', name: 'achievement_name_idx_btree', algorithm: 'btree', columns: [
         'name',
       ] },
+      { accessor: 'by_rarity', name: 'achievement_rarity_idx_btree', algorithm: 'btree', columns: [
+        'rarity',
+      ] },
     ],
     constraints: [
       { name: 'achievement_id_key', constraint: 'unique', columns: ['id'] },
       { name: 'achievement_name_key', constraint: 'unique', columns: ['name'] },
     ],
   }, AchievementRow),
+  AchievementCriteria: __table({
+    name: 'achievement_criteria',
+    indexes: [
+      { accessor: 'by_achievement', name: 'achievement_criteria_achievement_id_idx_btree', algorithm: 'btree', columns: [
+        'achievementId',
+      ] },
+      { accessor: 'id', name: 'achievement_criteria_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'by_stat_table', name: 'achievement_criteria_stat_table_idx_btree', algorithm: 'btree', columns: [
+        'statTable',
+      ] },
+    ],
+    constraints: [
+      { name: 'achievement_criteria_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AchievementCriteriaRow),
   Archetype: __table({
     name: 'archetype',
     indexes: [
@@ -909,13 +937,17 @@ const tablesSchema = __schema({
   UserAchievement: __table({
     name: 'user_achievement',
     indexes: [
-      { accessor: 'achievement_id', name: 'user_achievement_achievement_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_achievement', name: 'user_achievement_achievement_id_idx_btree', algorithm: 'btree', columns: [
         'achievementId',
       ] },
       { accessor: 'id', name: 'user_achievement_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'user_id', name: 'user_achievement_user_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_user_achievement', name: 'user_achievement_user_id_achievement_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+        'achievementId',
+      ] },
+      { accessor: 'by_user', name: 'user_achievement_user_id_idx_btree', algorithm: 'btree', columns: [
         'userId',
       ] },
     ],
@@ -942,6 +974,7 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("accept_team_request", AcceptTeamRequestReducer),
+  __reducerSchema("add_achievement_criteria", AddAchievementCriteriaReducer),
   __reducerSchema("admin_assign_character_archetypes", AdminAssignCharacterArchetypesReducer),
   __reducerSchema("admin_batch_remove_characters", AdminBatchRemoveCharactersReducer),
   __reducerSchema("admin_batch_upsert_characters", AdminBatchUpsertCharactersReducer),
@@ -965,11 +998,13 @@ const reducersSchema = __reducers(
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
   __reducerSchema("cancel_tournament", CancelTournamentReducer),
   __reducerSchema("confirm_match_scores", ConfirmMatchScoresReducer),
+  __reducerSchema("create_achievement", CreateAchievementReducer),
   __reducerSchema("create_cost_set", CreateCostSetReducer),
   __reducerSchema("create_hsr_account", CreateHsrAccountReducer),
   __reducerSchema("create_season", CreateSeasonReducer),
   __reducerSchema("create_tournament", CreateTournamentReducer),
   __reducerSchema("create_tournament_team", CreateTournamentTeamReducer),
+  __reducerSchema("delete_achievement", DeleteAchievementReducer),
   __reducerSchema("delete_cost_set", DeleteCostSetReducer),
   __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
   __reducerSchema("delete_hsr_account", DeleteHsrAccountReducer),
@@ -984,6 +1019,7 @@ const reducersSchema = __reducers(
   __reducerSchema("leave_tournament_team", LeaveTournamentTeamReducer),
   __reducerSchema("lock_cost_set", LockCostSetReducer),
   __reducerSchema("login_as_guest", LoginAsGuestReducer),
+  __reducerSchema("manual_award_achievement", ManualAwardAchievementReducer),
   __reducerSchema("migrate_roster", MigrateRosterReducer),
   __reducerSchema("mod_demote_from_host", ModDemoteFromHostReducer),
   __reducerSchema("mod_promote_to_host", ModPromoteToHostReducer),
@@ -995,6 +1031,7 @@ const reducersSchema = __reducers(
   __reducerSchema("register_for_tournament", RegisterForTournamentReducer),
   __reducerSchema("register_server", RegisterServerReducer),
   __reducerSchema("reject_team_request", RejectTeamRequestReducer),
+  __reducerSchema("remove_achievement_criteria", RemoveAchievementCriteriaReducer),
   __reducerSchema("remove_coach", RemoveCoachReducer),
   __reducerSchema("remove_tournament_assistant", RemoveTournamentAssistantReducer),
   __reducerSchema("request_join_team", RequestJoinTeamReducer),
@@ -1007,11 +1044,13 @@ const reducersSchema = __reducers(
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
   __reducerSchema("set_active_season", SetActiveSeasonReducer),
   __reducerSchema("set_coach", SetCoachReducer),
+  __reducerSchema("set_displayed_achievement", SetDisplayedAchievementReducer),
   __reducerSchema("submit_and_advance_bracket", SubmitAndAdvanceBracketReducer),
   __reducerSchema("submit_match_result", SubmitMatchResultReducer),
   __reducerSchema("swap_seeds", SwapSeedsReducer),
   __reducerSchema("transfer_referee", TransferRefereeReducer),
   __reducerSchema("unpublish_cost_set", UnpublishCostSetReducer),
+  __reducerSchema("update_achievement", UpdateAchievementReducer),
   __reducerSchema("update_avatar", UpdateAvatarReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
   __reducerSchema("update_hsr_account", UpdateHsrAccountReducer),

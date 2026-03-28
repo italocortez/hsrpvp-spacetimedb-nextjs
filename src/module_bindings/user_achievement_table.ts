@@ -15,7 +15,6 @@ export default __t.row({
   userId: __t.u32().name("user_id"),
   achievementId: __t.u32().name("achievement_id"),
   awardedById: __t.u32().name("awarded_by_id"),
-  isDisplayed: __t.bool().name("is_displayed"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

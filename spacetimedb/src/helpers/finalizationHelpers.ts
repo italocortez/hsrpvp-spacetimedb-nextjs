@@ -11,6 +11,7 @@ import { incrementPlayerCharacterStat, incrementBanStat, incrementFacedStat } fr
 import { incrementGlobalCharacterStat } from './globalCharacterStatsIncrement';
 import { rebuildLeaderboard } from './leaderboardRebuild';
 import { advanceBracketMatch } from './bracketHelpers';
+import { checkAndAwardAchievements } from './achievementChecker';
 
 // ─── Internal: getOrCreateRating ─────────────────────────────────────────────
 // Returns existing MmrRating row for user+mode+season, or creates a new one.
@@ -446,6 +447,12 @@ export function runFinalization(
             // Increment global character stat (ban)
             incrementGlobalCharacterStat(ctx, charName, gameMode, draftMode, seasonId, matchType, teamSize, false, false, actingUserId);
         }
+    }
+
+    // 16.5. Check and award achievements per participant (D-14)
+    // Runs after all stat increments (steps 13-16) so criteria evaluate against up-to-date data
+    for (const p of participants) {
+        checkAndAwardAchievements(ctx, p.userId, actingUserId);
     }
 
     // 17. Bracket advancement

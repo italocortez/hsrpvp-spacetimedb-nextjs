@@ -14,21 +14,36 @@ export const Achievement = __t.object("Achievement", {
   id: __t.u32(),
   name: __t.string(),
   description: __t.string(),
-  get triggerType() {
-    return AchievementTriggerType;
-  },
   get rarity() {
     return AchievementRarity;
   },
-  isOneTime: __t.bool(),
-  thresholdValue: __t.option(__t.u32()),
-  characterName: __t.option(__t.string()),
+  isManualOnly: __t.bool(),
+  maxAwards: __t.option(__t.u32()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
   lastModifiedDate: __t.timestamp(),
 });
 export type Achievement = __Infer<typeof Achievement>;
+
+export const AchievementCriteria = __t.object("AchievementCriteria", {
+  id: __t.u32(),
+  achievementId: __t.u32(),
+  statTable: __t.string(),
+  statField: __t.string(),
+  get operator() {
+    return ComparisonOperator;
+  },
+  thresholdValue: __t.u32(),
+  filterGameMode: __t.option(__t.string()),
+  filterCharacterName: __t.option(__t.string()),
+  filterMatchType: __t.option(__t.string()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type AchievementCriteria = __Infer<typeof AchievementCriteria>;
 
 // The tagged union or sum type for the algebraic type `AchievementRarity`.
 export const AchievementRarity = __t.enum("AchievementRarity", {
@@ -37,14 +52,6 @@ export const AchievementRarity = __t.enum("AchievementRarity", {
   Legendary: __t.unit(),
 });
 export type AchievementRarity = __Infer<typeof AchievementRarity>;
-
-// The tagged union or sum type for the algebraic type `AchievementTriggerType`.
-export const AchievementTriggerType = __t.enum("AchievementTriggerType", {
-  StatThreshold: __t.unit(),
-  CharacterSpecific: __t.unit(),
-  Manual: __t.unit(),
-});
-export type AchievementTriggerType = __Infer<typeof AchievementTriggerType>;
 
 // The tagged union or sum type for the algebraic type `ActionType`.
 export const ActionType = __t.enum("ActionType", {
@@ -213,6 +220,16 @@ export const ChatSenderType = __t.enum("ChatSenderType", {
   System: __t.unit(),
 });
 export type ChatSenderType = __Infer<typeof ChatSenderType>;
+
+// The tagged union or sum type for the algebraic type `ComparisonOperator`.
+export const ComparisonOperator = __t.enum("ComparisonOperator", {
+  GreaterOrEqual: __t.unit(),
+  GreaterThan: __t.unit(),
+  Equal: __t.unit(),
+  LessThan: __t.unit(),
+  LessOrEqual: __t.unit(),
+});
+export type ComparisonOperator = __Infer<typeof ComparisonOperator>;
 
 export const CostSet = __t.object("CostSet", {
   id: __t.u32(),
@@ -1413,7 +1430,6 @@ export const UserAchievement = __t.object("UserAchievement", {
   userId: __t.u32(),
   achievementId: __t.u32(),
   awardedById: __t.u32(),
-  isDisplayed: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
