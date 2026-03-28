@@ -105,11 +105,11 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Calendar & Scheduling
 
-- [ ] **CAL-01**: Player can set recurring availability slots (daily, weekly, monthly with Feb edge case handling)
-- [ ] **CAL-02**: Player can view up to 5 other players' calendars with toggleable visibility
-- [ ] **CAL-03**: Auto-sync feature finds common availability windows between selected players
-- [ ] **CAL-04**: Player can create calendar events and invite other players
-- [ ] **CAL-05**: Tournament organizers can use calendar for match scheduling and send invites
+- [x] **CAL-01**: Player can set recurring availability slots (daily, weekly, monthly with Feb edge case handling)
+- [x] **CAL-02**: Player can view up to 5 other players' calendars with toggleable visibility
+- [x] **CAL-03**: Auto-sync feature finds common availability windows between selected players
+- [x] **CAL-04**: Player can create calendar events and invite other players
+- [x] **CAL-05**: Tournament organizers can use calendar for match scheduling and send invites
 
 ### Mouse Tracking
 
@@ -247,11 +247,11 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | ACHV-02 | Phase 7 | Complete |
 | ACHV-03 | Phase 7 | Complete |
 | ACHV-04 | Phase 7 | Complete |
-| CAL-01 | Phase 8 | Pending |
-| CAL-02 | Phase 8 | Pending |
-| CAL-03 | Phase 8 | Pending |
-| CAL-04 | Phase 8 | Pending |
-| CAL-05 | Phase 8 | Pending |
+| CAL-01 | Phase 8 | Complete |
+| CAL-02 | Phase 8 | Complete |
+| CAL-03 | Phase 8 | Complete |
+| CAL-04 | Phase 8 | Complete |
+| CAL-05 | Phase 8 | Complete |
 | MOUS-01 | Phase 9 | Pending |
 | MOUS-02 | Phase 9 | Pending |
 | MOUS-03 | Phase 9 | Pending |

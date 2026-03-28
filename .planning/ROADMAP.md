@@ -187,10 +187,10 @@ Plans:
   3. A common-availability query or view returns time windows where all selected players have overlapping availability
   4. A player can create a CalendarEvent and invite other players; invitees can accept or decline
   5. A TO can create calendar events linked to tournament matches and send invites to participants
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 08-01-PLAN.md — Schema modifications (InviteStatus enum, description column, inviteStatus+respondedAt columns), calendar cleanup and cascade helpers, 12 standalone calendar reducers (availability CRUD, saved calendar CRUD, event CRUD + invites, invite response), publish + bindings
+- [x] 08-01-PLAN.md — Schema modifications (InviteStatus enum, description column, inviteStatus+respondedAt columns), calendar cleanup and cascade helpers, 12 standalone calendar reducers (availability CRUD, saved calendar CRUD, event CRUD + invites, invite response), publish + bindings
 - [ ] 08-02-PLAN.md — Cross-feature cascade integrations (cancel_tournament, rollback_bracket_match, dq_participant, withdraw_from_tournament, user deletion), architecture doc update, publish + tests
 
 ### Phase 9: Mouse Tracking, Chat, and Lobby Browser
@@ -277,7 +277,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 6. Anonymous Play and Player Stats | 3/3 | Complete | 2026-03-22 |
 | 06.1. Landing Page Migration | 2/2 | Complete    | 2026-03-22 |
 | 7. Achievements and Titles | 2/2 | Complete   | 2026-03-28 |
-| 8. Calendar and Scheduling | 0/2 | Planned | - |
+| 8. Calendar and Scheduling | 1/2 | In Progress|  |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 0/? | Not started | - |
 | 10. Disconnect Handling and Cost Parity | 0/? | Not started | - |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |

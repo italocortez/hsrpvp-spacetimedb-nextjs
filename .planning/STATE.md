@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 8
-current_plan: Not started
-status: planning
-last_updated: "2026-03-28T05:30:14.731Z"
+current_phase: 08
+current_plan: 2
+status: executing
+last_updated: "2026-03-28T11:54:00Z"
 progress:
   total_phases: 13
   completed_phases: 9
-  total_plans: 24
-  completed_plans: 24
+  total_plans: 26
+  completed_plans: 25
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 8
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current phase:** 08
+**Current plan:** 1
+**Status:** Executing Phase 08
 
 ## Decisions
 
@@ -90,6 +90,10 @@ See: .planning/PROJECT.md
 - [Phase 07-achievements-and-titles]: update_achievement rarity param required (not optional) — AchievementRarity enum type does not support .optional() in SpacetimeDB SDK
 - [Phase 07-achievements-and-titles]: Achievement checker uses iter() on Achievement table (admin content <100 rows) and Math.max for MmrRating (best-mode semantics vs sum for PlayerStat)
 - [Phase 07-achievements-and-titles]: Moderators have same achievement permissions as Admins EXCEPT delete_achievement (Admin only) and set_displayed_achievement for other users (Admin only)
+- [Phase 08-calendar-and-scheduling]: --clear-database required for CalendarEvent/CalendarEventInvite schema additions — SpacetimeDB migration engine requires @default annotations even for optional columns; test database cleared and bootstrap/seed restored
+- [Phase 08-calendar-and-scheduling]: BigInt micros as strings for timestamp params in calendar reducers (startAt: t.string()) — avoids u64 encoding issues on client calls
+- [Phase 08-calendar-and-scheduling]: Sentinel values for optional recurrence fields — dayOfWeek=255 (not set), dayOfMonth=0 (not set), bracketMatchId=0 (personal event) — u8/u32 reducer params cannot be optional in SpacetimeDB SDK
+- [Phase 08-calendar-and-scheduling]: SavedCalendar targetUserId lookup uses iter() in deleteAllCalendarDataForUser — no targetUserId-only index exists on the table
 
 ### Quick Tasks Completed
 
@@ -134,3 +138,4 @@ See: .planning/PROJECT.md
 - 2026-03-22: Completed 06.1-02-PLAN.md — HeroSection (video hero + loader + HUD), FeaturesSection (rotating carousel + auto-rotate), ContactSection (3-card community grid + inline SVGs + click-to-copy), landing page composed, FeatureCards deleted, visual checkpoint approved, Phase 06.1 complete
 - 2026-03-28: Completed 07-01-PLAN.md — achievement schema foundation: AchievementTriggerType dropped, ComparisonOperator enum added, Achievement/UserAchievement tables reworked (isManualOnly, maxAwards, by_user_achievement index), new AchievementCriteria table created, published to maincloud with --clear-database, bindings regenerated
 - 2026-03-28: Completed 07-02-PLAN.md — 7 achievement reducers (create/update/delete, add/remove criteria, manual_award, set_displayed_achievement), checkAndAwardAchievements helper hooked into finalization step 16.5, published to maincloud, 61/61 tests pass, 3 starter achievements seeded in bootstrap, Phase 07 complete
+- 2026-03-28: Completed 08-01-PLAN.md — InviteStatus enum, CalendarEvent/CalendarEventInvite schema mods, calendarCleanup + calendarCascade helpers, 12 calendar reducers (availability/saved/events/invite response), published to maincloud with --clear-database, bindings regenerated, bootstrap+seed restored
