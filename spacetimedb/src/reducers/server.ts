@@ -1,6 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { performUserDeletion } from '../helpers/userDeletionHelper';
 
 /**
  * Helper: verify the caller is the registered server identity.
@@ -142,7 +143,7 @@ export const server_link_discord = spacetimedb.reducer({
             if (wasGuest) {
                 const remainingLinks = [...ctx.db.UserIdentity.user_id.filter(oldGuestId)];
                 if (remainingLinks.length === 0) {
-                    ctx.db.User.id.delete(oldGuestId);
+                    performUserDeletion(ctx, oldGuestId, systemUserId);
                 }
             }
             return;
@@ -212,6 +213,7 @@ export const server_set_role = spacetimedb.reducer({
 /**
  * Server-only reducer: delete a user by username.
  * Called via: npx tsx scripts/manage-user.ts delete <username>
+ * Guest users with no history references are hard-deleted; others are soft-deleted.
  */
 export const server_delete_user = spacetimedb.reducer({
     username: t.string(),
@@ -228,13 +230,8 @@ export const server_delete_user = spacetimedb.reducer({
         throw new SenderError(`User "${username}" not found`);
     }
 
-    // Delete associated UserIdentity rows using btree index
-    const mappings = [...ctx.db.UserIdentity.user_id.filter(targetUser.id)];
-    for (const mapping of mappings) {
-        ctx.db.UserIdentity.identity.delete(mapping.identity);
-    }
-
-    ctx.db.User.id.delete(targetUser.id);
+    const systemUserId = getSystemUserId(ctx);
+    performUserDeletion(ctx, targetUser.id, systemUserId);
 });
 
 /**

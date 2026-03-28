@@ -17,9 +17,9 @@ User
 │     identity (PK) → trusted server's SpacetimeDB identity
 │     registeredAt
 │
-└── UserDeletionJob (scheduled hard-delete)
+└── UserDeletionJob (scheduled deletion cascade)
       userId → User.id
-      scheduledAt → 5 seconds after soft-delete
+      scheduledAt → 5 seconds after admin marks for deletion
 ```
 
 ## Flow
@@ -28,8 +28,9 @@ User
 2. `login_as_guest` or `server_link_discord` → creates/finds User + UserIdentity mapping
 3. `getAuthenticatedUser(ctx)` resolves `ctx.sender` → UserIdentity → User in any reducer
 4. `ensureAdmin(ctx)` / `ensureTournamentHost(ctx)` gate privileged operations
-5. Admin calls `admin_delete_row("User", id)` → soft-delete (sets `deletedAt`) → schedules `UserDeletionJob` for 5s later → hard-deletes User, UserIdentity, and related rows
-6. Client disconnects → `clientDisconnected` lifecycle hook fires (sets isOnline=false)
+5. Admin calls `admin_delete_row("User", id)` → marks for deletion (sets `deletedAt`) → schedules `UserDeletionJob` for 5s later → cascade-deletes active-state rows (UserIdentity, HsrAccount, HsrAccountCharacter) → soft-deletes User row (username='deleted_&lt;id&gt;', displayName preserved) OR hard-deletes guest users with no history references
+6. `getAuthenticatedUser` rejects soft-deleted users (checks `deletedAt`)
+7. Client disconnects → `clientDisconnected` lifecycle hook fires (sets isOnline=false)
 
 ## Reducer Reference
 
@@ -39,12 +40,12 @@ User
 | `register_server` | server.ts | First caller only | Registers server identity (first-come-first-served) + creates SYSTEM user (discordId="1", role=Admin) + links ServerIdentity→UserIdentity |
 | `server_link_discord` | server.ts | Server identity | Links Discord account to user — upgrades guest to verified, re-points identity for returning users, cleans orphaned guests |
 | `server_set_role` | server.ts | Server identity | Sets a user's role by username. Used by manage-user.ts script |
-| `server_delete_user` | server.ts | Server identity | Deletes a user by username — removes UserIdentity rows + User row. Used by manage-user.ts script |
+| `server_delete_user` | server.ts | Server identity | Deletes a user by username via `performUserDeletion` (same cascade + soft/hard-delete logic as scheduled path). Used by manage-user.ts script |
 | `server_set_mmr` | server.ts | Server identity | Upserts MmrRating row for userId + gameMode. Valid modes: MemoryOfChaos, ApocalypticShadow, AnomalyArbitration |
 | `admin_delete_row` | admin.ts | Admin | Generic row deletion with table-specific guards (User soft-delete, lobby/match blocking) |
 | `admin_bulk_upsert` | admin.ts | Admin | Bulk upsert rows into game data tables (HsrCharacter, HsrLightcone, costs, archetypes). Used by seed-data script |
 | `admin_update_user` | admin.ts | Admin | Field-level user updates (role, displayName, avatarCharacterName, etc.) |
-| `run_user_deletion` | userDeletion.ts | Scheduled | Hard-delete cascade: UserIdentity → HsrAccountCharacter → HsrAccount → AvailabilitySlot → SavedCalendar (both directions) → CalendarEventInvite (as invitee) → CalendarEvent (as organizer, + cascade invites) → User. Note: HsrAccountLightcone NOT cascaded (lightcone reducers descoped from Phase 2) |
+| `run_user_deletion` | userDeletion.ts | Scheduled | Cascade via `performUserDeletion`: UserIdentity → HsrAccountCharacter → HsrAccount → then either soft-delete User (username='deleted_&lt;id&gt;', displayName preserved) or hard-delete guest with no history. Phase 8 will add: AvailabilitySlot, SavedCalendar, CalendarEventInvite, CalendarEvent cascades. HsrAccountLightcone NOT cascaded (lightcone reducers descoped from Phase 2) |
 
 ## Key Patterns
 
@@ -53,5 +54,6 @@ User
 - `isOnline` toggled in `clientConnected` / `clientDisconnected` lifecycle hooks (index.ts)
 - Server identity is registered once via `register_server` — all `server_*` reducers validate caller via `requireServer(ctx)` which checks ServerIdentity table
 - SYSTEM user (id=1, discordId="1") is the audit trail identity for bootstrap/server operations
+- **Soft-delete pattern:** User row preserved with `username='deleted_<id>'` (frees unique constraint), `discordId=undefined`, `displayName` kept intact for history table FK lookups. Guest users with no history references (checked via `hasHistoryReferences`) are hard-deleted instead. All deletion paths (admin, server, orphan cleanup) use shared `performUserDeletion` helper
 
 **Behavior specification:** See [contract.md](contract.md) (stub — full contract pending)

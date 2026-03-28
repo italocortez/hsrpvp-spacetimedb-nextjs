@@ -134,19 +134,23 @@ Helpers in helpers/rosterHelpers.ts:
 
 ## User Deletion Cascade
 
-run_user_deletion (reducers/userDeletion.ts) cascades in order:
-1. Delete UserIdentity rows
+performUserDeletion (helpers/userDeletionHelper.ts) cascades in order:
+1. Delete UserIdentity rows (severs auth link)
 2. Delete HsrAccountCharacter rows for each HsrAccount owned by user
 3. Delete HsrAccount rows
-4. Delete AvailabilitySlot rows (Phase 8)
-5. Delete SavedCalendar rows — both as subscriber and as target (Phase 8)
-6. Delete CalendarEventInvite rows as invitee (Phase 8)
-7. Delete CalendarEvent rows as organizer + cascade their invites (Phase 8)
-8. Hard-delete User row
+4. [Phase 8] Delete AvailabilitySlot rows
+5. [Phase 8] Delete SavedCalendar rows — both as subscriber and as target
+6. [Phase 8] Delete CalendarEventInvite rows as invitee
+7. [Phase 8] Delete CalendarEvent rows as organizer + cascade their invites
+8. If guest with no history references → hard-delete User row
+9. Otherwise → soft-delete: username='deleted_&lt;id&gt;', discordId cleared, displayName preserved
 
-Note: Step 8 hard-deletes the User row, but multiple history tables (MatchParticipantHistory, MmrHistory, PlayerStat, Leaderboard, TournamentParticipant) reference userId. This may need rework to preserve the User row — tracked separately from Phase 8.
+Guest history check (`hasHistoryReferences`) scans 8 tables via btree indexes with early exit:
+MatchResultParticipant, MmrHistory, PlayerStat, PlayerCharacterStat, PlayerRelationship,
+Leaderboard, TournamentParticipant, UserAchievement.
+
+All deletion paths use `performUserDeletion`: run_user_deletion (scheduled), server_delete_user (CLI), server_link_discord (orphan guest cleanup).
 
 Note: HsrAccountLightcone rows are NOT cascaded yet (lightcone reducers descoped from Phase 2).
-A comment in userDeletion.ts marks where to extend when lightcone reducers are added.
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

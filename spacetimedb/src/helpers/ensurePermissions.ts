@@ -37,6 +37,9 @@ export function getAuthenticatedUser(ctx: any) {
     if (!user) {
         throw new SenderError("Unauthorized: User record not found.");
     }
+    if (user.deletedAt) {
+        throw new SenderError("Unauthorized: This account has been deleted.");
+    }
     return user;
 }
 

@@ -117,7 +117,7 @@ export const admin_delete_row = spacetimedb.reducer(
                     ...auditUpdate(ctx, user, admin.id),
                 });
 
-                // Schedule hard-delete in 5 seconds (5_000_000 microseconds)
+                // Schedule deletion cascade in 5 seconds (5_000_000 microseconds)
                 const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
                 ctx.db.UserDeletionJob.insert({
                     scheduledId: 0n,
@@ -126,7 +126,7 @@ export const admin_delete_row = spacetimedb.reducer(
                     ...auditInsert(ctx, admin.id),
                 });
 
-                console.log(`[ADMIN] User #${id} soft-deleted. Hard-delete scheduled in 5s.`);
+                console.log(`[ADMIN] User #${id} marked for deletion. Cascade scheduled in 5s.`);
                 break;
             }
             case 'UserIdentity': {
