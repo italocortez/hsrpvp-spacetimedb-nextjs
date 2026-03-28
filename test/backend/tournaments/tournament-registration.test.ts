@@ -341,4 +341,123 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       expect(msg.toLowerCase()).toMatch(/already|withdrawn/);
     });
   });
+
+  // ── Withdrawal cleanup: team requests and teamGroupId ──
+  describe('withdrawal cleanup', () => {
+    let tid: number;
+
+    it('creates team tournament, registers players, forms team', async () => {
+      await host.call.createTournament({
+        name: 'Reg Test: Withdrawal Cleanup',
+        description: 'Tests request and teamGroupId cleanup on withdrawal',
+        format: 'SingleElimination',
+        teamSize: 3,
+        defaultGameMode: 'MemoryOfChaos',
+        maxParticipants: 16,
+        rosterVisibility: 'OpenRoster',
+        isAnonymousDefault: false,
+        disconnectPolicy: 'Pause',
+        costSetId: 0,
+        defaultBestOf: 3,
+        groupSize: 4,
+        has3RdPlaceMatch: false,
+        autoAdvanceBracket: true,
+        countTowardsMmr: false,
+        winnerAdvantage: 0,
+        requireVerified: false,
+        requireRoster: false,
+        minimumMmr: 0,
+        requireApproval: false,
+        waitlistEnabled: false,
+        scheduledStartAt: '',
+        registrationDeadline: '',
+      });
+      await host.sync();
+
+      const mine = hostTournaments();
+      tid = mine[mine.length - 1].id;
+
+      await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
+      await host.sync();
+
+      // Register host, player1, player2
+      await host.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await host.sync();
+      await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player1.sync();
+      await player2.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player2.sync();
+
+      // Host creates a team
+      await host.call.createTournamentTeam({ tournamentId: tid, teamName: 'Cleanup Team' });
+      await host.sync();
+    });
+
+    it('withdrawal cleans up pending team requests', async () => {
+      const team = [...host.conn.db.TournamentTeam.iter()].find(
+        t => t.tournamentId === tid && t.captainUserId === host.userId
+      );
+      expect(team).toBeDefined();
+
+      // Player2 requests to join
+      await player2.call.requestJoinTeam({ teamId: team!.id });
+      await player2.sync();
+      await host.sync();
+
+      // Verify request exists
+      const reqBefore = [...host.conn.db.TournamentTeamRequest.iter()].find(
+        r => r.teamId === team!.id && r.userId === player2.userId
+      );
+      expect(reqBefore).toBeDefined();
+
+      // Player2 withdraws
+      await player2.call.withdrawFromTournament({ tournamentId: tid });
+      await player2.sync();
+      await host.sync();
+
+      // Request should be gone
+      const reqAfter = [...host.conn.db.TournamentTeamRequest.iter()].find(
+        r => r.teamId === team!.id && r.userId === player2.userId
+      );
+      expect(reqAfter).toBeUndefined();
+
+      // Player2 status should be Withdrawn
+      const p2 = [...host.conn.db.TournamentParticipant.iter()].find(
+        p => p.tournamentId === tid && p.userId === player2.userId
+      );
+      expect(p2!.status.tag).toBe('Withdrawn');
+    });
+
+    it('withdrawal clears teamGroupId for team member', async () => {
+      const team = [...host.conn.db.TournamentTeam.iter()].find(
+        t => t.tournamentId === tid && t.captainUserId === host.userId
+      );
+      expect(team).toBeDefined();
+
+      // Player1 joins the team
+      await player1.call.requestJoinTeam({ teamId: team!.id });
+      await player1.sync();
+      await host.sync();
+      await host.call.acceptTeamRequest({ teamId: team!.id, userId: player1.userId });
+      await host.sync();
+      await player1.sync();
+
+      // Verify player1 is on the team
+      const p1Before = [...player1.conn.db.TournamentParticipant.iter()].find(
+        p => p.tournamentId === tid && p.userId === player1.userId
+      );
+      expect(p1Before!.teamGroupId).toBe(team!.id);
+
+      // Player1 withdraws (non-captain)
+      await player1.call.withdrawFromTournament({ tournamentId: tid });
+      await player1.sync();
+
+      // teamGroupId should be cleared
+      const p1After = [...player1.conn.db.TournamentParticipant.iter()].find(
+        p => p.tournamentId === tid && p.userId === player1.userId
+      );
+      expect(p1After!.status.tag).toBe('Withdrawn');
+      expect(p1After!.teamGroupId).toBeFalsy();
+    });
+  });
 });

@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
+import { ensureTournamentAccess, disbandTeamForWithdrawal } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 
 // ─── register_for_tournament ──────────────────────────────────────────────────
@@ -155,12 +155,27 @@ export const withdraw_from_tournament = spacetimedb.reducer(
         if (!participant) throw new SenderError('You are not registered for this tournament.');
         if (participant.status.tag === 'Withdrawn') throw new SenderError('Already withdrawn.');
 
+        // If captain, auto-disband team before withdrawal (may modify participant row)
+        disbandTeamForWithdrawal(ctx, tournamentId, user.id, user.id);
+
+        // Clean up user's pending team requests in this tournament
+        const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)];
+        for (const team of teams) {
+            const req = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([team.id, user.id])][0];
+            if (req) ctx.db.TournamentTeamRequest.delete(req);
+        }
+
+        // Re-read participant — disbandTeamForWithdrawal may have delete+re-inserted the row
+        const current = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
+        if (!current) throw new SenderError('Participant record not found.');
+
         // Delete + re-insert pattern for composite PK table
-        ctx.db.TournamentParticipant.delete(participant);
+        ctx.db.TournamentParticipant.delete(current);
         ctx.db.TournamentParticipant.insert({
-            ...participant,
+            ...current,
+            teamGroupId: undefined,
             status: { tag: 'Withdrawn', value: {} } as any,
-            ...auditUpdate(ctx, participant, user.id),
+            ...auditUpdate(ctx, current, user.id),
         } as any);
 
         // Clean up locked accounts on withdrawal (per D-21)

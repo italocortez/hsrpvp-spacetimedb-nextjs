@@ -53,6 +53,93 @@ export function ensureTournamentAccess(ctx: any, tournamentId: number): { user: 
 }
 
 /**
+ * Deletes all pending TournamentTeamRequest rows for a tournament.
+ * Iterates teams → deletes each team's requests. Called during stage transitions
+ * (Registration → Seeding) and cancellation to prevent orphaned request rows.
+ */
+export function cleanupTeamRequests(ctx: any, tournamentId: number): void {
+    const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)];
+    for (const team of teams) {
+        for (const req of [...ctx.db.TournamentTeamRequest.team_id.filter(team.id)]) {
+            ctx.db.TournamentTeamRequest.delete(req);
+        }
+    }
+}
+
+/**
+ * Cascade-deletes all tournament-scoped infrastructure rows on cancellation.
+ * Preserves: TournamentParticipant (audit trail), MatchResultRecord (player history).
+ * Deletes: TournamentTeamRequest, TournamentTeam, TournamentAssistant,
+ *          BracketMatch, GroupStanding, TournamentPlayerAccount.
+ *
+ * Order: requests → standings → bracket → player accounts → teams → assistants
+ * (child rows before parents to avoid referencing deleted data mid-transaction)
+ */
+export function cascadeCleanupTournament(ctx: any, tournamentId: number): void {
+    // 1. Team requests (via teams — no tournamentId on request table)
+    cleanupTeamRequests(ctx, tournamentId);
+
+    // 2. Group standings
+    for (const standing of [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)]) {
+        ctx.db.GroupStanding.delete(standing);
+    }
+
+    // 3. Bracket matches
+    for (const match of [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)]) {
+        ctx.db.BracketMatch.delete(match);
+    }
+
+    // 4. Tournament player accounts (locked roster snapshots)
+    const participants = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)];
+    for (const p of participants) {
+        for (const tpa of [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, p.userId])]) {
+            ctx.db.TournamentPlayerAccount.delete(tpa);
+        }
+    }
+
+    // 5. Tournament teams
+    for (const team of [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)]) {
+        ctx.db.TournamentTeam.id.delete(team.id);
+    }
+
+    // 6. Tournament assistants
+    for (const assistant of [...ctx.db.TournamentAssistant.tournament_id.filter(tournamentId)]) {
+        ctx.db.TournamentAssistant.delete(assistant);
+    }
+}
+
+/**
+ * Disbands a captain's team during withdrawal.
+ * Resets all members' teamGroupId, deletes pending requests, deletes team row.
+ */
+export function disbandTeamForWithdrawal(ctx: any, tournamentId: number, captainUserId: number, modifiedById: number): void {
+    const team = [...ctx.db.TournamentTeam.captain_user_id.filter(captainUserId)]
+        .find((t: any) => t.tournamentId === tournamentId);
+    if (!team) return;
+
+    // Reset all members' teamGroupId
+    const members = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)]
+        .filter((p: any) => p.teamGroupId === team.id);
+    for (const member of members) {
+        ctx.db.TournamentParticipant.delete(member);
+        ctx.db.TournamentParticipant.insert({
+            ...member,
+            teamGroupId: undefined,
+            lastModifiedById: modifiedById,
+            lastModifiedDate: ctx.timestamp,
+        } as any);
+    }
+
+    // Delete pending requests for this team
+    for (const req of [...ctx.db.TournamentTeamRequest.team_id.filter(team.id)]) {
+        ctx.db.TournamentTeamRequest.delete(req);
+    }
+
+    // Delete team row
+    ctx.db.TournamentTeam.id.delete(team.id);
+}
+
+/**
  * Validates that the transition from Registration -> Seeding is allowed.
  * Requires at least 2 active participants (not Withdrawn, not Disqualified, not waitlisted).
  * For team tournaments (teamSize > 1), requires at least 2 complete teams.

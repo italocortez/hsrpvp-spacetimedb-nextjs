@@ -49,7 +49,7 @@ MatchResultRecord.winnerUserId is a userId. The advancement reducer maps: winner
 ## Reducers
 
 ### Bracket Generation (bracketGeneration.ts)
-- `generate_bracket(tournamentId)` -- Creates all BracketMatch rows. Reads Tournament.format and branches to appropriate algorithm. Deletes existing rows first (regeneration). Only during Seeding stage.
+- `generate_bracket(tournamentId)` -- Creates all BracketMatch rows. Reads Tournament.format and branches to appropriate algorithm. Deletes existing rows first (regeneration). Only during Seeding stage. Rows also cascade-deleted by `cancel_tournament`.
 - `seed_bracket(tournamentId, mode)` -- Assigns seedNumber to TournamentTeams. mode='mmr' (sort by captain's MmrRating for tournament gameMode) or mode='random' (deterministic shuffle). Only during Seeding stage.
 - `swap_seeds(tournamentId, teamId1, teamId2)` -- Swaps seedNumber between two teams. Only during Seeding stage.
 
@@ -141,3 +141,4 @@ Alternating minor (internal) and major (WB feed-in) rounds:
 - **Solo auto-team**: solo tournament registrations auto-create TournamentTeam rows -- bracket generation treats all participants uniformly as teams
 - `groupId` is a simple number, not a separate table -- groups are implicit within a tournament
 - Deterministic seeding hash for 'random' mode: `(tournamentId * 31 + teamId) % 2147483647` -- reducers must be deterministic (no Math.random())
+- **Cancellation cleanup**: BracketMatch and GroupStanding rows cascade-deleted by `cancel_tournament` via `cascadeCleanupTournament()`. MatchResultRecord preserved (player history)

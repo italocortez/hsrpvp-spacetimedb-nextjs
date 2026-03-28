@@ -144,8 +144,16 @@ export const accept_team_request = spacetimedb.reducer(
             throw new SenderError('Team is already full.');
         }
 
-        // Delete the request row (transactional — existence = pending)
+        // Delete the accepted request row (transactional — existence = pending)
         ctx.db.TournamentTeamRequest.delete(request);
+
+        // Clean up user's other pending requests to other teams in this tournament
+        const otherTeams = [...ctx.db.TournamentTeam.tournament_id.filter(team.tournamentId)];
+        for (const otherTeam of otherTeams) {
+            if (otherTeam.id === teamId) continue;
+            const otherReq = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([otherTeam.id, userId])][0];
+            if (otherReq) ctx.db.TournamentTeamRequest.delete(otherReq);
+        }
 
         // Update the accepted player's TournamentParticipant: set teamGroupId
         const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([team.tournamentId, userId])][0];

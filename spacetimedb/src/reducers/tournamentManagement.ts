@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureTournamentHost } from '../helpers/ensurePermissions';
-import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress } from '../helpers/tournamentHelpers';
+import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress, cleanupTeamRequests, cascadeCleanupTournament } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 
 // Valid enum tag lists for runtime validation
@@ -331,6 +331,7 @@ export const advance_tournament_stage = spacetimedb.reducer(
 
         if (tournament.stage.tag === 'Registration' && nextStage === 'Seeding') {
             validateRegistrationToSeeding(ctx, tournamentId);
+            cleanupTeamRequests(ctx, tournamentId);
         }
         if (tournament.stage.tag === 'Seeding' && nextStage === 'InProgress') {
             validateSeedingToInProgress(ctx, tournamentId);
@@ -356,6 +357,7 @@ export const cancel_tournament = spacetimedb.reducer(
         const { user, tournament } = ensureTournamentAccess(ctx, tournamentId);
 
         validateStageTransition(tournament.stage.tag, 'Cancelled');
+        cascadeCleanupTournament(ctx, tournamentId);
 
         ctx.db.Tournament.id.update({
             ...tournament,

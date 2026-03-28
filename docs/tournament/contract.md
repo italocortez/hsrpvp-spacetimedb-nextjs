@@ -35,9 +35,14 @@
 **Then:** Throws "Bracket must be generated before advancing to InProgress"
 
 ### Cancel Tournament
-**Given:** Tournament in Registration stage
+**Given:** Tournament in Registration stage with teams, assistants, and pending requests
 **When:** `cancel_tournament(id)`
-**Then:** Stage changes to Cancelled
+**Then:** Stage changes to Cancelled. Cascade deletes: TournamentTeamRequest, GroupStanding, BracketMatch, TournamentPlayerAccount, TournamentTeam, TournamentAssistant. TournamentParticipant rows preserved (audit trail). MatchResultRecord rows preserved (player history).
+
+### Cancel InProgress Tournament
+**Given:** Tournament in InProgress with generated bracket, group standings, and match results
+**When:** `cancel_tournament(id)`
+**Then:** Stage=Cancelled. BracketMatch and GroupStanding rows deleted. MatchResultRecord rows preserved. TournamentParticipant rows preserved with their current status unchanged.
 
 ### Player Registration
 **Given:** Tournament in Registration, verified user with active roster
@@ -56,7 +61,12 @@
 ### Withdraw from Tournament
 **Given:** Registered participant
 **When:** `withdraw_from_tournament(id)`
-**Then:** Participant row status set to Withdrawn (row preserved for audit)
+**Then:** Participant row status set to Withdrawn, teamGroupId cleared (row preserved for audit). TournamentPlayerAccount rows deleted. Pending TournamentTeamRequest rows from this user deleted.
+
+### Captain Withdrawal Auto-Disbands Team
+**Given:** Captain of a team with 2 members, Player C has pending request
+**When:** Captain calls `withdraw_from_tournament(tournamentId)`
+**Then:** Team auto-disbanded (members' teamGroupId reset, Player C's request deleted, team row deleted). Captain's participant status=Withdrawn. Captain's TournamentPlayerAccount rows deleted.
 
 ### Solo Registration with Auto-Team
 **Given:** Solo tournament (teamSize=1) in Registration
@@ -78,7 +88,7 @@
 **When:** Player B calls `request_join_team(teamId)`
 **Then:** TournamentTeamRequest row created (row exists = pending)
 **When:** Captain calls `accept_team_request(teamId, playerB)`
-**Then:** Request row deleted. Player B's participant: teamGroupId=teamId
+**Then:** Request row deleted. Player B's other pending requests in this tournament also deleted. Player B's participant: teamGroupId=teamId
 
 ### Team Reject Request
 **Given:** TournamentTeamRequest exists
@@ -138,6 +148,9 @@
 | Update tournament during InProgress | Throws "Can only update during Draft or Registration" |
 | Update cancelled tournament | Throws "Can only update during Draft or Registration" |
 | Withdraw when already withdrawn | Throws "Already withdrawn" |
+| Captain withdraws from tournament | Team auto-disbanded, all members reset, then captain marked Withdrawn |
+| Cancel tournament with no infrastructure rows | Stage=Cancelled, no errors (cascade is no-op on empty tables) |
+| Accept request when user has requests to other teams | Accepted request deleted, other pending requests also deleted |
 | Self-assign as tournament assistant | Throws "You cannot assign yourself" |
 | Promote already-TournamentHost | Throws "Can only promote users with the User role" |
 | Demote a User-role player | Throws "Can only demote users with the TournamentHost role" |
@@ -188,7 +201,12 @@
 | TournamentPlayerAccount locks all HSR accounts at registration (D-21) | Phase 6 CONTEXT.md | 2026-03-21 |
 | TPA rows cleaned up on withdrawal | Phase 6 execution | 2026-03-22 |
 | requireOwnership inherited from tournament.requireRoster (D-19) | Phase 6 CONTEXT.md | 2026-03-21 |
+| cancel_tournament cascade-deletes infrastructure rows (teams, bracket, standings, assistants, player accounts, requests) | Retroactive cleanup | 2026-03-28 |
+| withdraw_from_tournament auto-disbands captain's team, cleans up pending requests | Retroactive cleanup | 2026-03-28 |
+| accept_team_request cleans up user's other pending requests in tournament | Retroactive cleanup | 2026-03-28 |
+| Registration→Seeding cleans up pending team requests | Retroactive cleanup | 2026-03-28 |
+| TournamentParticipant and MatchResultRecord preserved on cancellation (audit trail / player history) | Retroactive cleanup | 2026-03-28 |
 
 ---
 
-*Last updated: 2026-03-22*
+*Last updated: 2026-03-28*

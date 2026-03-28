@@ -214,4 +214,114 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
     );
     expect(msg.toLowerCase()).toMatch(/cancel|already/);
   });
+
+  // ── Cancel cascade deletes infrastructure rows ──
+  it('cancel cascade deletes teams, assistants, TPA; preserves participants', async () => {
+    // Create a team tournament with infrastructure
+    await host.call.createTournament({
+      name: 'Stage Test: Cancel Cascade',
+      description: 'Cascade cleanup test',
+      format: 'SingleElimination',
+      teamSize: 3,
+      defaultGameMode: 'MemoryOfChaos',
+      maxParticipants: 16,
+      rosterVisibility: 'OpenRoster',
+      isAnonymousDefault: false,
+      disconnectPolicy: 'Pause',
+      costSetId: 0,
+      defaultBestOf: 3,
+      groupSize: 4,
+      has3RdPlaceMatch: false,
+      autoAdvanceBracket: true,
+      countTowardsMmr: false,
+      winnerAdvantage: 0,
+      requireVerified: false,
+      requireRoster: false,
+      minimumMmr: 0,
+      requireApproval: false,
+      waitlistEnabled: false,
+      scheduledStartAt: '',
+      registrationDeadline: '',
+    });
+    await host.sync();
+
+    const mine = hostTournaments();
+    const tid = mine[mine.length - 1].id;
+
+    // Advance to Registration
+    await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
+    await host.sync();
+
+    // Register all 3 users
+    await host.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await host.sync();
+    await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await player1.sync();
+    await player2.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await player2.sync();
+
+    // Host creates a team
+    await host.call.createTournamentTeam({ tournamentId: tid, teamName: 'Cascade Team' });
+    await host.sync();
+
+    // Player1 requests to join
+    const team = [...host.conn.db.TournamentTeam.iter()].find(
+      t => t.tournamentId === tid && t.captainUserId === host.userId
+    );
+    expect(team).toBeDefined();
+    await player1.call.requestJoinTeam({ teamId: team!.id });
+    await player1.sync();
+
+    // Assign player2 as assistant
+    await host.call.assignTournamentAssistant({
+      tournamentId: tid,
+      userId: player2.userId,
+      canValidateResults: true,
+      canOverrideResults: false,
+      canDqParticipants: false,
+      canManageBracket: false,
+      canAssignSeeds: false,
+    });
+    await host.sync();
+
+    // Verify infrastructure exists before cancel
+    const teamsBefore = [...host.conn.db.TournamentTeam.iter()].filter(t => t.tournamentId === tid);
+    const requestsBefore = [...host.conn.db.TournamentTeamRequest.iter()].filter(r => r.teamId === team!.id);
+    const assistantsBefore = [...host.conn.db.TournamentAssistant.iter()].filter(a => a.tournamentId === tid);
+    expect(teamsBefore.length).toBeGreaterThan(0);
+    expect(requestsBefore.length).toBeGreaterThan(0);
+    expect(assistantsBefore.length).toBeGreaterThan(0);
+
+    // Cancel tournament
+    await host.call.cancelTournament({ tournamentId: tid });
+    await host.sync();
+    await player1.sync();
+    await player2.sync();
+
+    // Verify stage is Cancelled
+    const t = hostTournaments().find(t => t.id === tid);
+    expect(t!.stage.tag).toBe('Cancelled');
+
+    // Verify cascade: teams, requests, assistants deleted
+    const teamsAfter = [...host.conn.db.TournamentTeam.iter()].filter(t => t.tournamentId === tid);
+    const requestsAfter = [...host.conn.db.TournamentTeamRequest.iter()].filter(
+      r => teamsBefore.some(t => t.id === r.teamId)
+    );
+    const assistantsAfter = [...host.conn.db.TournamentAssistant.iter()].filter(a => a.tournamentId === tid);
+    expect(teamsAfter.length).toBe(0);
+    expect(requestsAfter.length).toBe(0);
+    expect(assistantsAfter.length).toBe(0);
+
+    // Verify TPA rows deleted
+    const tpaAfter = [...host.conn.db.TournamentPlayerAccount.iter()].filter(
+      tpa => tpa.tournamentId === tid
+    );
+    expect(tpaAfter.length).toBe(0);
+
+    // Verify participants PRESERVED
+    const participants = [...host.conn.db.TournamentParticipant.iter()].filter(
+      p => p.tournamentId === tid
+    );
+    expect(participants.length).toBeGreaterThanOrEqual(3);
+  });
 });

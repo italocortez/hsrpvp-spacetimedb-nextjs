@@ -32,7 +32,7 @@ Draft → Registration → Seeding → InProgress → Completed
 
 - **Forward-only:** Stages can only advance, never go back
 - **Manual advancement:** Tournament organizer (or Moderator+) must call `advance_tournament_stage` explicitly
-- **Cancellation:** Allowed from any non-terminal state (Draft, Registration, Seeding, InProgress)
+- **Cancellation:** Allowed from any non-terminal state (Draft, Registration, Seeding, InProgress). Cascade-deletes all infrastructure rows (see Cancellation Cascade below)
 - **Terminal states:** Completed and Cancelled — cannot transition further
 
 ### Stage Descriptions
@@ -46,6 +46,31 @@ Draft → Registration → Seeding → InProgress → Completed
 | Completed | Tournament has ended |
 | Cancelled | Tournament was cancelled before completion |
 
+### Cancellation Cascade
+
+When `cancel_tournament` is called, `cascadeCleanupTournament()` deletes all tournament infrastructure rows. The tournament row itself is preserved with stage=Cancelled.
+
+| Table | Action | Reason |
+|-------|--------|--------|
+| TournamentTeamRequest | **Deleted** | Transactional rows, no audit value |
+| GroupStanding | **Deleted** | Bracket infrastructure |
+| BracketMatch | **Deleted** | Bracket infrastructure |
+| TournamentPlayerAccount | **Deleted** | Locked roster snapshots, no value after cancellation |
+| TournamentTeam | **Deleted** | Ephemeral per-tournament teams |
+| TournamentAssistant | **Deleted** | Staff assignments, no value after cancellation |
+| TournamentParticipant | **Preserved** | Audit trail — who registered, who withdrew |
+| MatchResultRecord | **Preserved** | Player-facing match history |
+| Tournament | **Preserved** | Stage set to Cancelled; row serves as historical record |
+
+Deletion order: child rows before parents (requests → standings → bracket → accounts → teams → assistants).
+
+### Stage Transition Cleanup
+
+| Transition | Cleanup |
+|---|---|
+| Registration → Seeding | `cleanupTeamRequests()` — deletes all pending team join requests |
+| Any → Cancelled | `cascadeCleanupTournament()` — full cascade (see table above) |
+
 ---
 
 ## Reducer Reference
@@ -55,14 +80,14 @@ Draft → Registration → Seeding → InProgress → Completed
 | `create_tournament` | tournamentManagement.ts | TournamentHost+ | Create tournament in Draft stage |
 | `update_tournament` | tournamentManagement.ts | TO/Assistant/Mod+ | Update settings (Draft/Registration only) |
 | `advance_tournament_stage` | tournamentManagement.ts | TO/Assistant/Mod+ | Forward-only stage transition |
-| `cancel_tournament` | tournamentManagement.ts | TO/Assistant/Mod+ | Cancel from any non-terminal state |
+| `cancel_tournament` | tournamentManagement.ts | TO/Assistant/Mod+ | Cancel from any non-terminal state; cascade-deletes infrastructure rows |
 | `register_for_tournament` | tournamentRegistration.ts | Authenticated | Register with full requirement validation |
-| `withdraw_from_tournament` | tournamentRegistration.ts | Authenticated | Withdraw (Registration/Seeding only) |
+| `withdraw_from_tournament` | tournamentRegistration.ts | Authenticated | Withdraw (Registration/Seeding only); auto-disbands captain's team, cleans up requests and locked accounts |
 | `approve_participant` | tournamentRegistration.ts | TO/Assistant/Mod+ | Approve a pending participant |
 | `waitlist_promote` | tournamentRegistration.ts | TO/Assistant/Mod+ | Promote from waitlist to active |
 | `create_tournament_team` | tournamentTeams.ts | Authenticated | Create team (captain role), must be registered |
 | `request_join_team` | tournamentTeams.ts | Authenticated | Submit join request to a team |
-| `accept_team_request` | tournamentTeams.ts | Team Captain | Accept a pending join request |
+| `accept_team_request` | tournamentTeams.ts | Team Captain | Accept join request; cleans up user's other pending requests in tournament |
 | `reject_team_request` | tournamentTeams.ts | Team Captain | Reject and delete a join request |
 | `leave_tournament_team` | tournamentTeams.ts | Authenticated | Leave team (non-captain only) |
 | `disband_tournament_team` | tournamentTeams.ts | Team Captain | Disband team, reset all members |
@@ -116,10 +141,16 @@ When a player calls `register_for_tournament`, the following validations run in 
 
 ### Withdrawal
 
-- `withdraw_from_tournament` marks status as `Withdrawn` but does NOT delete the row
+- `withdraw_from_tournament` marks status as `Withdrawn` but does NOT delete the participant row
 - This preserves audit history and allows TOs to see who registered and left
 - Withdrawal is only allowed in `Registration` or `Seeding` stage
 - During `InProgress`, only a TO can disqualify a participant
+
+Withdrawal cleanup (in order):
+1. **Captain auto-disband** — if the withdrawing user captains a team, `disbandTeamForWithdrawal()` resets all members' teamGroupId, deletes pending requests, deletes the team row
+2. **Team request cleanup** — deletes all pending TournamentTeamRequest rows from this user to any team in the tournament
+3. **Participant status** — set to Withdrawn, teamGroupId cleared
+4. **Locked accounts** — all TournamentPlayerAccount rows for this user+tournament deleted (per D-21)
 
 ---
 
@@ -143,6 +174,7 @@ Tournament teams (`TournamentTeam`) are ephemeral and scoped per tournament. The
 2. Player calls request_join_team → TournamentTeamRequest inserted (transactional — row exists = pending)
 
 3. Captain calls accept_team_request → request row deleted
+   → Player's other pending requests in this tournament also deleted
    → Player's TournamentParticipant updated to teamGroupId=teamId, type=Team
 
    OR
