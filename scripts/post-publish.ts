@@ -9,6 +9,7 @@
  *   2. Calls register_server to mark this identity as trusted
  *   3. Appends SPACETIMEDB_SERVER_TOKEN to .env.local
  *   4. Calls seedAll() to upsert HsrCharacter, HsrLightcone, costs, and synergies
+ *   5. Seeds 3 starter achievements (MMR Elite, Veteran, Solar First Tournament Winner)
  *
  * After completion, restart your Next.js dev server to pick up the new token.
  */
@@ -74,6 +75,103 @@ function readSpacetimeJson(): { database: string; server?: string } {
 
 const spacetimeConfig = readSpacetimeJson();
 
+// ─── Achievement seeding (D-27) ──────────────────────────────────────────────
+
+async function seedAchievements(connection: DbConnection): Promise<void> {
+    // Track auto-generated IDs via onInsert subscription.
+    // SpacetimeDB onInsert fires when the server confirms the insert and
+    // pushes the row back to the subscribing client.
+    const achievementIds = new Map<string, number>();
+    const onInsertCb = (_ctx: any, row: any) => {
+        achievementIds.set(row.name, row.id);
+    };
+    connection.db.Achievement.onInsert(onInsertCb);
+
+    // Helper: wait for subscription to deliver the inserted row (up to timeoutMs)
+    const waitForId = (name: string, timeoutMs = 5000): Promise<number> =>
+        new Promise((resolve, reject) => {
+            const start = Date.now();
+            const check = () => {
+                const id = achievementIds.get(name);
+                if (id !== undefined) return resolve(id);
+                if (Date.now() - start > timeoutMs) return reject(new Error(`Timeout waiting for achievement "${name}" ID`));
+                setTimeout(check, 100);
+            };
+            check();
+        });
+
+    // 1. "MMR Elite" — auto-award, unlimited awards
+    // Criteria: MmrRating.globalCompositeRating >= 1500
+    try {
+        await connection.reducers.createAchievement({
+            name: 'MMR Elite',
+            description: 'Reach a global composite MMR rating of 1500 or higher.',
+            rarity: { tag: 'Epic' },
+            isManualOnly: false,
+            maxAwards: undefined,
+        });
+        const mmrEliteId = await waitForId('MMR Elite');
+        await connection.reducers.addAchievementCriteria({
+            achievementId: mmrEliteId,
+            statTable: 'MmrRating',
+            statField: 'globalCompositeRating',
+            operator: { tag: 'GreaterOrEqual' },
+            thresholdValue: 1500,
+            filterGameMode: undefined,
+            filterCharacterName: undefined,
+            filterMatchType: undefined,
+        });
+        console.log('[bootstrap] Created "MMR Elite" with criteria');
+    } catch (err) {
+        console.error('[bootstrap] Failed to seed MMR Elite:', err);
+    }
+
+    // 2. "Veteran" — auto-award, unlimited awards
+    // Criteria: PlayerStat.wins >= 10 (summed across all modes)
+    // Note: the actual field name in PlayerStat is 'wins' (not 'matchesWon' per D-27 draft)
+    try {
+        await connection.reducers.createAchievement({
+            name: 'Veteran',
+            description: 'Win 10 or more matches across all game modes.',
+            rarity: { tag: 'Rare' },
+            isManualOnly: false,
+            maxAwards: undefined,
+        });
+        const veteranId = await waitForId('Veteran');
+        await connection.reducers.addAchievementCriteria({
+            achievementId: veteranId,
+            statTable: 'PlayerStat',
+            statField: 'wins',
+            operator: { tag: 'GreaterOrEqual' },
+            thresholdValue: 10,
+            filterGameMode: undefined,
+            filterCharacterName: undefined,
+            filterMatchType: undefined,
+        });
+        console.log('[bootstrap] Created "Veteran" with criteria');
+    } catch (err) {
+        console.error('[bootstrap] Failed to seed Veteran:', err);
+    }
+
+    // 3. "Solar First Tournament Winner" — manual-only, globally unique (maxAwards=1)
+    // No criteria rows — isManualOnly achievements are never auto-awarded
+    try {
+        await connection.reducers.createAchievement({
+            name: 'Solar First Tournament Winner',
+            description: 'Champion of the inaugural Solar First tournament. Manually awarded by tournament organizers.',
+            rarity: { tag: 'Legendary' },
+            isManualOnly: true,
+            maxAwards: 1,
+        });
+        console.log('[bootstrap] Created "Solar First Tournament Winner" (manual-only, maxAwards=1)');
+    } catch (err) {
+        console.error('[bootstrap] Failed to seed Solar First Tournament Winner:', err);
+    }
+
+    // Cleanup subscription
+    connection.db.Achievement.removeOnInsert(onInsertCb);
+}
+
 // ─── Main bootstrap ────────────────────────────────────────────────────────────
 
 let host = process.env.SPACETIMEDB_HOST ?? process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ?? 'wss://maincloud.spacetimedb.com';
@@ -83,7 +181,7 @@ else if (host.startsWith('http://')) host = host.replace('http://', 'ws://');
 const dbName = spacetimeConfig.database;
 
 console.log(`[bootstrap] Connecting to ${host} / ${dbName} ...`);
-console.log('[bootstrap] Step 1/3: registering server identity');
+console.log('[bootstrap] Step 1/4: registering server identity');
 
 const _conn = DbConnection.builder()
     .withUri(host)
@@ -102,7 +200,7 @@ const _conn = DbConnection.builder()
         }
 
         // Step 2: Write token to .env.local
-        console.log('[bootstrap] Step 2/3: writing token to .env.local');
+        console.log('[bootstrap] Step 2/4: writing token to .env.local');
         writeTokenToEnvLocal(token);
         // Also set in current process env so seedAll() can use the right host/db
         process.env.SPACETIMEDB_SERVER_TOKEN = token;
@@ -111,7 +209,7 @@ const _conn = DbConnection.builder()
         await new Promise(res => setTimeout(res, 1000));
 
         // Step 3: Seed all game data tables
-        console.log('\n[bootstrap] Step 3/3: seeding game data tables');
+        console.log('\n[bootstrap] Step 3/4: seeding game data tables');
         try {
             await seedAll(token);
         } catch (err) {
@@ -119,6 +217,10 @@ const _conn = DbConnection.builder()
             console.log('\n[bootstrap] Token was written to .env.local. Run seed-data.ts manually to retry seeding.');
             process.exit(1);
         }
+
+        // Step 4: Seed starter achievements (D-27)
+        console.log('\n[bootstrap] Step 4/4: seeding starter achievements');
+        await seedAchievements(connection);
 
         console.log('\n[bootstrap] Bootstrap complete!');
         console.log('Restart your Next.js dev server to pick up the new SPACETIMEDB_SERVER_TOKEN.');
