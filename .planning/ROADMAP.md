@@ -163,7 +163,7 @@ Plans:
 - [x] 06.1-02-PLAN.md — HeroSection, FeaturesSection, ContactSection migration with icon-lucide SVG conversion, landing page composition, visual checkpoint
 
 ### Phase 7: Achievements and Titles
-**Goal**: Admins can define achievements, the system auto-awards them on condition, and players can display earned titles on their profile
+**Goal**: Admins can define achievements with flexible criteria, the system auto-awards them during match finalization, TOs/admins can manually award, and players can display earned titles on their profile
 **Depends on**: Phase 6
 **Requirements**: ACHV-01, ACHV-02, ACHV-03, ACHV-04
 **Success Criteria** (what must be TRUE):
@@ -172,9 +172,10 @@ Plans:
   3. An admin or TO can call a reducer to manually award an achievement to a specific player
   4. A player can read their collected achievements and call a reducer to set which title is displayed on their profile
 **Plans:** 2 plans
+
 Plans:
-- [ ] 07-01-PLAN.md — [To be planned]
-- [ ] 07-02-PLAN.md — [To be planned]
+- [x] 07-01-PLAN.md — Schema rework: drop AchievementTriggerType enum, add ComparisonOperator enum, rework Achievement/UserAchievement tables, create AchievementCriteria table, publish --clear-database
+- [ ] 07-02-PLAN.md — Achievement checker helper, 7 CRUD/award/title reducers, finalization pipeline hook at step 16.5, architecture docs rewrite, publish + bindings
 
 ### Phase 8: Calendar and Scheduling
 **Goal**: Players can record recurring availability, view others' calendars, find common windows, and tournament organizers can schedule matches via calendar events
@@ -271,8 +272,8 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 04.1. Schema Normalization | 3/3 | Complete    | 2026-03-20 |
 | 5. Match Results and MMR | 2/2 | Complete | 2026-03-21 |
 | 6. Anonymous Play and Player Stats | 3/3 | Complete | 2026-03-22 |
-| 06.1. Landing Page Migration | 1/2 | Complete    | 2026-03-22 |
-| 7. Achievements and Titles | 0/? | Not started | - |
+| 06.1. Landing Page Migration | 2/2 | Complete    | 2026-03-22 |
+| 7. Achievements and Titles | 0/2 | Planning complete | - |
 | 8. Calendar and Scheduling | 0/? | Not started | - |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 0/? | Not started | - |
 | 10. Disconnect Handling and Cost Parity | 0/? | Not started | - |

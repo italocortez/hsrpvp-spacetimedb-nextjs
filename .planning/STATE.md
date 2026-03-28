@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 7
-current_plan: Not started
-status: planning
-last_updated: "2026-03-22T11:19:04.130Z"
+current_phase: 07
+current_plan: 1
+status: executing
+last_updated: "2026-03-28T05:12:45.572Z"
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 8
-  total_plans: 22
-  completed_plans: 22
+  total_plans: 24
+  completed_plans: 23
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 7
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current phase:** 07
+**Current plan:** 1
+**Status:** Executing Phase 07
 
 ## Decisions
 
@@ -85,6 +85,8 @@ See: .planning/PROJECT.md
 - [Phase 06.1]: page.tsx uses <div> not <main> for landing page container — avoids any global max-width rules on main element
 - [Phase 06.1]: icon-lucide CDN font replaced with inline SVGs in ContactSection — CSP-safe, no external dependency required
 - [Phase 06.1]: server carousel icons stored as React.ReactNode (JSX) in SERVERS array instead of HTML entity strings
+- [Phase 07-achievements-and-titles]: AchievementTriggerType enum dropped; replaced by isManualOnly bool + ComparisonOperator enum for criteria-driven achievement system (D-03, D-07)
+- [Phase 07-achievements-and-titles]: AchievementCriteria filter columns (filterGameMode, filterMatchType) use t.string().optional() not enum types — SpacetimeDB enum types do not support .optional()
 
 ### Quick Tasks Completed
 
@@ -127,3 +129,4 @@ See: .planning/PROJECT.md
 - 2026-03-22: Completed 06-03-PLAN.md — 18-step finalization pipeline rewrite: runFinalization shared helper, character stat increments (pick/ban/faced), global character stats, match replay archival (step rows, game history, participant history), spectated count, auto-finalize casual, season-aware leaderboard, published to maincloud, 61/61 tests pass, Phase 06 complete
 - 2026-03-22: Completed 06.1-01-PLAN.md — design tokens (~89 CSS variables), JetBrains Mono + Inter font variables, NavBar replacing Header globally (route-aware nav items + auth wiring), Logo + GearIcon components, video asset copied
 - 2026-03-22: Completed 06.1-02-PLAN.md — HeroSection (video hero + loader + HUD), FeaturesSection (rotating carousel + auto-rotate), ContactSection (3-card community grid + inline SVGs + click-to-copy), landing page composed, FeatureCards deleted, visual checkpoint approved, Phase 06.1 complete
+- 2026-03-28: Completed 07-01-PLAN.md — achievement schema foundation: AchievementTriggerType dropped, ComparisonOperator enum added, Achievement/UserAchievement tables reworked (isManualOnly, maxAwards, by_user_achievement index), new AchievementCriteria table created, published to maincloud with --clear-database, bindings regenerated
