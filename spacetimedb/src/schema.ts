@@ -63,6 +63,7 @@ import { PlayerCharacterStat } from './tables/characterStats';
 // Achievements
 import { Achievement } from './tables/achievement';
 import { UserAchievement } from './tables/userAchievement';
+import { AchievementCriteria } from './tables/achievementCriteria';
 
 // Calendar
 import { AvailabilitySlot } from './tables/availabilitySlot';
@@ -171,6 +172,7 @@ const spacetimedb = schema({
     // Achievements
     Achievement,
     UserAchievement,
+    AchievementCriteria,
 
     // Calendar
     AvailabilitySlot,

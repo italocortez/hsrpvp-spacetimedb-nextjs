@@ -159,10 +159,12 @@ export const AchievementRarity = t.enum('AchievementRarity', {
     Legendary: t.unit(),
 });
 
-export const AchievementTriggerType = t.enum('AchievementTriggerType', {
-    StatThreshold: t.unit(),
-    CharacterSpecific: t.unit(),
-    Manual: t.unit(),
+export const ComparisonOperator = t.enum('ComparisonOperator', {
+    GreaterOrEqual: t.unit(),
+    GreaterThan: t.unit(),
+    Equal: t.unit(),
+    LessThan: t.unit(),
+    LessOrEqual: t.unit(),
 });
 
 export const ChatSenderType = t.enum('ChatSenderType', {

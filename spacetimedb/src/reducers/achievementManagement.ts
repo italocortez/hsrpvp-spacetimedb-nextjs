@@ -3,7 +3,8 @@
 // and title display (set_displayed_achievement).
 //
 // Permission model:
-//   - Achievement CRUD: Admin only (D-20)
+//   - Achievement create/update, criteria add/remove: Moderator+ (D-20)
+//   - Achievement delete (cascade): Admin only (D-20)
 //   - manual_award: Admin/Mod unrestricted; TournamentHost → own participants (D-21)
 //   - set_displayed_achievement: User sets own; Admin sets for any user (D-22)
 
@@ -11,6 +12,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import {
     ensureAdmin,
+    ensureModerator,
     getAuthenticatedUser,
     isRoleAtLeast,
 } from '../helpers/ensurePermissions';
@@ -19,6 +21,7 @@ import { AchievementRarity, ComparisonOperator } from '../types/enums';
 
 // ─── create_achievement ──────────────────────────────────────────────────────
 // Creates a new achievement definition. (D-01, D-20)
+// Permission: Moderator+ (Admin or Moderator)
 
 export const create_achievement = spacetimedb.reducer(
     {
@@ -35,7 +38,7 @@ export const create_achievement = spacetimedb.reducer(
         isManualOnly: boolean;
         maxAwards: number | undefined;
     }) => {
-        const admin = ensureAdmin(ctx);
+        const admin = ensureModerator(ctx);
 
         if (!name || name.trim() === '') {
             throw new SenderError('Achievement name must not be empty.');
@@ -62,6 +65,7 @@ export const create_achievement = spacetimedb.reducer(
 
 // ─── update_achievement ──────────────────────────────────────────────────────
 // Updates name/description/rarity on an achievement. (D-24)
+// Permission: Moderator+ (Admin or Moderator)
 // These fields are editable at any time — no criteria lock applies to metadata.
 
 export const update_achievement = spacetimedb.reducer(
@@ -77,7 +81,7 @@ export const update_achievement = spacetimedb.reducer(
         description: string | undefined;
         rarity: any | undefined;
     }) => {
-        const admin = ensureAdmin(ctx);
+        const admin = ensureModerator(ctx);
 
         const existing = ctx.db.Achievement.id.find(achievementId);
         if (!existing) {
@@ -153,6 +157,7 @@ export const delete_achievement = spacetimedb.reducer(
 
 // ─── add_achievement_criteria ────────────────────────────────────────────────
 // Adds a criteria row to an achievement. Locked once any player has earned it. (D-25)
+// Permission: Moderator+ (Admin or Moderator)
 
 export const add_achievement_criteria = spacetimedb.reducer(
     {
@@ -175,7 +180,7 @@ export const add_achievement_criteria = spacetimedb.reducer(
         filterCharacterName: string | undefined;
         filterMatchType: string | undefined;
     }) => {
-        const admin = ensureAdmin(ctx);
+        const admin = ensureModerator(ctx);
 
         const achievement = ctx.db.Achievement.id.find(achievementId);
         if (!achievement) {
@@ -213,13 +218,14 @@ export const add_achievement_criteria = spacetimedb.reducer(
 
 // ─── remove_achievement_criteria ────────────────────────────────────────────
 // Removes a criteria row. Locked once any player has earned the achievement. (D-25)
+// Permission: Moderator+ (Admin or Moderator)
 
 export const remove_achievement_criteria = spacetimedb.reducer(
     {
         criteriaId: t.u32(),
     },
     (ctx, { criteriaId }: { criteriaId: number }) => {
-        const admin = ensureAdmin(ctx);
+        const admin = ensureModerator(ctx);
 
         const criteria = ctx.db.AchievementCriteria.id.find(criteriaId);
         if (!criteria) {
