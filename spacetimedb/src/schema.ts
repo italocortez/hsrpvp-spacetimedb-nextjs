@@ -32,11 +32,6 @@ import { CostSetDraftSynergy } from './tables/costSetDraftSynergy';
 import { TournamentTeam } from './tables/tournamentTeam';
 import { TournamentTeamRequest } from './tables/tournamentTeamRequest';
 
-// Teams
-import { Team } from './tables/team';
-import { TeamMember } from './tables/teamMember';
-import { TeamInvite } from './tables/teamInvite';
-
 // Bracket & Group
 import { BracketMatch } from './tables/bracketMatch';
 import { GroupStanding } from './tables/groupStanding';
@@ -141,11 +136,6 @@ const spacetimedb = schema({
     // Tournament Teams
     TournamentTeam,
     TournamentTeamRequest,
-
-    // Teams
-    Team,
-    TeamMember,
-    TeamInvite,
 
     // Bracket & Group
     BracketMatch,

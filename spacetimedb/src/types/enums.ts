@@ -172,12 +172,6 @@ export const ChatSenderType = t.enum('ChatSenderType', {
     System: t.unit(),
 });
 
-export const TeamMemberRole = t.enum('TeamMemberRole', {
-    Owner: t.unit(),
-    Player: t.unit(),
-    Coach: t.unit(),
-});
-
 export const GroupAssignmentMode = t.enum('GroupAssignmentMode', {
     Auto: t.unit(),
     Manual: t.unit(),

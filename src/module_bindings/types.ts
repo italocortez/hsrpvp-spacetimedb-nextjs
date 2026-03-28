@@ -1191,31 +1191,6 @@ export const SuperimpositionCost = __t.object("SuperimpositionCost", {
 });
 export type SuperimpositionCost = __Infer<typeof SuperimpositionCost>;
 
-export const Team = __t.object("Team", {
-  id: __t.u32(),
-  name: __t.string(),
-  ownerId: __t.u32(),
-  isAdHoc: __t.bool(),
-  tournamentId: __t.option(__t.u32()),
-  createdById: __t.u32(),
-  createdDate: __t.timestamp(),
-  lastModifiedById: __t.u32(),
-  lastModifiedDate: __t.timestamp(),
-});
-export type Team = __Infer<typeof Team>;
-
-export const TeamInvite = __t.object("TeamInvite", {
-  id: __t.u32(),
-  teamId: __t.u32(),
-  inviteeUserId: __t.u32(),
-  inviterUserId: __t.u32(),
-  createdById: __t.u32(),
-  createdDate: __t.timestamp(),
-  lastModifiedById: __t.u32(),
-  lastModifiedDate: __t.timestamp(),
-});
-export type TeamInvite = __Infer<typeof TeamInvite>;
-
 // The tagged union or sum type for the algebraic type `TeamLabel`.
 export const TeamLabel = __t.enum("TeamLabel", {
   Spectator: __t.unit(),
@@ -1223,27 +1198,6 @@ export const TeamLabel = __t.enum("TeamLabel", {
   Red: __t.unit(),
 });
 export type TeamLabel = __Infer<typeof TeamLabel>;
-
-export const TeamMember = __t.object("TeamMember", {
-  teamId: __t.u32(),
-  userId: __t.u32(),
-  get memberRole() {
-    return TeamMemberRole;
-  },
-  createdById: __t.u32(),
-  createdDate: __t.timestamp(),
-  lastModifiedById: __t.u32(),
-  lastModifiedDate: __t.timestamp(),
-});
-export type TeamMember = __Infer<typeof TeamMember>;
-
-// The tagged union or sum type for the algebraic type `TeamMemberRole`.
-export const TeamMemberRole = __t.enum("TeamMemberRole", {
-  Owner: __t.unit(),
-  Player: __t.unit(),
-  Coach: __t.unit(),
-});
-export type TeamMemberRole = __Infer<typeof TeamMemberRole>;
 
 export const TimerState = __t.object("TimerState", {
   turnStartAt: __t.timestamp(),

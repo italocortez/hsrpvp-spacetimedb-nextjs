@@ -161,9 +161,6 @@ import MmrHistoryRow from "./mmr_history_table";
 import MmrRatingRow from "./mmr_rating_table";
 import SavedCalendarRow from "./saved_calendar_table";
 import SeasonRow from "./season_table";
-import TeamRow from "./team_table";
-import TeamInviteRow from "./team_invite_table";
-import TeamMemberRow from "./team_member_table";
 import TournamentRow from "./tournament_table";
 import TournamentAssistantRow from "./tournament_assistant_table";
 import TournamentParticipantRow from "./tournament_participant_table";
@@ -765,58 +762,6 @@ const tablesSchema = __schema({
       { name: 'season_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SeasonRow),
-  Team: __table({
-    name: 'team',
-    indexes: [
-      { accessor: 'id', name: 'team_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'name', name: 'team_name_idx_btree', algorithm: 'btree', columns: [
-        'name',
-      ] },
-      { accessor: 'owner_id', name: 'team_owner_id_idx_btree', algorithm: 'btree', columns: [
-        'ownerId',
-      ] },
-    ],
-    constraints: [
-      { name: 'team_id_key', constraint: 'unique', columns: ['id'] },
-      { name: 'team_name_key', constraint: 'unique', columns: ['name'] },
-    ],
-  }, TeamRow),
-  TeamInvite: __table({
-    name: 'team_invite',
-    indexes: [
-      { accessor: 'id', name: 'team_invite_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'invitee_user_id', name: 'team_invite_invitee_user_id_idx_btree', algorithm: 'btree', columns: [
-        'inviteeUserId',
-      ] },
-      { accessor: 'team_id', name: 'team_invite_team_id_idx_btree', algorithm: 'btree', columns: [
-        'teamId',
-      ] },
-    ],
-    constraints: [
-      { name: 'team_invite_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, TeamInviteRow),
-  TeamMember: __table({
-    name: 'team_member',
-    indexes: [
-      { accessor: 'team_id', name: 'team_member_team_id_idx_btree', algorithm: 'btree', columns: [
-        'teamId',
-      ] },
-      { accessor: 'by_team_and_user', name: 'team_member_team_id_user_id_idx_btree', algorithm: 'btree', columns: [
-        'teamId',
-        'userId',
-      ] },
-      { accessor: 'user_id', name: 'team_member_user_id_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-      ] },
-    ],
-    constraints: [
-    ],
-  }, TeamMemberRow),
   Tournament: __table({
     name: 'tournament',
     indexes: [
