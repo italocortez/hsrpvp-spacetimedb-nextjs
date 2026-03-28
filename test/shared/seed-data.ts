@@ -7,7 +7,7 @@
  *
  * Run after bootstrap.ts: npx tsx test/shared/seed-data.ts
  */
-import { DbConnection } from '../../src/module_bindings/index.ts';
+import { DbConnection } from '../../src/module_bindings';
 import * as fs from 'fs';
 import * as path from 'path';
 

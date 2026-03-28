@@ -77,9 +77,9 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     await promoteToRole(host, 'TournamentHost');
 
     // Player creates 2 HSR accounts
-    await playerWithAccounts.call.createHsrAccount({ uid: '700100100', nickname: 'Main', region: 'NA' });
+    await playerWithAccounts.call.createHsrAccount({ uid: '700100100', displayLabel: 'Main' });
     await playerWithAccounts.sync(1000);
-    await playerWithAccounts.call.createHsrAccount({ uid: '700100101', nickname: 'Alt', region: 'EU' });
+    await playerWithAccounts.call.createHsrAccount({ uid: '700100101', displayLabel: 'Alt' });
     await playerWithAccounts.sync(1000);
 
     // Host creates tournament and opens registration
@@ -96,7 +96,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
-      has3rdPlaceMatch: false,
+      has3RdPlaceMatch: false,
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
@@ -130,7 +130,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     const accounts = userAccounts(playerWithAccounts, playerWithAccounts.userId);
     expect(accounts.length).toBe(2);
 
-    await playerWithAccounts.call.registerForTournament({ tournamentId });
+    await playerWithAccounts.call.registerForTournament({ tournamentId, teamGroupId: 0 });
     await playerWithAccounts.sync(2000);
 
     const tpaRows = tpaForUser(playerWithAccounts, tournamentId, playerWithAccounts.userId);
@@ -162,13 +162,13 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     // Player is already withdrawn from test 2 (status=Withdrawn, TPA cleaned up).
     // Use a fresh player for this test to avoid "already registered" conflict.
     const scopePlayer = await createVerifiedTestHarness();
-    await scopePlayer.call.createHsrAccount({ uid: '700200200', nickname: 'ScopeMain', region: 'NA' });
+    await scopePlayer.call.createHsrAccount({ uid: '700200200', displayLabel: 'ScopeMain' });
     await scopePlayer.sync(1000);
-    await scopePlayer.call.createHsrAccount({ uid: '700200201', nickname: 'ScopeAlt', region: 'EU' });
+    await scopePlayer.call.createHsrAccount({ uid: '700200201', displayLabel: 'ScopeAlt' });
     await scopePlayer.sync(1000);
 
     // Register in first tournament
-    await scopePlayer.call.registerForTournament({ tournamentId });
+    await scopePlayer.call.registerForTournament({ tournamentId, teamGroupId: 0 });
     await scopePlayer.sync(2000);
 
     const tpaInFirst = tpaForUser(scopePlayer, tournamentId, scopePlayer.userId);
@@ -188,7 +188,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
-      has3rdPlaceMatch: false,
+      has3RdPlaceMatch: false,
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
@@ -209,7 +209,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     await host.sync(1000);
 
     // Register in second tournament
-    await scopePlayer.call.registerForTournament({ tournamentId: secondTournamentId });
+    await scopePlayer.call.registerForTournament({ tournamentId: secondTournamentId, teamGroupId: 0 });
     await scopePlayer.sync(2000);
 
     // Verify first tournament TPA unchanged
@@ -236,7 +236,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     const accounts = userAccounts(playerWithoutAccounts, playerWithoutAccounts.userId);
     expect(accounts.length).toBe(0);
 
-    await playerWithoutAccounts.call.registerForTournament({ tournamentId });
+    await playerWithoutAccounts.call.registerForTournament({ tournamentId, teamGroupId: 0 });
     await playerWithoutAccounts.sync(2000);
 
     // Should have registered (TournamentParticipant exists) but no TPA rows

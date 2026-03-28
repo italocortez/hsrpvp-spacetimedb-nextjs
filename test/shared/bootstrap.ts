@@ -3,7 +3,7 @@
  * and calls register_server to create the SYSTEM user and server identity.
  * Run after --clear-database: npx tsx test/shared/bootstrap.ts
  */
-import { DbConnection } from '../../src/module_bindings/index.ts';
+import { DbConnection } from '../../src/module_bindings';
 import * as fs from 'fs';
 import * as path from 'path';
 

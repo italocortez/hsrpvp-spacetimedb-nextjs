@@ -90,7 +90,7 @@ describe.skipIf(!hasServerToken())('Season Admin', () => {
     await admin.call.createSeason({
       name: SEASON_1,
       startDate: Timestamp.now(),
-      endDate: null,
+      endDate: undefined,
     });
     await admin.sync(1500);
 
@@ -110,7 +110,7 @@ describe.skipIf(!hasServerToken())('Season Admin', () => {
       regularUser.call.createSeason({
         name: 'Unauthorized Season',
         startDate: Timestamp.now(),
-        endDate: null,
+        endDate: undefined,
       })
     );
     expect(err).toBeDefined();
@@ -125,7 +125,7 @@ describe.skipIf(!hasServerToken())('Season Admin', () => {
     await admin.call.createSeason({
       name: SEASON_2,
       startDate: Timestamp.now(),
-      endDate: null,
+      endDate: undefined,
     });
     await admin.sync(1500);
 
