@@ -21,4 +21,5 @@ export default __t.row({
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),
   lastModifiedDate: __t.timestamp().name("last_modified_date"),
+  description: __t.option(__t.string()),
 });

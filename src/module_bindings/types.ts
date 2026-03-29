@@ -176,6 +176,7 @@ export const CalendarEvent = __t.object("CalendarEvent", {
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
   lastModifiedDate: __t.timestamp(),
+  description: __t.option(__t.string()),
 });
 export type CalendarEvent = __Infer<typeof CalendarEvent>;
 
@@ -186,6 +187,10 @@ export const CalendarEventInvite = __t.object("CalendarEventInvite", {
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
   lastModifiedDate: __t.timestamp(),
+  get inviteStatus() {
+    return InviteStatus;
+  },
+  respondedAt: __t.option(__t.timestamp()),
 });
 export type CalendarEventInvite = __Infer<typeof CalendarEventInvite>;
 
@@ -566,6 +571,15 @@ export const HsrSynergyCost = __t.object("HsrSynergyCost", {
   lastModifiedDate: __t.timestamp(),
 });
 export type HsrSynergyCost = __Infer<typeof HsrSynergyCost>;
+
+// The tagged union or sum type for the algebraic type `InviteStatus`.
+export const InviteStatus = __t.enum("InviteStatus", {
+  Pending: __t.unit(),
+  Accepted: __t.unit(),
+  Declined: __t.unit(),
+  Tentative: __t.unit(),
+});
+export type InviteStatus = __Infer<typeof InviteStatus>;
 
 export const Leaderboard = __t.object("Leaderboard", {
   category: __t.string(),

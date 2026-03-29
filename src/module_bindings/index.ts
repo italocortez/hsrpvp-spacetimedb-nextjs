@@ -60,12 +60,16 @@ import BroadcastCursorReducer from "./broadcast_cursor_reducer";
 import CancelTournamentReducer from "./cancel_tournament_reducer";
 import ConfirmMatchScoresReducer from "./confirm_match_scores_reducer";
 import CreateAchievementReducer from "./create_achievement_reducer";
+import CreateAvailabilitySlotReducer from "./create_availability_slot_reducer";
+import CreateCalendarEventReducer from "./create_calendar_event_reducer";
 import CreateCostSetReducer from "./create_cost_set_reducer";
 import CreateHsrAccountReducer from "./create_hsr_account_reducer";
 import CreateSeasonReducer from "./create_season_reducer";
 import CreateTournamentReducer from "./create_tournament_reducer";
 import CreateTournamentTeamReducer from "./create_tournament_team_reducer";
 import DeleteAchievementReducer from "./delete_achievement_reducer";
+import DeleteAvailabilitySlotReducer from "./delete_availability_slot_reducer";
+import DeleteCalendarEventReducer from "./delete_calendar_event_reducer";
 import DeleteCostSetReducer from "./delete_cost_set_reducer";
 import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
 import DeleteHsrAccountReducer from "./delete_hsr_account_reducer";
@@ -77,6 +81,7 @@ import EditDraftLightconeCostReducer from "./edit_draft_lightcone_cost_reducer";
 import EditDraftSynergyCostReducer from "./edit_draft_synergy_cost_reducer";
 import FinalizeMatchResultReducer from "./finalize_match_result_reducer";
 import GenerateBracketReducer from "./generate_bracket_reducer";
+import InviteToEventReducer from "./invite_to_event_reducer";
 import LeaveTournamentTeamReducer from "./leave_tournament_team_reducer";
 import LockCostSetReducer from "./lock_cost_set_reducer";
 import LoginAsGuestReducer from "./login_as_guest_reducer";
@@ -94,9 +99,12 @@ import RegisterServerReducer from "./register_server_reducer";
 import RejectTeamRequestReducer from "./reject_team_request_reducer";
 import RemoveAchievementCriteriaReducer from "./remove_achievement_criteria_reducer";
 import RemoveCoachReducer from "./remove_coach_reducer";
+import RemoveInviteReducer from "./remove_invite_reducer";
 import RemoveTournamentAssistantReducer from "./remove_tournament_assistant_reducer";
 import RequestJoinTeamReducer from "./request_join_team_reducer";
+import RespondToInviteReducer from "./respond_to_invite_reducer";
 import RollbackBracketMatchReducer from "./rollback_bracket_match_reducer";
+import SaveCalendarReducer from "./save_calendar_reducer";
 import SeedBracketReducer from "./seed_bracket_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkDiscordReducer from "./server_link_discord_reducer";
@@ -109,10 +117,14 @@ import SetDisplayedAchievementReducer from "./set_displayed_achievement_reducer"
 import SubmitAndAdvanceBracketReducer from "./submit_and_advance_bracket_reducer";
 import SubmitMatchResultReducer from "./submit_match_result_reducer";
 import SwapSeedsReducer from "./swap_seeds_reducer";
+import ToggleCalendarVisibilityReducer from "./toggle_calendar_visibility_reducer";
 import TransferRefereeReducer from "./transfer_referee_reducer";
 import UnpublishCostSetReducer from "./unpublish_cost_set_reducer";
+import UnsaveCalendarReducer from "./unsave_calendar_reducer";
 import UpdateAchievementReducer from "./update_achievement_reducer";
+import UpdateAvailabilitySlotReducer from "./update_availability_slot_reducer";
 import UpdateAvatarReducer from "./update_avatar_reducer";
+import UpdateCalendarEventReducer from "./update_calendar_event_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
 import UpdateHsrAccountReducer from "./update_hsr_account_reducer";
 import UpdateTournamentReducer from "./update_tournament_reducer";
@@ -262,6 +274,9 @@ const tablesSchema = __schema({
   CalendarEvent: __table({
     name: 'calendar_event',
     indexes: [
+      { accessor: 'bracket_match_id', name: 'calendar_event_bracket_match_id_idx_btree', algorithm: 'btree', columns: [
+        'bracketMatchId',
+      ] },
       { accessor: 'id', name: 'calendar_event_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
@@ -944,12 +959,16 @@ const reducersSchema = __reducers(
   __reducerSchema("cancel_tournament", CancelTournamentReducer),
   __reducerSchema("confirm_match_scores", ConfirmMatchScoresReducer),
   __reducerSchema("create_achievement", CreateAchievementReducer),
+  __reducerSchema("create_availability_slot", CreateAvailabilitySlotReducer),
+  __reducerSchema("create_calendar_event", CreateCalendarEventReducer),
   __reducerSchema("create_cost_set", CreateCostSetReducer),
   __reducerSchema("create_hsr_account", CreateHsrAccountReducer),
   __reducerSchema("create_season", CreateSeasonReducer),
   __reducerSchema("create_tournament", CreateTournamentReducer),
   __reducerSchema("create_tournament_team", CreateTournamentTeamReducer),
   __reducerSchema("delete_achievement", DeleteAchievementReducer),
+  __reducerSchema("delete_availability_slot", DeleteAvailabilitySlotReducer),
+  __reducerSchema("delete_calendar_event", DeleteCalendarEventReducer),
   __reducerSchema("delete_cost_set", DeleteCostSetReducer),
   __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
   __reducerSchema("delete_hsr_account", DeleteHsrAccountReducer),
@@ -961,6 +980,7 @@ const reducersSchema = __reducers(
   __reducerSchema("edit_draft_synergy_cost", EditDraftSynergyCostReducer),
   __reducerSchema("finalize_match_result", FinalizeMatchResultReducer),
   __reducerSchema("generate_bracket", GenerateBracketReducer),
+  __reducerSchema("invite_to_event", InviteToEventReducer),
   __reducerSchema("leave_tournament_team", LeaveTournamentTeamReducer),
   __reducerSchema("lock_cost_set", LockCostSetReducer),
   __reducerSchema("login_as_guest", LoginAsGuestReducer),
@@ -978,9 +998,12 @@ const reducersSchema = __reducers(
   __reducerSchema("reject_team_request", RejectTeamRequestReducer),
   __reducerSchema("remove_achievement_criteria", RemoveAchievementCriteriaReducer),
   __reducerSchema("remove_coach", RemoveCoachReducer),
+  __reducerSchema("remove_invite", RemoveInviteReducer),
   __reducerSchema("remove_tournament_assistant", RemoveTournamentAssistantReducer),
   __reducerSchema("request_join_team", RequestJoinTeamReducer),
+  __reducerSchema("respond_to_invite", RespondToInviteReducer),
   __reducerSchema("rollback_bracket_match", RollbackBracketMatchReducer),
+  __reducerSchema("save_calendar", SaveCalendarReducer),
   __reducerSchema("seed_bracket", SeedBracketReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
@@ -993,10 +1016,14 @@ const reducersSchema = __reducers(
   __reducerSchema("submit_and_advance_bracket", SubmitAndAdvanceBracketReducer),
   __reducerSchema("submit_match_result", SubmitMatchResultReducer),
   __reducerSchema("swap_seeds", SwapSeedsReducer),
+  __reducerSchema("toggle_calendar_visibility", ToggleCalendarVisibilityReducer),
   __reducerSchema("transfer_referee", TransferRefereeReducer),
   __reducerSchema("unpublish_cost_set", UnpublishCostSetReducer),
+  __reducerSchema("unsave_calendar", UnsaveCalendarReducer),
   __reducerSchema("update_achievement", UpdateAchievementReducer),
+  __reducerSchema("update_availability_slot", UpdateAvailabilitySlotReducer),
   __reducerSchema("update_avatar", UpdateAvatarReducer),
+  __reducerSchema("update_calendar_event", UpdateCalendarEventReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
   __reducerSchema("update_hsr_account", UpdateHsrAccountReducer),
   __reducerSchema("update_tournament", UpdateTournamentReducer),
