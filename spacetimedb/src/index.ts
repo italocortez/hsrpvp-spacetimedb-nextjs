@@ -29,6 +29,7 @@ export { create_availability_slot, update_availability_slot, delete_availability
 export { save_calendar, unsave_calendar, toggle_calendar_visibility } from './reducers/calendarSaved';
 export { create_calendar_event, update_calendar_event, delete_calendar_event, invite_to_event, remove_invite } from './reducers/calendarEvents';
 export { respond_to_invite } from './reducers/calendarInviteResponse';
+export { create_lobby, join_lobby, leave_lobby, close_lobby, kick_member, ban_member } from './reducers/lobbyLifecycle';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);

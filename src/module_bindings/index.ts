@@ -54,16 +54,19 @@ import AdvanceBracketMatchReducer from "./advance_bracket_match_reducer";
 import AdvanceTournamentStageReducer from "./advance_tournament_stage_reducer";
 import ApproveParticipantReducer from "./approve_participant_reducer";
 import AssignTournamentAssistantReducer from "./assign_tournament_assistant_reducer";
+import BanMemberReducer from "./ban_member_reducer";
 import BatchRemoveCharactersReducer from "./batch_remove_characters_reducer";
 import BatchUpsertCharactersReducer from "./batch_upsert_characters_reducer";
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
 import CancelTournamentReducer from "./cancel_tournament_reducer";
+import CloseLobbyReducer from "./close_lobby_reducer";
 import ConfirmMatchScoresReducer from "./confirm_match_scores_reducer";
 import CreateAchievementReducer from "./create_achievement_reducer";
 import CreateAvailabilitySlotReducer from "./create_availability_slot_reducer";
 import CreateCalendarEventReducer from "./create_calendar_event_reducer";
 import CreateCostSetReducer from "./create_cost_set_reducer";
 import CreateHsrAccountReducer from "./create_hsr_account_reducer";
+import CreateLobbyReducer from "./create_lobby_reducer";
 import CreateSeasonReducer from "./create_season_reducer";
 import CreateTournamentReducer from "./create_tournament_reducer";
 import CreateTournamentTeamReducer from "./create_tournament_team_reducer";
@@ -82,6 +85,9 @@ import EditDraftSynergyCostReducer from "./edit_draft_synergy_cost_reducer";
 import FinalizeMatchResultReducer from "./finalize_match_result_reducer";
 import GenerateBracketReducer from "./generate_bracket_reducer";
 import InviteToEventReducer from "./invite_to_event_reducer";
+import JoinLobbyReducer from "./join_lobby_reducer";
+import KickMemberReducer from "./kick_member_reducer";
+import LeaveLobbyReducer from "./leave_lobby_reducer";
 import LeaveTournamentTeamReducer from "./leave_tournament_team_reducer";
 import LockCostSetReducer from "./lock_cost_set_reducer";
 import LoginAsGuestReducer from "./login_as_guest_reducer";
@@ -998,16 +1004,19 @@ const reducersSchema = __reducers(
   __reducerSchema("advance_tournament_stage", AdvanceTournamentStageReducer),
   __reducerSchema("approve_participant", ApproveParticipantReducer),
   __reducerSchema("assign_tournament_assistant", AssignTournamentAssistantReducer),
+  __reducerSchema("ban_member", BanMemberReducer),
   __reducerSchema("batch_remove_characters", BatchRemoveCharactersReducer),
   __reducerSchema("batch_upsert_characters", BatchUpsertCharactersReducer),
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
   __reducerSchema("cancel_tournament", CancelTournamentReducer),
+  __reducerSchema("close_lobby", CloseLobbyReducer),
   __reducerSchema("confirm_match_scores", ConfirmMatchScoresReducer),
   __reducerSchema("create_achievement", CreateAchievementReducer),
   __reducerSchema("create_availability_slot", CreateAvailabilitySlotReducer),
   __reducerSchema("create_calendar_event", CreateCalendarEventReducer),
   __reducerSchema("create_cost_set", CreateCostSetReducer),
   __reducerSchema("create_hsr_account", CreateHsrAccountReducer),
+  __reducerSchema("create_lobby", CreateLobbyReducer),
   __reducerSchema("create_season", CreateSeasonReducer),
   __reducerSchema("create_tournament", CreateTournamentReducer),
   __reducerSchema("create_tournament_team", CreateTournamentTeamReducer),
@@ -1026,6 +1035,9 @@ const reducersSchema = __reducers(
   __reducerSchema("finalize_match_result", FinalizeMatchResultReducer),
   __reducerSchema("generate_bracket", GenerateBracketReducer),
   __reducerSchema("invite_to_event", InviteToEventReducer),
+  __reducerSchema("join_lobby", JoinLobbyReducer),
+  __reducerSchema("kick_member", KickMemberReducer),
+  __reducerSchema("leave_lobby", LeaveLobbyReducer),
   __reducerSchema("leave_tournament_team", LeaveTournamentTeamReducer),
   __reducerSchema("lock_cost_set", LockCostSetReducer),
   __reducerSchema("login_as_guest", LoginAsGuestReducer),

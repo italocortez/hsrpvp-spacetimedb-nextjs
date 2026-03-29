@@ -1,0 +1,568 @@
+import spacetimedb from '../schema';
+import { t, SenderError } from 'spacetimedb/server';
+import { DraftMode, BanMode, GameMode, MatchType, RosterVisibility, DisconnectPolicy } from '../types/enums';
+import { getAuthenticatedUser } from '../helpers/ensurePermissions';
+import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import {
+    ensureNotInLobby,
+    ensureGuestRestrictions,
+    ensureLobbyMember,
+    ensureHostOrAbove,
+    ensureNotBanned,
+    ensureStageIs,
+    canKickOrBan,
+} from '../helpers/lobbyHelpers';
+
+// ─── create_lobby ─────────────────────────────────────────────────────────────
+// Creates a new lobby and inserts the creator as the host/referee.
+// Per D-22: enforces one lobby per user.
+// Per D-23: guests cannot create Ranked lobbies.
+// Per D-24: host gets isReferee=true.
+// Per D-27: host joins as Spectator initially.
+// Per D-42: Ranked forces allowMirrorPicks=false.
+
+export const create_lobby = spacetimedb.reducer(
+    {
+        joinCode: t.string(),
+        teamSize: t.u8(),
+        draftMode: DraftMode,
+        banMode: BanMode,
+        gameMode: GameMode,
+        matchType: MatchType,
+        isPublic: t.bool(),
+        password: t.string(),
+        standardTurnSeconds: t.u32(),
+        reserveBankSeconds: t.u32(),
+        characterBudget: t.f32(),
+        lightconeBudget: t.f32(),
+        minimumBidRaise: t.f32(),
+        rosterDiffAdvantage: t.f32(),
+        rosterThreshold: t.f32(),
+        underThresholdAdvantage: t.f32(),
+        aboveThresholdPenalty: t.f32(),
+        deathPenalty: t.f32(),
+        isAnonymousPlayers: t.bool(),
+        isAnonymousSpectators: t.bool(),
+        rosterVisibility: RosterVisibility,
+        requireOwnership: t.bool(),
+        costSetId: t.u32(),
+        disconnectPolicy: DisconnectPolicy,
+        disconnectForfeitSeconds: t.u32(),
+        allowMirrorPicks: t.bool(),
+        autoRandomPick: t.bool(),
+        refereeCanUndo: t.bool(),
+        refereeCanPause: t.bool(),
+        refereeCanSetCaptain: t.bool(),
+        refereeCanKick: t.bool(),
+        allowPlayerPause: t.bool(),
+        teamBlueAlias: t.string(),
+        teamRedAlias: t.string(),
+    },
+    (ctx, args) => {
+        const user = getAuthenticatedUser(ctx);
+
+        // D-22: one lobby at a time
+        ensureNotInLobby(ctx, user.id);
+
+        // D-23: guest restrictions
+        ensureGuestRestrictions(user, args.matchType);
+
+        // D-23: force ClosedNoRating for guests
+        let rosterVisibility = args.rosterVisibility;
+        if (user.isGuest) {
+            rosterVisibility = { tag: 'ClosedNoRating', value: {} } as any;
+        }
+
+        // D-42: Ranked forces no mirror picks
+        const allowMirrorPicks = args.matchType.tag === 'Ranked' ? false : args.allowMirrorPicks;
+
+        // Resolve disconnectForfeitSeconds — 0 is sentinel for "not set"
+        const disconnectForfeitSeconds = args.disconnectForfeitSeconds > 0
+            ? args.disconnectForfeitSeconds
+            : undefined;
+
+        // Insert Lobby row
+        const lobby = ctx.db.Lobby.insert({
+            id: 0, // autoInc
+            joinCode: args.joinCode,
+            hostUserId: user.id,
+            teamBlueAlias: args.teamBlueAlias,
+            teamRedAlias: args.teamRedAlias,
+            teamSize: args.teamSize,
+            draftMode: args.draftMode,
+            banMode: args.banMode,
+            standardTurnSeconds: args.standardTurnSeconds,
+            reserveBankSeconds: args.reserveBankSeconds,
+            rosterDiffAdvantage: args.rosterDiffAdvantage,
+            rosterThreshold: args.rosterThreshold,
+            underThresholdAdvantage: args.underThresholdAdvantage,
+            aboveThresholdPenalty: args.aboveThresholdPenalty,
+            deathPenalty: args.deathPenalty,
+            matchType: args.matchType,
+            currentPlayerCount: 1,
+            characterBudget: args.characterBudget,
+            lightconeBudget: args.lightconeBudget,
+            minimumBidRaise: args.minimumBidRaise,
+            allowMirrorPicks,
+            autoRandomPick: args.autoRandomPick,
+            refereeCanUndo: args.refereeCanUndo,
+            refereeCanPause: args.refereeCanPause,
+            refereeCanSetCaptain: args.refereeCanSetCaptain,
+            refereeCanKick: args.refereeCanKick,
+            allowPlayerPause: args.allowPlayerPause,
+            tournamentId: undefined,
+            bracketMatchId: undefined,
+            isTournamentControlled: false,
+            isAnonymousPlayers: args.isAnonymousPlayers,
+            isAnonymousSpectators: args.isAnonymousSpectators,
+            rosterVisibility,
+            requireOwnership: args.requireOwnership,
+            costSetId: args.costSetId,
+            isPublic: args.isPublic,
+            disconnectPolicy: args.disconnectPolicy,
+            disconnectForfeitSeconds,
+            disconnectForfeitAt: undefined,
+            gameMode: args.gameMode,
+            hostDisconnectTime: undefined,
+            lastActivityAt: ctx.timestamp,
+            stage: { tag: 'Waiting', value: {} },
+            ...auditInsert(ctx, user.id),
+        } as any);
+
+        // D-24: host joins as referee, D-27: starts as Spectator
+        ctx.db.LobbyMember.insert({
+            lobbyId: lobby.id,
+            userId: user.id,
+            isOnline: true,
+            participationRole: { tag: 'Player', value: {} },
+            isReferee: true,
+            isCoach: false,
+            teamSlot: { tag: 'Spectator', value: {} },
+            isConfirmed: false,
+            isCaptain: false,
+            ...auditInsert(ctx, user.id),
+        } as any);
+
+        // D-02: store password for private lobbies
+        if (!args.isPublic && args.password.length > 0) {
+            ctx.db.LobbyPassword.insert({
+                lobbyId: lobby.id,
+                passwordHash: args.password,
+                ...auditInsert(ctx, user.id),
+            } as any);
+        }
+
+        console.log(`[LOBBY] Lobby #${lobby.id} created by user #${user.id} (${args.joinCode})`);
+    }
+);
+
+// ─── join_lobby ───────────────────────────────────────────────────────────────
+// Joins an existing lobby by lobbyId or joinCode.
+// Per D-03: accepts either lobbyId or joinCode.
+// Per D-22: enforces one lobby at a time.
+// Per D-23: guest restrictions.
+// Per D-21: ban check.
+// Per D-04: reconnect during Drafting, new spectators allowed.
+// Per D-02: password check for private lobbies.
+// Per D-27: join as Spectator.
+
+export const join_lobby = spacetimedb.reducer(
+    {
+        lobbyId: t.u32(),
+        joinCode: t.string(),
+        password: t.string(),
+    },
+    (ctx, args) => {
+        const user = getAuthenticatedUser(ctx);
+
+        // D-03: resolve lobby by lobbyId or joinCode
+        let lobby: any;
+        if (args.lobbyId > 0) {
+            lobby = ctx.db.Lobby.id.find(args.lobbyId);
+        } else if (args.joinCode.length > 0) {
+            lobby = ctx.db.Lobby.joinCode.find(args.joinCode);
+        }
+        if (!lobby) {
+            throw new SenderError('Lobby not found.');
+        }
+
+        const lobbyId = lobby.id;
+
+        // D-22: one lobby at a time
+        ensureNotInLobby(ctx, user.id);
+
+        // D-23: guest restrictions
+        ensureGuestRestrictions(user, lobby.matchType);
+
+        // D-21: ban check
+        ensureNotBanned(ctx, lobbyId, user.id);
+
+        // D-04: stage-specific join logic
+        if (lobby.stage.tag === 'Drafting') {
+            // Reconnect: existing offline member
+            const existingMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
+            if (existingMember) {
+                if (!existingMember.isOnline) {
+                    // Reconnect: restore online status via delete+insert (composite PK)
+                    ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
+                    ctx.db.LobbyMember.insert({
+                        ...existingMember,
+                        isOnline: true,
+                        ...auditUpdate(ctx, existingMember, user.id),
+                    } as any);
+                    ctx.db.Lobby.id.update({
+                        ...lobby,
+                        lastActivityAt: ctx.timestamp,
+                        ...auditUpdate(ctx, lobby, user.id),
+                    } as any);
+                    console.log(`[LOBBY] User #${user.id} reconnected to lobby #${lobbyId}`);
+                }
+                // Already online in drafting — no-op
+                return;
+            }
+            // New join during Drafting: allowed as Spectator only (falls through to insert below)
+        } else if (lobby.stage.tag !== 'Waiting') {
+            throw new SenderError('Cannot join a lobby in stage: ' + lobby.stage.tag);
+        }
+
+        // D-02: password check for private lobbies
+        if (!lobby.isPublic) {
+            const passwordRow = ctx.db.LobbyPassword.lobbyId.find(lobbyId);
+            if (!passwordRow || passwordRow.passwordHash !== args.password) {
+                throw new SenderError('Incorrect lobby password.');
+            }
+        }
+
+        // D-27: join as Spectator
+        ctx.db.LobbyMember.insert({
+            lobbyId,
+            userId: user.id,
+            isOnline: true,
+            participationRole: { tag: 'Player', value: {} },
+            isReferee: false,
+            isCoach: false,
+            teamSlot: { tag: 'Spectator', value: {} },
+            isConfirmed: false,
+            isCaptain: false,
+            ...auditInsert(ctx, user.id),
+        } as any);
+
+        // Increment currentPlayerCount
+        ctx.db.Lobby.id.update({
+            ...lobby,
+            currentPlayerCount: lobby.currentPlayerCount + 1,
+            lastActivityAt: ctx.timestamp,
+            ...auditUpdate(ctx, lobby, user.id),
+        } as any);
+
+        // D-11: system message
+        ctx.db.ChatMessage.insert({
+            id: 0, // autoInc
+            lobbyId,
+            senderUserId: 0,
+            senderType: { tag: 'System', value: {} },
+            content: user.displayName + ' joined the lobby.',
+            metadata: undefined,
+            anonymousLabel: undefined,
+            ...auditInsert(ctx, user.id),
+        } as any);
+
+        console.log(`[LOBBY] User #${user.id} joined lobby #${lobbyId}`);
+    }
+);
+
+// ─── leave_lobby ─────────────────────────────────────────────────────────────
+// Removes the caller from a lobby, decrementing currentPlayerCount.
+// If lobby empties in Waiting stage, auto-closes the lobby.
+
+export const leave_lobby = spacetimedb.reducer(
+    {
+        lobbyId: t.u32(),
+    },
+    (ctx, args) => {
+        const user = getAuthenticatedUser(ctx);
+        const lobbyId = args.lobbyId;
+
+        // Validate membership
+        ensureLobbyMember(ctx, lobbyId, user.id);
+
+        const lobby = ctx.db.Lobby.id.find(lobbyId);
+        if (!lobby) {
+            throw new SenderError('Lobby not found.');
+        }
+
+        // Remove from lobby
+        ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
+
+        const newCount = lobby.currentPlayerCount > 0 ? lobby.currentPlayerCount - 1 : 0;
+
+        // Auto-close empty Waiting lobby
+        if (newCount === 0 && lobby.stage.tag === 'Waiting') {
+            _hardDeleteLobby(ctx, lobby);
+            console.log(`[LOBBY] Lobby #${lobbyId} auto-closed after last member left`);
+            return;
+        }
+
+        // Update player count and activity
+        ctx.db.Lobby.id.update({
+            ...lobby,
+            currentPlayerCount: newCount,
+            lastActivityAt: ctx.timestamp,
+            ...auditUpdate(ctx, lobby, user.id),
+        } as any);
+
+        // D-11: system message
+        ctx.db.ChatMessage.insert({
+            id: 0,
+            lobbyId,
+            senderUserId: 0,
+            senderType: { tag: 'System', value: {} },
+            content: user.displayName + ' left the lobby.',
+            metadata: undefined,
+            anonymousLabel: undefined,
+            ...auditInsert(ctx, user.id),
+        } as any);
+
+        console.log(`[LOBBY] User #${user.id} left lobby #${lobbyId}`);
+    }
+);
+
+// ─── close_lobby ─────────────────────────────────────────────────────────────
+// Hard-deletes a lobby and all associated data.
+// Per D-19: cascades ChatMessage, LobbyMember, LobbyBan, LobbyPassword,
+//            LobbyCursorEvent, MatchSession, MatchSessionStep, Lobby.
+// Per D-20: allowed only in Waiting or Finished stage.
+// Permission: host, moderator, or admin (D-21).
+
+export const close_lobby = spacetimedb.reducer(
+    {
+        lobbyId: t.u32(),
+    },
+    (ctx, args) => {
+        const user = getAuthenticatedUser(ctx);
+        const lobbyId = args.lobbyId;
+
+        const lobby = ctx.db.Lobby.id.find(lobbyId);
+        if (!lobby) {
+            throw new SenderError('Lobby not found.');
+        }
+
+        // D-21: permission check
+        ensureHostOrAbove(ctx, lobby, user);
+
+        // D-20: only Waiting or Finished
+        ensureStageIs(lobby, 'Waiting', 'Finished');
+
+        // D-19: hard delete cascade
+        _hardDeleteLobby(ctx, lobby);
+
+        console.log(`[LOBBY] Lobby #${lobbyId} closed by user #${user.id}`);
+    }
+);
+
+// ─── kick_member ──────────────────────────────────────────────────────────────
+// Removes a member from a lobby without banning them.
+// Permission: host, admin, moderator, or referee (if refereeCanKick=true).
+
+export const kick_member = spacetimedb.reducer(
+    {
+        lobbyId: t.u32(),
+        targetUserId: t.u32(),
+    },
+    (ctx, args) => {
+        const user = getAuthenticatedUser(ctx);
+        const lobbyId = args.lobbyId;
+        const targetUserId = args.targetUserId;
+
+        const lobby = ctx.db.Lobby.id.find(lobbyId);
+        if (!lobby) {
+            throw new SenderError('Lobby not found.');
+        }
+
+        // Get caller's LobbyMember row for permission check
+        const callerMember = ensureLobbyMember(ctx, lobbyId, user.id);
+
+        // Permission check
+        if (!canKickOrBan(ctx, lobby, user, callerMember)) {
+            throw new SenderError('Only the host, moderators, admins, or an authorized referee can kick members.');
+        }
+
+        // Cannot kick self
+        if (targetUserId === user.id) {
+            throw new SenderError('Cannot kick yourself.');
+        }
+
+        // Cannot kick the host
+        if (targetUserId === lobby.hostUserId) {
+            throw new SenderError('Cannot kick the host.');
+        }
+
+        // Validate target is a member
+        const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
+        if (!targetMember) {
+            throw new SenderError('Target user is not a member of this lobby.');
+        }
+
+        // Resolve target's display name for system message
+        const targetUser = ctx.db.User.id.find(targetUserId);
+        const targetName = targetUser ? targetUser.displayName : `User #${targetUserId}`;
+
+        // Remove target from lobby
+        ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
+
+        // Decrement currentPlayerCount
+        const currentLobby = ctx.db.Lobby.id.find(lobbyId);
+        if (currentLobby) {
+            const newCount = currentLobby.currentPlayerCount > 0 ? currentLobby.currentPlayerCount - 1 : 0;
+            ctx.db.Lobby.id.update({
+                ...currentLobby,
+                currentPlayerCount: newCount,
+                lastActivityAt: ctx.timestamp,
+                ...auditUpdate(ctx, currentLobby, user.id),
+            } as any);
+        }
+
+        // D-11: system message
+        ctx.db.ChatMessage.insert({
+            id: 0,
+            lobbyId,
+            senderUserId: 0,
+            senderType: { tag: 'System', value: {} },
+            content: targetName + ' was kicked from the lobby.',
+            metadata: undefined,
+            anonymousLabel: undefined,
+            ...auditInsert(ctx, user.id),
+        } as any);
+
+        console.log(`[LOBBY] User #${targetUserId} was kicked from lobby #${lobbyId} by user #${user.id}`);
+    }
+);
+
+// ─── ban_member ───────────────────────────────────────────────────────────────
+// Bans a user from a lobby. Creates a LobbyBan row and removes current membership.
+// Per D-21: banned users cannot rejoin.
+
+export const ban_member = spacetimedb.reducer(
+    {
+        lobbyId: t.u32(),
+        targetUserId: t.u32(),
+    },
+    (ctx, args) => {
+        const user = getAuthenticatedUser(ctx);
+        const lobbyId = args.lobbyId;
+        const targetUserId = args.targetUserId;
+
+        const lobby = ctx.db.Lobby.id.find(lobbyId);
+        if (!lobby) {
+            throw new SenderError('Lobby not found.');
+        }
+
+        // Get caller's LobbyMember row for permission check
+        const callerMember = ensureLobbyMember(ctx, lobbyId, user.id);
+
+        // Permission check
+        if (!canKickOrBan(ctx, lobby, user, callerMember)) {
+            throw new SenderError('Only the host, moderators, admins, or an authorized referee can ban members.');
+        }
+
+        // Cannot ban self
+        if (targetUserId === user.id) {
+            throw new SenderError('Cannot ban yourself.');
+        }
+
+        // Cannot ban the host
+        if (targetUserId === lobby.hostUserId) {
+            throw new SenderError('Cannot ban the host.');
+        }
+
+        // Resolve target's display name for system message
+        const targetUser = ctx.db.User.id.find(targetUserId);
+        const targetName = targetUser ? targetUser.displayName : `User #${targetUserId}`;
+
+        // Insert ban record
+        ctx.db.LobbyBan.insert({
+            lobbyId,
+            bannedUserId: targetUserId,
+            bannedByUserId: user.id,
+            ...auditInsert(ctx, user.id),
+        } as any);
+
+        // Remove from lobby if currently a member
+        const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
+        if (targetMember) {
+            ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
+
+            // Decrement currentPlayerCount
+            const currentLobby = ctx.db.Lobby.id.find(lobbyId);
+            if (currentLobby) {
+                const newCount = currentLobby.currentPlayerCount > 0 ? currentLobby.currentPlayerCount - 1 : 0;
+                ctx.db.Lobby.id.update({
+                    ...currentLobby,
+                    currentPlayerCount: newCount,
+                    lastActivityAt: ctx.timestamp,
+                    ...auditUpdate(ctx, currentLobby, user.id),
+                } as any);
+            }
+        }
+
+        // D-11: system message
+        ctx.db.ChatMessage.insert({
+            id: 0,
+            lobbyId,
+            senderUserId: 0,
+            senderType: { tag: 'System', value: {} },
+            content: targetName + ' was banned from the lobby.',
+            metadata: undefined,
+            anonymousLabel: undefined,
+            ...auditInsert(ctx, user.id),
+        } as any);
+
+        console.log(`[LOBBY] User #${targetUserId} was banned from lobby #${lobbyId} by user #${user.id}`);
+    }
+);
+
+// ─── Internal helper ──────────────────────────────────────────────────────────
+// Hard-delete a lobby and all associated data per D-19.
+// Used by close_lobby and leave_lobby (empty lobby auto-close).
+
+function _hardDeleteLobby(ctx: any, lobby: any): void {
+    const lobbyId = lobby.id;
+
+    // 1. Delete all ChatMessage rows
+    for (const msg of [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)]) {
+        ctx.db.ChatMessage.id.delete(msg.id);
+    }
+
+    // 2. Delete all LobbyMember rows
+    for (const member of [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]) {
+        ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, member.userId]);
+    }
+
+    // 3. Delete all LobbyBan rows
+    for (const ban of [...ctx.db.LobbyBan.lobby_id.filter(lobbyId)]) {
+        ctx.db.LobbyBan.by_lobby_and_user.delete([lobbyId, ban.bannedUserId]);
+    }
+
+    // 4. Delete LobbyPassword if exists
+    const pw = ctx.db.LobbyPassword.lobbyId.find(lobbyId);
+    if (pw) {
+        ctx.db.LobbyPassword.lobbyId.delete(lobbyId);
+    }
+
+    // 5. LobbyCursorEvent is an event table — rows are auto-deleted after broadcast.
+    //    No manual cleanup needed.
+
+    // 6. Delete all MatchSessionStep rows for this lobby
+    for (const step of [...ctx.db.MatchSessionStep.lobby_id.filter(lobbyId)]) {
+        ctx.db.MatchSessionStep.id.delete(step.id);
+    }
+
+    // 7. Delete MatchSession if exists (1-to-1 with lobbyId as PK)
+    const ms = ctx.db.MatchSession.lobbyId.find(lobbyId);
+    if (ms) {
+        ctx.db.MatchSession.lobbyId.delete(lobbyId);
+    }
+
+    // 8. Delete Lobby row
+    ctx.db.Lobby.id.delete(lobbyId);
+}
