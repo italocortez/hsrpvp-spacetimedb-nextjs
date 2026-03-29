@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 9
-current_plan: Not started
-status: planning
-last_updated: "2026-03-28T12:07:01.429Z"
+current_phase: 09
+current_plan: 2
+status: executing
+last_updated: "2026-03-29T11:36:37Z"
 progress:
   total_phases: 13
   completed_phases: 10
-  total_plans: 26
-  completed_plans: 26
+  total_plans: 35
+  completed_plans: 27
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 9
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current phase:** 09
+**Current plan:** 1
+**Status:** Executing Phase 09
 
 ## Decisions
 
@@ -95,6 +95,7 @@ See: .planning/PROJECT.md
 - [Phase 08-calendar-and-scheduling]: Sentinel values for optional recurrence fields — dayOfWeek=255 (not set), dayOfMonth=0 (not set), bracketMatchId=0 (personal event) — u8/u32 reducer params cannot be optional in SpacetimeDB SDK
 - [Phase 08-calendar-and-scheduling]: SavedCalendar targetUserId lookup uses iter() in deleteAllCalendarDataForUser — no targetUserId-only index exists on the table
 - [Phase 08]: cascade-order: calendar events deleted before bracket matches in cascadeCleanupTournament (D-21) — reads BracketMatch rows to find linked events
+- [Phase 09-01]: LobbyGcJob scheduled property omitted — SpacetimeDB rejects module when scheduled reducer is undefined; wired in Plan 05
 
 ### Quick Tasks Completed
 
@@ -141,3 +142,4 @@ See: .planning/PROJECT.md
 - 2026-03-28: Completed 07-02-PLAN.md — 7 achievement reducers (create/update/delete, add/remove criteria, manual_award, set_displayed_achievement), checkAndAwardAchievements helper hooked into finalization step 16.5, published to maincloud, 61/61 tests pass, 3 starter achievements seeded in bootstrap, Phase 07 complete
 - 2026-03-28: Completed 08-01-PLAN.md — InviteStatus enum, CalendarEvent/CalendarEventInvite schema mods, calendarCleanup + calendarCascade helpers, 12 calendar reducers (availability/saved/events/invite response), published to maincloud with --clear-database, bindings regenerated, bootstrap+seed restored
 - 2026-03-28: Completed 08-02-PLAN.md — 5 cross-feature cascade integrations (cancel_tournament D-21, rollback_bracket_match D-22, dq_participant D-22, withdraw_from_tournament D-24, performUserDeletion D-23), architecture doc full rewrite, published to maincloud, 85/85 tests pass, Phase 08 complete
+- 2026-03-29: Completed 09-01-PLAN.md — Phase 9 schema foundation: LobbyStage+BanMode+ActionType enum changes, LobbyConfigSnapshot dual budgets, StepPayload 3 new types, 8 modified tables (Lobby, LobbyMember, MatchSession, MatchSessionHistory, MatchSessionStepHistory, MatchParticipantHistory), 4 new tables (LobbyBan, LobbyPreset, TournamentStandIn, LobbyGcJob), published to maincloud with --clear-database, bindings regenerated
