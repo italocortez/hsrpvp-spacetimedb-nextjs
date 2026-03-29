@@ -20,8 +20,7 @@ import {
 } from "./types";
 
 export default {
-  joinCode: __t.string(),
-  presetId: __t.u32(),
+  name: __t.string(),
   teamSize: __t.u8(),
   get draftMode() {
     return DraftMode;
@@ -35,8 +34,6 @@ export default {
   get matchType() {
     return MatchType;
   },
-  isPublic: __t.bool(),
-  password: __t.string(),
   standardTurnSeconds: __t.u32(),
   reserveBankSeconds: __t.u32(),
   characterBudget: __t.f32(),
@@ -47,6 +44,7 @@ export default {
   underThresholdAdvantage: __t.f32(),
   aboveThresholdPenalty: __t.f32(),
   deathPenalty: __t.f32(),
+  isPublic: __t.bool(),
   isAnonymousPlayers: __t.bool(),
   isAnonymousSpectators: __t.bool(),
   get rosterVisibility() {
@@ -65,6 +63,4 @@ export default {
   refereeCanSetCaptain: __t.bool(),
   refereeCanKick: __t.bool(),
   allowPlayerPause: __t.bool(),
-  teamBlueAlias: __t.string(),
-  teamRedAlias: __t.string(),
 };

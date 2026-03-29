@@ -53,6 +53,7 @@ import AdminUpsertArchetypeReducer from "./admin_upsert_archetype_reducer";
 import AdvanceBracketMatchReducer from "./advance_bracket_match_reducer";
 import AdvanceTournamentStageReducer from "./advance_tournament_stage_reducer";
 import ApproveParticipantReducer from "./approve_participant_reducer";
+import ApproveStandInReducer from "./approve_stand_in_reducer";
 import AssignTournamentAssistantReducer from "./assign_tournament_assistant_reducer";
 import BanMemberReducer from "./ban_member_reducer";
 import BatchRemoveCharactersReducer from "./batch_remove_characters_reducer";
@@ -61,14 +62,17 @@ import BroadcastCursorReducer from "./broadcast_cursor_reducer";
 import CancelTournamentReducer from "./cancel_tournament_reducer";
 import CloseLobbyReducer from "./close_lobby_reducer";
 import ConfirmMatchScoresReducer from "./confirm_match_scores_reducer";
+import ConfirmReadyReducer from "./confirm_ready_reducer";
 import CreateAchievementReducer from "./create_achievement_reducer";
 import CreateAvailabilitySlotReducer from "./create_availability_slot_reducer";
 import CreateCalendarEventReducer from "./create_calendar_event_reducer";
 import CreateCostSetReducer from "./create_cost_set_reducer";
 import CreateHsrAccountReducer from "./create_hsr_account_reducer";
 import CreateLobbyReducer from "./create_lobby_reducer";
+import CreateLobbyPresetReducer from "./create_lobby_preset_reducer";
 import CreateSeasonReducer from "./create_season_reducer";
 import CreateTournamentReducer from "./create_tournament_reducer";
+import CreateTournamentLobbyReducer from "./create_tournament_lobby_reducer";
 import CreateTournamentTeamReducer from "./create_tournament_team_reducer";
 import DeleteAchievementReducer from "./delete_achievement_reducer";
 import DeleteAvailabilitySlotReducer from "./delete_availability_slot_reducer";
@@ -76,6 +80,7 @@ import DeleteCalendarEventReducer from "./delete_calendar_event_reducer";
 import DeleteCostSetReducer from "./delete_cost_set_reducer";
 import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
 import DeleteHsrAccountReducer from "./delete_hsr_account_reducer";
+import DeleteLobbyPresetReducer from "./delete_lobby_preset_reducer";
 import DisbandTournamentTeamReducer from "./disband_tournament_team_reducer";
 import DisputeMatchResultReducer from "./dispute_match_result_reducer";
 import DqParticipantReducer from "./dq_participant_reducer";
@@ -118,13 +123,16 @@ import ServerSetMmrReducer from "./server_set_mmr_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
 import SetActiveSeasonReducer from "./set_active_season_reducer";
+import SetCaptainReducer from "./set_captain_reducer";
 import SetCoachReducer from "./set_coach_reducer";
 import SetDisplayedAchievementReducer from "./set_displayed_achievement_reducer";
+import SetTeamSlotReducer from "./set_team_slot_reducer";
 import SubmitAndAdvanceBracketReducer from "./submit_and_advance_bracket_reducer";
 import SubmitMatchResultReducer from "./submit_match_result_reducer";
 import SwapSeedsReducer from "./swap_seeds_reducer";
 import ToggleCalendarVisibilityReducer from "./toggle_calendar_visibility_reducer";
 import TransferRefereeReducer from "./transfer_referee_reducer";
+import UnconfirmReadyReducer from "./unconfirm_ready_reducer";
 import UnpublishCostSetReducer from "./unpublish_cost_set_reducer";
 import UnsaveCalendarReducer from "./unsave_calendar_reducer";
 import UpdateAchievementReducer from "./update_achievement_reducer";
@@ -133,6 +141,8 @@ import UpdateAvatarReducer from "./update_avatar_reducer";
 import UpdateCalendarEventReducer from "./update_calendar_event_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
 import UpdateHsrAccountReducer from "./update_hsr_account_reducer";
+import UpdateLobbyPresetReducer from "./update_lobby_preset_reducer";
+import UpdateLobbySettingsReducer from "./update_lobby_settings_reducer";
 import UpdateTournamentReducer from "./update_tournament_reducer";
 import UpdateUsernameReducer from "./update_username_reducer";
 import WaitlistPromoteReducer from "./waitlist_promote_reducer";
@@ -1003,6 +1013,7 @@ const reducersSchema = __reducers(
   __reducerSchema("advance_bracket_match", AdvanceBracketMatchReducer),
   __reducerSchema("advance_tournament_stage", AdvanceTournamentStageReducer),
   __reducerSchema("approve_participant", ApproveParticipantReducer),
+  __reducerSchema("approve_stand_in", ApproveStandInReducer),
   __reducerSchema("assign_tournament_assistant", AssignTournamentAssistantReducer),
   __reducerSchema("ban_member", BanMemberReducer),
   __reducerSchema("batch_remove_characters", BatchRemoveCharactersReducer),
@@ -1011,14 +1022,17 @@ const reducersSchema = __reducers(
   __reducerSchema("cancel_tournament", CancelTournamentReducer),
   __reducerSchema("close_lobby", CloseLobbyReducer),
   __reducerSchema("confirm_match_scores", ConfirmMatchScoresReducer),
+  __reducerSchema("confirm_ready", ConfirmReadyReducer),
   __reducerSchema("create_achievement", CreateAchievementReducer),
   __reducerSchema("create_availability_slot", CreateAvailabilitySlotReducer),
   __reducerSchema("create_calendar_event", CreateCalendarEventReducer),
   __reducerSchema("create_cost_set", CreateCostSetReducer),
   __reducerSchema("create_hsr_account", CreateHsrAccountReducer),
   __reducerSchema("create_lobby", CreateLobbyReducer),
+  __reducerSchema("create_lobby_preset", CreateLobbyPresetReducer),
   __reducerSchema("create_season", CreateSeasonReducer),
   __reducerSchema("create_tournament", CreateTournamentReducer),
+  __reducerSchema("create_tournament_lobby", CreateTournamentLobbyReducer),
   __reducerSchema("create_tournament_team", CreateTournamentTeamReducer),
   __reducerSchema("delete_achievement", DeleteAchievementReducer),
   __reducerSchema("delete_availability_slot", DeleteAvailabilitySlotReducer),
@@ -1026,6 +1040,7 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_cost_set", DeleteCostSetReducer),
   __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
   __reducerSchema("delete_hsr_account", DeleteHsrAccountReducer),
+  __reducerSchema("delete_lobby_preset", DeleteLobbyPresetReducer),
   __reducerSchema("disband_tournament_team", DisbandTournamentTeamReducer),
   __reducerSchema("dispute_match_result", DisputeMatchResultReducer),
   __reducerSchema("dq_participant", DqParticipantReducer),
@@ -1068,13 +1083,16 @@ const reducersSchema = __reducers(
   __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
   __reducerSchema("set_active_season", SetActiveSeasonReducer),
+  __reducerSchema("set_captain", SetCaptainReducer),
   __reducerSchema("set_coach", SetCoachReducer),
   __reducerSchema("set_displayed_achievement", SetDisplayedAchievementReducer),
+  __reducerSchema("set_team_slot", SetTeamSlotReducer),
   __reducerSchema("submit_and_advance_bracket", SubmitAndAdvanceBracketReducer),
   __reducerSchema("submit_match_result", SubmitMatchResultReducer),
   __reducerSchema("swap_seeds", SwapSeedsReducer),
   __reducerSchema("toggle_calendar_visibility", ToggleCalendarVisibilityReducer),
   __reducerSchema("transfer_referee", TransferRefereeReducer),
+  __reducerSchema("unconfirm_ready", UnconfirmReadyReducer),
   __reducerSchema("unpublish_cost_set", UnpublishCostSetReducer),
   __reducerSchema("unsave_calendar", UnsaveCalendarReducer),
   __reducerSchema("update_achievement", UpdateAchievementReducer),
@@ -1083,6 +1101,8 @@ const reducersSchema = __reducers(
   __reducerSchema("update_calendar_event", UpdateCalendarEventReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
   __reducerSchema("update_hsr_account", UpdateHsrAccountReducer),
+  __reducerSchema("update_lobby_preset", UpdateLobbyPresetReducer),
+  __reducerSchema("update_lobby_settings", UpdateLobbySettingsReducer),
   __reducerSchema("update_tournament", UpdateTournamentReducer),
   __reducerSchema("update_username", UpdateUsernameReducer),
   __reducerSchema("waitlist_promote", WaitlistPromoteReducer),

@@ -30,6 +30,8 @@ export { save_calendar, unsave_calendar, toggle_calendar_visibility } from './re
 export { create_calendar_event, update_calendar_event, delete_calendar_event, invite_to_event, remove_invite } from './reducers/calendarEvents';
 export { respond_to_invite } from './reducers/calendarInviteResponse';
 export { create_lobby, join_lobby, leave_lobby, close_lobby, kick_member, ban_member } from './reducers/lobbyLifecycle';
+export { update_lobby_settings, set_team_slot, confirm_ready, unconfirm_ready, set_captain } from './reducers/lobbySettings';
+export { create_lobby_preset, update_lobby_preset, delete_lobby_preset } from './reducers/lobbyPresets';
 export { create_tournament_lobby, approve_stand_in } from './reducers/tournamentLobby';
 
 spacetimedb.clientConnected((ctx) => {

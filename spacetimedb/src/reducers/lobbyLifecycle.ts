@@ -24,6 +24,7 @@ import {
 export const create_lobby = spacetimedb.reducer(
     {
         joinCode: t.string(),
+        presetId: t.u32(),
         teamSize: t.u8(),
         draftMode: DraftMode,
         banMode: BanMode,
@@ -60,6 +61,14 @@ export const create_lobby = spacetimedb.reducer(
     },
     (ctx, args) => {
         const user = getAuthenticatedUser(ctx);
+
+        // Per D-31b: validate presetId when provided (> 0 sentinel)
+        if (args.presetId > 0) {
+            const preset = ctx.db.LobbyPreset.id.find(args.presetId);
+            if (!preset) {
+                throw new SenderError('Preset not found.');
+            }
+        }
 
         // D-22: one lobby at a time
         ensureNotInLobby(ctx, user.id);

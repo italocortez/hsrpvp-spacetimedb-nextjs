@@ -20,8 +20,7 @@ import {
 } from "./types";
 
 export default {
-  joinCode: __t.string(),
-  presetId: __t.u32(),
+  lobbyId: __t.u32(),
   teamSize: __t.u8(),
   get draftMode() {
     return DraftMode;
@@ -35,8 +34,6 @@ export default {
   get matchType() {
     return MatchType;
   },
-  isPublic: __t.bool(),
-  password: __t.string(),
   standardTurnSeconds: __t.u32(),
   reserveBankSeconds: __t.u32(),
   characterBudget: __t.f32(),
@@ -67,4 +64,6 @@ export default {
   allowPlayerPause: __t.bool(),
   teamBlueAlias: __t.string(),
   teamRedAlias: __t.string(),
+  isPublic: __t.bool(),
+  password: __t.string(),
 };
