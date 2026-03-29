@@ -237,7 +237,7 @@ Plans:
 - [x] 09-06-PLAN.md — Classic draft: draftSequences.ts (0/4/6 ban), start_draft (match state init), pick/ban/timer_expiry with coach guard + ownership validation + mirror picks, undo/pause/resume
 - [x] 09-07-PLAN.md — Auction draft: nominate/bid/pass/timer_expiry with steal-skip logic, dual budget enforcement, minimum raise, EMPTY CHARACTER fallback
 - [x] 09-08-PLAN.md — Post-draft + finalization + views: equip_lightcone/arrange_lineup/confirm_lineup/advance_stage, finalization pipeline updates (new ActionTypes, budget columns, targetName rename, role flags, isPubliclyVisible), 5 per-client anonymous/history views
-- [ ] 09-09-PLAN.md — Doc rewrites + test fixes: full rewrite of match-session/architecture.md, updates to chat/lobby/match-results/views docs, test file field name updates
+- [x] 09-09-PLAN.md — Doc rewrites + test fixes: full rewrite of match-session/architecture.md, updates to chat/lobby/match-results/views docs, test file field name updates
 
 ### Phase 10: Disconnect Handling and Cost Parity
 **Goal**: Disconnect behavior is configurable and safe, rejoins preserve full match state, and pick/ban reducers are guarded against post-forfeit action; lightcone cost table gains game-mode parity with character costs
