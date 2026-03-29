@@ -177,6 +177,13 @@ export const GroupAssignmentMode = t.enum('GroupAssignmentMode', {
     Manual: t.unit(),
 });
 
+export const InviteStatus = t.enum('InviteStatus', {
+    Pending: t.unit(),
+    Accepted: t.unit(),
+    Declined: t.unit(),
+    Tentative: t.unit(),
+});
+
 export const BracketSide = t.enum('BracketSide', {
     Winners: t.unit(),
     Losers: t.unit(),

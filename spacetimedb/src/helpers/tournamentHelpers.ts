@@ -1,5 +1,6 @@
 import { SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from './ensurePermissions';
+import { deleteCalendarEventsForTournament } from './calendarCascade';
 
 // Forward-only stage order (Cancelled is handled separately as a terminal transition)
 const STAGE_ORDER = ['Draft', 'Registration', 'Seeding', 'InProgress', 'Completed'];
@@ -84,12 +85,16 @@ export function cascadeCleanupTournament(ctx: any, tournamentId: number): void {
         ctx.db.GroupStanding.delete(standing);
     }
 
-    // 3. Bracket matches
+    // 3. Calendar events linked to tournament bracket matches (D-21)
+    //    Must run before bracket match rows are deleted, since it reads BracketMatch to find linked events
+    deleteCalendarEventsForTournament(ctx, tournamentId);
+
+    // 4. Bracket matches
     for (const match of [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)]) {
         ctx.db.BracketMatch.delete(match);
     }
 
-    // 4. Tournament player accounts (locked roster snapshots)
+    // 5. Tournament player accounts (locked roster snapshots)
     const participants = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)];
     for (const p of participants) {
         for (const tpa of [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, p.userId])]) {
@@ -97,12 +102,12 @@ export function cascadeCleanupTournament(ctx: any, tournamentId: number): void {
         }
     }
 
-    // 5. Tournament teams
+    // 6. Tournament teams
     for (const team of [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)]) {
         ctx.db.TournamentTeam.id.delete(team.id);
     }
 
-    // 6. Tournament assistants
+    // 7. Tournament assistants
     for (const assistant of [...ctx.db.TournamentAssistant.tournament_id.filter(tournamentId)]) {
         ctx.db.TournamentAssistant.delete(assistant);
     }

@@ -3,6 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, ensureModerator, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { deleteCalendarEventForBracketMatch } from '../helpers/calendarCascade';
 
 // Valid override status tags
 const VALID_OVERRIDE_STATUSES = ['Validated', 'Rejected'];
@@ -59,6 +60,9 @@ export const dq_participant = spacetimedb.reducer(
                 );
 
                 if (activeMatch) {
+                    // Delete calendar event for the active bracket match being resolved (D-22)
+                    deleteCalendarEventForBracketMatch(ctx, activeMatch.id);
+
                     // Determine the opponent (the one who isn't DQ'd)
                     const opponentTeamId = activeMatch.team1Id === teamGroupId
                         ? activeMatch.team2Id

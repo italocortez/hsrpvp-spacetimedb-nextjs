@@ -3,6 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess, disbandTeamForWithdrawal } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { deleteUserInvitesForTournament } from '../helpers/calendarCascade';
 
 // ─── register_for_tournament ──────────────────────────────────────────────────
 // Registers the authenticated user in a tournament.
@@ -164,6 +165,9 @@ export const withdraw_from_tournament = spacetimedb.reducer(
             const req = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([team.id, user.id])][0];
             if (req) ctx.db.TournamentTeamRequest.delete(req);
         }
+
+        // Delete the withdrawing player's calendar invites for this tournament's scheduled matches (D-24)
+        deleteUserInvitesForTournament(ctx, user.id, tournamentId);
 
         // Re-read participant — disbandTeamForWithdrawal may have delete+re-inserted the row
         const current = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];

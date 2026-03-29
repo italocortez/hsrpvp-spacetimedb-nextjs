@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
+import { Timestamp } from 'spacetimedb';
 import { ensureTournamentHost } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress, cleanupTeamRequests, cascadeCleanupTournament } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
@@ -171,8 +172,8 @@ export const create_tournament = spacetimedb.reducer(
             minimumMmr: minimumMmr > 0 ? minimumMmr : undefined,
             requireApproval,
             waitlistEnabled,
-            scheduledStartAt: parsedScheduledStartAt !== undefined ? { microsSinceUnixEpoch: parsedScheduledStartAt } : undefined,
-            registrationDeadline: parsedRegistrationDeadline !== undefined ? { microsSinceUnixEpoch: parsedRegistrationDeadline } : undefined,
+            scheduledStartAt: parsedScheduledStartAt !== undefined ? new Timestamp(parsedScheduledStartAt) : undefined,
+            registrationDeadline: parsedRegistrationDeadline !== undefined ? new Timestamp(parsedRegistrationDeadline) : undefined,
             ...auditInsert(ctx, user.id),
         } as any);
     }
@@ -308,8 +309,8 @@ export const update_tournament = spacetimedb.reducer(
             minimumMmr: minimumMmr > 0 ? minimumMmr : undefined,
             requireApproval,
             waitlistEnabled,
-            scheduledStartAt: parsedScheduledStartAt !== undefined ? { microsSinceUnixEpoch: parsedScheduledStartAt } : undefined,
-            registrationDeadline: parsedRegistrationDeadline !== undefined ? { microsSinceUnixEpoch: parsedRegistrationDeadline } : undefined,
+            scheduledStartAt: parsedScheduledStartAt !== undefined ? new Timestamp(parsedScheduledStartAt) : undefined,
+            registrationDeadline: parsedRegistrationDeadline !== undefined ? new Timestamp(parsedRegistrationDeadline) : undefined,
             ...auditUpdate(ctx, tournament, user.id),
         } as any);
     }

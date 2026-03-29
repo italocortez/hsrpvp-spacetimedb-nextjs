@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
 import { auditUpdate } from '../helpers/auditColumns';
 import { placeParticipantInNextMatch, updateGroupStandings } from '../helpers/bracketHelpers';
+import { deleteCalendarEventForBracketMatch } from '../helpers/calendarCascade';
 
 // ─── Group standings points ────────────────────────────────────────────────────
 // Win=2, Draw=1, Loss=0 (per CONTEXT.md)
@@ -277,6 +278,9 @@ export const rollback_bracket_match = spacetimedb.reducer(
         if (bracketMatch.winnerTeamId === undefined) {
             throw new SenderError('No winner to rollback.');
         }
+
+        // Delete any calendar event linked to this bracket match (D-22)
+        deleteCalendarEventForBracketMatch(ctx, bracketMatchId);
 
         // Check if MMR has been processed for any match result linked to this bracket match
         const matchResults = [...ctx.db.MatchResultRecord.tournament_id.filter(bracketMatch.tournamentId)]

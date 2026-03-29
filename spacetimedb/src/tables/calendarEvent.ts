@@ -11,6 +11,7 @@ export const calendarEventColumns = {
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
     lastModifiedDate: t.timestamp(),
+    description: t.string().optional(),  // D-26: event notes (appended at end for safe migration)
 };
 
 export const CalendarEvent = table({
@@ -19,5 +20,6 @@ export const CalendarEvent = table({
     indexes: [
         { accessor: 'organizer_id', algorithm: 'btree', columns: ['organizerId'] },
         { accessor: 'start_at', algorithm: 'btree', columns: ['startAt'] },
+        { accessor: 'bracket_match_id', algorithm: 'btree', columns: ['bracketMatchId'] },
     ],
 }, calendarEventColumns);

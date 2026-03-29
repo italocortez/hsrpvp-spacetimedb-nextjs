@@ -1,4 +1,5 @@
 import { auditUpdate } from './auditColumns';
+import { deleteAllCalendarDataForUser } from './calendarCascade';
 
 /**
  * Returns true if the iterator yields at least one element.
@@ -41,6 +42,9 @@ export function hasHistoryReferences(ctx: any, userId: number): boolean {
 export function performUserDeletion(ctx: any, userId: number, actorId: number): void {
     const user = ctx.db.User.id.find(userId);
     if (!user) return;
+
+    // Cascade: delete all calendar data (availability slots, saved calendars, events, invites) (D-23)
+    deleteAllCalendarDataForUser(ctx, userId);
 
     // Cascade: delete all UserIdentity rows (severs auth link)
     const identities = [...ctx.db.UserIdentity.user_id.filter(userId)];

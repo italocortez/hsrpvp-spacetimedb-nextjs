@@ -25,6 +25,10 @@ export { advance_bracket_match, submit_and_advance_bracket, rollback_bracket_mat
 export { finalize_match_result, process_tournament_mmr } from './reducers/matchFinalization';
 export { create_season, set_active_season } from './reducers/seasonAdmin';
 export { create_achievement, update_achievement, delete_achievement, add_achievement_criteria, remove_achievement_criteria, manual_award_achievement, set_displayed_achievement } from './reducers/achievementManagement';
+export { create_availability_slot, update_availability_slot, delete_availability_slot } from './reducers/calendarAvailability';
+export { save_calendar, unsave_calendar, toggle_calendar_visibility } from './reducers/calendarSaved';
+export { create_calendar_event, update_calendar_event, delete_calendar_event, invite_to_event, remove_invite } from './reducers/calendarEvents';
+export { respond_to_invite } from './reducers/calendarInviteResponse';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);
