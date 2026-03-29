@@ -77,6 +77,7 @@ import CreateTournamentTeamReducer from "./create_tournament_team_reducer";
 import DeleteAchievementReducer from "./delete_achievement_reducer";
 import DeleteAvailabilitySlotReducer from "./delete_availability_slot_reducer";
 import DeleteCalendarEventReducer from "./delete_calendar_event_reducer";
+import DeleteChatMessageReducer from "./delete_chat_message_reducer";
 import DeleteCostSetReducer from "./delete_cost_set_reducer";
 import DeleteGuestAccountReducer from "./delete_guest_account_reducer";
 import DeleteHsrAccountReducer from "./delete_hsr_account_reducer";
@@ -117,6 +118,7 @@ import RespondToInviteReducer from "./respond_to_invite_reducer";
 import RollbackBracketMatchReducer from "./rollback_bracket_match_reducer";
 import SaveCalendarReducer from "./save_calendar_reducer";
 import SeedBracketReducer from "./seed_bracket_reducer";
+import SendChatMessageReducer from "./send_chat_message_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkDiscordReducer from "./server_link_discord_reducer";
 import ServerSetMmrReducer from "./server_set_mmr_reducer";
@@ -1037,6 +1039,7 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_achievement", DeleteAchievementReducer),
   __reducerSchema("delete_availability_slot", DeleteAvailabilitySlotReducer),
   __reducerSchema("delete_calendar_event", DeleteCalendarEventReducer),
+  __reducerSchema("delete_chat_message", DeleteChatMessageReducer),
   __reducerSchema("delete_cost_set", DeleteCostSetReducer),
   __reducerSchema("delete_guest_account", DeleteGuestAccountReducer),
   __reducerSchema("delete_hsr_account", DeleteHsrAccountReducer),
@@ -1077,6 +1080,7 @@ const reducersSchema = __reducers(
   __reducerSchema("rollback_bracket_match", RollbackBracketMatchReducer),
   __reducerSchema("save_calendar", SaveCalendarReducer),
   __reducerSchema("seed_bracket", SeedBracketReducer),
+  __reducerSchema("send_chat_message", SendChatMessageReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
   __reducerSchema("server_set_mmr", ServerSetMmrReducer),
