@@ -4,6 +4,8 @@ import { User } from '../tables/user';
 import { UserIdentity } from '../tables/userIdentity';
 import { Lobby } from '../tables/lobby';
 import { CostSet } from '../tables/costSet';
+import { Tournament } from '../tables/tournament';
+import { GameMode, DraftMode, MatchType, LobbyStage } from '../types/enums';
 import { CostSetDraftCharacter } from '../tables/costSetDraftCharacter';
 import { CostSetDraftLightcone } from '../tables/costSetDraftLightcone';
 import { CostSetDraftSynergy } from '../tables/costSetDraftSynergy';
@@ -15,14 +17,82 @@ import { HsrAccount } from '../tables/hsrAccount';
 import { HsrAccountCharacter } from '../tables/hsrAccountCharacter';
 
 // ---------------------------------------------------------------------------
-// 1. Lobby Browser (anonymous view) — all public lobbies, no passwordHash
-//    Since passwordHash is now in a separate private table (LobbyPassword),
-//    the full Lobby rowType is safe to broadcast.
+// 1. Lobby Browser (anonymous view) — projected subset of lobby columns
+//    D-05: Excludes config details (timers, budgets, penalties, disconnect, audit).
+//    D-06: Tournament name and cost set name resolved via PK lookup server-side.
+//    D-08: Finished lobbies excluded — only Waiting, Drafting, Equipping, Scoring shown.
 // ---------------------------------------------------------------------------
+const LobbyBrowserRow = t.object('LobbyBrowserRow', {
+    id: t.u32(),
+    joinCode: t.string(),
+    gameMode: GameMode,
+    draftMode: DraftMode,
+    matchType: MatchType,
+    currentPlayerCount: t.u8(),
+    isTournamentControlled: t.bool(),
+    isAnonymousPlayers: t.bool(),
+    stage: LobbyStage,
+    isPublic: t.bool(),
+    teamSize: t.u8(),
+    tournamentName: t.string().optional(),
+    costSetName: t.string().optional(),
+});
+
 spacetimedb.anonymousView(
     { name: 'view_lobby_browser', public: true },
-    t.array(Lobby.rowType),
-    (ctx) => ctx.from.Lobby
+    t.array(LobbyBrowserRow),
+    (ctx) => {
+        const lobbies: any[] = [];
+
+        // D-08: Only Waiting, Drafting, Equipping, Scoring — exclude Finished.
+        // Use the stage btree index to avoid scanning Finished lobbies.
+        const activeStages: any[] = [
+            { tag: 'Waiting', value: {} },
+            { tag: 'Drafting', value: {} },
+            { tag: 'Equipping', value: {} },
+            { tag: 'Scoring', value: {} },
+        ];
+        const activeLobbyRows: any[] = [];
+        for (const stageVal of activeStages) {
+            for (const lobby of ctx.db.Lobby.stage.filter(stageVal)) {
+                activeLobbyRows.push(lobby);
+            }
+        }
+
+        for (const lobby of activeLobbyRows) {
+
+            // D-06: Resolve tournament name via PK lookup
+            let tournamentName: string | undefined;
+            if (lobby.tournamentId) {
+                const tournament = ctx.db.Tournament.id.find(lobby.tournamentId);
+                if (tournament) tournamentName = tournament.name;
+            }
+
+            // D-06: Resolve cost set name via PK lookup (costSetId=0 = default, no name)
+            let costSetName: string | undefined;
+            if (lobby.costSetId > 0) {
+                const costSet = ctx.db.CostSet.id.find(lobby.costSetId);
+                if (costSet) costSetName = costSet.name;
+            }
+
+            lobbies.push({
+                id: lobby.id,
+                joinCode: lobby.joinCode,
+                gameMode: lobby.gameMode,
+                draftMode: lobby.draftMode,
+                matchType: lobby.matchType,
+                currentPlayerCount: lobby.currentPlayerCount,
+                isTournamentControlled: lobby.isTournamentControlled,
+                isAnonymousPlayers: lobby.isAnonymousPlayers,
+                stage: lobby.stage,
+                isPublic: lobby.isPublic,
+                teamSize: lobby.teamSize,
+                tournamentName,
+                costSetName,
+            });
+        }
+        return lobbies;
+    }
 );
 
 // ---------------------------------------------------------------------------
