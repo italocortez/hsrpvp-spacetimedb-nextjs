@@ -10,7 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  TeamLabel,
+  TeamSide,
   ActionType,
 } from "./types";
 
@@ -21,7 +21,7 @@ export default __t.row({
   actorUserId: __t.u32().name("actor_user_id"),
   actorDisplayName: __t.string().name("actor_display_name"),
   get teamSide() {
-    return TeamLabel.name("team_side");
+    return TeamSide.name("team_side");
   },
   get action() {
     return ActionType;

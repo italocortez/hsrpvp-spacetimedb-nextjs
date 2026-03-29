@@ -215,7 +215,7 @@ The `disputeReason` column on `MatchResultRecord` is reused to store the overrid
 |--------|------|-------------|
 | matchResultId | u32 | FK to MatchResultRecord.id |
 | userId | u32 | FK to User.id |
-| teamSide | TeamLabel enum | Blue or Red team assignment |
+| teamSide | TeamSide enum | Blue or Red team assignment |
 | isCaptain | bool | True if this participant can confirm scores on behalf of their team |
 
 PK: [matchResultId, userId]
@@ -245,7 +245,7 @@ Captain pattern: In 1v1, both participants have isCaptain=true (each confirms fo
 | teamBlueBoss2Score | u64? | Blue team boss 2 score |
 | teamRedBoss1Score | u64? | Red team boss 1 score |
 | teamRedBoss2Score | u64? | Red team boss 2 score |
-| winnerTeamSide | TeamLabel enum | Which team side won this game (Blue or Red) |
+| winnerTeamSide | TeamSide enum | Which team side won this game (Blue or Red) |
 | validationStatus | ValidationStatus enum | Pending, Validated, Rejected |
 | validatedByUserId | u32? | User who validated this game |
 
@@ -329,7 +329,7 @@ Archival mirror of `MatchResultGame`. Created during finalization (step 9 of the
 | teamBlueBoss2Score | u64? | Blue team boss 2 score |
 | teamRedBoss1Score | u64? | Red team boss 1 score |
 | teamRedBoss2Score | u64? | Red team boss 2 score |
-| winnerTeamSide | TeamLabel enum | Which team won this game |
+| winnerTeamSide | TeamSide enum | Which team won this game |
 
 PK: [matchHistoryId, gameNumber]
 

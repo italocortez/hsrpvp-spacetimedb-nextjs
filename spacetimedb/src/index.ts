@@ -18,7 +18,7 @@ export { create_cost_set, edit_draft_character_cost, edit_draft_lightcone_cost, 
 export { create_tournament, update_tournament, advance_tournament_stage, cancel_tournament } from './reducers/tournamentManagement';
 export { register_for_tournament, withdraw_from_tournament, approve_participant, waitlist_promote } from './reducers/tournamentRegistration';
 export { create_tournament_team, request_join_team, accept_team_request, reject_team_request, leave_tournament_team, disband_tournament_team } from './reducers/tournamentTeams';
-export { transfer_referee, reclaim_referee, set_coach, remove_coach } from './reducers/refereeManagement';
+export { transfer_referee, reclaim_referee } from './reducers/refereeManagement';
 export { confirm_match_scores, submit_match_result, dispute_match_result } from './reducers/matchResultSubmission';
 export { record_game_scores } from './reducers/scoreEntry';
 export { dq_participant, override_match_result, assign_tournament_assistant, remove_tournament_assistant, mod_promote_to_host, mod_demote_from_host } from './reducers/tournamentAdmin';

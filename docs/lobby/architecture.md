@@ -21,7 +21,7 @@ Lobby (PK: id autoInc)
 │  Lifecycle: stage (LobbyStage), lastActivityAt, hostDisconnectTime?
 │
 ├── LobbyMember (PK: [lobbyId, userId])
-│     isOnline, participationRole, isReferee, teamSlot, isConfirmed, isCaptain
+│     isOnline, lobbySlot, isReferee, isConfirmed, isCaptain
 │
 ├── LobbyBan (PK: [lobbyId, bannedUserId])
 │     bannedByUserId → User.id
@@ -120,9 +120,8 @@ Lobby (PK: id autoInc)
 | lobbyId | u32 | FK to Lobby.id (composite PK) |
 | userId | u32 | FK to User.id (composite PK) |
 | isOnline | bool | Whether member is currently connected |
-| participationRole | ParticipationRole | Player or Coach |
+| lobbySlot | LobbySlot | BluePlayer, BlueCoach, RedPlayer, RedCoach, or Spectator |
 | isReferee | bool | Has admin powers in this lobby (host has this by default) |
-| teamSlot | TeamLabel | Blue, Red, or Spectator |
 | isConfirmed | bool | Ready-up status (D-29); required for start_draft |
 | isCaptain | bool | Can act on behalf of team in draft (D-30) |
 
@@ -223,7 +222,7 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned.
 - One lobby per user enforced (D-22)
 - Guest restrictions: no Ranked, forced ClosedNoRating (D-23)
 - `presetId > 0`: validates preset exists, copies config (D-31b)
-- Host inserted as LobbyMember with `isReferee=true`, `teamSlot=Spectator` (D-24, D-27)
+- Host inserted as LobbyMember with `isReferee=true`, `lobbySlot=Spectator` (D-24, D-27)
 - `currentPlayerCount` starts at 1
 - Password stored in private `LobbyPassword` table if `!isPublic`
 
@@ -237,7 +236,7 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned.
   - Drafting: reconnect (if existing offline member) or new spectator only
   - Other stages: rejected
 - Password check for private lobbies (D-02)
-- Joined as `teamSlot=Spectator` (D-27)
+- Joined as `lobbySlot=Spectator` (D-27)
 - `currentPlayerCount` incremented
 - System chat message: "{name} joined the lobby."
 
@@ -277,20 +276,20 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned.
 ## Team Assignment
 
 ### Slots and Roles
-- All members join as `teamSlot=Spectator` (D-27)
-- `set_team_slot`: free movement during Waiting; resets `isConfirmed=false` for the mover
-- Moving others: requires host/admin/moderator
-- Moving self: any member can
+- All members join as `lobbySlot=Spectator` (D-27)
+- `set_team_slot`: free movement during Waiting; resets `isConfirmed=false` for the mover. Handles both player and coach assignment — BlueCoach/RedCoach slots assign coach role. Only host/referee can assign coach slots to other members.
+- Moving others: requires host/admin/moderator (any slot) or host/referee (coach slots)
+- Moving self: any member can move to player/spectator slots
 
 ### Ready-Up (D-29)
 - `confirm_ready`: sets `isConfirmed=true` (Waiting stage only)
 - `unconfirm_ready`: clears `isConfirmed` (Waiting stage only)
 - Settings change by host resets ALL members' `isConfirmed=false`
-- `start_draft` rejects unless all Blue+Red players (participationRole=Player) are confirmed
+- `start_draft` rejects unless all Blue+Red players (lobbySlot=BluePlayer/RedPlayer) are confirmed
 
 ### Captain System (D-30)
 - `set_captain`: host, admin, or referee with `refereeCanSetCaptain=true` can assign
-- Target must be on Blue/Red team with participationRole=Player (not Coach)
+- Target must be on Blue/Red team as a player (lobbySlot=BluePlayer/RedPlayer, not BlueCoach/RedCoach)
 - Auto-assigned at `start_draft` if team has no captain (first Player per team)
 - Only captain can perform draft actions (pick/ban/nominate/bid/equip/arrange/confirm)
 
@@ -347,7 +346,7 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned. This protec
 | `kick_member` | lobbyLifecycle.ts | Host / Admin / Moderator / Referee (refereeCanKick) | Remove member without ban |
 | `ban_member` | lobbyLifecycle.ts | Host / Admin / Moderator / Referee (refereeCanKick) | Remove + ban; cannot rejoin |
 | `update_lobby_settings` | lobbySettings.ts | Host / Admin / Moderator | Updates all config; Waiting stage only; resets isConfirmed |
-| `set_team_slot` | lobbySettings.ts | Self (any member) or host for others | Move to Blue/Red/Spectator; resets isConfirmed |
+| `set_team_slot` | lobbySettings.ts | Self (any member) or host for others; coach slots require host/referee | Move to BluePlayer/BlueCoach/RedPlayer/RedCoach/Spectator; resets isConfirmed. Handles coach assignment (replaces set_coach/remove_coach) |
 | `confirm_ready` | lobbySettings.ts | Any member | Sets isConfirmed=true; Waiting only |
 | `unconfirm_ready` | lobbySettings.ts | Any member | Clears isConfirmed; Waiting only |
 | `set_captain` | lobbySettings.ts | Host / Referee (refereeCanSetCaptain) / Admin | Assigns captain for a team |
@@ -364,7 +363,7 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned. This protec
 
 - `LobbyConfig` struct flattened into Lobby columns — all settings are indexable/filterable
 - `LobbyConfigSnapshot` (in structs.ts) used only by MatchSessionHistory for frozen match-time snapshots
-- Capacity: max 20 total per lobby — players per team <= teamSize, coaches per team <= 1, spectators <= 12 (enforced in join_lobby and set_team_slot)
+- Capacity: max 20 total per lobby — players per team <= teamSize, coaches per team <= 1 (BlueCoach/RedCoach), spectators <= 12 (enforced in join_lobby and set_team_slot)
 - `currentPlayerCount` denormalized on Lobby for zero-cost browser view reads (D-07)
 - `lastActivityAt` tracked separately from `lastModifiedDate` audit column for GC timeout
 - `rosterVisibility` enum (OpenRoster/ClosedWithRating/ClosedNoRating) replaces old `isOpenRoster` bool

@@ -53,24 +53,24 @@ Deterministic label computed from LobbyMember data -- no new table required.
 ### Algorithm
 
 1. Look up the caller's LobbyMember row for the given lobbyId
-2. Determine role: participationRole (Coach), isReferee, or player/spectator from teamSlot
-3. Compute label based on role + team side + join order among peers
+2. Determine role from lobbySlot: BlueCoach/RedCoach (Coach), BluePlayer/RedPlayer (Player), Spectator; check isReferee
+3. Compute label based on lobbySlot + join order among peers
 
 ### Label Formats (D-04)
 
-| Role | teamSlot | Label Format | Examples |
-|------|----------|-------------|----------|
-| Player | Blue | "Blue-{N}" | Blue-1, Blue-2, Blue-3 |
-| Player | Red | "Red-{N}" | Red-1, Red-2, Red-3 |
-| Coach | Blue | "Coach-Blue" | Coach-Blue |
-| Coach | Red | "Coach-Red" | Coach-Red |
-| Spectator | Spectator | "Spectator-{N}" | Spectator-1, Spectator-2 |
+| LobbySlot | Label Format | Examples |
+|-----------|-------------|----------|
+| BluePlayer | "Blue-{N}" | Blue-1, Blue-2, Blue-3 |
+| RedPlayer | "Red-{N}" | Red-1, Red-2, Red-3 |
+| BlueCoach | "Coach-Blue" | Coach-Blue |
+| RedCoach | "Coach-Red" | Coach-Red |
+| Spectator | "Spectator-{N}" | Spectator-1, Spectator-2 |
 
-N is derived from join order among members with the same teamSlot and role.
+N is derived from join order among members with the same lobbySlot.
 
 ### Stability Guarantee (D-05)
 
-Labels are deterministic from the same LobbyMember data. Same teamSlot + same join order always produces the same label. Stable across reconnects -- no randomness, no stored state.
+Labels are deterministic from the same LobbyMember data. Same lobbySlot + same join order always produces the same label. Stable across reconnects -- no randomness, no stored state.
 
 ---
 

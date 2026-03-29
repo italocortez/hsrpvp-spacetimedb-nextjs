@@ -1,3 +1,5 @@
+import { slotTeam, slotIsCoach, slotSameTeam } from './lobbyHelpers';
+
 /**
  * Computes anonymous label for a lobby member based on team side and join order.
  * Labels: "Blue-1", "Blue-2", "Red-1", "Red-2", "Spectator-1", "Coach-Blue", "Coach-Red"
@@ -9,13 +11,13 @@ export function computeAnonymousLabel(ctx: any, lobbyId: number, userId: number)
     if (!member) return 'Unknown';
 
     // Coaches get a special label: "Coach-Blue", "Coach-Red"
-    if (member.participationRole.tag === 'Coach') {
-        return `Coach-${member.teamSlot.tag}`;
+    if (slotIsCoach(member.lobbySlot)) {
+        return `Coach-${slotTeam(member.lobbySlot)}`;
     }
 
     // Get all non-coach members on the same team in this lobby
     const sameTeamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
-        .filter((m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach');
+        .filter((m: any) => slotSameTeam(m.lobbySlot, member.lobbySlot) && !slotIsCoach(m.lobbySlot));
 
     // Sort by createdDate ascending (join order -- earlier = lower number)
     sameTeamMembers.sort((a: any, b: any) => {
@@ -25,5 +27,5 @@ export function computeAnonymousLabel(ctx: any, lobbyId: number, userId: number)
     // Find the index of the target userId in the sorted list
     const index = sameTeamMembers.findIndex((m: any) => m.userId === userId);
 
-    return `${member.teamSlot.tag}-${index + 1}`;
+    return `${slotTeam(member.lobbySlot)}-${index + 1}`;
 }

@@ -9,7 +9,7 @@
 
 import spacetimedb from '../schema';
 import { t } from 'spacetimedb/server';
-import { ChatSenderType, TeamLabel, ActionType, GameMode, ParticipationRole } from '../types/enums';
+import { ChatSenderType, LobbySlot, TeamSide, ActionType, GameMode } from '../types/enums';
 import { StepPayload } from '../types/structs';
 import { shouldAnonymize } from '../helpers/anonymousHelpers';
 import { computeAnonymousLabel } from '../helpers/anonymousLabels';
@@ -84,8 +84,7 @@ const AnonymousLobbyMemberRow = t.object('AnonymousLobbyMemberRow', {
     lobbyId: t.u32(),
     userId: t.u32(),
     isOnline: t.bool(),
-    participationRole: ParticipationRole,
-    teamSlot: TeamLabel,
+    lobbySlot: LobbySlot,
     isReferee: t.bool(),
     isConfirmed: t.bool(),
     isCaptain: t.bool(),
@@ -127,8 +126,7 @@ spacetimedb.view(
                     lobbyId: member.lobbyId,
                     userId: anonymize ? 0 : member.userId,
                     isOnline: member.isOnline,
-                    teamSlot: member.teamSlot,
-                    participationRole: member.participationRole,
+                    lobbySlot: member.lobbySlot,
                     isReferee: member.isReferee,
                     isConfirmed: member.isConfirmed,
                     isCaptain: member.isCaptain,
@@ -154,7 +152,7 @@ const AnonymousMatchStepRow = t.object('AnonymousMatchStepRow', {
     sequence: t.u32(),
     actorUserId: t.u32(),
     anonymousLabel: t.string().optional(),
-    actorSlot: TeamLabel,
+    actorSlot: TeamSide,
     action: ActionType,
     payload: StepPayload,
     timestamp: t.timestamp(),
@@ -208,7 +206,7 @@ spacetimedb.view(
 const AnonymousMatchParticipantRow = t.object('AnonymousMatchParticipantRow', {
     matchResultId: t.u32(),
     userId: t.u32(),
-    teamSide: TeamLabel,
+    teamSide: TeamSide,
     isCaptain: t.bool(),
     anonymousLabel: t.string().optional(),
 });

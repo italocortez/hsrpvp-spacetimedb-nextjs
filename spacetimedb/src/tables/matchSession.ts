@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { TeamLabel } from '../types/enums';
+import { TeamSide } from '../types/enums';
 import { DraftStep, TimerState } from '../types/structs';
 
 export const matchSessionColumns = {
@@ -16,12 +16,12 @@ export const matchSessionColumns = {
 
     // Auction state (per D-49, replaces teamBlueBudget/teamRedBudget):
     isAuctionPhase: t.bool(),
-    nextNominatorTeam: TeamLabel,
+    nextNominatorTeam: TeamSide,
     blueCharactersWon: t.u8(),
     redCharactersWon: t.u8(),
     currentNomination: t.string().optional(),
     currentBidAmount: t.f32().optional(),
-    currentBidTeam: TeamLabel,  // Use Spectator as sentinel for "no bid"
+    currentBidTeam: TeamSide,  // Use Spectator as sentinel for "no bid"
 
     // Split budgets:
     teamBlueCharBudget: t.f32(),

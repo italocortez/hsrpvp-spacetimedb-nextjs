@@ -5,7 +5,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { ensureLobbyMember, ensureStageIs, ensureHostOrAbove } from '../helpers/lobbyHelpers';
+import { ensureLobbyMember, ensureStageIs, ensureHostOrAbove, slotTeam, slotIsCoach, slotIsSpectator, slotToTeamSide } from '../helpers/lobbyHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 
 // ─── equip_lightcone ─────────────────────────────────────────────────────────
@@ -29,12 +29,12 @@ export const equip_lightcone = spacetimedb.reducer(
         ensureStageIs(lobby, 'Equipping');
 
         // Coach guard (D-39): coaches blocked from all draft/post-draft actions
-        if (member.participationRole.tag === 'Coach') {
+        if (slotIsCoach(member.lobbySlot)) {
             throw new SenderError('Coaches cannot equip lightcones.');
         }
 
         // Member must be on Blue or Red team (not spectator)
-        if (member.teamSlot.tag === 'Spectator') {
+        if (slotIsSpectator(member.lobbySlot)) {
             throw new SenderError('Spectators cannot equip lightcones.');
         }
 
@@ -59,7 +59,7 @@ export const equip_lightcone = spacetimedb.reducer(
         }
 
         // Per D-55: Strict LC budget enforcement
-        const isBlue = member.teamSlot.tag === 'Blue';
+        const isBlue = slotTeam(member.lobbySlot) === 'Blue';
         const currentLcBudget = isBlue ? session.teamBlueLcBudget : session.teamRedLcBudget;
         if (lcCost > currentLcBudget) {
             throw new SenderError('Not enough LC budget.');
@@ -78,7 +78,7 @@ export const equip_lightcone = spacetimedb.reducer(
             sequence: nextSequence,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'EquipLightcone', value: {} } as any,
             payload: {
                 tag: 'EquipLightcone',
@@ -130,12 +130,12 @@ export const arrange_lineup = spacetimedb.reducer(
         ensureStageIs(lobby, 'Equipping');
 
         // Coach guard (D-39)
-        if (member.participationRole.tag === 'Coach') {
+        if (slotIsCoach(member.lobbySlot)) {
             throw new SenderError('Coaches cannot arrange lineups.');
         }
 
         // Member must be on Blue or Red team
-        if (member.teamSlot.tag === 'Spectator') {
+        if (slotIsSpectator(member.lobbySlot)) {
             throw new SenderError('Spectators cannot arrange lineups.');
         }
 
@@ -163,7 +163,7 @@ export const arrange_lineup = spacetimedb.reducer(
             sequence: nextSequence,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'ArrangeLineup', value: {} } as any,
             payload: {
                 tag: 'ArrangeLineup',
@@ -199,12 +199,12 @@ export const confirm_lineup = spacetimedb.reducer(
         ensureStageIs(lobby, 'Equipping');
 
         // Coach guard (D-39)
-        if (member.participationRole.tag === 'Coach') {
+        if (slotIsCoach(member.lobbySlot)) {
             throw new SenderError('Coaches cannot confirm lineups.');
         }
 
         // Member must be on Blue or Red team
-        if (member.teamSlot.tag === 'Spectator') {
+        if (slotIsSpectator(member.lobbySlot)) {
             throw new SenderError('Spectators cannot confirm lineups.');
         }
 
@@ -221,7 +221,7 @@ export const confirm_lineup = spacetimedb.reducer(
             sequence: nextSequence,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'ConfirmLineup', value: {} } as any,
             payload: {
                 tag: 'ConfirmLineup',

@@ -88,7 +88,7 @@ export const AuctionSoldPayload = __t.object("AuctionSoldPayload", {
   characterName: __t.string(),
   winningAmount: __t.f32(),
   get winningTeam() {
-    return TeamLabel;
+    return TeamSide;
   },
   eidolon: __t.u8(),
 });
@@ -338,7 +338,7 @@ export const DraftStep = __t.object("DraftStep", {
     return ActionType;
   },
   get teamTurn() {
-    return TeamLabel;
+    return TeamSide;
   },
 });
 export type DraftStep = __Infer<typeof DraftStep>;
@@ -736,13 +736,10 @@ export const LobbyMember = __t.object("LobbyMember", {
   lobbyId: __t.u32(),
   userId: __t.u32(),
   isOnline: __t.bool(),
-  get participationRole() {
-    return ParticipationRole;
+  get lobbySlot() {
+    return LobbySlot;
   },
   isReferee: __t.bool(),
-  get teamSlot() {
-    return TeamLabel;
-  },
   isConfirmed: __t.bool(),
   isCaptain: __t.bool(),
   createdById: __t.u32(),
@@ -816,6 +813,16 @@ export const LobbyPreset = __t.object("LobbyPreset", {
 });
 export type LobbyPreset = __Infer<typeof LobbyPreset>;
 
+// The tagged union or sum type for the algebraic type `LobbySlot`.
+export const LobbySlot = __t.enum("LobbySlot", {
+  BluePlayer: __t.unit(),
+  BlueCoach: __t.unit(),
+  RedPlayer: __t.unit(),
+  RedCoach: __t.unit(),
+  Spectator: __t.unit(),
+});
+export type LobbySlot = __Infer<typeof LobbySlot>;
+
 // The tagged union or sum type for the algebraic type `LobbyStage`.
 export const LobbyStage = __t.enum("LobbyStage", {
   Waiting: __t.unit(),
@@ -839,7 +846,7 @@ export const MatchParticipantHistory = __t.object("MatchParticipantHistory", {
   userId: __t.u32(),
   matchHistoryId: __t.u32(),
   get teamSide() {
-    return TeamLabel;
+    return TeamSide;
   },
   displayName: __t.string(),
   isReferee: __t.bool(),
@@ -869,7 +876,7 @@ export const MatchResultGame = __t.object("MatchResultGame", {
   teamRedBoss1Score: __t.option(__t.u64()),
   teamRedBoss2Score: __t.option(__t.u64()),
   get winnerTeamSide() {
-    return TeamLabel;
+    return TeamSide;
   },
   get validationStatus() {
     return ValidationStatus;
@@ -899,7 +906,7 @@ export const MatchResultGameHistory = __t.object("MatchResultGameHistory", {
   teamRedBoss1Score: __t.option(__t.u64()),
   teamRedBoss2Score: __t.option(__t.u64()),
   get winnerTeamSide() {
-    return TeamLabel;
+    return TeamSide;
   },
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
@@ -912,7 +919,7 @@ export const MatchResultParticipant = __t.object("MatchResultParticipant", {
   matchResultId: __t.u32(),
   userId: __t.u32(),
   get teamSide() {
-    return TeamLabel;
+    return TeamSide;
   },
   isCaptain: __t.bool(),
   createdById: __t.u32(),
@@ -970,14 +977,14 @@ export const MatchSession = __t.object("MatchSession", {
   },
   isAuctionPhase: __t.bool(),
   get nextNominatorTeam() {
-    return TeamLabel;
+    return TeamSide;
   },
   blueCharactersWon: __t.u8(),
   redCharactersWon: __t.u8(),
   currentNomination: __t.option(__t.string()),
   currentBidAmount: __t.option(__t.f32()),
   get currentBidTeam() {
-    return TeamLabel;
+    return TeamSide;
   },
   teamBlueCharBudget: __t.f32(),
   teamRedCharBudget: __t.f32(),
@@ -1028,7 +1035,7 @@ export const MatchSessionStep = __t.object("MatchSessionStep", {
   actorUserId: __t.u32(),
   anonymousLabel: __t.option(__t.string()),
   get actorSlot() {
-    return TeamLabel;
+    return TeamSide;
   },
   get action() {
     return ActionType;
@@ -1050,7 +1057,7 @@ export const MatchSessionStepHistory = __t.object("MatchSessionStepHistory", {
   actorUserId: __t.u32(),
   actorDisplayName: __t.string(),
   get teamSide() {
-    return TeamLabel;
+    return TeamSide;
   },
   get action() {
     return ActionType;
@@ -1121,13 +1128,6 @@ export const ParticipantStatus = __t.enum("ParticipantStatus", {
   Withdrawn: __t.unit(),
 });
 export type ParticipantStatus = __Infer<typeof ParticipantStatus>;
-
-// The tagged union or sum type for the algebraic type `ParticipationRole`.
-export const ParticipationRole = __t.enum("ParticipationRole", {
-  Player: __t.unit(),
-  Coach: __t.unit(),
-});
-export type ParticipationRole = __Infer<typeof ParticipationRole>;
 
 // The tagged union or sum type for the algebraic type `Path`.
 export const Path = __t.enum("Path", {
@@ -1344,13 +1344,13 @@ export const SuperimpositionCost = __t.object("SuperimpositionCost", {
 });
 export type SuperimpositionCost = __Infer<typeof SuperimpositionCost>;
 
-// The tagged union or sum type for the algebraic type `TeamLabel`.
-export const TeamLabel = __t.enum("TeamLabel", {
+// The tagged union or sum type for the algebraic type `TeamSide`.
+export const TeamSide = __t.enum("TeamSide", {
   Spectator: __t.unit(),
   Blue: __t.unit(),
   Red: __t.unit(),
 });
-export type TeamLabel = __Infer<typeof TeamLabel>;
+export type TeamSide = __Infer<typeof TeamSide>;
 
 export const TimerState = __t.object("TimerState", {
   turnStartAt: __t.timestamp(),

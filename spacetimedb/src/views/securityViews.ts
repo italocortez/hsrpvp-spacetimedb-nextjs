@@ -15,6 +15,7 @@ import { PlayerRelationship } from '../tables/playerRelationship';
 import { LobbyMember } from '../tables/lobbyMember';
 import { HsrAccount } from '../tables/hsrAccount';
 import { HsrAccountCharacter } from '../tables/hsrAccountCharacter';
+import { slotTeam } from '../helpers/lobbyHelpers';
 
 // ---------------------------------------------------------------------------
 // 1. Lobby Browser (anonymous view) — projected subset of lobby columns
@@ -330,11 +331,11 @@ spacetimedb.view(
             if (!lobby) continue;
 
             const allMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobby.id)];
-            const myTeam = myMembership.teamSlot.tag;
+            const myTeam = slotTeam(myMembership.lobbySlot);
             const isReferee = myMembership.isReferee;
 
             for (const member of allMembers) {
-                const isOwnTeam = member.teamSlot.tag === myTeam;
+                const isOwnTeam = slotTeam(member.lobbySlot) === myTeam;
                 const isSelf = member.userId === myUserId;
 
                 // Determine if we can see this member's roster

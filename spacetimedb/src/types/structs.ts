@@ -3,7 +3,7 @@ import {
     DraftMode,
     BanMode,
     ActionType,
-    TeamLabel,
+    TeamSide,
     RecurrenceType,
 } from './enums';
 
@@ -42,7 +42,7 @@ export const TimerState = t.object('TimerState', {
 
 export const DraftStep = t.object('DraftStep', {
     actionRequired: ActionType,
-    teamTurn: TeamLabel,
+    teamTurn: TeamSide,
 });
 
 export const EidolonCost = t.object('EidolonCost', {
@@ -85,7 +85,7 @@ export const BidPayload = t.object('BidPayload', {
 export const AuctionSoldPayload = t.object('AuctionSoldPayload', {
     characterName: t.string(),
     winningAmount: t.f32(),
-    winningTeam: TeamLabel,    // Who actually got it
+    winningTeam: TeamSide,    // Who actually got it
     eidolon: t.u8(),
 });
 

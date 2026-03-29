@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { ActionType, TeamLabel } from '../types/enums';
+import { ActionType, TeamSide } from '../types/enums';
 import { StepPayload } from '../types/structs';
 
 export const matchSessionStepColumns = {
@@ -10,7 +10,7 @@ export const matchSessionStepColumns = {
 
     actorUserId: t.u32(), // Who performed the action (persistent User ID)
     anonymousLabel: t.string().optional(),
-    actorSlot: TeamLabel,  // Blue/Red/Spectator
+    actorSlot: TeamSide,  // Blue/Red/Spectator
 
     action: ActionType,    // Pick, Ban, Bid...
 

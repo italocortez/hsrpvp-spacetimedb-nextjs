@@ -1,5 +1,5 @@
 ---
-status: testing
+status: complete
 phase: 09-mouse-tracking-chat-and-lobby-browser
 source: [09-01-SUMMARY.md, 09-02-SUMMARY.md, 09-03-SUMMARY.md, 09-04-SUMMARY.md, 09-05-SUMMARY.md, 09-06-SUMMARY.md, 09-07-SUMMARY.md, 09-08-SUMMARY.md, 09-09-SUMMARY.md]
 started: 2026-03-29T18:00:00Z
@@ -8,11 +8,7 @@ updated: 2026-03-29T23:15:00Z
 
 ## Current Test
 
-number: 19
-name: Undo + Pause/Resume
-expected: |
-  Referee undo_last_step → turnIndex decrements. pause_draft with player limits. resume restores timer.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -105,38 +101,44 @@ notes: Bug found & fixed: isAuctionPhase not set when banMode=None + Auction mod
 
 ### 19. Undo + Pause/Resume (MOUS-02, MOUS-03)
 expected: Referee undo_last_step → turnIndex decrements, Undo step inserted. refereeCanUndo=false → error. Player pause_draft → pausesUsedBlue increments (max 3). Referee pause unlimited. allowPlayerPause=false → player blocked. Resume restores timer.
-result: [pending]
+result: pass
+notes: Lobby A (all enabled): undo deleted pick step, inserted Undo audit record (originalSequenceId=2), turnIndex 3→2. Player pause incremented pausesUsedBlue 0→1, referee pause left counters unchanged. Resume restored timer. Lobby B (disabled): all three rejection errors correct.
 
 ### 20. Equip LC + Budget + Stage Transitions (CHAT-03)
 expected: equip_lightcone inserts EquipLightcone step, deducts from teamBlueLcBudget. advance_stage transitions Drafting→Equipping→Scoring→Finished. System chat message on each transition. Coach blocked from equip/arrange.
-result: [pending]
+result: pass
+notes: Budget rollover confirmed (charBudget 500 + lcBudget 300 = 800). equip_lightcone deducted 0.5 (asecretvow S1). System chats: "Draft complete. Stage: Equipping" and "Lineups set. Stage: Scoring". Coach blocked from equip and arrange. Scoring→Finished correctly requires finalize_match_result.
 
 ### 21. Budget Carryover — Char→LC at Equipping (MOUS-03)
 expected: After draft, leftover characterBudget carries to lightconeBudget. E.g., 500 char budget, spent 400 → 100 carries to LC budget. teamBlueLcBudget = originalLcBudget + 100.
-result: [pending]
+result: pass
+notes: Classic mode doesn't consume charBudget during picks (budget is Auction-only). Full 500 carried to lcBudget (300+500=800). D-50 formula confirmed: newLcBudget = oldLcBudget + remainingCharBudget. Auction-mode partial spend verified in tests 17-18.
 
 ### 22. Tournament Lobby + Stand-In (LBBY-01)
-expected: create_tournament_lobby inherits Tournament settings, isTournamentControlled=true. update_lobby_settings → error (locked). Duplicate bracketMatchId → error. approve_stand_in creates TournamentStandIn row. Approved user can set_team_slot(Blue).
-result: [pending]
+expected: create_tournament_lobby inherits Tournament settings, isTournamentControlled=true. update_lobby_settings locks tournament-integrity fields but allows referee QoL fields. Duplicate bracketMatchId → error. approve_stand_in creates TournamentStandIn row. Approved user can set_team_slot(Blue).
+result: pass
+notes: Full tournament lifecycle tested (create→register→seed→bracket→InProgress→lobby). isTournamentControlled=true confirmed. Settings split implemented during UAT: locked fields (teamSize, gameMode, matchType, anonymity, rosterVisibility, costSetId, disconnectPolicy, allowMirrorPicks) preserved; free fields (draftMode, banMode, timers, budgets, referee powers, aliases) changeable. Duplicate bracketMatchId blocked. Stand-in approved and joined Blue slot.
 
 ### 23. Anonymous Mode — Server-Enforced Views (MOUS-02, CHAT-01)
 expected: Anonymous lobby: own-team chat shows real userId. Opponent chat shows userId=0 + anonymousLabel. Spectator referee (isReferee=true, Spectator slot) sees all real identities. Player-referee on Blue sees Red anonymized.
-result: [pending]
+result: pass
 
 ### 24. Lobby Preset — Create + Load (LBBY-01, LBBY-02)
 expected: create_lobby_preset saves config with name. create_lobby(presetId=X) → Lobby fields match preset values. Admin can delete any preset. TO can only delete own.
-result: [pending]
+result: pass
+notes: Preset created with correct fields. create_lobby validates presetId existence (frontend copies values, backend validates reference). Invalid presetId=999 rejected. TO can't delete another TO's preset. Admin can delete any. Owner can delete own. No locking — presets are templates only.
 
 ### 25. Lobby Cap Enforcement — teamSize + Coach + Spectator Limits (NEW)
 expected: set_team_slot to Blue when Blue has teamSize players → error. set_team_slot to Blue as Coach when Blue already has a coach → error. join_lobby when lobby has 20 members → error. join_lobby when 12 spectators → error.
-result: [pending]
+result: pass
+notes: All caps verified with teamSize=1 lobby. LobbySlot refactor executed during UAT: merged teamSlot+participationRole into single LobbySlot enum (BluePlayer, BlueCoach, RedPlayer, RedCoach, Spectator). TeamLabel renamed to TeamSide. set_coach/remove_coach eliminated — coach assignment now via set_team_slot with host/referee guard. Published with --clear-database. Smoke test confirmed: BluePlayer, BlueCoach, Spectator transitions, coach self-assign blocked.
 
 ## Summary
 
 total: 25
-passed: 18
+passed: 25
 issues: 0
-pending: 7
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -149,4 +151,7 @@ blocked: 0
 - **ParticipationRole refactor**: `{ Player, Spectator }` → `{ Player, Coach }`. Dropped `isCoach` boolean from LobbyMember. Coach status now via `participationRole.tag === 'Coach'`. Required --clear-database.
 - **Lobby cap enforcement**: Added to `set_team_slot` (players <= teamSize, coaches <= 1, spectators <= 12) and `join_lobby` (total <= 20, spectators <= 12). New test 25 added.
 - **Auction end condition**: Fixed from `8 * teamSize` to fixed `8` (game mode driven).
-- **Affected files**: 15 backend source, 7 docs, 1 frontend enum, regenerated bindings.
+- **Tournament settings split**: `isTournamentControlled` no longer blanket-locks all settings. Tournament-integrity fields (teamSize, gameMode, matchType, anonymity, rosterVisibility, costSetId, disconnectPolicy, allowMirrorPicks) are locked; referee/match QoL fields (draftMode, banMode, timers, budgets, referee powers, aliases) are free.
+- **LobbySlot refactor**: Merged `teamSlot` (TeamLabel) + `participationRole` (ParticipationRole) into single `lobbySlot` (LobbySlot: BluePlayer, BlueCoach, RedPlayer, RedCoach, Spectator). TeamLabel renamed to TeamSide. set_coach/remove_coach reducers eliminated — coach assignment via set_team_slot with host/referee guard. Required --clear-database.
+- **Coach-Spectator invariant**: Coaches must be on Blue or Red. Moving a coach to Spectator reverts to Spectator. Self-assigning coach role blocked — host/referee only.
+- **Affected files**: 16 backend source, 7 docs, 6 match/history table imports, regenerated bindings.

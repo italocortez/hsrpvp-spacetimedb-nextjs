@@ -147,9 +147,8 @@ export const create_lobby = spacetimedb.reducer(
             lobbyId: lobby.id,
             userId: user.id,
             isOnline: true,
-            participationRole: { tag: 'Player', value: {} },
+            lobbySlot: { tag: 'Spectator', value: {} },
             isReferee: true,
-            teamSlot: { tag: 'Spectator', value: {} },
             isConfirmed: false,
             isCaptain: false,
             ...auditInsert(ctx, user.id),
@@ -250,7 +249,7 @@ export const join_lobby = spacetimedb.reducer(
         if (allMembers.length >= 20) {
             throw new SenderError('Lobby is full (max 20 members).');
         }
-        const spectatorCount = allMembers.filter((m: any) => m.teamSlot.tag === 'Spectator').length;
+        const spectatorCount = allMembers.filter((m: any) => m.lobbySlot.tag === 'Spectator').length;
         if (spectatorCount >= 12) {
             throw new SenderError('Spectator slots are full (max 12).');
         }
@@ -260,9 +259,8 @@ export const join_lobby = spacetimedb.reducer(
             lobbyId,
             userId: user.id,
             isOnline: true,
-            participationRole: { tag: 'Player', value: {} },
+            lobbySlot: { tag: 'Spectator', value: {} },
             isReferee: false,
-            teamSlot: { tag: 'Spectator', value: {} },
             isConfirmed: false,
             isCaptain: false,
             ...auditInsert(ctx, user.id),

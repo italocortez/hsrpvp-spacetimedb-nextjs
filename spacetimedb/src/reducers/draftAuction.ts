@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
-import { ensureLobbyMember, ensureStageIs } from '../helpers/lobbyHelpers';
+import { ensureLobbyMember, ensureStageIs, slotTeam, slotIsCoach, slotToTeamSide } from '../helpers/lobbyHelpers';
 
 // ─── Helper: Get set of characters already won via AuctionSold ──────────────
 // Auction characters are ALWAYS exclusive (D-42).
@@ -108,7 +108,7 @@ export const nominate_character = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.participationRole.tag === 'Coach') {
+        if (slotIsCoach(member.lobbySlot)) {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -123,19 +123,19 @@ export const nominate_character = spacetimedb.reducer(
         }
 
         // Member must be on a team (Blue or Red)
-        if (member.teamSlot.tag === 'Spectator') {
+        if (slotTeam(member.lobbySlot) === null) {
             throw new SenderError('Spectators cannot nominate characters.');
         }
 
         // Turn check: only the nominating team can nominate
-        if (session.nextNominatorTeam.tag !== member.teamSlot.tag) {
+        if (session.nextNominatorTeam.tag !== slotTeam(member.lobbySlot)) {
             throw new SenderError('It is not your team\'s turn to nominate.');
         }
 
         // Captain check: only captain can nominate (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
+                (m: any) => slotTeam(m.lobbySlot) === slotTeam(member.lobbySlot) && !slotIsCoach(m.lobbySlot)
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -160,7 +160,7 @@ export const nominate_character = spacetimedb.reducer(
 
         // Budget check: nominating team must have enough budget for at least the base cost
         // Per D-53: nomination rejected if base cost > remaining budget
-        if (member.teamSlot.tag === 'Blue') {
+        if (slotTeam(member.lobbySlot) === 'Blue') {
             if (baseCost > session.teamBlueCharBudget) {
                 throw new SenderError('Not enough budget to nominate this character.');
             }
@@ -179,7 +179,7 @@ export const nominate_character = spacetimedb.reducer(
             sequence: nextSeq,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'Nominate', value: {} } as any,
             payload: {
                 tag: 'Nominate',
@@ -194,7 +194,7 @@ export const nominate_character = spacetimedb.reducer(
             ...session,
             currentNomination: characterName,
             currentBidAmount: baseCost,
-            currentBidTeam: member.teamSlot,
+            currentBidTeam: slotToTeamSide(member.lobbySlot),
             timerState: {
                 ...session.timerState,
                 turnStartAt: ctx.timestamp,
@@ -210,7 +210,7 @@ export const nominate_character = spacetimedb.reducer(
         } as any);
 
         console.log(
-            `[AUCTION] nominate_character: User #${user.id} (${member.teamSlot.tag}) nominated '${characterName}' (E${eidolon}) at base cost ${baseCost} in lobby #${lobbyId}`
+            `[AUCTION] nominate_character: User #${user.id} (${slotTeam(member.lobbySlot)}) nominated '${characterName}' (E${eidolon}) at base cost ${baseCost} in lobby #${lobbyId}`
         );
     }
 );
@@ -242,7 +242,7 @@ export const place_bid = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.participationRole.tag === 'Coach') {
+        if (slotIsCoach(member.lobbySlot)) {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -256,19 +256,19 @@ export const place_bid = spacetimedb.reducer(
         }
 
         // Member must be on a team
-        if (member.teamSlot.tag === 'Spectator') {
+        if (slotTeam(member.lobbySlot) === null) {
             throw new SenderError('Spectators cannot bid.');
         }
 
         // Bidder must be on the OPPOSITE team from the current bid holder (alternating bids per D-48)
-        if (member.teamSlot.tag === session.currentBidTeam.tag) {
+        if (slotTeam(member.lobbySlot) === session.currentBidTeam.tag) {
             throw new SenderError('Your team already holds the current bid. Wait for the other team to respond.');
         }
 
         // Captain check: only captain can bid (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
+                (m: any) => slotTeam(m.lobbySlot) === slotTeam(member.lobbySlot) && !slotIsCoach(m.lobbySlot)
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -286,7 +286,7 @@ export const place_bid = spacetimedb.reducer(
         }
 
         // Budget check: cannot bid more than remaining budget
-        if (member.teamSlot.tag === 'Blue') {
+        if (slotTeam(member.lobbySlot) === 'Blue') {
             if (bidAmount > session.teamBlueCharBudget) {
                 throw new SenderError('Bid exceeds your remaining character budget.');
             }
@@ -305,7 +305,7 @@ export const place_bid = spacetimedb.reducer(
             sequence: nextSeq,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'Bid', value: {} } as any,
             payload: {
                 tag: 'Bid',
@@ -319,7 +319,7 @@ export const place_bid = spacetimedb.reducer(
         ctx.db.MatchSession.lobbyId.update({
             ...session,
             currentBidAmount: bidAmount,
-            currentBidTeam: member.teamSlot,
+            currentBidTeam: slotToTeamSide(member.lobbySlot),
             timerState: {
                 ...session.timerState,
                 turnStartAt: ctx.timestamp,
@@ -335,7 +335,7 @@ export const place_bid = spacetimedb.reducer(
         } as any);
 
         console.log(
-            `[AUCTION] place_bid: User #${user.id} (${member.teamSlot.tag}) bid ${bidAmount} on '${session.currentNomination}' in lobby #${lobbyId}`
+            `[AUCTION] place_bid: User #${user.id} (${slotTeam(member.lobbySlot)}) bid ${bidAmount} on '${session.currentNomination}' in lobby #${lobbyId}`
         );
     }
 );
@@ -366,7 +366,7 @@ export const pass_bid = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.participationRole.tag === 'Coach') {
+        if (slotIsCoach(member.lobbySlot)) {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -380,20 +380,20 @@ export const pass_bid = spacetimedb.reducer(
         }
 
         // Member must be on a team
-        if (member.teamSlot.tag === 'Spectator') {
+        if (slotTeam(member.lobbySlot) === null) {
             throw new SenderError('Spectators cannot pass bids.');
         }
 
         // Passer must be on the OPPOSITE team from the current bid holder
         // (i.e., the team that would be expected to bid next)
-        if (member.teamSlot.tag === session.currentBidTeam.tag) {
+        if (slotTeam(member.lobbySlot) === session.currentBidTeam.tag) {
             throw new SenderError('Your team holds the current bid. The other team must respond.');
         }
 
         // Captain check: only captain can pass (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
+                (m: any) => slotTeam(m.lobbySlot) === slotTeam(member.lobbySlot) && !slotIsCoach(m.lobbySlot)
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -432,7 +432,7 @@ export const pass_bid = spacetimedb.reducer(
             sequence: nextSeq,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'AuctionSold', value: {} } as any,
             payload: {
                 tag: 'AuctionSold',

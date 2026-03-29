@@ -11,13 +11,13 @@ import {
 } from "spacetimedb";
 
 import {
-  TeamLabel,
+  LobbySlot,
 } from "./types";
 
 export default {
   lobbyId: __t.u32(),
   targetUserId: __t.u32(),
-  get teamSlot() {
-    return TeamLabel;
+  get lobbySlot() {
+    return LobbySlot;
   },
 };

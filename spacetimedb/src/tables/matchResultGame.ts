@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { GameMode, ValidationStatus, TeamLabel } from '../types/enums';
+import { GameMode, ValidationStatus, TeamSide } from '../types/enums';
 
 export const matchResultGameColumns = {
     matchResultId: t.u32(),
@@ -15,7 +15,7 @@ export const matchResultGameColumns = {
     teamBlueBoss2Score: t.u64().optional(),
     teamRedBoss1Score: t.u64().optional(),
     teamRedBoss2Score: t.u64().optional(),
-    winnerTeamSide: TeamLabel,
+    winnerTeamSide: TeamSide,
     validationStatus: ValidationStatus,
     validatedByUserId: t.u32().optional(),
     createdById: t.u32(),

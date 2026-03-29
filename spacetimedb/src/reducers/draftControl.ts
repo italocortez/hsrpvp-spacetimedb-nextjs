@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
-import { ensureLobbyMember, ensureStageIs } from '../helpers/lobbyHelpers';
+import { ensureLobbyMember, ensureStageIs, slotToTeamSide } from '../helpers/lobbyHelpers';
 
 // ─── undo_last_step ───────────────────────────────────────────────────────────
 // Undoes the last draft step.
@@ -61,7 +61,7 @@ export const undo_last_step = spacetimedb.reducer(
             sequence: session.turnIndex,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'Undo', value: {} } as any,
             payload: {
                 tag: 'Undo',
@@ -136,7 +136,7 @@ export const pause_draft = spacetimedb.reducer(
 
         // Permission check
         const isRefereeWithPower = member.isReferee && lobby.refereeCanPause;
-        const isSpectator = member.teamSlot.tag === 'Spectator' && !member.isReferee;
+        const isSpectator = member.lobbySlot.tag === 'Spectator' && !member.isReferee;
 
         if (isSpectator) {
             throw new SenderError('Spectators cannot pause the draft.');
@@ -149,11 +149,11 @@ export const pause_draft = spacetimedb.reducer(
             }
 
             // Enforce 3-per-team limit
-            if (member.teamSlot.tag === 'Blue') {
+            if (member.lobbySlot.tag.startsWith('Blue')) {
                 if (session.pausesUsedBlue >= 3) {
                     throw new SenderError('Blue team has used all 3 pauses.');
                 }
-            } else if (member.teamSlot.tag === 'Red') {
+            } else if (member.lobbySlot.tag.startsWith('Red')) {
                 if (session.pausesUsedRed >= 3) {
                     throw new SenderError('Red team has used all 3 pauses.');
                 }
@@ -180,7 +180,7 @@ export const pause_draft = spacetimedb.reducer(
             sequence: session.turnIndex,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'Pause', value: {} } as any,
             payload: {
                 tag: 'Pause',
@@ -192,11 +192,11 @@ export const pause_draft = spacetimedb.reducer(
 
         // Update session: set isPaused, increment pause counter for non-referees
         const newPausesBlue =
-            !isRefereeWithPower && member.teamSlot.tag === 'Blue'
+            !isRefereeWithPower && member.lobbySlot.tag.startsWith('Blue')
                 ? session.pausesUsedBlue + 1
                 : session.pausesUsedBlue;
         const newPausesRed =
-            !isRefereeWithPower && member.teamSlot.tag === 'Red'
+            !isRefereeWithPower && member.lobbySlot.tag.startsWith('Red')
                 ? session.pausesUsedRed + 1
                 : session.pausesUsedRed;
 

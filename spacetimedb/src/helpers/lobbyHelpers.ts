@@ -108,3 +108,39 @@ export function canKickOrBan(ctx: any, lobby: any, user: any, member: any): bool
     if (member.isReferee && lobby.refereeCanKick) return true;
     return false;
 }
+
+// ─── LobbySlot helpers ──────────────────────────────────────────────────────
+// Utility functions for extracting team/role info from the unified LobbySlot enum.
+
+/** Get team from LobbySlot: BluePlayer→'Blue', RedCoach→'Red', Spectator→null */
+export function slotTeam(slot: any): string | null {
+    const tag: string = slot.tag;
+    if (tag.startsWith('Blue')) return 'Blue';
+    if (tag.startsWith('Red')) return 'Red';
+    return null;
+}
+
+/** Check if slot is a coach variant */
+export function slotIsCoach(slot: any): boolean {
+    return slot.tag === 'BlueCoach' || slot.tag === 'RedCoach';
+}
+
+/** Check if slot is a spectator */
+export function slotIsSpectator(slot: any): boolean {
+    return slot.tag === 'Spectator';
+}
+
+/** Check if two slots are on the same team (both Blue* or both Red*) */
+export function slotSameTeam(a: any, b: any): boolean {
+    const teamA = slotTeam(a);
+    const teamB = slotTeam(b);
+    return teamA !== null && teamA === teamB;
+}
+
+/** Convert LobbySlot to a TeamSide enum value (for match recording) */
+export function slotToTeamSide(slot: any): any {
+    const team = slotTeam(slot);
+    if (team === 'Blue') return { tag: 'Blue', value: {} };
+    if (team === 'Red') return { tag: 'Red', value: {} };
+    return { tag: 'Spectator', value: {} };
+}

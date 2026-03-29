@@ -1,10 +1,12 @@
+import { slotIsSpectator, slotSameTeam } from './lobbyHelpers';
+
 /**
  * Determines whether the caller should see an anonymized view of the target user
  * within the given lobby.
  *
  * Per D-69/D-70/D-71:
  * - D-70: Same team = real identities. Spectators see all players anonymized.
- * - D-71: Spectator referees (teamSlot=Spectator + isReferee=true) see all real identities.
+ * - D-71: Spectator referees (lobbySlot=Spectator + isReferee=true) see all real identities.
  * - Opponents on a team = anonymize based on lobby.isAnonymousPlayers.
  *
  * Returns false (no anonymization) when:
@@ -36,13 +38,13 @@ export function shouldAnonymize(ctx: any, lobbyId: number, targetUserId: number,
     if (!callerMember || !targetMember) return false;
 
     // D-71: Spectator referee sees all real identities
-    if (callerMember.isReferee && callerMember.teamSlot.tag === 'Spectator') return false;
+    if (callerMember.isReferee && slotIsSpectator(callerMember.lobbySlot)) return false;
 
     // D-70: Same team = real identities
-    if (callerMember.teamSlot.tag === targetMember.teamSlot.tag) return false;
+    if (slotSameTeam(callerMember.lobbySlot, targetMember.lobbySlot)) return false;
 
     // D-70: Spectators see all anonymized
-    if (callerMember.teamSlot.tag === 'Spectator') return true;
+    if (slotIsSpectator(callerMember.lobbySlot)) return true;
 
     // Opponent on a team = anonymize based on lobby setting
     return lobby.isAnonymousPlayers;

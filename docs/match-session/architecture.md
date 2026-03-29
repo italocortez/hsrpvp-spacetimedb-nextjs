@@ -15,7 +15,7 @@ Lobby (PK: id)
 ├── MatchSessionStep (PK: id autoInc)            -- Per-action records during draft
 │     lobbyId → Lobby.id
 │     actorUserId → User.id
-│     actorSlot: TeamLabel (Blue/Red/Spectator)
+│     actorSlot: TeamSide (Blue/Red/Spectator)
 │     action: ActionType
 │     payload: StepPayload
 │
@@ -36,9 +36,9 @@ Lobby (PK: id)
 └── MatchParticipantHistory (PK: [userId, matchHistoryId])  -- Who played (junction)
       userId → User.id
       matchHistoryId → MatchSessionHistory.id
-      teamSide: TeamLabel
+      teamSide: TeamSide
       displayName (denormalized)
-      isReferee, participationRole, isCaptain
+      isReferee, isCaptain
 ```
 
 ---
@@ -56,12 +56,12 @@ Active draft state. Created by `start_draft`, deleted by `finalize_match_result`
 | draftSequence | DraftStep[] | Generated script of turns: [{teamTurn, actionRequired}] |
 | timerState | TimerState | Turn timer, reserve bank, pause state |
 | isAuctionPhase | bool | False during ban phase; true once all bans complete (Auction mode) |
-| nextNominatorTeam | TeamLabel | Which team nominates next in Auction phase |
+| nextNominatorTeam | TeamSide | Which team nominates next in Auction phase |
 | blueCharactersWon | u8 | Characters acquired by Blue team so far (Auction) |
 | redCharactersWon | u8 | Characters acquired by Red team so far (Auction) |
 | currentNomination | string? | Character name currently up for bidding (null = no active auction) |
 | currentBidAmount | f32? | Current highest bid amount |
-| currentBidTeam | TeamLabel | Team holding the current bid (Spectator = sentinel for "no bid") |
+| currentBidTeam | TeamSide | Team holding the current bid (Spectator = sentinel for "no bid") |
 | teamBlueCharBudget | f32 | Remaining character budget for Blue team |
 | teamRedCharBudget | f32 | Remaining character budget for Red team |
 | teamBlueLcBudget | f32 | Remaining lightcone budget for Blue team |
@@ -95,7 +95,7 @@ Individual step records during an active draft. Deleted on lobby close or finali
 | sequence | u32 | Step number within this lobby's draft |
 | actorUserId | u32 | Who performed this action (0 = system) |
 | anonymousLabel | string? | Anonymized label when lobby has anonymous mode |
-| actorSlot | TeamLabel | Blue, Red, or Spectator |
+| actorSlot | TeamSide | Blue, Red, or Spectator |
 | action | ActionType | Enum of action types (see below) |
 | payload | StepPayload | Discriminated union with action-specific data |
 | timestamp | timestamp | When the step was recorded |
@@ -168,7 +168,7 @@ Archived per-step data for match replay. One row per step (not a JSON blob).
 | sequence | u32 | Step number (1, 2, 3...) |
 | actorUserId | u32 | Who performed the action |
 | actorDisplayName | string | Denormalized display name for replay |
-| teamSide | TeamLabel | Blue, Red, or Spectator |
+| teamSide | TeamSide | Blue, Red, or Spectator |
 | action | ActionType | What action was taken |
 | targetName | string? | Character or LC name (null for Pause/Undo/ArrangeLineup/ConfirmLineup) |
 | payload | string? | JSON for action-specific data (bid amount, lineup positions, etc.) |
@@ -187,10 +187,10 @@ Junction table linking users to match history records. Enables indexed "show me 
 |--------|------|-------------|
 | userId | u32 | FK to User.id |
 | matchHistoryId | u32 | FK to MatchSessionHistory.id |
-| teamSide | TeamLabel | Blue or Red |
+| teamSide | TeamSide | Blue or Red |
 | displayName | string | Denormalized at archival time (D-53/D-64) |
 | isReferee | bool | Was this person the referee |
-| participationRole | ParticipationRole | Player or Coach (was this person a coach) |
+| isCoach | bool | Was this person a coach |
 | isCaptain | bool | Was this person a captain |
 
 **Indexes:** `by_user` [userId], `by_match_history` [matchHistoryId], `by_user_and_match` [userId, matchHistoryId]
@@ -233,7 +233,7 @@ Fixed sequence generated from `BanMode` at `start_draft`:
 - `Four` (2 bans per team): 2 Blue bans, 2 Red bans, then picks
 - `Six` (3 bans per team): 3 Blue bans, 3 Red bans, then picks
 
-Draft sequence is a `DraftStep[]` array stored on MatchSession. Each step has `{ teamTurn: TeamLabel, actionRequired: ActionType }`. Turns rotate deterministically; no dynamic logic mid-sequence.
+Draft sequence is a `DraftStep[]` array stored on MatchSession. Each step has `{ teamTurn: TeamSide, actionRequired: ActionType }`. Turns rotate deterministically; no dynamic logic mid-sequence.
 
 **EMPTY CHARACTER:** When `autoRandomPick=false` and the timer expires, an EMPTY CHARACTER (`characterName="EMPTY"`, `eidolon=0`) is inserted. EMPTY can be picked but costs 0 and contributes nothing. Frontend should render it as "No Pick".
 
@@ -314,10 +314,10 @@ MatchSessionStep uses `id` autoInc as PK and is updated via `ctx.db.MatchSession
 Every draft action validates:
 1. Lobby is in correct stage
 2. Caller is a lobby member
-3. Caller's participationRole is not Coach (D-39, MOUS-03)
+3. Caller's lobbySlot is not a coach slot (BlueCoach/RedCoach) (D-39, MOUS-03)
 4. `session.draftSequence[session.turnIndex]` exists
 5. `actionRequired.tag` matches the action being taken
-6. `teamTurn.tag` matches caller's `teamSlot.tag`
+6. `teamTurn.tag` matches caller's team side (derived from `lobbySlot`)
 7. Captain check: caller is captain, OR team has no captain assigned
 
 ### Captain-only actions

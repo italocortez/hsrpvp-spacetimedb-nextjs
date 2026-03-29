@@ -120,7 +120,6 @@ import RegisterForTournamentReducer from "./register_for_tournament_reducer";
 import RegisterServerReducer from "./register_server_reducer";
 import RejectTeamRequestReducer from "./reject_team_request_reducer";
 import RemoveAchievementCriteriaReducer from "./remove_achievement_criteria_reducer";
-import RemoveCoachReducer from "./remove_coach_reducer";
 import RemoveInviteReducer from "./remove_invite_reducer";
 import RemoveTournamentAssistantReducer from "./remove_tournament_assistant_reducer";
 import RequestJoinTeamReducer from "./request_join_team_reducer";
@@ -137,7 +136,6 @@ import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
 import SetActiveSeasonReducer from "./set_active_season_reducer";
 import SetCaptainReducer from "./set_captain_reducer";
-import SetCoachReducer from "./set_coach_reducer";
 import SetDisplayedAchievementReducer from "./set_displayed_achievement_reducer";
 import SetTeamSlotReducer from "./set_team_slot_reducer";
 import StartDraftReducer from "./start_draft_reducer";
@@ -1097,7 +1095,6 @@ const reducersSchema = __reducers(
   __reducerSchema("register_server", RegisterServerReducer),
   __reducerSchema("reject_team_request", RejectTeamRequestReducer),
   __reducerSchema("remove_achievement_criteria", RemoveAchievementCriteriaReducer),
-  __reducerSchema("remove_coach", RemoveCoachReducer),
   __reducerSchema("remove_invite", RemoveInviteReducer),
   __reducerSchema("remove_tournament_assistant", RemoveTournamentAssistantReducer),
   __reducerSchema("request_join_team", RequestJoinTeamReducer),
@@ -1114,7 +1111,6 @@ const reducersSchema = __reducers(
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
   __reducerSchema("set_active_season", SetActiveSeasonReducer),
   __reducerSchema("set_captain", SetCaptainReducer),
-  __reducerSchema("set_coach", SetCoachReducer),
   __reducerSchema("set_displayed_achievement", SetDisplayedAchievementReducer),
   __reducerSchema("set_team_slot", SetTeamSlotReducer),
   __reducerSchema("start_draft", StartDraftReducer),

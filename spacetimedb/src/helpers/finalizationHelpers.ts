@@ -12,6 +12,7 @@ import { incrementGlobalCharacterStat } from './globalCharacterStatsIncrement';
 import { rebuildLeaderboard } from './leaderboardRebuild';
 import { advanceBracketMatch } from './bracketHelpers';
 import { checkAndAwardAchievements } from './achievementChecker';
+import { slotIsCoach, slotIsSpectator, slotTeam } from './lobbyHelpers';
 
 // ─── Internal: getOrCreateRating ─────────────────────────────────────────────
 // Returns existing MmrRating row for user+mode+season, or creates a new one.
@@ -339,7 +340,7 @@ export function runFinalization(
             teamSide: p.teamSide,
             displayName: pUser ? pUser.displayName : `User#${p.userId}`,
             isReferee: memberRow ? memberRow.isReferee : false,
-            isCoach: memberRow ? memberRow.participationRole.tag === 'Coach' : false,
+            isCoach: memberRow ? slotIsCoach(memberRow.lobbySlot) : false,
             isCaptain: p.isCaptain,
             ...auditInsert(ctx, actingUserId),
         } as any);
@@ -389,7 +390,7 @@ export function runFinalization(
 
     // 14. Increment matchesSpectated for spectators
     const spectators = [...ctx.db.LobbyMember.lobby_id.filter(matchResult.lobbyId)]
-        .filter((m: any) => m.teamSlot.tag === 'Spectator' && m.participationRole.tag !== 'Coach' && !m.isReferee);
+        .filter((m: any) => slotIsSpectator(m.lobbySlot) && !slotIsCoach(m.lobbySlot) && !m.isReferee);
     for (const spec of spectators) {
         incrementSpectatedCount(ctx, spec.userId, gameMode, draftMode, seasonId, matchType, teamSize, actingUserId);
     }

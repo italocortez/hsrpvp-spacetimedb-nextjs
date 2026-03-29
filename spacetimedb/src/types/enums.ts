@@ -60,12 +60,20 @@ export const LobbyStage = t.enum('LobbyStage', {
     Finished: t.unit(),
 });
 
-export const ParticipationRole = t.enum('ParticipationRole', {
-    Player: t.unit(),
-    Coach: t.unit(),
+// LobbySlot — unified team + role for lobby members.
+// Replaces the former TeamLabel + ParticipationRole two-column design.
+// Spectators are always spectators; coaches and players must be Blue or Red.
+export const LobbySlot = t.enum('LobbySlot', {
+    BluePlayer: t.unit(),
+    BlueCoach: t.unit(),
+    RedPlayer: t.unit(),
+    RedCoach: t.unit(),
+    Spectator: t.unit(),
 });
 
-export const TeamLabel = t.enum('TeamLabel', {
+// TeamSide — pure team identifier for match tables, step actors, results.
+// NOT used for lobby member slots (use LobbySlot for that).
+export const TeamSide = t.enum('TeamSide', {
     Spectator: t.unit(),
     Blue: t.unit(),
     Red: t.unit(),

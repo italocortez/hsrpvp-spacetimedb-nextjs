@@ -11,7 +11,7 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
-  TeamLabel,
+  TeamSide,
   ValidationStatus,
 } from "./types";
 
@@ -33,7 +33,7 @@ export default __t.row({
   teamRedBoss1Score: __t.option(__t.u64()).name("team_red_boss_1_score"),
   teamRedBoss2Score: __t.option(__t.u64()).name("team_red_boss_2_score"),
   get winnerTeamSide() {
-    return TeamLabel.name("winner_team_side");
+    return TeamSide.name("winner_team_side");
   },
   get validationStatus() {
     return ValidationStatus.name("validation_status");

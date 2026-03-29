@@ -136,7 +136,7 @@ Incremented during finalization alongside individual stats. Enables pick rate, b
 ## Spectated Count (Phase 6 — D-30/D-31/D-32)
 
 matchesSpectated on PlayerStat is incremented at finalization for spectators present in the lobby:
-- Identifies spectators via `LobbyMember.teamSlot.tag === 'Spectator'` where `participationRole.tag !== 'Coach' && !isReferee`
+- Identifies spectators via `LobbyMember.lobbySlot.tag === 'Spectator'` where `!isReferee`
 - Follows the full PK pattern — breaks down per gameMode/draftMode/seasonId/matchType/teamSize
 - Spectator identities are NOT preserved in MatchParticipantHistory (D-31)
 

@@ -1,10 +1,10 @@
 import { table, t } from 'spacetimedb/server';
-import { TeamLabel } from '../types/enums';
+import { TeamSide } from '../types/enums';
 
 export const matchParticipantHistoryColumns = {
     userId: t.u32(),
     matchHistoryId: t.u32(),
-    teamSide: TeamLabel,
+    teamSide: TeamSide,
     displayName: t.string(),
     isReferee: t.bool(),
     isCoach: t.bool(),

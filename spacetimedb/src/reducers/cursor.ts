@@ -21,8 +21,8 @@ export const broadcast_cursor = spacetimedb.reducer({
     }
 
     // D-34: Spectators do NOT broadcast cursor — silently return without error
-    // Coaches have teamSlot of Blue/Red (not Spectator), so they still broadcast
-    if (membership.teamSlot.tag === 'Spectator') return;
+    // Coaches have lobbySlot of Blue/Red (not Spectator), so they still broadcast
+    if (membership.lobbySlot.tag === 'Spectator') return;
 
     // Determine if anonymous mode applies to this member (D-01, D-07)
     // After the D-34 guard above, only Blue/Red team members reach this point.

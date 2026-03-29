@@ -10,7 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  TeamLabel,
+  TeamSide,
 } from "./types";
 
 
@@ -18,7 +18,7 @@ export default __t.row({
   userId: __t.u32().name("user_id"),
   matchHistoryId: __t.u32().name("match_history_id"),
   get teamSide() {
-    return TeamLabel.name("team_side");
+    return TeamSide.name("team_side");
   },
   displayName: __t.string().name("display_name"),
   isReferee: __t.bool().name("is_referee"),

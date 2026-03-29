@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
-import { ensureLobbyMember, ensureHostOrAbove, ensureStageIs } from '../helpers/lobbyHelpers';
+import { ensureLobbyMember, ensureHostOrAbove, ensureStageIs, slotTeam, slotIsCoach, slotToTeamSide } from '../helpers/lobbyHelpers';
 import { validateCharacterOwnership } from '../helpers/ownershipValidation';
 import { buildClassicSequence, buildAuctionBanSequence } from '../helpers/draftSequences';
 
@@ -35,9 +35,9 @@ export const start_draft = spacetimedb.reducer(
         // Gather all Blue+Red members
         const allMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
         const teamMembers = allMembers.filter(
-            (m: any) => m.teamSlot.tag === 'Blue' || m.teamSlot.tag === 'Red'
+            (m: any) => slotTeam(m.lobbySlot) !== null
         );
-        const playersOnly = teamMembers.filter((m: any) => m.participationRole.tag !== 'Coach');
+        const playersOnly = teamMembers.filter((m: any) => !slotIsCoach(m.lobbySlot));
 
         // D-29: All non-coach Blue+Red players must be confirmed
         const unconfirmed = playersOnly.filter((m: any) => !m.isConfirmed);
@@ -46,8 +46,8 @@ export const start_draft = spacetimedb.reducer(
         }
 
         // Validate team composition: at least 1 non-coach player per team
-        const bluePlayers = playersOnly.filter((m: any) => m.teamSlot.tag === 'Blue');
-        const redPlayers = playersOnly.filter((m: any) => m.teamSlot.tag === 'Red');
+        const bluePlayers = playersOnly.filter((m: any) => slotTeam(m.lobbySlot) === 'Blue');
+        const redPlayers = playersOnly.filter((m: any) => slotTeam(m.lobbySlot) === 'Red');
         if (bluePlayers.length === 0) {
             throw new SenderError('Blue team must have at least one non-coach player.');
         }
@@ -142,7 +142,7 @@ export const start_draft = spacetimedb.reducer(
         const refereeFullControl = (() => {
             const referee = allMembers.find((m: any) => m.isReferee);
             if (!referee) return false;
-            return referee.teamSlot.tag === 'Spectator';
+            return slotTeam(referee.lobbySlot) === null;
         })();
 
         // Find referee userId (optional)
@@ -173,13 +173,13 @@ export const start_draft = spacetimedb.reducer(
         // Re-read members to get updated isCaptain values
         const updatedMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
         const participantMembers = updatedMembers.filter(
-            (m: any) => m.participationRole.tag !== 'Coach' && (m.teamSlot.tag === 'Blue' || m.teamSlot.tag === 'Red')
+            (m: any) => !slotIsCoach(m.lobbySlot) && slotTeam(m.lobbySlot) !== null
         );
         for (const member of participantMembers) {
             ctx.db.MatchResultParticipant.insert({
                 matchResultId: matchResultRow.id,
                 userId: member.userId,
-                teamSide: member.teamSlot,
+                teamSide: slotToTeamSide(member.lobbySlot),
                 isCaptain: member.isCaptain,
                 ...auditInsert(ctx, user.id),
             } as any);
@@ -240,7 +240,7 @@ export const pick_character = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.participationRole.tag === 'Coach') {
+        if (slotIsCoach(member.lobbySlot)) {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -252,14 +252,14 @@ export const pick_character = spacetimedb.reducer(
         if (currentStep.actionRequired.tag !== 'Pick') {
             throw new SenderError('Current turn is not a Pick.');
         }
-        if (currentStep.teamTurn.tag !== member.teamSlot.tag) {
+        if (currentStep.teamTurn.tag !== slotTeam(member.lobbySlot)) {
             throw new SenderError('It is not your team\'s turn to pick.');
         }
 
         // Captain check: only captain may pick (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
+                (m: any) => slotTeam(m.lobbySlot) === slotTeam(member.lobbySlot) && !slotIsCoach(m.lobbySlot)
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -320,7 +320,7 @@ export const pick_character = spacetimedb.reducer(
             sequence: session.turnIndex,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'Pick', value: {} } as any,
             payload: {
                 tag: 'Pick',
@@ -428,7 +428,7 @@ export const ban_character = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.participationRole.tag === 'Coach') {
+        if (slotIsCoach(member.lobbySlot)) {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -440,14 +440,14 @@ export const ban_character = spacetimedb.reducer(
         if (currentStep.actionRequired.tag !== 'Ban') {
             throw new SenderError('Current turn is not a Ban.');
         }
-        if (currentStep.teamTurn.tag !== member.teamSlot.tag) {
+        if (currentStep.teamTurn.tag !== slotTeam(member.lobbySlot)) {
             throw new SenderError('It is not your team\'s turn to ban.');
         }
 
         // Captain check: only captain may ban (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
+                (m: any) => slotTeam(m.lobbySlot) === slotTeam(member.lobbySlot) && !slotIsCoach(m.lobbySlot)
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -483,7 +483,7 @@ export const ban_character = spacetimedb.reducer(
             sequence: session.turnIndex,
             actorUserId: user.id,
             anonymousLabel: undefined,
-            actorSlot: member.teamSlot,
+            actorSlot: slotToTeamSide(member.lobbySlot),
             action: { tag: 'Ban', value: {} } as any,
             payload: {
                 tag: 'Ban',
@@ -597,7 +597,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
                 // Determine who is acting (team with the current turn)
                 const actingTeam = currentStep.teamTurn.tag;
                 const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                    (m: any) => m.teamSlot.tag === actingTeam && m.participationRole.tag !== 'Coach'
+                    (m: any) => slotTeam(m.lobbySlot) === actingTeam && !slotIsCoach(m.lobbySlot)
                 );
 
                 // Gather available pool: owned if requireOwnership, not banned/picked

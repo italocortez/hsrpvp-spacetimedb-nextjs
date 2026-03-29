@@ -1,14 +1,18 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
-import { DraftMode, BanMode, GameMode, MatchType, RosterVisibility, DisconnectPolicy, TeamLabel } from '../types/enums';
+import { DraftMode, BanMode, GameMode, MatchType, RosterVisibility, DisconnectPolicy, LobbySlot } from '../types/enums';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { auditUpdate } from '../helpers/auditColumns';
-import { ensureLobbyMember, ensureHostOrAbove, ensureStageIs } from '../helpers/lobbyHelpers';
+import { ensureLobbyMember, ensureHostOrAbove, ensureStageIs, slotTeam, slotIsCoach, slotIsSpectator, slotToTeamSide } from '../helpers/lobbyHelpers';
 
 // ─── update_lobby_settings ────────────────────────────────────────────────────
 // Updates all mutable lobby configuration fields.
 // Per D-28: settings mutable only during Waiting stage.
-// Per D-65: tournament-controlled lobbies cannot change settings.
+// Per D-65: tournament-controlled lobbies lock tournament-integrity fields
+//   (teamSize, gameMode, matchType, anonymity, rosterVisibility, costSetId,
+//    disconnectPolicy, disconnectForfeitSeconds, requireOwnership, allowMirrorPicks)
+//   but allow referee/match QoL fields to change (draftMode, banMode, timers,
+//   budgets, handicaps, referee powers, aliases, pause settings, visibility).
 // Per D-42: Ranked forces allowMirrorPicks=false.
 // Per D-23: guests forced to ClosedNoRating and Casual.
 // Resets all members' isConfirmed to false on settings change.
@@ -65,35 +69,48 @@ export const update_lobby_settings = spacetimedb.reducer(
         // D-28: settings locked once Drafting begins
         ensureStageIs(lobby, 'Waiting');
 
-        // D-65: tournament-controlled lobbies cannot change settings
-        if (lobby.isTournamentControlled) {
-            throw new SenderError('Cannot change settings on a tournament-controlled lobby.');
-        }
+        // D-65: tournament-controlled lobbies lock integrity fields,
+        // but allow referee/match QoL fields to change
+        const isTournamentLocked = lobby.isTournamentControlled;
 
         // D-23: guests forced to Casual + ClosedNoRating
-        let matchType = args.matchType;
-        let rosterVisibility = args.rosterVisibility;
-        if (user.isGuest) {
+        let matchType = isTournamentLocked ? lobby.matchType : args.matchType;
+        let rosterVisibility = isTournamentLocked ? lobby.rosterVisibility : args.rosterVisibility;
+        if (!isTournamentLocked && user.isGuest) {
             matchType = { tag: 'Casual', value: {} } as any;
             rosterVisibility = { tag: 'ClosedNoRating', value: {} } as any;
         }
 
         // D-42: Ranked forces no mirror picks
-        const allowMirrorPicks = matchType.tag === 'Ranked' ? false : args.allowMirrorPicks;
+        const allowMirrorPicks = isTournamentLocked
+            ? lobby.allowMirrorPicks
+            : (matchType.tag === 'Ranked' ? false : args.allowMirrorPicks);
 
-        // Resolve disconnectForfeitSeconds — 0 sentinel means "not set"
-        const disconnectForfeitSeconds = args.disconnectForfeitSeconds > 0
-            ? args.disconnectForfeitSeconds
-            : undefined;
+        // Resolve disconnectForfeitSeconds — locked fields use lobby value
+        const disconnectForfeitSeconds = isTournamentLocked
+            ? lobby.disconnectForfeitSeconds
+            : (args.disconnectForfeitSeconds > 0 ? args.disconnectForfeitSeconds : undefined);
 
         // Update Lobby row
+        // Tournament-locked fields use existing lobby values (from tournament)
+        // Free fields accept caller input
         ctx.db.Lobby.id.update({
             ...lobby,
-            teamSize: args.teamSize,
+            // ── Locked fields (tournament integrity) ──
+            teamSize: isTournamentLocked ? lobby.teamSize : args.teamSize,
+            gameMode: isTournamentLocked ? lobby.gameMode : args.gameMode,
+            matchType,
+            isAnonymousPlayers: isTournamentLocked ? lobby.isAnonymousPlayers : args.isAnonymousPlayers,
+            isAnonymousSpectators: isTournamentLocked ? lobby.isAnonymousSpectators : args.isAnonymousSpectators,
+            rosterVisibility,
+            requireOwnership: isTournamentLocked ? lobby.requireOwnership : args.requireOwnership,
+            costSetId: isTournamentLocked ? lobby.costSetId : args.costSetId,
+            disconnectPolicy: isTournamentLocked ? lobby.disconnectPolicy : args.disconnectPolicy,
+            disconnectForfeitSeconds,
+            allowMirrorPicks,
+            // ── Free fields (referee/match QoL) ──
             draftMode: args.draftMode,
             banMode: args.banMode,
-            gameMode: args.gameMode,
-            matchType,
             standardTurnSeconds: args.standardTurnSeconds,
             reserveBankSeconds: args.reserveBankSeconds,
             characterBudget: args.characterBudget,
@@ -104,14 +121,6 @@ export const update_lobby_settings = spacetimedb.reducer(
             underThresholdAdvantage: args.underThresholdAdvantage,
             aboveThresholdPenalty: args.aboveThresholdPenalty,
             deathPenalty: args.deathPenalty,
-            isAnonymousPlayers: args.isAnonymousPlayers,
-            isAnonymousSpectators: args.isAnonymousSpectators,
-            rosterVisibility,
-            requireOwnership: args.requireOwnership,
-            costSetId: args.costSetId,
-            disconnectPolicy: args.disconnectPolicy,
-            disconnectForfeitSeconds,
-            allowMirrorPicks,
             autoRandomPick: args.autoRandomPick,
             refereeCanUndo: args.refereeCanUndo,
             refereeCanPause: args.refereeCanPause,
@@ -175,7 +184,7 @@ export const set_team_slot = spacetimedb.reducer(
     {
         lobbyId: t.u32(),
         targetUserId: t.u32(),
-        teamSlot: TeamLabel,
+        lobbySlot: LobbySlot,
     },
     (ctx, args) => {
         const user = getAuthenticatedUser(ctx);
@@ -201,37 +210,51 @@ export const set_team_slot = spacetimedb.reducer(
         // Find target member
         const targetMember = ensureLobbyMember(ctx, lobbyId, targetUserId);
 
-        // Cap enforcement: check target slot capacity
-        const newSlotTag = args.teamSlot.tag;
-        if (newSlotTag !== targetMember.teamSlot.tag) {
-            const allMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
-            const targetSlotMembers = allMembers.filter((m: any) => m.teamSlot.tag === newSlotTag && m.userId !== targetUserId);
-            const isCoach = targetMember.participationRole.tag === 'Coach';
+        const newSlotTag = args.lobbySlot.tag;
+        const newTeam = slotTeam(args.lobbySlot);
+        const currentTeam = slotTeam(targetMember.lobbySlot);
 
-            if (newSlotTag === 'Blue' || newSlotTag === 'Red') {
+        // Coach assignment requires host/referee (not self-assignable)
+        if (slotIsCoach(args.lobbySlot) && !slotIsCoach(targetMember.lobbySlot)) {
+            const callerMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
+            const isHost = lobby.hostUserId === user.id;
+            const isRef = callerMember && callerMember.isReferee === true;
+            if (!isHost && !isRef) {
+                throw new SenderError('Only the lobby host or referee can assign the coach role.');
+            }
+        }
+
+        // Cap enforcement: check target slot capacity
+        if (newTeam !== currentTeam || slotIsCoach(args.lobbySlot) !== slotIsCoach(targetMember.lobbySlot)) {
+            const allMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
+            const isCoach = slotIsCoach(args.lobbySlot);
+
+            if (newTeam === 'Blue' || newTeam === 'Red') {
+                const sameTeamMembers = allMembers.filter((m: any) => slotTeam(m.lobbySlot) === newTeam && m.userId !== targetUserId);
                 if (isCoach) {
-                    const coachCount = targetSlotMembers.filter((m: any) => m.participationRole.tag === 'Coach').length;
+                    const coachCount = sameTeamMembers.filter((m: any) => slotIsCoach(m.lobbySlot)).length;
                     if (coachCount >= 1) {
-                        throw new SenderError(`${newSlotTag} team already has a coach.`);
+                        throw new SenderError(`${newTeam} team already has a coach.`);
                     }
                 } else {
-                    const playerCount = targetSlotMembers.filter((m: any) => m.participationRole.tag !== 'Coach').length;
+                    const playerCount = sameTeamMembers.filter((m: any) => !slotIsCoach(m.lobbySlot)).length;
                     if (playerCount >= lobby.teamSize) {
-                        throw new SenderError(`${newSlotTag} team is full (max ${lobby.teamSize} players).`);
+                        throw new SenderError(`${newTeam} team is full (max ${lobby.teamSize} players).`);
                     }
                 }
             } else if (newSlotTag === 'Spectator') {
-                if (targetSlotMembers.length >= 12) {
+                const spectatorCount = allMembers.filter((m: any) => slotIsSpectator(m.lobbySlot) && m.userId !== targetUserId).length;
+                if (spectatorCount >= 12) {
                     throw new SenderError('Spectator slots are full (max 12).');
                 }
             }
         }
 
-        // Delete + reinsert with new teamSlot and isConfirmed reset
+        // Delete + reinsert with new lobbySlot and isConfirmed reset
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
         ctx.db.LobbyMember.insert({
             ...targetMember,
-            teamSlot: args.teamSlot,
+            lobbySlot: args.lobbySlot,
             isConfirmed: false,
             ...auditUpdate(ctx, targetMember, user.id),
         } as any);
@@ -243,7 +266,7 @@ export const set_team_slot = spacetimedb.reducer(
             ...auditUpdate(ctx, lobby, user.id),
         } as any);
 
-        console.log(`[LOBBY] User #${targetUserId} moved to ${args.teamSlot.tag} in lobby #${lobbyId} by user #${user.id}`);
+        console.log(`[LOBBY] User #${targetUserId} moved to ${args.lobbySlot.tag} in lobby #${lobbyId} by user #${user.id}`);
     }
 );
 
@@ -354,19 +377,19 @@ export const set_captain = spacetimedb.reducer(
         const targetMember = ensureLobbyMember(ctx, lobbyId, targetUserId);
 
         // Target must be on a team (Blue or Red), not Spectator, and not a coach
-        if (targetMember.teamSlot.tag === 'Spectator') {
+        if (slotIsSpectator(targetMember.lobbySlot)) {
             throw new SenderError('Captain must be a team member (Blue or Red), not a spectator.');
         }
-        if (targetMember.participationRole.tag === 'Coach') {
+        if (slotIsCoach(targetMember.lobbySlot)) {
             throw new SenderError('A coach cannot be assigned as captain.');
         }
 
-        const targetTeam = targetMember.teamSlot.tag;
+        const targetTeam = slotTeam(targetMember.lobbySlot);
 
         // Demote existing captain on the same team
         const allMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
         for (const m of allMembers) {
-            if (m.isCaptain && m.teamSlot.tag === targetTeam && m.userId !== targetUserId) {
+            if (m.isCaptain && slotTeam(m.lobbySlot) === targetTeam && m.userId !== targetUserId) {
                 ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, m.userId]);
                 ctx.db.LobbyMember.insert({
                     ...m,
