@@ -48,7 +48,6 @@ export const DraftMode = t.enum('DraftMode', {
 
 export const BanMode = t.enum('BanMode', {
     None: t.unit(),
-    Two: t.unit(),
     Four: t.unit(),
     Six: t.unit(),
 });
@@ -56,6 +55,8 @@ export const BanMode = t.enum('BanMode', {
 export const LobbyStage = t.enum('LobbyStage', {
     Waiting: t.unit(),
     Drafting: t.unit(),
+    Equipping: t.unit(),
+    Scoring: t.unit(),
     Finished: t.unit(),
 });
 
@@ -90,6 +91,9 @@ export const ActionType = t.enum('ActionType', {
     AuctionSold: t.unit(),
     Pause: t.unit(),
     Undo: t.unit(),
+    EquipLightcone: t.unit(),
+    ArrangeLineup: t.unit(),
+    ConfirmLineup: t.unit(),
 });
 
 export const TournamentStage = t.enum('TournamentStage', {

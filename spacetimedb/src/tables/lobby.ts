@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { DraftMode, BanMode, LobbyStage, DisconnectPolicy, GameMode, RosterVisibility } from '../types/enums';
+import { DraftMode, BanMode, LobbyStage, DisconnectPolicy, GameMode, RosterVisibility, MatchType } from '../types/enums';
 
 export const lobbyColumns = {
     id: t.u32().primaryKey().autoInc(),
@@ -14,12 +14,35 @@ export const lobbyColumns = {
     banMode: BanMode,
     standardTurnSeconds: t.u32(),
     reserveBankSeconds: t.u32(),
-    auctionBudget: t.f32().optional(),
     rosterDiffAdvantage: t.f32(),
     rosterThreshold: t.f32(),
     underThresholdAdvantage: t.f32(),
     aboveThresholdPenalty: t.f32(),
     deathPenalty: t.f32(),
+
+    // Match type:
+    matchType: MatchType,
+
+    // Player count (denormalized for browser view per D-07):
+    currentPlayerCount: t.u8(),
+
+    // Budget (dual budgets per D-49, replaces auctionBudget):
+    characterBudget: t.f32(),
+    lightconeBudget: t.f32(),
+    minimumBidRaise: t.f32(),
+
+    // Draft options:
+    allowMirrorPicks: t.bool(),
+    autoRandomPick: t.bool(),
+
+    // Referee power configuration per D-32:
+    refereeCanUndo: t.bool(),
+    refereeCanPause: t.bool(),
+    refereeCanSetCaptain: t.bool(),
+    refereeCanKick: t.bool(),
+
+    // Player pause per D-33:
+    allowPlayerPause: t.bool(),
 
     // Tournament linkage:
     tournamentId: t.u32().optional(),

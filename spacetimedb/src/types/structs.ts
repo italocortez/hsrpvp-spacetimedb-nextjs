@@ -15,7 +15,8 @@ export const LobbyConfigSnapshot = t.object('LobbyConfigSnapshot', {
     banMode: BanMode,
     standardTurnSeconds: t.u32(),
     reserveBankSeconds: t.u32(),
-    auctionBudget: t.f32().optional(),
+    characterBudget: t.f32(),
+    lightconeBudget: t.f32(),
 
     // Balance Math
     rosterDiffAdvantage: t.f32(),
@@ -102,6 +103,21 @@ export const PausePayload = t.object('PausePayload', {
     isAutoPause: t.bool(),           // True if system paused (disconnect), False if manual
 });
 
+export const EquipLightconePayload = t.object('EquipLightconePayload', {
+    characterName: t.string(),     // Which character slot to equip on
+    lightconeName: t.string(),     // Which LC to equip
+    superimposition: t.u8(),       // S level
+    costPaid: t.f32(),             // LC cost deducted from LC budget
+});
+
+export const ArrangeLineupPayload = t.object('ArrangeLineupPayload', {
+    positions: t.string(),         // JSON string of position array (order of characters)
+});
+
+export const ConfirmLineupPayload = t.object('ConfirmLineupPayload', {
+    confirmed: t.bool(),           // true = confirmed
+});
+
 // The "Polymorphic" Enum containing the specific payloads
 export const StepPayload = t.enum('StepPayload', {
     Pick: PickPayload,
@@ -111,6 +127,9 @@ export const StepPayload = t.enum('StepPayload', {
     Nominate: NominatePayload,
     Undo: UndoPayload,
     Pause: PausePayload,
+    EquipLightcone: EquipLightconePayload,
+    ArrangeLineup: ArrangeLineupPayload,
+    ConfirmLineup: ConfirmLineupPayload,
 });
 
 // -------------------- NEW STRUCTS --------------------

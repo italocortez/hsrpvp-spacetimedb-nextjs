@@ -10,6 +10,8 @@ export const lobbyMemberColumns = {
     isReferee: t.bool(),    // Admin powers within this lobby
     isCoach: t.bool(),
     teamSlot: TeamLabel,    // Blue, Red, or Spectator
+    isConfirmed: t.bool(),   // Ready-up per D-29
+    isCaptain: t.bool(),     // Captain designation per D-30
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

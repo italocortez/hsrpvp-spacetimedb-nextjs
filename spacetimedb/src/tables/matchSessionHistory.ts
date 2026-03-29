@@ -17,6 +17,14 @@ export const matchSessionHistoryColumns = {
 
     outcome: MatchOutcome,
 
+    // Budget analysis (per D-88):
+    teamBlueSpent: t.f32().optional(),
+    teamRedSpent: t.f32().optional(),
+    handicapApplied: t.f32().optional(),
+
+    // Tournament scouting prevention (per D-84):
+    isPubliclyVisible: t.bool(),
+
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

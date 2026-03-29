@@ -8,7 +8,7 @@ export const matchSessionStepHistoryColumns = {
     actorDisplayName: t.string(), // Denormalized for replay (per D-53/D-64)
     teamSide: TeamLabel,         // Blue/Red/Spectator
     action: ActionType,          // Pick, Ban, Bid, etc.
-    characterName: t.string().optional(), // Character involved (null for Pause/Undo)
+    targetName: t.string().optional(), // Character or LC name (null for Pause/Undo/ArrangeLineup/ConfirmLineup)
     payload: t.string().optional(),       // JSON for action-specific data (bid amount, etc.)
     createdById: t.u32(),
     createdDate: t.timestamp(),
