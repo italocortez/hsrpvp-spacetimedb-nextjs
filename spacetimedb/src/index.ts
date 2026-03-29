@@ -35,6 +35,8 @@ export { update_lobby_settings, set_team_slot, confirm_ready, unconfirm_ready, s
 export { create_lobby_preset, update_lobby_preset, delete_lobby_preset } from './reducers/lobbyPresets';
 export { create_tournament_lobby, approve_stand_in } from './reducers/tournamentLobby';
 export { run_lobby_gc } from './reducers/lobbyGc';
+export { start_draft, pick_character, ban_character, timer_expiry_classic } from './reducers/draftClassic';
+export { undo_last_step, pause_draft, resume_draft } from './reducers/draftControl';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);
