@@ -154,3 +154,17 @@ None - no external service configuration required. Bootstrap and seed data resto
 ---
 *Phase: 08-calendar-and-scheduling*
 *Completed: 2026-03-28*
+
+## Self-Check: PASSED
+
+- calendarCascade.ts: FOUND
+- calendarCleanup.ts: FOUND
+- calendarAvailability.ts (3 reducers): FOUND
+- calendarSaved.ts (3 reducers): FOUND
+- calendarEvents.ts (5 reducers): FOUND
+- calendarInviteResponse.ts (1 reducer): FOUND
+- 08-01-SUMMARY.md: FOUND
+- create_availability_slot_reducer.ts (binding): FOUND
+- respond_to_invite_reducer.ts (binding): FOUND
+- InviteStatus in types.ts (binding): FOUND (4 occurrences)
+- Plan metadata commit: 378202c

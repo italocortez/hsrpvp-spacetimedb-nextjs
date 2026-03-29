@@ -36,6 +36,7 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 - ✓ Anonymous play enforcement (label computation, cursor anonymization, roster/stat visibility, tournament account locking) — Validated in Phase 6
 - ✓ Player statistics (win/loss/spectated tracking, character stats, global character stats, match replay archival, auto-finalize casual) — Validated in Phase 6
 - ✓ Achievements and titles (flexible criteria definitions, auto-award during finalization, manual award, profile title display) — Validated in Phase 7
+- ✓ Calendar and scheduling (recurring availability slots, saved calendars, calendar events with invites, tournament match scheduling, cross-feature cascade deletions) — Validated in Phase 8
 
 ### Active
 
@@ -156,4 +157,4 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 | Backend-only milestone | Solid table design first, UI in separate milestone | — Pending |
 
 ---
-*Last updated: 2026-03-22 after Phase 6 completion (Anonymous Play and Player Stats)*
+*Last updated: 2026-03-28 after Phase 8 completion (Calendar and Scheduling)*
