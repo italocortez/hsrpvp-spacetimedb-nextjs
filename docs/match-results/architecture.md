@@ -378,6 +378,41 @@ Extracted to `helpers/finalizationHelpers.ts` as `runFinalization()`. Called by 
 
 ---
 
+## Budget-Based Handicap for Auction Mode (D-51/D-52/D-88)
+
+In Auction mode, the handicap calculation uses **budget spent by each team** instead of cost table sums.
+
+### Classic Mode Handicap (existing)
+
+1. Sum character costs for each team using `HsrCharacterCost` (per eidolon level, per game mode)
+2. Difference in total cost between teams → handicap adjustment
+3. Formula depends on game mode:
+   - Memory of Chaos / Anomaly Arbitration: `-0.1875 cycles per cost point difference`
+   - Apocalyptic Shadow: `+30 score per cost point difference`
+
+### Auction Mode Handicap (D-51/D-52)
+
+The cost input is different — Classic uses cost table sums, Auction uses budget consumption:
+
+1. **Budget spent** = `characterBudget` (starting budget per team) − remaining character budget at end of auction
+2. `teamBlueSpent` = initial `characterBudget` − `MatchSession.teamBlueCharBudget` at auction end
+3. `teamRedSpent` = initial `characterBudget` − `MatchSession.teamRedCharBudget` at auction end
+4. These values are stored on `MatchSessionHistory.teamBlueSpent` / `teamRedSpent` during finalization
+5. The team that spent MORE got higher-cost characters, so the team with MORE **unspent** budget gets the handicap bonus (they underspent, suggesting weaker draft)
+6. `handicapApplied` = the delta used in the formula, stored on `MatchSessionHistory`
+
+**Formula unchanged:** Same MoC/AA and AS formulas as Classic. Only the input source differs.
+
+### Columns on MatchSessionHistory
+
+| Column | Type | Description |
+|--------|------|-------------|
+| teamBlueSpent | f32? | Budget consumed by Blue in Auction mode; null for Classic |
+| teamRedSpent | f32? | Budget consumed by Red in Auction mode; null for Classic |
+| handicapApplied | f32? | Handicap delta applied during finalization; null if no handicap |
+
+---
+
 ## Phase 3 Scope Notes
 
 - Table name is `match_result_record` (not `match_result`) to avoid PascalCase collision with the `MatchResult` enum
