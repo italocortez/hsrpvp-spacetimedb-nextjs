@@ -21,6 +21,9 @@ export default __t.row({
     return TeamLabel.name("team_side");
   },
   displayName: __t.string().name("display_name"),
+  isReferee: __t.bool().name("is_referee"),
+  isCoach: __t.bool().name("is_coach"),
+  isCaptain: __t.bool().name("is_captain"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

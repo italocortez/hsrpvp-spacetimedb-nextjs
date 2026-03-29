@@ -35,6 +35,10 @@ export default __t.row({
   get outcome() {
     return MatchOutcome;
   },
+  teamBlueSpent: __t.option(__t.f32()).name("team_blue_spent"),
+  teamRedSpent: __t.option(__t.f32()).name("team_red_spent"),
+  handicapApplied: __t.option(__t.f32()).name("handicap_applied"),
+  isPubliclyVisible: __t.bool().name("is_publicly_visible"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

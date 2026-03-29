@@ -158,8 +158,10 @@ import HsrLightconeCostRow from "./hsr_lightcone_cost_table";
 import HsrSynergyCostRow from "./hsr_synergy_cost_table";
 import LeaderboardRow from "./leaderboard_table";
 import LobbyRow from "./lobby_table";
+import LobbyBanRow from "./lobby_ban_table";
 import LobbyCursorEventRow from "./lobby_cursor_event_table";
 import LobbyMemberRow from "./lobby_member_table";
+import LobbyPresetRow from "./lobby_preset_table";
 import MatchParticipantHistoryRow from "./match_participant_history_table";
 import MatchResultGameRow from "./match_result_game_table";
 import MatchResultGameHistoryRow from "./match_result_game_history_table";
@@ -177,6 +179,7 @@ import TournamentRow from "./tournament_table";
 import TournamentAssistantRow from "./tournament_assistant_table";
 import TournamentParticipantRow from "./tournament_participant_table";
 import TournamentPlayerAccountRow from "./tournament_player_account_table";
+import TournamentStandInRow from "./tournament_stand_in_table";
 import TournamentTeamRow from "./tournament_team_table";
 import TournamentTeamRequestRow from "./tournament_team_request_table";
 import UserRow from "./user_table";
@@ -562,6 +565,20 @@ const tablesSchema = __schema({
       { name: 'lobby_join_code_key', constraint: 'unique', columns: ['joinCode'] },
     ],
   }, LobbyRow),
+  LobbyBan: __table({
+    name: 'lobby_ban',
+    indexes: [
+      { accessor: 'by_lobby_and_user', name: 'lobby_ban_lobby_id_banned_user_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+        'bannedUserId',
+      ] },
+      { accessor: 'lobby_id', name: 'lobby_ban_lobby_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, LobbyBanRow),
   LobbyCursorEvent: __table({
     name: 'lobby_cursor_event',
     indexes: [
@@ -587,6 +604,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, LobbyMemberRow),
+  LobbyPreset: __table({
+    name: 'lobby_preset',
+    indexes: [
+      { accessor: 'creator_user_id', name: 'lobby_preset_creator_user_id_idx_btree', algorithm: 'btree', columns: [
+        'creatorUserId',
+      ] },
+      { accessor: 'id', name: 'lobby_preset_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'lobby_preset_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, LobbyPresetRow),
   MatchParticipantHistory: __table({
     name: 'match_participant_history',
     indexes: [
@@ -842,6 +873,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, TournamentPlayerAccountRow),
+  TournamentStandIn: __table({
+    name: 'tournament_stand_in',
+    indexes: [
+      { accessor: 'bracket_match_id', name: 'tournament_stand_in_bracket_match_id_idx_btree', algorithm: 'btree', columns: [
+        'bracketMatchId',
+      ] },
+      { accessor: 'by_match_and_user', name: 'tournament_stand_in_bracket_match_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'bracketMatchId',
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentStandInRow),
   TournamentTeam: __table({
     name: 'tournament_team',
     indexes: [

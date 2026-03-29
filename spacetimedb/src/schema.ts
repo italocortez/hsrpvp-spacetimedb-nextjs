@@ -21,6 +21,7 @@ import { HsrCharacterArchetype } from './tables/hsrCharacterArchetype';
 import { Tournament } from './tables/tournament';
 import { TournamentParticipant } from './tables/tournamentParticipant';
 import { TournamentAssistant } from './tables/tournamentAssistant';
+import { TournamentStandIn } from './tables/tournamentStandIn';
 
 // Cost Set Management
 import { CostSet } from './tables/costSet';
@@ -72,6 +73,8 @@ import { ChatMessage } from './tables/chatMessage';
 // Lobby System
 import { Lobby } from './tables/lobby';
 import { LobbyMember } from './tables/lobbyMember';
+import { LobbyBan } from './tables/lobbyBan';
+import { LobbyPreset } from './tables/lobbyPreset';
 import { LobbyPassword } from './tables/lobbyPassword';
 import { LobbyCursorEvent } from './tables/lobbyCursorEvent';
 
@@ -97,6 +100,7 @@ import { MatchResultGameHistory } from './tables/matchResultGameHistory';
 
 // Scheduled Jobs
 import { UserDeletionJob } from './tables/userDeletionJob';
+import { LobbyGcJob } from './tables/lobbyGcJob';
 
 const spacetimedb = schema({
     // User / Auth
@@ -126,6 +130,7 @@ const spacetimedb = schema({
     Tournament,
     TournamentParticipant,
     TournamentAssistant,
+    TournamentStandIn,
 
     // Cost Set Management
     CostSet,
@@ -176,6 +181,8 @@ const spacetimedb = schema({
     // Lobby System
     Lobby,
     LobbyMember,
+    LobbyBan,
+    LobbyPreset,
     LobbyPassword,
     LobbyCursorEvent,
 
@@ -200,6 +207,7 @@ const spacetimedb = schema({
 
     // Scheduled Jobs
     UserDeletionJob,
+    LobbyGcJob,
 });
 
 export default spacetimedb;

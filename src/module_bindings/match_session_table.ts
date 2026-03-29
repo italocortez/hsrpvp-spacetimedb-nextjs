@@ -10,6 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
+  TeamLabel,
   DraftStep,
   TimerState,
 } from "./types";
@@ -24,8 +25,23 @@ export default __t.row({
   get timerState() {
     return TimerState.name("timer_state");
   },
-  teamBlueBudget: __t.f32().name("team_blue_budget"),
-  teamRedBudget: __t.f32().name("team_red_budget"),
+  isAuctionPhase: __t.bool().name("is_auction_phase"),
+  get nextNominatorTeam() {
+    return TeamLabel.name("next_nominator_team");
+  },
+  blueCharactersWon: __t.u8().name("blue_characters_won"),
+  redCharactersWon: __t.u8().name("red_characters_won"),
+  currentNomination: __t.option(__t.string()).name("current_nomination"),
+  currentBidAmount: __t.option(__t.f32()).name("current_bid_amount"),
+  get currentBidTeam() {
+    return TeamLabel.name("current_bid_team");
+  },
+  teamBlueCharBudget: __t.f32().name("team_blue_char_budget"),
+  teamRedCharBudget: __t.f32().name("team_red_char_budget"),
+  teamBlueLcBudget: __t.f32().name("team_blue_lc_budget"),
+  teamRedLcBudget: __t.f32().name("team_red_lc_budget"),
+  pausesUsedBlue: __t.u8().name("pauses_used_blue"),
+  pausesUsedRed: __t.u8().name("pauses_used_red"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

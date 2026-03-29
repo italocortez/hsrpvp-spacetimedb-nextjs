@@ -62,6 +62,9 @@ export const ActionType = __t.enum("ActionType", {
   AuctionSold: __t.unit(),
   Pause: __t.unit(),
   Undo: __t.unit(),
+  EquipLightcone: __t.unit(),
+  ArrangeLineup: __t.unit(),
+  ConfirmLineup: __t.unit(),
 });
 export type ActionType = __Infer<typeof ActionType>;
 
@@ -75,6 +78,11 @@ export const Archetype = __t.object("Archetype", {
   lastModifiedDate: __t.timestamp(),
 });
 export type Archetype = __Infer<typeof Archetype>;
+
+export const ArrangeLineupPayload = __t.object("ArrangeLineupPayload", {
+  positions: __t.string(),
+});
+export type ArrangeLineupPayload = __Infer<typeof ArrangeLineupPayload>;
 
 export const AuctionSoldPayload = __t.object("AuctionSoldPayload", {
   characterName: __t.string(),
@@ -106,7 +114,6 @@ export type AvailabilitySlot = __Infer<typeof AvailabilitySlot>;
 // The tagged union or sum type for the algebraic type `BanMode`.
 export const BanMode = __t.enum("BanMode", {
   None: __t.unit(),
-  Two: __t.unit(),
   Four: __t.unit(),
   Six: __t.unit(),
 });
@@ -235,6 +242,11 @@ export const ComparisonOperator = __t.enum("ComparisonOperator", {
   LessOrEqual: __t.unit(),
 });
 export type ComparisonOperator = __Infer<typeof ComparisonOperator>;
+
+export const ConfirmLineupPayload = __t.object("ConfirmLineupPayload", {
+  confirmed: __t.bool(),
+});
+export type ConfirmLineupPayload = __Infer<typeof ConfirmLineupPayload>;
 
 export const CostSet = __t.object("CostSet", {
   id: __t.u32(),
@@ -371,6 +383,14 @@ export const EloConfig = __t.object("EloConfig", {
   lastModifiedDate: __t.timestamp(),
 });
 export type EloConfig = __Infer<typeof EloConfig>;
+
+export const EquipLightconePayload = __t.object("EquipLightconePayload", {
+  characterName: __t.string(),
+  lightconeName: __t.string(),
+  superimposition: __t.u8(),
+  costPaid: __t.f32(),
+});
+export type EquipLightconePayload = __Infer<typeof EquipLightconePayload>;
 
 // The tagged union or sum type for the algebraic type `GameMode`.
 export const GameMode = __t.enum("GameMode", {
@@ -611,12 +631,25 @@ export const Lobby = __t.object("Lobby", {
   },
   standardTurnSeconds: __t.u32(),
   reserveBankSeconds: __t.u32(),
-  auctionBudget: __t.option(__t.f32()),
   rosterDiffAdvantage: __t.f32(),
   rosterThreshold: __t.f32(),
   underThresholdAdvantage: __t.f32(),
   aboveThresholdPenalty: __t.f32(),
   deathPenalty: __t.f32(),
+  get matchType() {
+    return MatchType;
+  },
+  currentPlayerCount: __t.u8(),
+  characterBudget: __t.f32(),
+  lightconeBudget: __t.f32(),
+  minimumBidRaise: __t.f32(),
+  allowMirrorPicks: __t.bool(),
+  autoRandomPick: __t.bool(),
+  refereeCanUndo: __t.bool(),
+  refereeCanPause: __t.bool(),
+  refereeCanSetCaptain: __t.bool(),
+  refereeCanKick: __t.bool(),
+  allowPlayerPause: __t.bool(),
   tournamentId: __t.option(__t.u32()),
   bracketMatchId: __t.option(__t.u32()),
   isTournamentControlled: __t.bool(),
@@ -648,6 +681,17 @@ export const Lobby = __t.object("Lobby", {
 });
 export type Lobby = __Infer<typeof Lobby>;
 
+export const LobbyBan = __t.object("LobbyBan", {
+  lobbyId: __t.u32(),
+  bannedUserId: __t.u32(),
+  bannedByUserId: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type LobbyBan = __Infer<typeof LobbyBan>;
+
 export const LobbyConfigSnapshot = __t.object("LobbyConfigSnapshot", {
   teamSize: __t.u8(),
   get draftMode() {
@@ -658,7 +702,8 @@ export const LobbyConfigSnapshot = __t.object("LobbyConfigSnapshot", {
   },
   standardTurnSeconds: __t.u32(),
   reserveBankSeconds: __t.u32(),
-  auctionBudget: __t.option(__t.f32()),
+  characterBudget: __t.f32(),
+  lightconeBudget: __t.f32(),
   rosterDiffAdvantage: __t.f32(),
   rosterThreshold: __t.f32(),
   underThresholdAdvantage: __t.f32(),
@@ -681,6 +726,12 @@ export const LobbyCursorEvent = __t.object("LobbyCursorEvent", {
 });
 export type LobbyCursorEvent = __Infer<typeof LobbyCursorEvent>;
 
+export const LobbyGcJob = __t.object("LobbyGcJob", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type LobbyGcJob = __Infer<typeof LobbyGcJob>;
+
 export const LobbyMember = __t.object("LobbyMember", {
   lobbyId: __t.u32(),
   userId: __t.u32(),
@@ -693,6 +744,8 @@ export const LobbyMember = __t.object("LobbyMember", {
   get teamSlot() {
     return TeamLabel;
   },
+  isConfirmed: __t.bool(),
+  isCaptain: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -710,10 +763,66 @@ export const LobbyPassword = __t.object("LobbyPassword", {
 });
 export type LobbyPassword = __Infer<typeof LobbyPassword>;
 
+export const LobbyPreset = __t.object("LobbyPreset", {
+  id: __t.u32(),
+  name: __t.string(),
+  isSystemPreset: __t.bool(),
+  creatorUserId: __t.u32(),
+  teamSize: __t.u8(),
+  get draftMode() {
+    return DraftMode;
+  },
+  get banMode() {
+    return BanMode;
+  },
+  get gameMode() {
+    return GameMode;
+  },
+  get matchType() {
+    return MatchType;
+  },
+  standardTurnSeconds: __t.u32(),
+  reserveBankSeconds: __t.u32(),
+  characterBudget: __t.f32(),
+  lightconeBudget: __t.f32(),
+  minimumBidRaise: __t.f32(),
+  rosterDiffAdvantage: __t.f32(),
+  rosterThreshold: __t.f32(),
+  underThresholdAdvantage: __t.f32(),
+  aboveThresholdPenalty: __t.f32(),
+  deathPenalty: __t.f32(),
+  isPublic: __t.bool(),
+  isAnonymousPlayers: __t.bool(),
+  isAnonymousSpectators: __t.bool(),
+  get rosterVisibility() {
+    return RosterVisibility;
+  },
+  requireOwnership: __t.bool(),
+  costSetId: __t.u32(),
+  get disconnectPolicy() {
+    return DisconnectPolicy;
+  },
+  disconnectForfeitSeconds: __t.option(__t.u32()),
+  allowMirrorPicks: __t.bool(),
+  autoRandomPick: __t.bool(),
+  refereeCanUndo: __t.bool(),
+  refereeCanPause: __t.bool(),
+  refereeCanSetCaptain: __t.bool(),
+  refereeCanKick: __t.bool(),
+  allowPlayerPause: __t.bool(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type LobbyPreset = __Infer<typeof LobbyPreset>;
+
 // The tagged union or sum type for the algebraic type `LobbyStage`.
 export const LobbyStage = __t.enum("LobbyStage", {
   Waiting: __t.unit(),
   Drafting: __t.unit(),
+  Equipping: __t.unit(),
+  Scoring: __t.unit(),
   Finished: __t.unit(),
 });
 export type LobbyStage = __Infer<typeof LobbyStage>;
@@ -734,6 +843,9 @@ export const MatchParticipantHistory = __t.object("MatchParticipantHistory", {
     return TeamLabel;
   },
   displayName: __t.string(),
+  isReferee: __t.bool(),
+  isCoach: __t.bool(),
+  isCaptain: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -857,8 +969,23 @@ export const MatchSession = __t.object("MatchSession", {
   get timerState() {
     return TimerState;
   },
-  teamBlueBudget: __t.f32(),
-  teamRedBudget: __t.f32(),
+  isAuctionPhase: __t.bool(),
+  get nextNominatorTeam() {
+    return TeamLabel;
+  },
+  blueCharactersWon: __t.u8(),
+  redCharactersWon: __t.u8(),
+  currentNomination: __t.option(__t.string()),
+  currentBidAmount: __t.option(__t.f32()),
+  get currentBidTeam() {
+    return TeamLabel;
+  },
+  teamBlueCharBudget: __t.f32(),
+  teamRedCharBudget: __t.f32(),
+  teamBlueLcBudget: __t.f32(),
+  teamRedLcBudget: __t.f32(),
+  pausesUsedBlue: __t.u8(),
+  pausesUsedRed: __t.u8(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -884,6 +1011,10 @@ export const MatchSessionHistory = __t.object("MatchSessionHistory", {
   get outcome() {
     return MatchOutcome;
   },
+  teamBlueSpent: __t.option(__t.f32()),
+  teamRedSpent: __t.option(__t.f32()),
+  handicapApplied: __t.option(__t.f32()),
+  isPubliclyVisible: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -925,7 +1056,7 @@ export const MatchSessionStepHistory = __t.object("MatchSessionStepHistory", {
   get action() {
     return ActionType;
   },
-  characterName: __t.option(__t.string()),
+  targetName: __t.option(__t.string()),
   payload: __t.option(__t.string()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
@@ -1193,6 +1324,15 @@ export const StepPayload = __t.enum("StepPayload", {
   get Pause() {
     return PausePayload;
   },
+  get EquipLightcone() {
+    return EquipLightconePayload;
+  },
+  get ArrangeLineup() {
+    return ArrangeLineupPayload;
+  },
+  get ConfirmLineup() {
+    return ConfirmLineupPayload;
+  },
 });
 export type StepPayload = __Infer<typeof StepPayload>;
 
@@ -1342,6 +1482,17 @@ export const TournamentStage = __t.enum("TournamentStage", {
   Cancelled: __t.unit(),
 });
 export type TournamentStage = __Infer<typeof TournamentStage>;
+
+export const TournamentStandIn = __t.object("TournamentStandIn", {
+  bracketMatchId: __t.u32(),
+  userId: __t.u32(),
+  approvedByUserId: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type TournamentStandIn = __Infer<typeof TournamentStandIn>;
 
 export const TournamentTeam = __t.object("TournamentTeam", {
   id: __t.u32(),

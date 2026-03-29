@@ -27,6 +27,8 @@ export default __t.row({
   get teamSlot() {
     return TeamLabel.name("team_slot");
   },
+  isConfirmed: __t.bool().name("is_confirmed"),
+  isCaptain: __t.bool().name("is_captain"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),
