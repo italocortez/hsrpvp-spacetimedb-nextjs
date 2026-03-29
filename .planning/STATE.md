@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 09
-current_plan: 2
+current_plan: 1
 status: executing
-last_updated: "2026-03-29T11:36:37Z"
+last_updated: "2026-03-29T11:44:38.420Z"
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 35
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 # Session State
@@ -96,6 +96,9 @@ See: .planning/PROJECT.md
 - [Phase 08-calendar-and-scheduling]: SavedCalendar targetUserId lookup uses iter() in deleteAllCalendarDataForUser — no targetUserId-only index exists on the table
 - [Phase 08]: cascade-order: calendar events deleted before bracket matches in cascadeCleanupTournament (D-21) — reads BracketMatch rows to find linked events
 - [Phase 09-01]: LobbyGcJob scheduled property omitted — SpacetimeDB rejects module when scheduled reducer is undefined; wired in Plan 05
+- [Phase 09-02]: LobbyCursorEvent is an event table — no manual cleanup needed in close_lobby cascade; rows auto-delete after broadcast
+- [Phase 09-02]: Empty Waiting lobby auto-closes on last member leave via _hardDeleteLobby — prevents orphaned lobbies
+- [Phase 09-02]: canKickOrBan takes caller's LobbyMember row to check isReferee + refereeCanKick against caller, not target
 
 ### Quick Tasks Completed
 

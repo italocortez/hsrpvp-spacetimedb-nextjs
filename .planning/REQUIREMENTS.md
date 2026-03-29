@@ -121,7 +121,7 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 - [ ] **CHAT-01**: Ephemeral per-lobby/match chat via event table (messages not persisted after match ends)
 - [x] **CHAT-02**: Chat message structure supports future rich content (emoji, formatting metadata)
-- [ ] **CHAT-03**: Chat messages cleaned up in same transaction as lobby close
+- [x] **CHAT-03**: Chat messages cleaned up in same transaction as lobby close
 
 ### Lobby Browser
 
@@ -257,7 +257,7 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | MOUS-03 | Phase 9 | Pending |
 | CHAT-01 | Phase 9 | Pending |
 | CHAT-02 | Phase 9 | Complete |
-| CHAT-03 | Phase 9 | Pending |
+| CHAT-03 | Phase 9 | Complete |
 | LBBY-01 | Phase 9 | Complete |
 | LBBY-02 | Phase 9 | Complete |
 | DISC-01 | Phase 10 | Pending |
