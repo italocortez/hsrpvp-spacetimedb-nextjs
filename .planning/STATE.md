@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 09
 current_plan: 1
 status: executing
-last_updated: "2026-03-29T11:53:48.810Z"
+last_updated: "2026-03-29T12:13:12.864Z"
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 35
-  completed_plans: 31
+  completed_plans: 33
 ---
 
 # Session State
@@ -105,6 +105,8 @@ See: .planning/PROJECT.md
 - [Phase 09-03]: cursor.ts isSpectator variable removed after D-34 guard — TypeScript narrows teamSlot union to never after Spectator guard; isAnon simplified to isAnonymousPlayers only
 - [Phase 09]: hardDeleteLobby exported from lobbyGc.ts to avoid parallel-agent conflict with lobbyLifecycle.ts modifications
 - [Phase 09-05]: LobbyGcJob scheduled wiring requires --clear-database on maincloud
+- [Phase 09]: pass_bid steal-skip: compare nominatingTeam (Nominate step actorSlot) vs winningTeam (currentBidTeam) to determine next nominator — steal means opponent keeps their turn
+- [Phase 09]: draftAuction.ts: (nominateStep.payload.value as any).eidolon cast required — TypeScript cannot narrow StepPayload union through .sort()[0] chain
 
 ### Quick Tasks Completed
 

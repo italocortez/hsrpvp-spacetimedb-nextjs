@@ -115,7 +115,7 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 - [x] **MOUS-01**: Full XY cursor position broadcast within the page while browser tab is active
 - [x] **MOUS-02**: Cursor visible to all match participants, spectators, and coaches
-- [ ] **MOUS-03**: Coaches can see cursor tracking but cannot call pick/ban reducers
+- [x] **MOUS-03**: Coaches can see cursor tracking but cannot call pick/ban reducers
 
 ### Chat
 
@@ -254,7 +254,7 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | CAL-05 | Phase 8 | Complete |
 | MOUS-01 | Phase 9 | Complete |
 | MOUS-02 | Phase 9 | Complete |
-| MOUS-03 | Phase 9 | Pending |
+| MOUS-03 | Phase 9 | Complete |
 | CHAT-01 | Phase 9 | Complete |
 | CHAT-02 | Phase 9 | Complete |
 | CHAT-03 | Phase 9 | Complete |
