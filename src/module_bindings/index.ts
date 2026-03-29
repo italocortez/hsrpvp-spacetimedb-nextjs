@@ -51,9 +51,11 @@ import AdminUpdateHsrAccountReducer from "./admin_update_hsr_account_reducer";
 import AdminUpdateUserReducer from "./admin_update_user_reducer";
 import AdminUpsertArchetypeReducer from "./admin_upsert_archetype_reducer";
 import AdvanceBracketMatchReducer from "./advance_bracket_match_reducer";
+import AdvanceStageReducer from "./advance_stage_reducer";
 import AdvanceTournamentStageReducer from "./advance_tournament_stage_reducer";
 import ApproveParticipantReducer from "./approve_participant_reducer";
 import ApproveStandInReducer from "./approve_stand_in_reducer";
+import ArrangeLineupReducer from "./arrange_lineup_reducer";
 import AssignTournamentAssistantReducer from "./assign_tournament_assistant_reducer";
 import BanCharacterReducer from "./ban_character_reducer";
 import BanMemberReducer from "./ban_member_reducer";
@@ -62,6 +64,7 @@ import BatchUpsertCharactersReducer from "./batch_upsert_characters_reducer";
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
 import CancelTournamentReducer from "./cancel_tournament_reducer";
 import CloseLobbyReducer from "./close_lobby_reducer";
+import ConfirmLineupReducer from "./confirm_lineup_reducer";
 import ConfirmMatchScoresReducer from "./confirm_match_scores_reducer";
 import ConfirmReadyReducer from "./confirm_ready_reducer";
 import CreateAchievementReducer from "./create_achievement_reducer";
@@ -89,6 +92,7 @@ import DqParticipantReducer from "./dq_participant_reducer";
 import EditDraftCharacterCostReducer from "./edit_draft_character_cost_reducer";
 import EditDraftLightconeCostReducer from "./edit_draft_lightcone_cost_reducer";
 import EditDraftSynergyCostReducer from "./edit_draft_synergy_cost_reducer";
+import EquipLightconeReducer from "./equip_lightcone_reducer";
 import FinalizeMatchResultReducer from "./finalize_match_result_reducer";
 import GenerateBracketReducer from "./generate_bracket_reducer";
 import InviteToEventReducer from "./invite_to_event_reducer";
@@ -1024,9 +1028,11 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_update_user", AdminUpdateUserReducer),
   __reducerSchema("admin_upsert_archetype", AdminUpsertArchetypeReducer),
   __reducerSchema("advance_bracket_match", AdvanceBracketMatchReducer),
+  __reducerSchema("advance_stage", AdvanceStageReducer),
   __reducerSchema("advance_tournament_stage", AdvanceTournamentStageReducer),
   __reducerSchema("approve_participant", ApproveParticipantReducer),
   __reducerSchema("approve_stand_in", ApproveStandInReducer),
+  __reducerSchema("arrange_lineup", ArrangeLineupReducer),
   __reducerSchema("assign_tournament_assistant", AssignTournamentAssistantReducer),
   __reducerSchema("ban_character", BanCharacterReducer),
   __reducerSchema("ban_member", BanMemberReducer),
@@ -1035,6 +1041,7 @@ const reducersSchema = __reducers(
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
   __reducerSchema("cancel_tournament", CancelTournamentReducer),
   __reducerSchema("close_lobby", CloseLobbyReducer),
+  __reducerSchema("confirm_lineup", ConfirmLineupReducer),
   __reducerSchema("confirm_match_scores", ConfirmMatchScoresReducer),
   __reducerSchema("confirm_ready", ConfirmReadyReducer),
   __reducerSchema("create_achievement", CreateAchievementReducer),
@@ -1062,6 +1069,7 @@ const reducersSchema = __reducers(
   __reducerSchema("edit_draft_character_cost", EditDraftCharacterCostReducer),
   __reducerSchema("edit_draft_lightcone_cost", EditDraftLightconeCostReducer),
   __reducerSchema("edit_draft_synergy_cost", EditDraftSynergyCostReducer),
+  __reducerSchema("equip_lightcone", EquipLightconeReducer),
   __reducerSchema("finalize_match_result", FinalizeMatchResultReducer),
   __reducerSchema("generate_bracket", GenerateBracketReducer),
   __reducerSchema("invite_to_event", InviteToEventReducer),

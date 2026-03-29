@@ -3,6 +3,8 @@ import { auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
 
 // Security views — must be imported so they register with the module
 import './views/securityViews';
+// Anonymous + history views — imported so they register with the module
+import './views/anonymousViews';
 export { broadcast_cursor } from './reducers/cursor';
 export { login_as_guest } from './reducers/auth';
 export { delete_guest_account, update_display_name, update_username, update_avatar } from './reducers/profile';
