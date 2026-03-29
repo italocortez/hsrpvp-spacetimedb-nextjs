@@ -498,6 +498,17 @@ export function runFinalization(
     const finalResult = ctx.db.MatchResultRecord.id.find(matchResult.id);
     if (finalResult) { ctx.db.MatchResultRecord.delete(finalResult); }
 
+    // 19. Transition lobby → Finished (starts 30-min GC countdown)
+    const finalLobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
+    if (finalLobby && finalLobby.stage.tag !== 'Finished') {
+        ctx.db.Lobby.id.update({
+            ...finalLobby,
+            stage: { tag: 'Finished', value: {} },
+            lastActivityAt: ctx.timestamp,
+            ...auditUpdate(ctx, finalLobby, actingUserId),
+        } as any);
+    }
+
     console.log(`[MATCH] Match result #${matchResult.id} finalized by user #${actingUserId}. History ID: ${historyRow.id}`);
 }
 

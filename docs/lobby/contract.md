@@ -905,6 +905,7 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | BanMode.Two removed — only None, Four, Six remain | Phase 9 execution | 2026-03-29 |
 | Lobby GC: Waiting/Finished idle > 30min auto-deleted (D-25) | Phase 9 execution | 2026-03-29 |
 | LobbyCursorEvent is event table — auto-deleted after broadcast, no cascade needed | Phase 9 execution | 2026-03-29 |
+| Finalization transitions lobby → Finished (step 19 of runFinalization) | Phase 9 execution | 2026-03-29 |
 
 ---
 

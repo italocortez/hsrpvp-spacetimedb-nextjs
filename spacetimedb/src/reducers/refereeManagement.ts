@@ -28,7 +28,7 @@ export const transfer_referee = spacetimedb.reducer(
 
         // Validate target is different from caller
         if (targetUserId === user.id) {
-            throw new SenderError('Cannot transfer referee to yourself.');
+            throw new SenderError('You are already the referee.');
         }
 
         // Find target's LobbyMember row

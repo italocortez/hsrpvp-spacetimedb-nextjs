@@ -84,6 +84,7 @@
 | Read-layer views (view_my_* for lobbies, view_match_* for history) enforce anonymity server-side | Phase 9 execution | 2026-03-29 |
 | History views gated by isPubliclyVisible + participation check (D-93) | Phase 9 execution | 2026-03-29 |
 | Frontend subscribes to views always — no conditional anonymous/non-anonymous branching | Phase 9 execution | 2026-03-29 |
+| Fixed spectator anonymous labels (null-0 → Spectator-N) after LobbySlot refactor | Phase 9 execution | 2026-03-29 |
 
 ---
 

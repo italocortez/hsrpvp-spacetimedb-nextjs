@@ -15,17 +15,23 @@ export function computeAnonymousLabel(ctx: any, lobbyId: number, userId: number)
         return `Coach-${slotTeam(member.lobbySlot)}`;
     }
 
-    // Get all non-coach members on the same team in this lobby
-    const sameTeamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
-        .filter((m: any) => slotSameTeam(m.lobbySlot, member.lobbySlot) && !slotIsCoach(m.lobbySlot));
+    // Spectators: label among other spectators
+    const isSpectator = member.lobbySlot.tag === 'Spectator';
+
+    // Get peers: same-team non-coach players, or fellow spectators
+    const peers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
+        .filter((m: any) => isSpectator
+            ? m.lobbySlot.tag === 'Spectator'
+            : slotSameTeam(m.lobbySlot, member.lobbySlot) && !slotIsCoach(m.lobbySlot));
 
     // Sort by createdDate ascending (join order -- earlier = lower number)
-    sameTeamMembers.sort((a: any, b: any) => {
+    peers.sort((a: any, b: any) => {
         return Number(a.createdDate.microsSinceUnixEpoch / 1000n) - Number(b.createdDate.microsSinceUnixEpoch / 1000n);
     });
 
     // Find the index of the target userId in the sorted list
-    const index = sameTeamMembers.findIndex((m: any) => m.userId === userId);
+    const index = peers.findIndex((m: any) => m.userId === userId);
+    const prefix = isSpectator ? 'Spectator' : slotTeam(member.lobbySlot);
 
-    return `${slotTeam(member.lobbySlot)}-${index + 1}`;
+    return `${prefix}-${index + 1}`;
 }

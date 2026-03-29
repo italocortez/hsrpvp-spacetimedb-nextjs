@@ -918,6 +918,7 @@ The match session system manages the entire draft lifecycle within a lobby: char
 | BanMode.Two removed in Phase 9; only None, Four, Six remain | Phase 9 execution | 2026-03-29 |
 | refereeFullControl derived from spectator slot (D-44) | Phase 9 execution | 2026-03-29 |
 | MatchResultParticipant created at start_draft for all non-coach team members | Phase 9 execution | 2026-03-29 |
+| runFinalization step 19: lobby stage → Finished after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
 
 ---
 

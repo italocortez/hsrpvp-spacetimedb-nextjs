@@ -211,12 +211,12 @@ Waiting → Drafting → Equipping → Scoring → Finished
 | Drafting | `start_draft` | Picks, bans, nominations, bids, pause/resume, undo |
 | Equipping | Last pick/pass (auto) or `advance_stage` | `equip_lightcone`, `arrange_lineup`, `confirm_lineup` |
 | Scoring | `advance_stage` (Equipping→Scoring) | Score submission, screenshot upload |
-| Finished | `finalize_match_result` | `close_lobby` only |
+| Finished | `runFinalization` step 19 (lobby stage → Finished) | `close_lobby` only; 30-min GC countdown begins |
 
 **Automatic transitions:**
 - Classic mode: after last pick → `Equipping`
 - Auction mode: after both teams reach target character count → `Equipping`
-- Scoring → Finished: only via `finalize_match_result`
+- Scoring → Finished: only via `runFinalization` (step 19 transitions lobby stage to Finished)
 
 **Manual overrides:**
 - Host can call `advance_stage` to skip Equipping → Scoring early (D-58)

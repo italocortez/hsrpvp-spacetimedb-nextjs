@@ -107,7 +107,7 @@ Lobby (PK: id autoInc)
 | Drafting | Active draft — picks, bans, auction in progress |
 | Equipping | Post-draft — lightcone equipping and lineup arrangement |
 | Scoring | Score submission — screenshot upload and captain confirmation |
-| Finished | Match finalized — close_lobby allowed |
+| Finished | Match finalized — close_lobby allowed; set by step 19 of runFinalization, starts 30-min GC countdown |
 
 `BanMode.Two` was removed in Phase 9 — only `None`, `Four`, `Six` remain.
 
