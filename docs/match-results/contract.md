@@ -83,10 +83,10 @@
 
 ### Coach Assignment
 **Given:** Lobby with host and members
-**When:** Host or referee calls `set_coach(lobbyId, targetUserId)`
-**Then:** Target's participationRole set to Coach
-**When:** Host or referee calls `remove_coach(lobbyId, targetUserId)`
-**Then:** Target's participationRole set to Player
+**When:** Host or referee calls `set_team_slot(lobbyId, targetUserId, BlueCoach)` or `set_team_slot(lobbyId, targetUserId, RedCoach)`
+**Then:** Target's lobbySlot set to BlueCoach/RedCoach (coach role encoded in slot)
+**When:** Host or referee calls `set_team_slot(lobbyId, targetUserId, BluePlayer)` or `set_team_slot(lobbyId, targetUserId, RedPlayer)`
+**Then:** Target's lobbySlot set to BluePlayer/RedPlayer (coach role removed)
 
 ## Edge Cases
 
@@ -104,7 +104,7 @@
 | Transfer referee to self | Throws "Cannot transfer referee to yourself" |
 | Transfer referee when not referee | Throws "You are not the referee" |
 | Reclaim referee when not host | Throws "Only the lobby host can reclaim" |
-| Set coach by non-host/non-referee | Throws "Only the lobby host or referee can assign" |
+| Self-assign coach slot (BlueCoach/RedCoach) | Throws "Only the lobby host or referee can assign the coach role." |
 | Override with invalid status tag | Throws "Invalid status override" |
 
 ## Testing Notes
@@ -120,7 +120,7 @@
 | MatchResultRecord.tournamentId | Tournament.id | Reads |
 | MatchResultRecord.bracketMatchId | BracketMatch.id | Phase 4 |
 | LobbyMember.isReferee | Referee authority check | Reads |
-| LobbyMember.participationRole | Coach role (Player or Coach) | Writes |
+| LobbyMember.lobbySlot | Coach encoded as BlueCoach/RedCoach | Reads |
 | MmrRating | MMR calculation | Phase 5 reads |
 | MatchSessionHistory | Finalization writes history | Phase 5 writes |
 | MatchParticipantHistory | Finalization writes participant records | Phase 5 writes |
@@ -145,7 +145,7 @@
 | Captain-based confirmation replaces team1Confirmed/team2Confirmed | Phase 04.1 execution | 2026-03-20 |
 | isTournamentControlled replaces isTournamentMatch (behavioral flag) | Phase 04.1 execution | 2026-03-20 |
 | Match Finalization scenario documented (Phase 5 contract) | Phase 04.1 execution | 2026-03-20 |
-| winnerTeamSide (TeamLabel) replaces winnerId on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
+| winnerTeamSide (TeamSide, renamed from TeamLabel) replaces winnerId on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
 | teamBlue*/teamRed* replaces player1*/player2* on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
 | MatchType.Tournament variant removed — only Casual and Ranked remain | Phase 5 discussion | 2026-03-20 |
 | Tournament matchType derived from tournament.countTowardsMmr (true=Ranked, false=Casual) | Phase 5 discussion | 2026-03-20 |
@@ -165,7 +165,9 @@
 | Match replay archival: step rows + game history + participant history | Phase 6 execution | 2026-03-22 |
 | Spectated count increment at finalization | Phase 6 execution | 2026-03-22 |
 | requireOwnership on Lobby for pick validation helper | Phase 6 CONTEXT.md | 2026-03-21 |
+| LobbySlot refactor: set_coach/remove_coach eliminated — coach via set_team_slot(BlueCoach/RedCoach) | Phase 9 execution | 2026-03-29 |
+| TeamLabel renamed to TeamSide (same values: Blue, Red, Spectator) | Phase 9 execution | 2026-03-29 |
 
 ---
 
-*Last updated: 2026-03-22*
+*Last updated: 2026-03-29*

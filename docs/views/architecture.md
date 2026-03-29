@@ -238,6 +238,38 @@ Implements history visibility gate per D-93:
 
 ---
 
+### 19. `view_match_participant_history` (visibility-gated history participants)
+
+**File:** `spacetimedb/src/views/anonymousViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(MatchParticipantHistory.rowType)` (full participant history row)
+
+Returns `MatchParticipantHistory` rows only for matches the caller can see. Same visibility rule as `view_match_history`:
+- Match `isPubliclyVisible === true`, **OR**
+- Caller participated in that match
+
+**Purpose:** Prevents tournament scouting of opponent identities. During active anonymous tournaments, participant history for hidden matches is not returned. Revealed when tournament completes (via `revealTournamentHistory` setting `isPubliclyVisible=true`).
+
+**Implementation:** Uses shared `buildVisibleMatchIds()` helper, then returns all participant rows for visible matches via `MatchParticipantHistory.by_match_history` index.
+
+---
+
+### 20. `view_match_step_history` (visibility-gated draft replay)
+
+**File:** `spacetimedb/src/views/anonymousViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(MatchSessionStepHistory.rowType)` (full step history row)
+
+Returns `MatchSessionStepHistory` rows (pick/ban/bid replay data) only for matches the caller can see. Same visibility rule as `view_match_history`.
+
+**Purpose:** Prevents tournament scouting of opponent draft strategies. Contains actorUserId, actorDisplayName, and full step payloads — all hidden for non-visible matches.
+
+**Implementation:** Uses shared `buildVisibleMatchIds()` helper, then returns all step rows for visible matches via `MatchSessionStepHistory.by_match_history` index.
+
+**Naming convention:** History views (`view_match_*`) omit the "my" prefix because they return both the caller's matches AND publicly visible matches. The `view_my_*` prefix is reserved for views strictly scoped to the caller's current lobbies.
+
+---
+
 ## Anonymous Enforcement Pattern (D-92)
 
 All anonymous views follow the same pattern:
@@ -279,6 +311,8 @@ conn.subscriptionBuilder().subscribe([
     'SELECT * FROM view_my_match_steps',
     'SELECT * FROM view_my_match_participants',
     'SELECT * FROM view_match_history',
+    'SELECT * FROM view_match_participant_history',
+    'SELECT * FROM view_match_step_history',
 ]);
 ```
 

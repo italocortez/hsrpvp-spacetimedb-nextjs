@@ -27,14 +27,14 @@
 **Then:** Lobby.isAnonymousPlayers=true (inherited from tournament.isAnonymousDefault). Anonymous enforcement applies to all real-time writes in that lobby.
 
 ### Label Stability Across Reconnects
-**Given:** Player in anonymous lobby with teamSlot=Blue, join order=2 (label="Blue-2")
+**Given:** Player in anonymous lobby with lobbySlot=BluePlayer, join order=2 (label="Blue-2")
 **When:** Player disconnects and reconnects
 **Then:** Same LobbyMember data produces same label "Blue-2". No randomness or stored label state.
 
 ### History Identity Revelation
 **Given:** Anonymous lobby, match completed and finalized
 **When:** MatchParticipantHistory rows written during finalization
-**Then:** Real userIds stored in MatchParticipantHistory (with displayName). Replay viewers can see true identities after the match ends.
+**Then:** Real userIds stored in MatchParticipantHistory (with displayName). Access gated by `view_match_participant_history` and `view_match_step_history` — only visible when `MatchSessionHistory.isPubliclyVisible=true` or caller participated. Tournament matches stay hidden until `revealTournamentHistory` runs on tournament completion.
 
 ### Bracket Anonymization (Client-Side)
 **Given:** Tournament with isAnonymousDefault=true, bracket generated
@@ -46,7 +46,7 @@
 | Case | Expected Behavior |
 |------|-------------------|
 | Anonymous mode on non-anonymous lobby | Normal behavior -- real userId, no label |
-| Coach in anonymous lobby | Label = "Coach-Blue" or "Coach-Red" based on teamSlot |
+| Coach in anonymous lobby | Label = "Coach-Blue" or "Coach-Red" based on lobbySlot (BlueCoach/RedCoach) |
 | Spectator in anonymous lobby (isAnonymousSpectators=true) | Label = "Spectator-1", "Spectator-2" etc. |
 | Spectator in anonymous lobby (isAnonymousSpectators=false) | Real userId, no label (independent toggle) |
 | Anonymous mode locked after lobby creation | Cannot change isAnonymousPlayers/isAnonymousSpectators after lobby created |
@@ -62,7 +62,7 @@
 | Lobby.isAnonymousPlayers | LobbyCursorEvent, MatchSessionStep, ChatMessage | Checked on write |
 | Lobby.isAnonymousSpectators | LobbyCursorEvent, ChatMessage | Checked on write |
 | Lobby.isTournamentControlled | Tournament.isAnonymousDefault | Inherits |
-| LobbyMember.teamSlot + join order | anonymousLabel computation | Reads |
+| LobbyMember.lobbySlot + join order | anonymousLabel computation | Reads |
 | MatchParticipantHistory | Real userId + displayName | Writes (finalization) |
 | MatchSessionStepHistory | Real actorUserId + actorDisplayName | Writes (finalization) |
 | BracketMatch (public) | Client-side "Seed-N" display | Client reads |
@@ -80,7 +80,11 @@
 | isAnonymousPlayers and isAnonymousSpectators are independent toggles (D-07) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Anonymous mode locked after creation, host-controlled (D-08) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Bracket anonymization is client-side courtesy, not security boundary (D-09) | Phase 6 CONTEXT.md | 2026-03-21 |
+| LobbySlot refactor: teamSlot+participationRole → single lobbySlot enum | Phase 9 execution | 2026-03-29 |
+| Read-layer views (view_my_* for lobbies, view_match_* for history) enforce anonymity server-side | Phase 9 execution | 2026-03-29 |
+| History views gated by isPubliclyVisible + participation check (D-93) | Phase 9 execution | 2026-03-29 |
+| Frontend subscribes to views always — no conditional anonymous/non-anonymous branching | Phase 9 execution | 2026-03-29 |
 
 ---
 
-*Last updated: 2026-03-22*
+*Last updated: 2026-03-29*

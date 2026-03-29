@@ -29,7 +29,7 @@ History tables written during finalization preserve real userIds for post-match 
 - **MatchParticipantHistory** -- real userId + displayName
 - **MatchSessionStepHistory** -- real actorUserId + actorDisplayName
 
-Identity is revealed only after the match ends, when history data becomes available.
+Real userIds are stored, but **access is gated by visibility views** (see Read-Layer Views below). Tournament match history stays hidden until the tournament completes and `revealTournamentHistory` sets `isPubliclyVisible=true`.
 
 ### Match Result Tables Keep Real UserIds (D-03)
 
@@ -39,6 +39,58 @@ Ephemeral match result tables are server-internal and not player-facing:
 - **MatchResultParticipant** -- real userId
 
 These records are deleted during finalization. They never contain anonymous labels because they are never displayed to other participants.
+
+---
+
+## Read-Layer Views (D-92, D-93)
+
+While the write layer stores sentinel values on real-time tables, the **read layer** enforces anonymity via per-user views. The frontend subscribes to views, never raw tables.
+
+### Real-Time Views (D-92) — `view_my_*` prefix
+
+Scoped to the caller's current lobbies. `shouldAnonymize()` decides per-row whether to mask identity based on lobby anonymous settings and the caller's team membership.
+
+| View | Source Table | Anonymizes |
+|------|-------------|------------|
+| `view_my_lobby_chat` | ChatMessage | senderUserId, adds anonymousLabel |
+| `view_my_lobby_members` | LobbyMember | userId, resolves displayName or label |
+| `view_my_match_steps` | MatchSessionStep | actorUserId |
+| `view_my_match_participants` | MatchResultParticipant | userId |
+
+Non-anonymous lobbies: views return real data. Anonymous lobbies: views mask opponent data. Same subscription either way — the frontend doesn't branch.
+
+### History Views (D-93) — no `my` prefix
+
+Returns data for public matches + caller's own matches. Visibility gated by `MatchSessionHistory.isPubliclyVisible` flag — set to `true` by `revealTournamentHistory` when a tournament completes.
+
+| View | Source Table | Gate |
+|------|-------------|------|
+| `view_match_history` | MatchSessionHistory | isPubliclyVisible OR participated |
+| `view_match_participant_history` | MatchParticipantHistory | same |
+| `view_match_step_history` | MatchSessionStepHistory | same |
+
+All three share `buildVisibleMatchIds()` helper for consistent visibility logic.
+
+### Frontend Subscription Pattern
+
+The frontend always subscribes to views. No conditional logic needed — the server decides what to expose.
+
+```typescript
+// Lobby views (scoped to caller's lobbies)
+'SELECT * FROM view_my_lobby_chat'
+'SELECT * FROM view_my_lobby_members'
+'SELECT * FROM view_my_match_steps'
+'SELECT * FROM view_my_match_participants'
+
+// History views (public + caller's matches)
+'SELECT * FROM view_match_history'
+'SELECT * FROM view_match_participant_history'
+'SELECT * FROM view_match_step_history'
+```
+
+### Future: `public: false` on raw tables
+
+Currently all raw tables are `public: true` alongside the views. A future milestone will flip the 6 raw tables to `public: false`, making views the only client access path. This enforces anonymity even against savvy users who craft custom subscriptions.
 
 ---
 
