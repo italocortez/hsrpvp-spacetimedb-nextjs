@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 09
 current_plan: 1
 status: executing
-last_updated: "2026-03-29T12:13:12.864Z"
+last_updated: "2026-03-29T12:26:09.474Z"
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 35
-  completed_plans: 33
+  completed_plans: 34
 ---
 
 # Session State
@@ -107,6 +107,9 @@ See: .planning/PROJECT.md
 - [Phase 09-05]: LobbyGcJob scheduled wiring requires --clear-database on maincloud
 - [Phase 09]: pass_bid steal-skip: compare nominatingTeam (Nominate step actorSlot) vs winningTeam (currentBidTeam) to determine next nominator — steal means opponent keeps their turn
 - [Phase 09]: draftAuction.ts: (nominateStep.payload.value as any).eidolon cast required — TypeScript cannot narrow StepPayload union through .sort()[0] chain
+- [Phase 09-08]: MatchSession uses lobbyId as PK not id — ctx.db.MatchSession.lobbyId.find() pattern throughout
+- [Phase 09-08]: revealTournamentHistory uses iter() on MatchSessionHistory — acceptable for infrequent tournament completion batch; no lobbyId column on MatchSessionHistory
+- [Phase 09-08]: view_match_history scans via 3 GameMode btree filter calls to avoid .iter() anti-pattern in views
 
 ### Quick Tasks Completed
 

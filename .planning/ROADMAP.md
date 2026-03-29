@@ -236,7 +236,7 @@ Plans:
 - [x] 09-05-PLAN.md — Tournament lobby + stand-in + GC: create_tournament_lobby with settings inheritance, approve_stand_in, scheduled lobby GC reducer (30-min idle cleanup)
 - [x] 09-06-PLAN.md — Classic draft: draftSequences.ts (0/4/6 ban), start_draft (match state init), pick/ban/timer_expiry with coach guard + ownership validation + mirror picks, undo/pause/resume
 - [x] 09-07-PLAN.md — Auction draft: nominate/bid/pass/timer_expiry with steal-skip logic, dual budget enforcement, minimum raise, EMPTY CHARACTER fallback
-- [ ] 09-08-PLAN.md — Post-draft + finalization + views: equip_lightcone/arrange_lineup/confirm_lineup/advance_stage, finalization pipeline updates (new ActionTypes, budget columns, targetName rename, role flags, isPubliclyVisible), 5 per-client anonymous/history views
+- [x] 09-08-PLAN.md — Post-draft + finalization + views: equip_lightcone/arrange_lineup/confirm_lineup/advance_stage, finalization pipeline updates (new ActionTypes, budget columns, targetName rename, role flags, isPubliclyVisible), 5 per-client anonymous/history views
 - [ ] 09-09-PLAN.md — Doc rewrites + test fixes: full rewrite of match-session/architecture.md, updates to chat/lobby/match-results/views docs, test file field name updates
 
 ### Phase 10: Disconnect Handling and Cost Parity
