@@ -53,6 +53,7 @@ When `cancel_tournament` is called, `cascadeCleanupTournament()` deletes all tou
 | Table | Action | Reason |
 |-------|--------|--------|
 | TournamentTeamRequest | **Deleted** | Transactional rows, no audit value |
+| CalendarEvent + CalendarEventInvite | **Deleted** | Events linked to bracket matches + all their invites (Phase 8, D-21) |
 | GroupStanding | **Deleted** | Bracket infrastructure |
 | BracketMatch | **Deleted** | Bracket infrastructure |
 | TournamentPlayerAccount | **Deleted** | Locked roster snapshots, no value after cancellation |
@@ -62,7 +63,7 @@ When `cancel_tournament` is called, `cascadeCleanupTournament()` deletes all tou
 | MatchResultRecord | **Preserved** | Player-facing match history |
 | Tournament | **Preserved** | Stage set to Cancelled; row serves as historical record |
 
-Deletion order: child rows before parents (requests → standings → bracket → accounts → teams → assistants).
+Deletion order: requests → **calendar events** → standings → bracket → accounts → teams → assistants (calendar before bracket — reads BracketMatch rows to find linked events).
 
 ### Stage Transition Cleanup
 

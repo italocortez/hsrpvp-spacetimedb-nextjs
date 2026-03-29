@@ -56,7 +56,7 @@ MatchResultRecord.winnerUserId is a userId. The advancement reducer maps: winner
 ### Bracket Advancement (bracketAdvancement.ts)
 - `advance_bracket_match(bracketMatchId)` -- Places winner in nextWinnerMatchId slot. Routes loser to nextLoserMatchId (double elim). Updates GroupStanding for group matches. Requires tournament InProgress.
 - `submit_and_advance_bracket(matchResultId)` -- Wrapper for tournament matches. Maps winnerUserId (userId) -> winnerTeamId. Sets BracketMatch.winnerTeamId. If autoAdvanceBracket=true, auto-advances.
-- `rollback_bracket_match(bracketMatchId)` -- Clears winnerTeamId, removes winner/loser from next matches. Blocks if mmrProcessedAt is set on MatchResultRecord. Only during InProgress.
+- `rollback_bracket_match(bracketMatchId)` -- Cascade-deletes linked CalendarEvent + invites (Phase 8, D-22), then clears winnerTeamId, removes winner/loser from next matches. Blocks if mmrProcessedAt is set on MatchResultRecord. Only during InProgress.
 
 ## Flow -- Single Elimination
 
@@ -93,7 +93,7 @@ Odd participant counts produce BYEs. Top seeds get BYEs (null opponent slot). BY
 
 ## DQ Auto-Advance
 
-When dq_participant is called and autoAdvanceBracket=true, the system scans BracketMatch rows to find the DQ'd team's active match and auto-advances the opponent.
+When dq_participant is called and autoAdvanceBracket=true, the system scans BracketMatch rows to find the DQ'd team's active match, cascade-deletes any linked CalendarEvent + invites (Phase 8, D-22), then auto-advances the opponent.
 
 ## Seeding Algorithms
 
