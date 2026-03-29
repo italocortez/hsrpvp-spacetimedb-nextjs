@@ -78,10 +78,10 @@ Requirements: MOUS-01, MOUS-02, MOUS-03, CHAT-01, CHAT-02, CHAT-03, LBBY-01, LBB
 
 ### Cursor Broadcast
 - **D-34:** Only players + coaches broadcast cursor. Spectators receive but don't send. broadcast_cursor silently ignores spectator calls.
-- **D-35:** Client-side throttle only (20ms / 50 updates per sec). No server-side throttle — event table auto-deletes prevent timestamp tracking without doubling writes.
+- **D-35:** Client-side throttle only (30ms / ~33 updates per sec). No server-side throttle — event table auto-deletes prevent timestamp tracking without doubling writes. Throttle rate is frontend-only, changeable without backend changes.
 - **D-36:** Frontend stops sending on tab blur (visibilitychange event). Only sends on actual mouse movement.
 - **D-37:** Subscription scoping: client subscribes to `WHERE lobbyId = X` — server only pushes matching events. No cross-lobby cursor egress.
-- **D-38:** Bandwidth math: max 8 broadcasters × 50/sec = 400 events/sec × 20 members × ~40 bytes = ~320KB/sec per active lobby. Acceptable at 5-10 concurrent drafting lobbies.
+- **D-38:** Bandwidth math: max 8 broadcasters × 33/sec = 264 events/sec × 20 members × ~40 bytes = ~211KB/sec per active lobby. Acceptable at 5-10 concurrent drafting lobbies.
 
 ### Coach Guard
 - **D-39:** Coaches blocked from ALL draft actions (pick, ban, nominate, bid, equip, arrange). Guard wired into existing step recording validation as a simple isCoach check. Coaches can see cursors and chat only.

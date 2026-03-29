@@ -16,7 +16,7 @@ const ENERGY = {
   PER_1M_REDUCER_CALLS: 840,
   PER_10GB_EGRESS: 2000,
   PER_1GB_STORAGE: 2592,
-  MONTHLY_BUDGET: 40000,
+  MONTHLY_BUDGET: 90000,
 };
 
 // ─── Type Sizes (bytes) ─────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ const TYPE_BYTES = {
   TimerState: 21,         // timestamp + u32 + u32 + bool + u32
   DraftStep: 2,           // 2 enum tags
   RecurrenceRule: 15,     // enum + u8 + optional u8 + optional u8 + optional timestamp
-  LobbyConfigSnapshot: 36,
+  LobbyConfigSnapshot: 50, // updated: +characterBudget, +lightconeBudget, -auctionBudget, +minimumBidRaise, +allowMirrorPicks, +autoRandomPick, +referee configs
   PlayerSnapshot: 54,     // u32 + ~20 char string + ~30 char string (avg)
   StepPayload: 20,        // avg across variants (tag + variant data)
   GameScore: 8,           // u64
@@ -48,7 +48,6 @@ const AVG_STRING_LENGTHS = {
   long: 80,     // descriptions, aliases
   url: 100,     // screenshot URLs, image URLs
   json_small: 200,  // small JSON blobs
-  json_large: 2000, // match step history, roster snapshots
 };
 
 function strBytes(category) {
@@ -64,7 +63,7 @@ const AUDIT_BYTES = 4 + 8 + 4 + 8; // 24 bytes
 
 // ─── Table Definitions ──────────────────────────────────────────────────────
 // Each table: { name, visibility, bytesPerRow, growthType, growthCategory }
-// growthType: 'static' (fixed rows), 'bounded' (grows with users), 'unbounded' (grows over time)
+// growthType: 'static' (fixed rows), 'bounded' (grows with users), 'unbounded' (grows over time), 'transient' (cleaned up)
 
 const TABLES = [
   // --- Static / Near-Static ---
@@ -73,6 +72,7 @@ const TABLES = [
   { name: 'archetype', vis: 'public', bytes: 4 + strBytes('medium') + strBytes('long') + AUDIT_BYTES, growth: 'static', category: 'game_data' },
   { name: 'hsr_character_archetype', vis: 'public', bytes: strBytes('medium') + 4 + AUDIT_BYTES, growth: 'static', category: 'game_data' },
   { name: 'achievement', vis: 'public', bytes: 4 + strBytes('medium') + strBytes('long') + 1 + 1 + 1 + optionalBytes(4) + optionalBytes(strBytes('medium')) + AUDIT_BYTES, growth: 'static', category: 'game_data' },
+  { name: 'achievement_criteria', vis: 'public', bytes: 4 + 4 + 34 + 1 + 4 + 35 + 35 + AUDIT_BYTES, growth: 'static', category: 'game_data' }, // ~141 bytes
 
   // --- Cost Data (per cost set × per game mode × per character/lightcone) ---
   { name: 'hsr_character_cost', vis: 'public', bytes: strBytes('medium') + 1 + 28 + 28 + 4 + AUDIT_BYTES, growth: 'bounded', category: 'cost_data' },
@@ -91,23 +91,43 @@ const TABLES = [
   { name: 'hsr_account', vis: 'public', bytes: 4 + 4 + strBytes('short') + strBytes('short') + strBytes('medium') + 1 + 1 + 1 + 1 + AUDIT_BYTES, growth: 'bounded', category: 'users' },
   { name: 'hsr_account_character', vis: 'public', bytes: 4 + strBytes('medium') + 1 + AUDIT_BYTES, growth: 'bounded', category: 'roster' },
   { name: 'hsr_account_lightcone', vis: 'public', bytes: 4 + strBytes('medium') + 1 + AUDIT_BYTES, growth: 'bounded', category: 'roster' },
-  { name: 'player_stats', vis: 'public', bytes: 4 + 4 + 4 + 4 + 4 + 4 + optionalBytes(4) + optionalBytes(4) + AUDIT_BYTES, growth: 'bounded', category: 'users' },
-  { name: 'character_stats', vis: 'public', bytes: 4 + strBytes('medium') + 4 + 4 + 4 + AUDIT_BYTES, growth: 'bounded', category: 'users' },
-  { name: 'mmr_rating', vis: 'public', bytes: 4 + 1 + 4 + 4 + optionalBytes(4) + optionalBytes(4) + AUDIT_BYTES, growth: 'bounded', category: 'users' },
+  // player_stats PK expanded: [userId, gameMode, draftMode, seasonId, matchType, teamSize]
+  { name: 'player_stats', vis: 'public', bytes: 4 + 1 + 1 + 4 + 1 + 1 + 4 + 4 + 4 + 4 + 5 + 5 + AUDIT_BYTES, growth: 'bounded', category: 'users' }, // ~62 bytes
+  // character_stats PK expanded similarly
+  { name: 'character_stats', vis: 'public', bytes: 4 + strBytes('medium') + 1 + 1 + 4 + 1 + 1 + 4 + 4 + 4 + AUDIT_BYTES, growth: 'bounded', category: 'users' }, // ~74 bytes
+  // mmr_rating PK: [userId, gameMode, seasonId]
+  { name: 'mmr_rating', vis: 'public', bytes: 4 + 1 + 4 + 4 + 4 + optionalBytes(4) + optionalBytes(4) + AUDIT_BYTES, growth: 'bounded', category: 'users' },
   { name: 'user_achievement', vis: 'public', bytes: 4 + 4 + 4 + 4 + 1 + AUDIT_BYTES, growth: 'bounded', category: 'users' },
+  { name: 'leaderboard', vis: 'public', bytes: 34 + 4 + 4 + 4 + 4 + 4 + 4 + AUDIT_BYTES, growth: 'bounded', category: 'users' }, // ~82 bytes
+  { name: 'global_character_stat', vis: 'public', bytes: 34 + 1 + 1 + 1 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + AUDIT_BYTES, growth: 'bounded', category: 'users' }, // ~107 bytes
+  { name: 'player_relationship', vis: 'private', bytes: 4 + 4 + 1 + 1 + 4 + 1 + 4 + 4 + 4 + 4 + AUDIT_BYTES, growth: 'bounded', category: 'users' }, // ~55 bytes
 
   // --- Lobby (transient — cleaned up after match) ---
-  { name: 'lobby', vis: 'public', bytes: 4 + strBytes('short') + 4 + strBytes('medium') + strBytes('medium') + 1 + 1 + 1 + 4 + 4 + optionalBytes(4) + 4 + 4 + 4 + 4 + 4 + optionalBytes(4) + optionalBytes(4) + 1 + 1 + 1 + 4 + 1 + 1 + optionalBytes(4) + optionalBytes(8) + 1 + optionalBytes(8) + 8 + 1 + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
-  { name: 'lobby_member', vis: 'public', bytes: 4 + 4 + 1 + 1 + 1 + 1 + 1 + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
+  // lobby: added Phase 9 columns (matchType, currentPlayerCount, characterBudget, lightconeBudget, minimumBidRaise, allowMirrorPicks, autoRandomPick, refereeCanUndo, refereeCanPause, refereeCanSetCaptain, refereeCanKick, allowPlayerPause) = +50 bytes
+  { name: 'lobby', vis: 'public', bytes: 4 + strBytes('short') + 4 + strBytes('medium') + strBytes('medium') + 1 + 1 + 1 + 4 + 4 + optionalBytes(4) + 4 + 4 + 4 + 4 + 4 + optionalBytes(4) + optionalBytes(4) + 1 + 1 + 1 + 4 + 1 + 1 + optionalBytes(4) + optionalBytes(8) + 1 + optionalBytes(8) + 8 + 1 + 50 + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
+  // lobby_member: added isConfirmed(bool) + isCaptain(bool) = +2 bytes
+  { name: 'lobby_member', vis: 'public', bytes: 4 + 4 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
   { name: 'lobby_password', vis: 'private', bytes: 4 + strBytes('long') + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
-  { name: 'match_session', vis: 'public', bytes: 4 + 4 + 200 + 21 + 4 + 4 + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
-  { name: 'match_session_step', vis: 'public', bytes: 4 + 4 + 4 + 4 + 1 + 1 + 20 + 8 + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
+  // match_session: added auction fields (+80 bytes): isAuctionPhase, nextNominatorTeam, blueCharactersWon, redCharactersWon, currentNomination, currentBidAmount, currentBidTeam, pausesUsedBlue, pausesUsedRed, teamBlueCharBudget, teamRedCharBudget, teamBlueLcBudget, teamRedLcBudget
+  { name: 'match_session', vis: 'public', bytes: 4 + 4 + 200 + 21 + 4 + 4 + 80 + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
+  { name: 'match_session_step', vis: 'public', bytes: 4 + 4 + 4 + 4 + 1 + 1 + 20 + 8 + optionalBytes(strBytes('medium')) + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
+  // chat_message: rolling window, capped at 50 per lobby
   { name: 'chat_message', vis: 'public', bytes: 4 + 4 + 4 + 1 + strBytes('long') + optionalBytes(strBytes('json_small')) + optionalBytes(strBytes('medium')) + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
+  { name: 'match_result_participant', vis: 'public', bytes: 4 + 4 + 1 + 1 + AUDIT_BYTES, growth: 'transient', category: 'lobby' }, // ~34 bytes, cleaned after finalization
+  { name: 'lobby_ban', vis: 'private', bytes: 4 + 4 + AUDIT_BYTES, growth: 'transient', category: 'lobby' }, // ~32 bytes
+  { name: 'lobby_preset', vis: 'public', bytes: 4 + 34 + 1 + 4 + 1 + 1 + 1 + 4 + 4 + 5 + 4 + 4 + 4 + 4 + 4 + 5 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 4 + AUDIT_BYTES, growth: 'bounded', category: 'lobby' }, // ~130 bytes
 
   // --- Match History (unbounded — grows forever) ---
-  { name: 'match_session_history', vis: 'public', bytes: strBytes('long') + strBytes('short') + 8 + 1 + 1 + strBytes('medium') + strBytes('medium') + 300 + 300 + 36 + 1 + strBytes('json_large') + strBytes('json_large') + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' },
-  { name: 'match_session_step_history', vis: 'public', bytes: strBytes('long') + strBytes('json_large') + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' },
-  { name: 'match_result_record', vis: 'public', bytes: 4 + optionalBytes(4) + 4 + 4 + 4 + 1 + 1 + optionalBytes(4) + optionalBytes(8) + 1 + 1 + optionalBytes(4) + optionalBytes(4) + optionalBytes(strBytes('long')) + optionalBytes(4) + 1 + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' },
+  // match_session_history: actual columns (no JSON roster blobs)
+  // id(u32) + lobbyCode(string ~15) + playedAt(timestamp) + draftMode(enum) + gameMode(enum) + teamBlueAlias(string ~30) + teamRedAlias(string ~30) + snapshotConfig(LobbyConfigSnapshot ~50) + outcome(enum) + teamBlueSpent(f32) + teamRedSpent(f32) + handicapApplied(f32) + isPubliclyVisible(bool) + audit(24)
+  { name: 'match_session_history', vis: 'public', bytes: 4 + 19 + 8 + 1 + 1 + 34 + 34 + 50 + 1 + 4 + 4 + 4 + 1 + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' }, // ~189 bytes
+  // match_session_step_history: per-step rows (NOT single JSON blob per match)
+  // matchHistoryId(u32) + sequence(u32) + actorUserId(u32) + actorDisplayName(string ~30) + teamSide(enum) + action(enum) + targetName(string optional ~30) + payload(string optional ~200) + audit(24)
+  { name: 'match_session_step_history', vis: 'public', bytes: 4 + 4 + 4 + 34 + 1 + 1 + 35 + 205 + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' }, // ~312 bytes per step
+  { name: 'match_participant_history', vis: 'public', bytes: 4 + 4 + 1 + 34 + 1 + 1 + 1 + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' }, // ~70 bytes
+  { name: 'match_result_game_history', vis: 'public', bytes: 4 + 1 + 1 + 101 + 101 + 5 + 5 + 9 + 9 + 9 + 9 + 9 + 9 + 1 + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' }, // ~297 bytes
+  // match_result_record: TRANSIENT (deleted after finalization), only active matches have records
+  { name: 'match_result_record', vis: 'public', bytes: 4 + optionalBytes(4) + 4 + 4 + 4 + 1 + 1 + optionalBytes(4) + optionalBytes(8) + 1 + 1 + optionalBytes(4) + optionalBytes(4) + optionalBytes(strBytes('long')) + optionalBytes(4) + 1 + AUDIT_BYTES, growth: 'transient', category: 'lobby' },
   { name: 'match_result_game', vis: 'public', bytes: 4 + 1 + 1 + optionalBytes(strBytes('url')) + optionalBytes(strBytes('url')) + optionalBytes(4) + optionalBytes(4) + optionalBytes(8) + optionalBytes(8) + optionalBytes(8) + optionalBytes(8) + optionalBytes(8) + optionalBytes(8) + optionalBytes(4) + 1 + optionalBytes(4) + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' },
   { name: 'mmr_history', vis: 'public', bytes: 4 + 4 + 1 + 4 + 4 + 4 + 4 + optionalBytes(4) + AUDIT_BYTES, growth: 'unbounded', category: 'match_history' },
 
@@ -117,6 +137,8 @@ const TABLES = [
   { name: 'tournament_assistant', vis: 'public', bytes: 4 + 4 + 1 + 1 + 1 + 1 + 1 + AUDIT_BYTES, growth: 'unbounded', category: 'tournament' },
   { name: 'tournament_team', vis: 'public', bytes: 4 + 4 + strBytes('medium') + 4 + AUDIT_BYTES, growth: 'unbounded', category: 'tournament' },
   { name: 'tournament_team_request', vis: 'public', bytes: 4 + 4 + AUDIT_BYTES, growth: 'transient', category: 'tournament' },
+  { name: 'tournament_player_account', vis: 'public', bytes: 4 + 4 + 4 + AUDIT_BYTES, growth: 'unbounded', category: 'tournament' }, // ~36 bytes
+  { name: 'tournament_stand_in', vis: 'public', bytes: 4 + 4 + 4 + AUDIT_BYTES, growth: 'transient', category: 'tournament' }, // ~36 bytes
   { name: 'bracket_match', vis: 'public', bytes: 4 + 4 + 4 + 4 + 1 + optionalBytes(4) + optionalBytes(4) + optionalBytes(4) + optionalBytes(4) + optionalBytes(4) + 1 + 1 + 1 + optionalBytes(8) + optionalBytes(4) + 1 + optionalBytes(4) + 1 + AUDIT_BYTES, growth: 'unbounded', category: 'tournament' },
   { name: 'group_standing', vis: 'public', bytes: 4 + 4 + 4 + 4 + 4 + 4 + 4 + AUDIT_BYTES, growth: 'unbounded', category: 'tournament' },
 
@@ -124,7 +146,12 @@ const TABLES = [
   { name: 'availability_slot', vis: 'public', bytes: 4 + 4 + 8 + 8 + 1 + 15 + 8 + AUDIT_BYTES, growth: 'bounded', category: 'calendar' },
   { name: 'saved_calendar', vis: 'public', bytes: 4 + 4 + 1 + AUDIT_BYTES, growth: 'bounded', category: 'calendar' },
   { name: 'calendar_event', vis: 'public', bytes: 4 + 4 + strBytes('medium') + 8 + 8 + optionalBytes(4) + AUDIT_BYTES, growth: 'unbounded', category: 'calendar' },
-  { name: 'calendar_event_invite', vis: 'public', bytes: 4 + 4 + AUDIT_BYTES, growth: 'transient', category: 'calendar' },
+  // calendar_event_invite: added inviteStatus(enum) + respondedAt(optional timestamp)
+  { name: 'calendar_event_invite', vis: 'public', bytes: 4 + 4 + 4 + 1 + 9 + AUDIT_BYTES, growth: 'transient', category: 'calendar' }, // ~46 bytes
+
+  // --- Season / Elo ---
+  { name: 'season', vis: 'public', bytes: 4 + 34 + 8 + 9 + 1 + AUDIT_BYTES, growth: 'static', category: 'system' }, // ~80 bytes
+  { name: 'elo_config', vis: 'public', bytes: 4 + 1 + 1 + 1 + 4 + 4 + 4 + 4 + 1 + 4 + AUDIT_BYTES, growth: 'static', category: 'system' }, // single row
 
   // --- Persistent Teams (OUT OF SCOPE but tables exist) ---
   { name: 'team', vis: 'public', bytes: 4 + strBytes('medium') + 4 + 1 + optionalBytes(4) + AUDIT_BYTES, growth: 'static', category: 'unused' },
@@ -134,7 +161,8 @@ const TABLES = [
   // --- System ---
   { name: 'server_identity', vis: 'private', bytes: 32 + 8, growth: 'static', category: 'system' },
   { name: 'user_deletion_job', vis: 'private', bytes: 8 + 9 + 4 + AUDIT_BYTES, growth: 'transient', category: 'system' },
-  { name: 'lobby_cursor_event', vis: 'public_event', bytes: 4 + 4 + 4 + 4 + 8 + AUDIT_BYTES, growth: 'transient', category: 'system' },
+  // lobby_cursor_event: added anonymousLabel optional string
+  { name: 'lobby_cursor_event', vis: 'public_event', bytes: 4 + 4 + 35 + 4 + 4 + 8 + AUDIT_BYTES, growth: 'transient', category: 'system' },
 ];
 
 // ─── Scenarios ──────────────────────────────────────────────────────────────
@@ -216,6 +244,7 @@ function estimateRowCounts(s, months) {
     archetype: 15,
     hsr_character_archetype: characters * 2,  // avg 2 archetypes per character
     achievement: 30,
+    achievement_criteria: 60, // ~2 criteria per achievement
 
     // Cost data (default set + custom sets)
     hsr_character_cost: characters * gameModes * (1 + s.costSetsCreated * months),
@@ -234,10 +263,13 @@ function estimateRowCounts(s, months) {
     hsr_account: s.users * 1.2,  // some users have 2 accounts
     hsr_account_character: s.users * s.charactersOwned,
     hsr_account_lightcone: s.users * s.lightconesOwned,
-    player_stats: s.users,
-    character_stats: s.users * 20,  // avg 20 characters played per user
+    player_stats: s.users * gameModes * 2, // gameModes * draftModes per user
+    character_stats: s.users * 20 * gameModes, // 20 chars played * 3 game modes
     mmr_rating: s.users * gameModes,
     user_achievement: s.users * s.avgAchievementsPerUser,
+    leaderboard: Math.min(100, s.users) * gameModes, // top 100 per game mode
+    global_character_stat: characters * gameModes * 2, // characters * gameModes * draftModes
+    player_relationship: s.users * 10, // avg 10 relationships tracked
 
     // Lobby (transient — only concurrent lobbies exist at once)
     lobby: Math.ceil(s.concurrent / 4), // avg 4 people per lobby
@@ -245,12 +277,20 @@ function estimateRowCounts(s, months) {
     lobby_password: Math.ceil(s.concurrent / 8), // ~50% of lobbies passworded
     match_session: Math.ceil(s.concurrent / 4),
     match_session_step: Math.ceil(s.concurrent / 4) * s.avgDraftStepsPerMatch,
-    chat_message: Math.ceil(s.concurrent / 4) * s.avgChatMessagesPerMatch,
+    // chat_message: rolling window, capped at 50 messages per lobby
+    chat_message: Math.ceil(s.concurrent / 4) * 50,
+    match_result_participant: Math.ceil(s.concurrent / 4) * 4, // ~4 participants per active match, transient
+    // match_result_record: transient (deleted after finalization), only active matches
+    match_result_record: Math.ceil(s.concurrent / 4),
+    lobby_ban: 0, // transient, rare
+    lobby_preset: 10 + s.tournamentsPerMonth * months, // system presets + TO presets
 
     // Match History (unbounded)
     match_session_history: matchesTotal,
-    match_session_step_history: matchesTotal,
-    match_result_record: matchesTotal,
+    // match_session_step_history: per-step rows, NOT 1 per match
+    match_session_step_history: matchesTotal * s.avgDraftStepsPerMatch,
+    match_participant_history: matchesTotal * 4, // 4 participants per match (2v2 avg)
+    match_result_game_history: matchesTotal * s.avgGamesPerMatch,
     match_result_game: matchesTotal * s.avgGamesPerMatch,
     mmr_history: matchesTotal * 2 * gameModes * 0.6, // 60% are ranked, 2 players
 
@@ -260,6 +300,8 @@ function estimateRowCounts(s, months) {
     tournament_assistant: tournamentsTotal * 2, // avg 2 assistants
     tournament_team: tournamentsTotal * (s.avgParticipantsPerTournament / 4), // avg teams
     tournament_team_request: 0, // transient
+    tournament_player_account: Math.round(participantsTotal * 1.2), // avg 1.2 accounts per participant
+    tournament_stand_in: s.tournamentsPerMonth * 2, // avg 2 stand-ins per tournament
     bracket_match: bracketMatchesTotal,
     group_standing: tournamentsTotal * s.avgParticipantsPerTournament * 0.3, // 30% have groups
 
@@ -268,6 +310,10 @@ function estimateRowCounts(s, months) {
     saved_calendar: s.users * 3, // avg 3 calendars saved
     calendar_event: tournamentsTotal * s.avgBracketMatchesPerTournament + months * 30, // tournament + ad-hoc
     calendar_event_invite: 0, // transient
+
+    // Season / Elo
+    season: 4, // few seasons
+    elo_config: 1, // single row
 
     // Unused (empty or 1 row)
     team: 0,
@@ -285,36 +331,65 @@ function estimateRowCounts(s, months) {
 
 function estimateMonthlyEgress(s, rowCounts) {
   // Egress = initial subscription payloads + ongoing update broadcasts
-  // For public tables: every subscriber gets every insert/update/delete
-  // Key insight: egress scales with (subscribers × updates × row_size)
+  // Key insight: users DON'T subscribe to ALL public tables.
+  // With subscription scoping, each user subscribes to:
+  // 1. Game data (static, small) - characters, lightcones, archetypes, achievements, costs
+  // 2. User's own data - their roster, stats, MMR, achievements
+  // 3. Lobby browser view (projected - much smaller than full Lobby table)
+  // 4. Their current lobby data (if in one) - scoped to lobbyId
+  // Match history is loaded ON DEMAND (profile page), not on every connect
 
   let totalEgressBytes = 0;
   const details = {};
 
-  // --- Initial subscription load per new connection ---
-  // Each user connects once per session, subscribes to public tables
   const sessionsPerMonth = s.users * 30; // ~1 session per day per user
-  let initialLoadBytes = 0;
+  const monthlyMatches = s.matchesPerDay * 30;
 
+  // --- Initial subscription load per new connection ---
+
+  // Game data (static tables subscribed by everyone)
+  let gameDataBytes = 0;
   for (const t of TABLES) {
-    if (t.vis === 'private' || t.vis === 'public_event' || t.category === 'unused') continue;
-    const rows = rowCounts[t.name] || 0;
-    initialLoadBytes += rows * t.bytes;
+    if (t.category === 'game_data' || t.category === 'cost_data') {
+      gameDataBytes += (rowCounts[t.name] || 0) * t.bytes;
+    }
   }
-  const initialLoadEgress = sessionsPerMonth * initialLoadBytes;
+
+  // User's own data (roster, stats, achievements)
+  const ownDataBytes = (
+    (rowCounts.hsr_account || 0) / s.users * 120 + // user's accounts
+    (s.charactersOwned * 63) + // user's characters
+    (s.lightconesOwned * 63) + // user's lightcones
+    300 + // user row + identity
+    s.avgAchievementsPerUser * 40 + // achievements
+    3 * 2 * 62 + // player stats (3 modes * 2 drafts)
+    20 * 3 * 74 + // character stats
+    3 * 40 // MMR ratings
+  );
+
+  // Lobby browser (projected view - ~100 bytes per lobby, not full row)
+  const lobbyBrowserBytes = (rowCounts.lobby || 0) * 100;
+
+  // Per-session load = game data + own data + lobby browser
+  const perSessionLoad = gameDataBytes + ownDataBytes + lobbyBrowserBytes;
+  const initialLoadEgress = sessionsPerMonth * perSessionLoad;
   details['Initial subscription load'] = initialLoadEgress;
   totalEgressBytes += initialLoadEgress;
 
   // --- Ongoing broadcasts for row changes ---
-  const monthlyMatches = s.matchesPerDay * 30;
 
-  // Cursor events (highest frequency): ~5/sec × concurrent users × lobby duration
-  // Each event broadcast to all lobby members (~4-6 people)
-  const cursorEventsPerMonth = s.concurrent * s.avgCursorEventsPerSecond * s.avgLobbyDurationMinutes * 60 * 30;
-  // But only active during matches — scale by duty cycle (matches take ~20min, 24h in day)
-  const cursorDutyCycle = Math.min(1, (monthlyMatches * s.avgLobbyDurationMinutes) / (30 * 24 * 60));
-  const cursorBroadcasts = cursorEventsPerMonth * cursorDutyCycle * 5; // avg 5 recipients
-  const cursorEventSize = 4 + 4 + 4 + 4 + 8; // lobbyId + userId + x + y + timestamp
+  // Cursor events: only players+coaches broadcast (max 8 per lobby)
+  // Client throttle: 50/sec (20ms)
+  // Only during Drafting stage (~50% of lobby duration)
+  const activeLobies = Math.ceil(s.concurrent / 8); // ~8 people per active lobby
+  const broadcastersPerLobby = Math.min(8, 6 + 2); // 6 players + 2 coaches max
+  const cursorEventsPerLobbyPerSec = broadcastersPerLobby * 50; // 50/sec per broadcaster
+  const recipientsPerLobby = Math.min(20, s.concurrent / activeLobies + 4); // lobby members + spectators
+  const draftingFraction = 0.5; // ~50% of lobby time is active drafting
+
+  const cursorDutyCycle = Math.min(1, (monthlyMatches * s.avgLobbyDurationMinutes * draftingFraction) / (30 * 24 * 60));
+  const cursorBroadcasts = activeLobies * cursorEventsPerLobbyPerSec * 60 * s.avgLobbyDurationMinutes * draftingFraction * 30 * cursorDutyCycle * recipientsPerLobby;
+  const cursorEventSize = 4 + 4 + 35 + 4 + 4 + 8 + AUDIT_BYTES; // lobbyId + userId + anonymousLabel + x + y + timestamp + audit
   details['Cursor events'] = cursorBroadcasts * cursorEventSize;
   totalEgressBytes += cursorBroadcasts * cursorEventSize;
 
@@ -330,7 +405,7 @@ function estimateMonthlyEgress(s, rowCounts) {
 
   // MatchSession updates (timer state changes): ~every 30 seconds during match
   const timerUpdates = monthlyMatches * (s.avgLobbyDurationMinutes * 2) * 5;
-  const matchSessionSize = 250; // rough size of full MatchSession row
+  const matchSessionSize = 340; // updated: base 250 + 80 auction fields + overhead
   details['Match session updates'] = timerUpdates * matchSessionSize;
   totalEgressBytes += timerUpdates * matchSessionSize;
 
@@ -362,8 +437,11 @@ function estimateMonthlyReducerCalls(s) {
   total += s.users * 30;
 
   // Cursor broadcasts: highest volume
+  // 8 broadcasters max per lobby, 50/sec, only during drafting (~50% of lobby time)
   const cursorDutyCycle = Math.min(1, (monthlyMatches * s.avgLobbyDurationMinutes) / (30 * 24 * 60));
-  details['Cursor broadcasts'] = Math.round(s.concurrent * s.avgCursorEventsPerSecond * s.avgLobbyDurationMinutes * 60 * 30 * cursorDutyCycle);
+  const activeLobbyCount = Math.ceil(s.concurrent / 8);
+  const cursorCallsPerLobbyPerMin = 8 * 50 * 60 * 0.5; // 8 broadcasters * 50/sec * 60sec * 50% draft time
+  details['Cursor broadcasts'] = Math.round(activeLobbyCount * cursorCallsPerLobbyPerMin * s.avgLobbyDurationMinutes * 30 * cursorDutyCycle);
   total += details['Cursor broadcasts'];
 
   // Draft actions: picks, bans, etc
@@ -397,6 +475,26 @@ function estimateMonthlyReducerCalls(s) {
   // Connect/disconnect lifecycle
   details['Connection lifecycle'] = s.users * 30 * 2;
   total += details['Connection lifecycle'];
+
+  // Lobby lifecycle: create + join + leave + close + kick + ban + move + settings
+  details['Lobby lifecycle'] = monthlyMatches * 8; // ~8 lobby ops per match
+  total += details['Lobby lifecycle'];
+
+  // Ready-up: confirm + unconfirm per player
+  details['Ready-up'] = monthlyMatches * 8; // ~8 confirms per match (4 players * 2 avg)
+  total += details['Ready-up'];
+
+  // Pause/resume
+  details['Pause/resume'] = monthlyMatches * 2; // avg 2 pauses per match
+  total += details['Pause/resume'];
+
+  // Preset operations (low frequency)
+  details['Preset operations'] = 20; // ~20 preset ops per month
+  total += details['Preset operations'];
+
+  // Equip/lineup (post-draft)
+  details['Post-draft actions'] = monthlyMatches * 24; // ~8 equips + 8 arranges + 8 confirms per match
+  total += details['Post-draft actions'];
 
   return { total, details };
 }
@@ -445,32 +543,32 @@ function generateReport(scenarioName, months) {
   const totalEnergy = storageEnergy + egressEnergy + reducerEnergy;
 
   // Output
-  console.log('\n' + '═'.repeat(70));
-  console.log(`  SPACETIMEDB ENERGY MODEL — ${s.label}`);
+  console.log('\n' + '='.repeat(70));
+  console.log(`  SPACETIMEDB ENERGY MODEL -- ${s.label}`);
   console.log(`  Projection: ${months} month(s)`);
-  console.log('═'.repeat(70));
+  console.log('='.repeat(70));
 
-  console.log('\n── Assumptions ──────────────────────────────────────────────────');
+  console.log('\n-- Assumptions ----------------------------------------------------------');
   console.log(`  Users: ${s.users} | Concurrent: ${s.concurrent} | Matches/day: ${s.matchesPerDay}`);
   console.log(`  Tournaments/month: ${s.tournamentsPerMonth} | Avg participants: ${s.avgParticipantsPerTournament}`);
   console.log(`  Cost sets/month: ${s.costSetsCreated} | Chat msgs/match: ${s.avgChatMessagesPerMatch}`);
 
-  console.log('\n── Energy Budget ────────────────────────────────────────────────');
+  console.log('\n-- Energy Budget --------------------------------------------------------');
   console.log(`  ${'Resource'.padEnd(25)} ${'Amount'.padEnd(15)} ${'Energy'.padEnd(10)} ${'% Budget'.padEnd(10)}`);
-  console.log(`  ${'─'.repeat(60)}`);
+  console.log(`  ${'-'.repeat(60)}`);
   console.log(`  ${'Storage'.padEnd(25)} ${storageGB.toFixed(3).padEnd(15)}GB ${Math.round(storageEnergy).toString().padEnd(10)} ${((storageEnergy / ENERGY.MONTHLY_BUDGET) * 100).toFixed(1).padEnd(10)}%`);
   console.log(`  ${'Egress'.padEnd(25)} ${egressGB.toFixed(2).padEnd(15)}GB ${Math.round(egressEnergy).toString().padEnd(10)} ${((egressEnergy / ENERGY.MONTHLY_BUDGET) * 100).toFixed(1).padEnd(10)}%`);
   console.log(`  ${'Reducer calls'.padEnd(25)} ${(reducerMillions).toFixed(2).padEnd(15)}M ${Math.round(reducerEnergy).toString().padEnd(10)} ${((reducerEnergy / ENERGY.MONTHLY_BUDGET) * 100).toFixed(1).padEnd(10)}%`);
-  console.log(`  ${'─'.repeat(60)}`);
+  console.log(`  ${'-'.repeat(60)}`);
   console.log(`  ${'TOTAL'.padEnd(25)} ${''.padEnd(15)} ${Math.round(totalEnergy).toString().padEnd(10)} ${((totalEnergy / ENERGY.MONTHLY_BUDGET) * 100).toFixed(1).padEnd(10)}%`);
   console.log(`  ${'Budget'.padEnd(25)} ${''.padEnd(15)} ${ENERGY.MONTHLY_BUDGET.toString().padEnd(10)} 100.0%`);
   console.log(`  ${'Headroom'.padEnd(25)} ${''.padEnd(15)} ${Math.round(ENERGY.MONTHLY_BUDGET - totalEnergy).toString().padEnd(10)} ${(((ENERGY.MONTHLY_BUDGET - totalEnergy) / ENERGY.MONTHLY_BUDGET) * 100).toFixed(1).padEnd(10)}%`);
 
   if (totalEnergy > ENERGY.MONTHLY_BUDGET) {
-    console.log(`\n  ⚠  OVER BUDGET by ${Math.round(totalEnergy - ENERGY.MONTHLY_BUDGET)} energy`);
+    console.log(`\n  !! OVER BUDGET by ${Math.round(totalEnergy - ENERGY.MONTHLY_BUDGET)} energy`);
   }
 
-  console.log('\n── Storage Breakdown by Category ────────────────────────────────');
+  console.log('\n-- Storage Breakdown by Category ----------------------------------------');
   const catEntries = Object.entries(storageByCategory).sort((a, b) => b[1] - a[1]);
   for (const [cat, bytes] of catEntries) {
     if (bytes === 0) continue;
@@ -478,31 +576,31 @@ function generateReport(scenarioName, months) {
     console.log(`  ${cat.padEnd(20)} ${mb.toFixed(2).padStart(10)} MB  (${((bytes / totalStorageBytes) * 100).toFixed(1)}%)`);
   }
 
-  console.log('\n── Top 15 Tables by Storage ─────────────────────────────────────');
-  console.log(`  ${'Table'.padEnd(32)} ${'Rows'.padEnd(10)} ${'B/Row'.padEnd(8)} ${'Total MB'.padEnd(12)} ${'Growth'.padEnd(12)} ${'Vis'}`);
-  console.log(`  ${'─'.repeat(82)}`);
+  console.log('\n-- Top 15 Tables by Storage ---------------------------------------------');
+  console.log(`  ${'Table'.padEnd(35)} ${'Rows'.padEnd(10)} ${'B/Row'.padEnd(8)} ${'Total MB'.padEnd(12)} ${'Growth'.padEnd(12)} ${'Vis'}`);
+  console.log(`  ${'-'.repeat(85)}`);
   for (const t of storageByTable.slice(0, 15)) {
     const mb = t.totalBytes / (1024 ** 2);
-    console.log(`  ${t.name.padEnd(32)} ${t.rows.toString().padEnd(10)} ${t.bytesPerRow.toString().padEnd(8)} ${mb.toFixed(3).padEnd(12)} ${t.growth.padEnd(12)} ${t.vis}`);
+    console.log(`  ${t.name.padEnd(35)} ${t.rows.toString().padEnd(10)} ${t.bytesPerRow.toString().padEnd(8)} ${mb.toFixed(3).padEnd(12)} ${t.growth.padEnd(12)} ${t.vis}`);
   }
 
-  console.log('\n── Egress Breakdown ─────────────────────────────────────────────');
+  console.log('\n-- Egress Breakdown -----------------------------------------------------');
   const egressEntries = Object.entries(egress.details).sort((a, b) => b[1] - a[1]);
   for (const [label, bytes] of egressEntries) {
     const gb = bytes / (1024 ** 3);
     console.log(`  ${label.padEnd(30)} ${gb.toFixed(3).padStart(10)} GB  (${((bytes / egress.totalBytes) * 100).toFixed(1)}%)`);
   }
 
-  console.log('\n── Reducer Calls Breakdown ──────────────────────────────────────');
+  console.log('\n-- Reducer Calls Breakdown ----------------------------------------------');
   const reducerEntries = Object.entries(reducers.details).sort((a, b) => b[1] - a[1]);
   for (const [label, count] of reducerEntries) {
     const k = count / 1000;
     console.log(`  ${label.padEnd(30)} ${k.toFixed(1).padStart(10)}K  (${((count / reducers.total) * 100).toFixed(1)}%)`);
   }
 
-  console.log('\n── Storage Growth Projection ────────────────────────────────────');
+  console.log('\n-- Storage Growth Projection --------------------------------------------');
   console.log(`  ${'Month'.padEnd(8)} ${'Storage MB'.padEnd(14)} ${'Storage Energy'.padEnd(16)} ${'Cumul % Budget'}`);
-  console.log(`  ${'─'.repeat(55)}`);
+  console.log(`  ${'-'.repeat(55)}`);
   for (let m = 1; m <= Math.min(months, 12); m++) {
     const rc = estimateRowCounts(s, m);
     let mBytes = 0;
@@ -515,7 +613,7 @@ function generateReport(scenarioName, months) {
     console.log(`  ${('M' + m).padEnd(8)} ${(mBytes / (1024 ** 2)).toFixed(2).padEnd(14)} ${Math.round(mEnergy).toString().padEnd(16)} ${((mTotal / ENERGY.MONTHLY_BUDGET) * 100).toFixed(1)}%`);
   }
 
-  console.log('\n' + '═'.repeat(70));
+  console.log('\n' + '='.repeat(70));
   console.log('');
 }
 
