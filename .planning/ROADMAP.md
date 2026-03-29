@@ -227,13 +227,13 @@ Plans:
   3. Chat messages are written to an event table per lobby/match; messages are not persisted to a permanent table and are cleaned up in the same transaction as lobby close
   4. Chat message rows carry a flexible metadata field to support future rich content (emoji, formatting) without schema migration
   5. A lobby list table or view supports filtering by game mode, match status, and player count; lobby visibility (public, private, invite-only) is enforced at the subscription level
-**Plans:** 3/9 plans executed
+**Plans:** 5/9 plans executed
 Plans:
 - [x] 09-01-PLAN.md — Schema foundation: enum changes (LobbyStage +Equipping/Scoring, BanMode -Two, ActionType +3), struct updates (LobbyConfigSnapshot dual budgets, new payloads), table mods (Lobby, LobbyMember, MatchSession, history tables), 4 new tables (LobbyBan, LobbyPreset, TournamentStandIn, LobbyGcJob), publish --clear-database
 - [x] 09-02-PLAN.md — Lobby lifecycle: lobbyHelpers.ts + anonymousHelpers.ts shared validation, 6 reducers (create/join/leave/close/kick/ban), one-lobby-per-user, guest restrictions, cascade delete
-- [ ] 09-03-PLAN.md — Chat + cursor + browser: send/delete chat with rolling window + metadata validation, cursor spectator silencing, projected view_lobby_browser with finished exclusion
+- [x] 09-03-PLAN.md — Chat + cursor + browser: send/delete chat with rolling window + metadata validation, cursor spectator silencing, projected view_lobby_browser with finished exclusion
 - [x] 09-04-PLAN.md — Lobby settings + ready-up + presets: update_lobby_settings (Waiting-only), set_team_slot, confirm/unconfirm ready, set_captain, LobbyPreset CRUD with permission hierarchy
-- [ ] 09-05-PLAN.md — Tournament lobby + stand-in + GC: create_tournament_lobby with settings inheritance, approve_stand_in, scheduled lobby GC reducer (30-min idle cleanup)
+- [x] 09-05-PLAN.md — Tournament lobby + stand-in + GC: create_tournament_lobby with settings inheritance, approve_stand_in, scheduled lobby GC reducer (30-min idle cleanup)
 - [ ] 09-06-PLAN.md — Classic draft: draftSequences.ts (0/4/6 ban), start_draft (match state init), pick/ban/timer_expiry with coach guard + ownership validation + mirror picks, undo/pause/resume
 - [ ] 09-07-PLAN.md — Auction draft: nominate/bid/pass/timer_expiry with steal-skip logic, dual budget enforcement, minimum raise, EMPTY CHARACTER fallback
 - [ ] 09-08-PLAN.md — Post-draft + finalization + views: equip_lightcone/arrange_lineup/confirm_lineup/advance_stage, finalization pipeline updates (new ActionTypes, budget columns, targetName rename, role flags, isPubliclyVisible), 5 per-client anonymous/history views
@@ -285,6 +285,6 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 06.1. Landing Page Migration | 2/2 | Complete    | 2026-03-22 |
 | 7. Achievements and Titles | 2/2 | Complete   | 2026-03-28 |
 | 8. Calendar and Scheduling | 2/2 | Complete   | 2026-03-28 |
-| 9. Mouse Tracking, Chat, and Lobby Browser | 3/9 | In Progress|  |
+| 9. Mouse Tracking, Chat, and Lobby Browser | 5/9 | In Progress|  |
 | 10. Disconnect Handling and Cost Parity | 0/? | Not started | - |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |

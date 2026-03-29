@@ -114,12 +114,12 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 ### Mouse Tracking
 
 - [x] **MOUS-01**: Full XY cursor position broadcast within the page while browser tab is active
-- [ ] **MOUS-02**: Cursor visible to all match participants, spectators, and coaches
+- [x] **MOUS-02**: Cursor visible to all match participants, spectators, and coaches
 - [ ] **MOUS-03**: Coaches can see cursor tracking but cannot call pick/ban reducers
 
 ### Chat
 
-- [ ] **CHAT-01**: Ephemeral per-lobby/match chat via event table (messages not persisted after match ends)
+- [x] **CHAT-01**: Ephemeral per-lobby/match chat via event table (messages not persisted after match ends)
 - [x] **CHAT-02**: Chat message structure supports future rich content (emoji, formatting metadata)
 - [x] **CHAT-03**: Chat messages cleaned up in same transaction as lobby close
 
@@ -253,9 +253,9 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | CAL-04 | Phase 8 | Complete |
 | CAL-05 | Phase 8 | Complete |
 | MOUS-01 | Phase 9 | Complete |
-| MOUS-02 | Phase 9 | Pending |
+| MOUS-02 | Phase 9 | Complete |
 | MOUS-03 | Phase 9 | Pending |
-| CHAT-01 | Phase 9 | Pending |
+| CHAT-01 | Phase 9 | Complete |
 | CHAT-02 | Phase 9 | Complete |
 | CHAT-03 | Phase 9 | Complete |
 | LBBY-01 | Phase 9 | Complete |

@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 09
 current_plan: 1
 status: executing
-last_updated: "2026-03-29T11:52:03.515Z"
+last_updated: "2026-03-29T11:53:48.810Z"
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 35
-  completed_plans: 29
+  completed_plans: 31
 ---
 
 # Session State
@@ -101,6 +101,10 @@ See: .planning/PROJECT.md
 - [Phase 09-02]: canKickOrBan takes caller's LobbyMember row to check isReferee + refereeCanKick against caller, not target
 - [Phase 09-04]: presetId client-responsibility: backend validates preset exists, client pre-fills form from preset — avoids server-side merge logic
 - [Phase 09-04]: isSystemPreset admin-only in ensureCanMutatePreset — Moderators can edit other mod/TO presets but not system presets
+- [Phase 09-03]: Stage btree index used in view_lobby_browser procedural view — filter 4 active stages individually to avoid iter() performance issue and ctx.from.Lobby non-iterability in procedural views
+- [Phase 09-03]: cursor.ts isSpectator variable removed after D-34 guard — TypeScript narrows teamSlot union to never after Spectator guard; isAnon simplified to isAnonymousPlayers only
+- [Phase 09]: hardDeleteLobby exported from lobbyGc.ts to avoid parallel-agent conflict with lobbyLifecycle.ts modifications
+- [Phase 09-05]: LobbyGcJob scheduled wiring requires --clear-database on maincloud
 
 ### Quick Tasks Completed
 
@@ -148,3 +152,5 @@ See: .planning/PROJECT.md
 - 2026-03-28: Completed 08-01-PLAN.md — InviteStatus enum, CalendarEvent/CalendarEventInvite schema mods, calendarCleanup + calendarCascade helpers, 12 calendar reducers (availability/saved/events/invite response), published to maincloud with --clear-database, bindings regenerated, bootstrap+seed restored
 - 2026-03-28: Completed 08-02-PLAN.md — 5 cross-feature cascade integrations (cancel_tournament D-21, rollback_bracket_match D-22, dq_participant D-22, withdraw_from_tournament D-24, performUserDeletion D-23), architecture doc full rewrite, published to maincloud, 85/85 tests pass, Phase 08 complete
 - 2026-03-29: Completed 09-01-PLAN.md — Phase 9 schema foundation: LobbyStage+BanMode+ActionType enum changes, LobbyConfigSnapshot dual budgets, StepPayload 3 new types, 8 modified tables (Lobby, LobbyMember, MatchSession, MatchSessionHistory, MatchSessionStepHistory, MatchParticipantHistory), 4 new tables (LobbyBan, LobbyPreset, TournamentStandIn, LobbyGcJob), published to maincloud with --clear-database, bindings regenerated
+- 2026-03-29: Completed 09-02-PLAN.md — 6 lobby lifecycle reducers (create/join/leave/close/kick/ban), lobbyHelpers.ts + anonymousHelpers.ts, published to maincloud, bindings regenerated
+- 2026-03-29: Completed 09-03-PLAN.md — send_chat_message (D-12/D-13/D-14/D-18) + delete_chat_message (D-26), spectator cursor silencing (D-34), projected view_lobby_browser with LobbyBrowserRow (D-05/D-06/D-08), published to maincloud, bindings regenerated
