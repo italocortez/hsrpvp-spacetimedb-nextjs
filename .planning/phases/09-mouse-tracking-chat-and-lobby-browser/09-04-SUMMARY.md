@@ -121,6 +121,15 @@ completed: 2026-03-29
 - Preset system ready for bootstrap seeding (system presets referenced in D-31b)
 - Pre-existing `tournamentLobby.ts` TS error should be investigated before Phase 9 UAT
 
+## Self-Check: PASSED
+
+- FOUND: spacetimedb/src/reducers/lobbySettings.ts
+- FOUND: spacetimedb/src/reducers/lobbyPresets.ts
+- FOUND: .planning/phases/09-mouse-tracking-chat-and-lobby-browser/09-04-SUMMARY.md
+- FOUND commit: 3469058 (Task 1)
+- FOUND commit: 68875a9 (Task 2)
+- FOUND commit: ddf1d1f (metadata)
+
 ---
 *Phase: 09-mouse-tracking-chat-and-lobby-browser*
 *Completed: 2026-03-29*

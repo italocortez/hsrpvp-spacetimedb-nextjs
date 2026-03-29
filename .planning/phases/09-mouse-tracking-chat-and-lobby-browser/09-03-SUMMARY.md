@@ -132,6 +132,16 @@ None - no external service configuration required.
 - Chat reducers ready for Plan 04 (draft system — chat available in Drafting stage)
 - System messages (join/leave/stage change) deferred to plan where those events occur (lobby lifecycle already has join/leave hooks)
 
+## Self-Check: PASSED
+
+- chat.ts: FOUND at spacetimedb/src/reducers/chat.ts
+- cursor.ts: FOUND with teamSlot.tag === 'Spectator' guard
+- securityViews.ts: FOUND with LobbyBrowserRow type and Finished exclusion
+- send_chat_message_reducer.ts: FOUND in src/module_bindings/
+- delete_chat_message_reducer.ts: FOUND in src/module_bindings/
+- Commits 5f45c4d, 8d47765, 904f513: FOUND in git log
+- Module published to maincloud: CONFIRMED (dashboard: https://spacetimedb.com/hsrpvp-spacetimedb-nextjs-test1)
+
 ---
 *Phase: 09-mouse-tracking-chat-and-lobby-browser*
 *Completed: 2026-03-29*
