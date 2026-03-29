@@ -102,9 +102,12 @@ import ManualAwardAchievementReducer from "./manual_award_achievement_reducer";
 import MigrateRosterReducer from "./migrate_roster_reducer";
 import ModDemoteFromHostReducer from "./mod_demote_from_host_reducer";
 import ModPromoteToHostReducer from "./mod_promote_to_host_reducer";
+import NominateCharacterReducer from "./nominate_character_reducer";
 import OverrideMatchResultReducer from "./override_match_result_reducer";
+import PassBidReducer from "./pass_bid_reducer";
 import PauseDraftReducer from "./pause_draft_reducer";
 import PickCharacterReducer from "./pick_character_reducer";
+import PlaceBidReducer from "./place_bid_reducer";
 import ProcessTournamentMmrReducer from "./process_tournament_mmr_reducer";
 import PublishCostSetReducer from "./publish_cost_set_reducer";
 import ReclaimRefereeReducer from "./reclaim_referee_reducer";
@@ -137,6 +140,7 @@ import StartDraftReducer from "./start_draft_reducer";
 import SubmitAndAdvanceBracketReducer from "./submit_and_advance_bracket_reducer";
 import SubmitMatchResultReducer from "./submit_match_result_reducer";
 import SwapSeedsReducer from "./swap_seeds_reducer";
+import TimerExpiryAuctionReducer from "./timer_expiry_auction_reducer";
 import TimerExpiryClassicReducer from "./timer_expiry_classic_reducer";
 import ToggleCalendarVisibilityReducer from "./toggle_calendar_visibility_reducer";
 import TransferRefereeReducer from "./transfer_referee_reducer";
@@ -1071,9 +1075,12 @@ const reducersSchema = __reducers(
   __reducerSchema("migrate_roster", MigrateRosterReducer),
   __reducerSchema("mod_demote_from_host", ModDemoteFromHostReducer),
   __reducerSchema("mod_promote_to_host", ModPromoteToHostReducer),
+  __reducerSchema("nominate_character", NominateCharacterReducer),
   __reducerSchema("override_match_result", OverrideMatchResultReducer),
+  __reducerSchema("pass_bid", PassBidReducer),
   __reducerSchema("pause_draft", PauseDraftReducer),
   __reducerSchema("pick_character", PickCharacterReducer),
+  __reducerSchema("place_bid", PlaceBidReducer),
   __reducerSchema("process_tournament_mmr", ProcessTournamentMmrReducer),
   __reducerSchema("publish_cost_set", PublishCostSetReducer),
   __reducerSchema("reclaim_referee", ReclaimRefereeReducer),
@@ -1106,6 +1113,7 @@ const reducersSchema = __reducers(
   __reducerSchema("submit_and_advance_bracket", SubmitAndAdvanceBracketReducer),
   __reducerSchema("submit_match_result", SubmitMatchResultReducer),
   __reducerSchema("swap_seeds", SwapSeedsReducer),
+  __reducerSchema("timer_expiry_auction", TimerExpiryAuctionReducer),
   __reducerSchema("timer_expiry_classic", TimerExpiryClassicReducer),
   __reducerSchema("toggle_calendar_visibility", ToggleCalendarVisibilityReducer),
   __reducerSchema("transfer_referee", TransferRefereeReducer),
