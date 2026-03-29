@@ -38,6 +38,7 @@ export { run_lobby_gc } from './reducers/lobbyGc';
 export { start_draft, pick_character, ban_character, timer_expiry_classic } from './reducers/draftClassic';
 export { undo_last_step, pause_draft, resume_draft } from './reducers/draftControl';
 export { nominate_character, place_bid, pass_bid, timer_expiry_auction } from './reducers/draftAuction';
+export { equip_lightcone, arrange_lineup, confirm_lineup, advance_stage } from './reducers/postDraft';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);

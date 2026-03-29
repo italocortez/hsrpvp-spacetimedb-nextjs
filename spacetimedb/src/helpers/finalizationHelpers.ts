@@ -196,6 +196,9 @@ export function runFinalization(
     // 3. Read lobby
     const lobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
 
+    // 3b. Read match session (for budget analysis in step 7, D-88)
+    const session = ctx.db.MatchSession.lobbyId.find(matchResult.lobbyId);
+
     // 4. Read steps (sorted by sequence)
     const steps = [...ctx.db.MatchSessionStep.lobby_id.filter(matchResult.lobbyId)]
         .sort((a: any, b: any) => a.sequence - b.sequence);
@@ -240,7 +243,8 @@ export function runFinalization(
             banMode: lobby.banMode,
             standardTurnSeconds: lobby.standardTurnSeconds,
             reserveBankSeconds: lobby.reserveBankSeconds,
-            auctionBudget: lobby.auctionBudget,
+            characterBudget: lobby.characterBudget,
+            lightconeBudget: lobby.lightconeBudget,
             rosterDiffAdvantage: lobby.rosterDiffAdvantage,
             rosterThreshold: lobby.rosterThreshold,
             underThresholdAdvantage: lobby.underThresholdAdvantage,
@@ -252,7 +256,8 @@ export function runFinalization(
             banMode: { tag: 'None', value: {} },
             standardTurnSeconds: 60,
             reserveBankSeconds: 120,
-            auctionBudget: undefined,
+            characterBudget: 0,
+            lightconeBudget: 0,
             rosterDiffAdvantage: 0,
             rosterThreshold: 0,
             underThresholdAdvantage: 0,
@@ -260,21 +265,33 @@ export function runFinalization(
             deathPenalty: 0,
         },
         outcome: matchOutcome,
+        // D-88: Budget analysis (after carryover: charBudget=0, lcBudget = original LC + leftover char)
+        // totalSpent = characterBudget + lightconeBudget - remainingLcBudget (correct carryover math)
+        teamBlueSpent: session && lobby ? (lobby.characterBudget + lobby.lightconeBudget - session.teamBlueLcBudget) : 0,
+        teamRedSpent: session && lobby ? (lobby.characterBudget + lobby.lightconeBudget - session.teamRedLcBudget) : 0,
+        handicapApplied: 0,
+        // D-84/D-91: Tournament matches hidden until tournament completes; standalone matches always visible
+        isPubliclyVisible: lobby?.isTournamentControlled ? false : true,
         ...auditInsert(ctx, actingUserId),
     } as any);
 
-    // 8. Write MatchSessionStepHistory rows (per D-50/D-54)
+    // 8. Write MatchSessionStepHistory rows (per D-50/D-54/D-86/D-90)
     for (const step of steps) {
         const user = ctx.db.User.id.find(step.actorUserId);
-        // Extract characterName from payload based on variant tag
-        let characterName: string | undefined;
+        // Extract targetName from payload based on variant tag (D-86)
+        // Covers characters (Pick/Ban/AuctionSold/Nominate), LCs (EquipLightcone), and Bid targetCharacter
+        // ArrangeLineup and ConfirmLineup: targetName stays undefined
+        let targetName: string | undefined;
         if (step.payload) {
             const tag = step.payload.tag;
             if (tag === 'Pick' || tag === 'Ban' || tag === 'AuctionSold' || tag === 'Nominate') {
-                characterName = step.payload.value?.characterName;
+                targetName = step.payload.value?.characterName;
             } else if (tag === 'Bid') {
-                characterName = step.payload.value?.targetCharacter;
+                targetName = step.payload.value?.targetCharacter;
+            } else if (tag === 'EquipLightcone') {
+                targetName = step.payload.value?.lightconeName;
             }
+            // ArrangeLineup and ConfirmLineup: targetName stays undefined
         }
 
         ctx.db.MatchSessionStepHistory.insert({
@@ -284,7 +301,7 @@ export function runFinalization(
             actorDisplayName: user ? user.displayName : `User#${step.actorUserId}`,
             teamSide: step.actorSlot,
             action: step.action,
-            characterName,
+            targetName,
             payload: step.payload ? JSON.stringify(step.payload) : undefined,
             ...auditInsert(ctx, actingUserId),
         } as any);
@@ -311,14 +328,19 @@ export function runFinalization(
         } as any);
     }
 
-    // 10. Write MatchParticipantHistory per participant (per D-53)
+    // 10. Write MatchParticipantHistory per participant (per D-53/D-87)
     for (const p of participants) {
         const pUser = ctx.db.User.id.find(p.userId);
+        // D-87: Include role flags from LobbyMember
+        const memberRow = [...ctx.db.LobbyMember.by_lobby_and_user.filter([matchResult.lobbyId, p.userId])][0];
         ctx.db.MatchParticipantHistory.insert({
             userId: p.userId,
             matchHistoryId: historyRow.id,
             teamSide: p.teamSide,
             displayName: pUser ? pUser.displayName : `User#${p.userId}`,
+            isReferee: memberRow ? memberRow.isReferee : false,
+            isCoach: memberRow ? memberRow.isCoach : false,
+            isCaptain: p.isCaptain,
             ...auditInsert(ctx, actingUserId),
         } as any);
     }
@@ -476,6 +498,46 @@ export function runFinalization(
     if (finalResult) { ctx.db.MatchResultRecord.delete(finalResult); }
 
     console.log(`[MATCH] Match result #${matchResult.id} finalized by user #${actingUserId}. History ID: ${historyRow.id}`);
+}
+
+// ─── revealTournamentHistory ──────────────────────────────────────────────────
+// Batch-updates all MatchSessionHistory rows associated with a tournament to
+// isPubliclyVisible=true. Called when tournament stage transitions to
+// Completed or Cancelled per D-91.
+
+export function revealTournamentHistory(ctx: any, tournamentId: number): void {
+    // Find all MatchResultRecord rows for this tournament via index
+    const matchResults = [...ctx.db.MatchResultRecord.tournament_id.filter(tournamentId)];
+
+    // Build a set of lobby join codes that belong to this tournament.
+    // We look up each lobby by lobbyId. Finished lobbies may still be alive
+    // within the 30-min GC window; if already GC'd the reveal is a no-op for
+    // that match (history row's lobbyCode won't match any active lobby, but
+    // the MatchSessionHistory row still exists and can be found via lobbyCode).
+    const lobbyCodes = new Set<string>();
+    for (const mr of matchResults) {
+        const lobby = ctx.db.Lobby.id.find(mr.lobbyId);
+        if (lobby) {
+            lobbyCodes.add(lobby.joinCode);
+        }
+    }
+
+    if (lobbyCodes.size === 0) return;
+
+    // Iterate MatchSessionHistory and reveal any row whose lobbyCode matches
+    // a lobby belonging to this tournament.
+    // Note: MatchSessionHistory has no lobbyId column or tournamentId column,
+    // so we use iter() to scan. Acceptable for tournament completion
+    // (infrequent batch operation, not a hot path).
+    for (const history of ctx.db.MatchSessionHistory.iter()) {
+        if (!history.isPubliclyVisible && lobbyCodes.has(history.lobbyCode)) {
+            ctx.db.MatchSessionHistory.id.update({
+                ...history,
+                isPubliclyVisible: true,
+                ...auditUpdate(ctx, history, 0),
+            } as any);
+        }
+    }
 }
 
 // ─── Internal: incrementSpectatedCount ───────────────────────────────────────

@@ -4,6 +4,7 @@ import { Timestamp } from 'spacetimedb';
 import { ensureTournamentHost } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress, cleanupTeamRequests, cascadeCleanupTournament } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { revealTournamentHistory } from '../helpers/finalizationHelpers';
 
 // Valid enum tag lists for runtime validation
 const VALID_TOURNAMENT_FORMATS = ['SingleElimination', 'DoubleElimination', 'GroupOnly', 'GroupIntoSingleElim', 'GroupIntoDoubleElim'];
@@ -343,6 +344,11 @@ export const advance_tournament_stage = spacetimedb.reducer(
             stage: { tag: nextStage, value: {} } as any,
             ...auditUpdate(ctx, tournament, user.id),
         } as any);
+
+        // D-91: Reveal all associated match history when tournament reaches Completed
+        if (nextStage === 'Completed') {
+            revealTournamentHistory(ctx, tournamentId);
+        }
     }
 );
 
@@ -365,5 +371,8 @@ export const cancel_tournament = spacetimedb.reducer(
             stage: { tag: 'Cancelled', value: {} } as any,
             ...auditUpdate(ctx, tournament, user.id),
         } as any);
+
+        // D-91: Reveal all associated match history when tournament is Cancelled
+        revealTournamentHistory(ctx, tournamentId);
     }
 );
