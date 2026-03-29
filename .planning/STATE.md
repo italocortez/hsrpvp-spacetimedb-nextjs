@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 09
 current_plan: 1
 status: executing
-last_updated: "2026-03-29T11:44:38.420Z"
+last_updated: "2026-03-29T11:52:03.515Z"
 progress:
   total_phases: 13
   completed_phases: 10
   total_plans: 35
-  completed_plans: 28
+  completed_plans: 29
 ---
 
 # Session State
@@ -99,6 +99,8 @@ See: .planning/PROJECT.md
 - [Phase 09-02]: LobbyCursorEvent is an event table — no manual cleanup needed in close_lobby cascade; rows auto-delete after broadcast
 - [Phase 09-02]: Empty Waiting lobby auto-closes on last member leave via _hardDeleteLobby — prevents orphaned lobbies
 - [Phase 09-02]: canKickOrBan takes caller's LobbyMember row to check isReferee + refereeCanKick against caller, not target
+- [Phase 09-04]: presetId client-responsibility: backend validates preset exists, client pre-fills form from preset — avoids server-side merge logic
+- [Phase 09-04]: isSystemPreset admin-only in ensureCanMutatePreset — Moderators can edit other mod/TO presets but not system presets
 
 ### Quick Tasks Completed
 
