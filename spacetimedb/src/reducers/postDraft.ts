@@ -29,7 +29,7 @@ export const equip_lightcone = spacetimedb.reducer(
         ensureStageIs(lobby, 'Equipping');
 
         // Coach guard (D-39): coaches blocked from all draft/post-draft actions
-        if (member.isCoach) {
+        if (member.participationRole.tag === 'Coach') {
             throw new SenderError('Coaches cannot equip lightcones.');
         }
 
@@ -130,7 +130,7 @@ export const arrange_lineup = spacetimedb.reducer(
         ensureStageIs(lobby, 'Equipping');
 
         // Coach guard (D-39)
-        if (member.isCoach) {
+        if (member.participationRole.tag === 'Coach') {
             throw new SenderError('Coaches cannot arrange lineups.');
         }
 
@@ -199,7 +199,7 @@ export const confirm_lineup = spacetimedb.reducer(
         ensureStageIs(lobby, 'Equipping');
 
         // Coach guard (D-39)
-        if (member.isCoach) {
+        if (member.participationRole.tag === 'Coach') {
             throw new SenderError('Coaches cannot confirm lineups.');
         }
 

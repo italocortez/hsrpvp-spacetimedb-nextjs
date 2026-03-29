@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { auditInsert } from '../helpers/auditColumns';
-import { ensureNotInLobby } from '../helpers/lobbyHelpers';
+import { ensureNotInLobby, generateJoinCode } from '../helpers/lobbyHelpers';
 
 // ─── create_tournament_lobby ─────────────────────────────────────────────────
 // Creates a lobby linked to a bracket match.
@@ -102,9 +102,10 @@ export const create_tournament_lobby = spacetimedb.reducer(
         // D-65: Inherit ALL settings from Tournament, locked.
         // For fields not present on Tournament (draftMode, banMode, timers, budgets),
         // use sensible tournament defaults.
+        const joinCode = generateJoinCode(ctx, user.id);
         const lobby = ctx.db.Lobby.insert({
             id: 0, // autoInc
-            joinCode: args.joinCode,
+            joinCode,
             hostUserId: user.id,
             teamBlueAlias: 'Blue',
             teamRedAlias: 'Red',
@@ -196,7 +197,6 @@ export const create_tournament_lobby = spacetimedb.reducer(
             isOnline: true,
             participationRole: { tag: 'Player', value: {} } as any,
             isReferee: true,
-            isCoach: false,
             teamSlot: { tag: 'Spectator', value: {} } as any,
             isConfirmed: false,
             isCaptain: false,

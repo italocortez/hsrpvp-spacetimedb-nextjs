@@ -21,7 +21,7 @@ Lobby (PK: id autoInc)
 │  Lifecycle: stage (LobbyStage), lastActivityAt, hostDisconnectTime?
 │
 ├── LobbyMember (PK: [lobbyId, userId])
-│     isOnline, participationRole, isReferee, isCoach, teamSlot, isConfirmed, isCaptain
+│     isOnline, participationRole, isReferee, teamSlot, isConfirmed, isCaptain
 │
 ├── LobbyBan (PK: [lobbyId, bannedUserId])
 │     bannedByUserId → User.id
@@ -120,9 +120,8 @@ Lobby (PK: id autoInc)
 | lobbyId | u32 | FK to Lobby.id (composite PK) |
 | userId | u32 | FK to User.id (composite PK) |
 | isOnline | bool | Whether member is currently connected |
-| participationRole | ParticipationRole | Player or Spectator |
+| participationRole | ParticipationRole | Player or Coach |
 | isReferee | bool | Has admin powers in this lobby (host has this by default) |
-| isCoach | bool | Can view/chat but cannot perform draft actions (MOUS-03) |
 | teamSlot | TeamLabel | Blue, Red, or Spectator |
 | isConfirmed | bool | Ready-up status (D-29); required for start_draft |
 | isCaptain | bool | Can act on behalf of team in draft (D-30) |
@@ -287,12 +286,12 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned.
 - `confirm_ready`: sets `isConfirmed=true` (Waiting stage only)
 - `unconfirm_ready`: clears `isConfirmed` (Waiting stage only)
 - Settings change by host resets ALL members' `isConfirmed=false`
-- `start_draft` rejects unless all Blue+Red non-coach players are confirmed
+- `start_draft` rejects unless all Blue+Red players (participationRole=Player) are confirmed
 
 ### Captain System (D-30)
 - `set_captain`: host, admin, or referee with `refereeCanSetCaptain=true` can assign
-- Target must be on Blue/Red team and not a coach
-- Auto-assigned at `start_draft` if team has no captain (first non-coach player per team)
+- Target must be on Blue/Red team with participationRole=Player (not Coach)
+- Auto-assigned at `start_draft` if team has no captain (first Player per team)
 - Only captain can perform draft actions (pick/ban/nominate/bid/equip/arrange/confirm)
 
 ---
@@ -365,7 +364,7 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned. This protec
 
 - `LobbyConfig` struct flattened into Lobby columns — all settings are indexable/filterable
 - `LobbyConfigSnapshot` (in structs.ts) used only by MatchSessionHistory for frozen match-time snapshots
-- Capacity: 6 players, 2 coaches, 12 spectators = 20 max (enforced in join reducer)
+- Capacity: max 20 total per lobby — players per team <= teamSize, coaches per team <= 1, spectators <= 12 (enforced in join_lobby and set_team_slot)
 - `currentPlayerCount` denormalized on Lobby for zero-cost browser view reads (D-07)
 - `lastActivityAt` tracked separately from `lastModifiedDate` audit column for GC timeout
 - `rosterVisibility` enum (OpenRoster/ClosedWithRating/ClosedNoRating) replaces old `isOpenRoster` bool

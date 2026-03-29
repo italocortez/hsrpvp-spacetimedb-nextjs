@@ -185,7 +185,7 @@ Returns `ChatMessage` rows for lobbies the caller is a member of. Applies anonym
 **Type:** `view` — requires authentication
 **Row type:** `AnonymousLobbyMemberRow`
 
-Custom struct: `{ lobbyId, userId, isOnline, teamSlot, isReferee, isCoach, isConfirmed, isCaptain, displayName, anonymousLabel? }`
+Custom struct: `{ lobbyId, userId, isOnline, teamSlot, isReferee, participationRole, isConfirmed, isCaptain, displayName, anonymousLabel? }`
 
 Returns `LobbyMember` rows for the caller's lobbies. Applies anonymous enforcement per D-92:
 - Opponent members: `userId → 0`, `displayName → anonymousLabel`, `anonymousLabel` set

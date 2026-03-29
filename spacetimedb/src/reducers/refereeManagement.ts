@@ -115,9 +115,8 @@ export const reclaim_referee = spacetimedb.reducer(
 );
 
 // --- Coach Role Management --------------------------------------------------------
-// Assigns or removes the isCoach flag on a LobbyMember.
+// Assigns or removes the Coach participationRole on a LobbyMember.
 // Permission: lobby host or current referee.
-// NOTE: Pick/ban guard enforcement (coach cannot pick) is Phase 9 scope.
 
 export const set_coach = spacetimedb.reducer(
     {
@@ -127,7 +126,6 @@ export const set_coach = spacetimedb.reducer(
     (ctx, { lobbyId, targetUserId }) => {
         const user = getAuthenticatedUser(ctx);
 
-        // Validate caller is the lobby host OR the current referee
         const lobby = ctx.db.Lobby.id.find(lobbyId);
         if (!lobby) throw new SenderError('Lobby not found.');
 
@@ -140,18 +138,25 @@ export const set_coach = spacetimedb.reducer(
             throw new SenderError('Only the lobby host or referee can assign the coach role.');
         }
 
-        // Find target member
         const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
         if (!targetMember) throw new SenderError('Target user is not a member of this lobby.');
 
         // Already a coach — no-op
-        if (targetMember.isCoach) return;
+        if (targetMember.participationRole.tag === 'Coach') return;
 
-        // Update: delete + insert with isCoach = true
-        ctx.db.LobbyMember.delete(targetMember);
+        // Check coach cap: max 1 coach per team
+        const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
+            .filter((m: any) => m.teamSlot.tag === targetMember.teamSlot.tag);
+        const coachCount = teamMembers.filter((m: any) => m.participationRole.tag === 'Coach').length;
+        if (coachCount >= 1) {
+            throw new SenderError('This team already has a coach.');
+        }
+
+        ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
         ctx.db.LobbyMember.insert({
             ...targetMember,
-            isCoach: true,
+            participationRole: { tag: 'Coach', value: {} },
+            isCaptain: false, // Coaches cannot be captains
             ...auditUpdate(ctx, targetMember, user.id),
         } as any);
 
@@ -167,7 +172,6 @@ export const remove_coach = spacetimedb.reducer(
     (ctx, { lobbyId, targetUserId }) => {
         const user = getAuthenticatedUser(ctx);
 
-        // Validate caller is the lobby host OR the current referee
         const lobby = ctx.db.Lobby.id.find(lobbyId);
         if (!lobby) throw new SenderError('Lobby not found.');
 
@@ -180,18 +184,16 @@ export const remove_coach = spacetimedb.reducer(
             throw new SenderError('Only the lobby host or referee can remove the coach role.');
         }
 
-        // Find target member
         const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
         if (!targetMember) throw new SenderError('Target user is not a member of this lobby.');
 
         // Not a coach — no-op
-        if (!targetMember.isCoach) return;
+        if (targetMember.participationRole.tag !== 'Coach') return;
 
-        // Update: delete + insert with isCoach = false
-        ctx.db.LobbyMember.delete(targetMember);
+        ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
         ctx.db.LobbyMember.insert({
             ...targetMember,
-            isCoach: false,
+            participationRole: { tag: 'Player', value: {} },
             ...auditUpdate(ctx, targetMember, user.id),
         } as any);
 

@@ -38,7 +38,7 @@ Lobby (PK: id)
       matchHistoryId → MatchSessionHistory.id
       teamSide: TeamLabel
       displayName (denormalized)
-      isReferee, isCoach, isCaptain
+      isReferee, participationRole, isCaptain
 ```
 
 ---
@@ -190,7 +190,7 @@ Junction table linking users to match history records. Enables indexed "show me 
 | teamSide | TeamLabel | Blue or Red |
 | displayName | string | Denormalized at archival time (D-53/D-64) |
 | isReferee | bool | Was this person the referee |
-| isCoach | bool | Was this person a coach |
+| participationRole | ParticipationRole | Player or Coach (was this person a coach) |
 | isCaptain | bool | Was this person a captain |
 
 **Indexes:** `by_user` [userId], `by_match_history` [matchHistoryId], `by_user_and_match` [userId, matchHistoryId]
@@ -254,7 +254,7 @@ Two phases:
 - If nominating team wins the auction: other team nominates next (normal rotation)
 - If opposing team outbids nominator and wins: nominating team keeps their turn (steal — the opponent "spent" the nominator's slot)
 
-**Auction end:** Each team targets `8 * teamSize` characters. When both reach target, `Equipping` stage begins automatically.
+**Auction end:** Each team targets `8` characters (fixed — game mode driven: 2 bosses × 4 characters, not by teamSize). When both reach target, `Equipping` stage begins automatically.
 
 **Budget enforcement (D-49/D-53):**
 - Nomination rejected if base cost > remaining `teamBlueCharBudget` / `teamRedCharBudget`
@@ -314,7 +314,7 @@ MatchSessionStep uses `id` autoInc as PK and is updated via `ctx.db.MatchSession
 Every draft action validates:
 1. Lobby is in correct stage
 2. Caller is a lobby member
-3. Caller is NOT a coach (D-39, MOUS-03)
+3. Caller's participationRole is not Coach (D-39, MOUS-03)
 4. `session.draftSequence[session.turnIndex]` exists
 5. `actionRequired.tag` matches the action being taken
 6. `teamTurn.tag` matches caller's `teamSlot.tag`

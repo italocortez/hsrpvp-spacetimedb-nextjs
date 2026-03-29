@@ -23,7 +23,6 @@ export default __t.row({
     return ParticipationRole.name("participation_role");
   },
   isReferee: __t.bool().name("is_referee"),
-  isCoach: __t.bool().name("is_coach"),
   get teamSlot() {
     return TeamLabel.name("team_slot");
   },

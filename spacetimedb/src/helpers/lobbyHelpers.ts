@@ -1,6 +1,29 @@
 import { SenderError } from 'spacetimedb/server';
 import { isRoleAtLeast } from './ensurePermissions';
 
+// ─── Server-generated join codes ──────────────────────────────────────────────
+// Deterministic hash-based code generation (no Math.random — reducers must be deterministic).
+// 5 uppercase alphanumeric chars = 36^5 = ~60M possible codes. Retry on collision.
+const JOIN_CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const JOIN_CODE_LENGTH = 6;
+const MAX_RETRIES = 10;
+
+export function generateJoinCode(ctx: any, userId: number): string {
+    const timeMicros = Number(ctx.timestamp.microsSinceUnixEpoch % BigInt(2_000_000_000));
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        let hash = (userId * 2654435761 + timeMicros + attempt * 31) >>> 0;
+        let code = '';
+        for (let i = 0; i < JOIN_CODE_LENGTH; i++) {
+            code += JOIN_CODE_CHARS[hash % JOIN_CODE_CHARS.length];
+            hash = (hash * 31 + 17) >>> 0;
+        }
+        if (!ctx.db.Lobby.joinCode.find(code)) {
+            return code;
+        }
+    }
+    throw new SenderError('Could not generate a unique join code. Please try again.');
+}
+
 /**
  * Ensures the user is not currently in any lobby.
  * Per D-22: one lobby at a time per user.

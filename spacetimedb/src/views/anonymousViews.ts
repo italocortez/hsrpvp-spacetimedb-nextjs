@@ -9,16 +9,11 @@
 
 import spacetimedb from '../schema';
 import { t } from 'spacetimedb/server';
-import { ChatSenderType, TeamLabel, ActionType, GameMode } from '../types/enums';
+import { ChatSenderType, TeamLabel, ActionType, GameMode, ParticipationRole } from '../types/enums';
 import { StepPayload } from '../types/structs';
 import { shouldAnonymize } from '../helpers/anonymousHelpers';
 import { computeAnonymousLabel } from '../helpers/anonymousLabels';
-import { ChatMessage } from '../tables/chatMessage';
-import { LobbyMember } from '../tables/lobbyMember';
-import { MatchSessionStep } from '../tables/matchSessionStep';
-import { MatchResultParticipant } from '../tables/matchResultParticipant';
 import { MatchSessionHistory } from '../tables/matchSessionHistory';
-import { MatchParticipantHistory } from '../tables/matchParticipantHistory';
 
 // ---------------------------------------------------------------------------
 // 1. view_my_lobby_chat (per D-92)
@@ -89,9 +84,9 @@ const AnonymousLobbyMemberRow = t.object('AnonymousLobbyMemberRow', {
     lobbyId: t.u32(),
     userId: t.u32(),
     isOnline: t.bool(),
+    participationRole: ParticipationRole,
     teamSlot: TeamLabel,
     isReferee: t.bool(),
-    isCoach: t.bool(),
     isConfirmed: t.bool(),
     isCaptain: t.bool(),
     displayName: t.string(),
@@ -133,8 +128,8 @@ spacetimedb.view(
                     userId: anonymize ? 0 : member.userId,
                     isOnline: member.isOnline,
                     teamSlot: member.teamSlot,
+                    participationRole: member.participationRole,
                     isReferee: member.isReferee,
-                    isCoach: member.isCoach,
                     isConfirmed: member.isConfirmed,
                     isCaptain: member.isCaptain,
                     displayName: anonymize ? (anonLabel ?? 'Unknown') : realDisplayName,

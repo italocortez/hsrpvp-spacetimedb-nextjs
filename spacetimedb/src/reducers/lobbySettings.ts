@@ -201,6 +201,32 @@ export const set_team_slot = spacetimedb.reducer(
         // Find target member
         const targetMember = ensureLobbyMember(ctx, lobbyId, targetUserId);
 
+        // Cap enforcement: check target slot capacity
+        const newSlotTag = args.teamSlot.tag;
+        if (newSlotTag !== targetMember.teamSlot.tag) {
+            const allMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
+            const targetSlotMembers = allMembers.filter((m: any) => m.teamSlot.tag === newSlotTag && m.userId !== targetUserId);
+            const isCoach = targetMember.participationRole.tag === 'Coach';
+
+            if (newSlotTag === 'Blue' || newSlotTag === 'Red') {
+                if (isCoach) {
+                    const coachCount = targetSlotMembers.filter((m: any) => m.participationRole.tag === 'Coach').length;
+                    if (coachCount >= 1) {
+                        throw new SenderError(`${newSlotTag} team already has a coach.`);
+                    }
+                } else {
+                    const playerCount = targetSlotMembers.filter((m: any) => m.participationRole.tag !== 'Coach').length;
+                    if (playerCount >= lobby.teamSize) {
+                        throw new SenderError(`${newSlotTag} team is full (max ${lobby.teamSize} players).`);
+                    }
+                }
+            } else if (newSlotTag === 'Spectator') {
+                if (targetSlotMembers.length >= 12) {
+                    throw new SenderError('Spectator slots are full (max 12).');
+                }
+            }
+        }
+
         // Delete + reinsert with new teamSlot and isConfirmed reset
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
         ctx.db.LobbyMember.insert({
@@ -331,7 +357,7 @@ export const set_captain = spacetimedb.reducer(
         if (targetMember.teamSlot.tag === 'Spectator') {
             throw new SenderError('Captain must be a team member (Blue or Red), not a spectator.');
         }
-        if (targetMember.isCoach) {
+        if (targetMember.participationRole.tag === 'Coach') {
             throw new SenderError('A coach cannot be assigned as captain.');
         }
 

@@ -26,8 +26,11 @@ export const send_chat_message = spacetimedb.reducer({
     if (content.length === 0) throw new SenderError('Message cannot be empty.');
     if (content.length > 500) throw new SenderError('Message exceeds 500 character limit.');
 
-    // D-14: Metadata validation — validate JSON schema if metadata is non-empty
-    if (metadata && metadata.length > 0) {
+    // D-14: Metadata validation — default empty to {"type":"text"}, validate JSON schema
+    let resolvedMetadata = metadata;
+    if (!metadata || metadata.length === 0) {
+        resolvedMetadata = '{"type":"text"}';
+    } else {
         try {
             const parsed = JSON.parse(metadata);
             if (!parsed.type || !['text', 'reply', 'emoji_only'].includes(parsed.type)) {
@@ -63,7 +66,7 @@ export const send_chat_message = spacetimedb.reducer({
         senderUserId: user.id,
         senderType: { tag: 'Player', value: {} } as any,
         content,
-        metadata: metadata && metadata.length > 0 ? metadata : undefined,
+        metadata: resolvedMetadata,
         anonymousLabel,
         ...auditInsert(ctx, user.id),
     });

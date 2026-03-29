@@ -84,9 +84,9 @@
 ### Coach Assignment
 **Given:** Lobby with host and members
 **When:** Host or referee calls `set_coach(lobbyId, targetUserId)`
-**Then:** Target's isCoach=true
+**Then:** Target's participationRole set to Coach
 **When:** Host or referee calls `remove_coach(lobbyId, targetUserId)`
-**Then:** Target's isCoach=false
+**Then:** Target's participationRole set to Player
 
 ## Edge Cases
 
@@ -120,7 +120,7 @@
 | MatchResultRecord.tournamentId | Tournament.id | Reads |
 | MatchResultRecord.bracketMatchId | BracketMatch.id | Phase 4 |
 | LobbyMember.isReferee | Referee authority check | Reads |
-| LobbyMember.isCoach | Coach role flag | Writes |
+| LobbyMember.participationRole | Coach role (Player or Coach) | Writes |
 | MmrRating | MMR calculation | Phase 5 reads |
 | MatchSessionHistory | Finalization writes history | Phase 5 writes |
 | MatchParticipantHistory | Finalization writes participant records | Phase 5 writes |

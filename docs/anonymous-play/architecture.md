@@ -53,7 +53,7 @@ Deterministic label computed from LobbyMember data -- no new table required.
 ### Algorithm
 
 1. Look up the caller's LobbyMember row for the given lobbyId
-2. Determine role: isCoach, isReferee, or player/spectator from teamSlot
+2. Determine role: participationRole (Coach), isReferee, or player/spectator from teamSlot
 3. Compute label based on role + team side + join order among peers
 
 ### Label Formats (D-04)

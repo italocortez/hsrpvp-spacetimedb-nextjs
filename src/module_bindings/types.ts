@@ -740,7 +740,6 @@ export const LobbyMember = __t.object("LobbyMember", {
     return ParticipationRole;
   },
   isReferee: __t.bool(),
-  isCoach: __t.bool(),
   get teamSlot() {
     return TeamLabel;
   },
@@ -1126,7 +1125,7 @@ export type ParticipantStatus = __Infer<typeof ParticipantStatus>;
 // The tagged union or sum type for the algebraic type `ParticipationRole`.
 export const ParticipationRole = __t.enum("ParticipationRole", {
   Player: __t.unit(),
-  Spectator: __t.unit(),
+  Coach: __t.unit(),
 });
 export type ParticipationRole = __Infer<typeof ParticipationRole>;
 

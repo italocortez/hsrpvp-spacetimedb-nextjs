@@ -62,7 +62,7 @@ export const LobbyStage = t.enum('LobbyStage', {
 
 export const ParticipationRole = t.enum('ParticipationRole', {
     Player: t.unit(),
-    Spectator: t.unit(),
+    Coach: t.unit(),
 });
 
 export const TeamLabel = t.enum('TeamLabel', {

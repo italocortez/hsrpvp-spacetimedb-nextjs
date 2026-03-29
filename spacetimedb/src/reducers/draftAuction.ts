@@ -56,8 +56,8 @@ function getCharacterBaseCost(
             r.gameMode.tag === gameMode.tag
     );
     if (!costRow) return 0;
-    const eidolonKey = `e${eidolon}` as keyof typeof costRow.auctionCosts;
-    return costRow.auctionCosts[eidolonKey] ?? 0;
+    const eidolonKey = `e${eidolon}` as keyof typeof costRow.auctionBaseBid;
+    return costRow.auctionBaseBid[eidolonKey] ?? 0;
 }
 
 // ─── Helper: Determine next sequence number ─────────────────────────────────
@@ -68,11 +68,12 @@ function getNextSequence(ctx: any, lobbyId: number): number {
 }
 
 // ─── Helper: Check auction end condition ────────────────────────────────────
-// Per D-48: each team gets 8 characters (for teamSize=1, 8 per team).
-// Scales with teamSize: 8 * lobby.teamSize characters per team.
+// Per D-48: each team drafts 8 characters (fixed). The number of characters
+// is determined by the game mode (2 bosses × 4 chars = 8), not teamSize.
+// teamSize only controls how many human players share the draft.
 
-function isAuctionComplete(session: any, lobby: any): boolean {
-    const targetCount = 8 * lobby.teamSize;
+function isAuctionComplete(session: any): boolean {
+    const targetCount = 8;
     return (
         session.blueCharactersWon >= targetCount &&
         session.redCharactersWon >= targetCount
@@ -107,7 +108,7 @@ export const nominate_character = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.isCoach) {
+        if (member.participationRole.tag === 'Coach') {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -134,7 +135,7 @@ export const nominate_character = spacetimedb.reducer(
         // Captain check: only captain can nominate (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && !m.isCoach
+                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -241,7 +242,7 @@ export const place_bid = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.isCoach) {
+        if (member.participationRole.tag === 'Coach') {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -267,7 +268,7 @@ export const place_bid = spacetimedb.reducer(
         // Captain check: only captain can bid (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && !m.isCoach
+                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -365,7 +366,7 @@ export const pass_bid = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.isCoach) {
+        if (member.participationRole.tag === 'Coach') {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -392,7 +393,7 @@ export const pass_bid = spacetimedb.reducer(
         // Captain check: only captain can pass (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && !m.isCoach
+                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -483,7 +484,7 @@ export const pass_bid = spacetimedb.reducer(
             blueCharactersWon: newBlueCharactersWon,
             redCharactersWon: newRedCharactersWon,
         };
-        const auctionComplete = isAuctionComplete(updatedSessionForCheck, lobby);
+        const auctionComplete = isAuctionComplete(updatedSessionForCheck);
 
         if (auctionComplete) {
             // Clear auction state and transition to Equipping
@@ -717,7 +718,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
                 blueCharactersWon: newBlueCharactersWon,
                 redCharactersWon: newRedCharactersWon,
             };
-            const auctionComplete = isAuctionComplete(updatedSessionForCheck, lobby);
+            const auctionComplete = isAuctionComplete(updatedSessionForCheck);
 
             if (auctionComplete) {
                 ctx.db.MatchSession.lobbyId.update({

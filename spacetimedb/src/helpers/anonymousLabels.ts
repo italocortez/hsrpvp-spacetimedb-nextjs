@@ -9,13 +9,13 @@ export function computeAnonymousLabel(ctx: any, lobbyId: number, userId: number)
     if (!member) return 'Unknown';
 
     // Coaches get a special label: "Coach-Blue", "Coach-Red"
-    if (member.isCoach) {
+    if (member.participationRole.tag === 'Coach') {
         return `Coach-${member.teamSlot.tag}`;
     }
 
     // Get all non-coach members on the same team in this lobby
     const sameTeamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
-        .filter((m: any) => m.teamSlot.tag === member.teamSlot.tag && !m.isCoach);
+        .filter((m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach');
 
     // Sort by createdDate ascending (join order -- earlier = lower number)
     sameTeamMembers.sort((a: any, b: any) => {

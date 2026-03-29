@@ -37,7 +37,7 @@ export const start_draft = spacetimedb.reducer(
         const teamMembers = allMembers.filter(
             (m: any) => m.teamSlot.tag === 'Blue' || m.teamSlot.tag === 'Red'
         );
-        const playersOnly = teamMembers.filter((m: any) => !m.isCoach);
+        const playersOnly = teamMembers.filter((m: any) => m.participationRole.tag !== 'Coach');
 
         // D-29: All non-coach Blue+Red players must be confirmed
         const unconfirmed = playersOnly.filter((m: any) => !m.isConfirmed);
@@ -121,7 +121,7 @@ export const start_draft = spacetimedb.reducer(
             turnIndex: 0,
             draftSequence: sequence,
             timerState,
-            isAuctionPhase: false,
+            isAuctionPhase: lobby.draftMode.tag === 'Auction' && sequence.length === 0,
             nextNominatorTeam: { tag: 'Blue', value: {} } as any,
             blueCharactersWon: 0,
             redCharactersWon: 0,
@@ -173,7 +173,7 @@ export const start_draft = spacetimedb.reducer(
         // Re-read members to get updated isCaptain values
         const updatedMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
         const participantMembers = updatedMembers.filter(
-            (m: any) => !m.isCoach && (m.teamSlot.tag === 'Blue' || m.teamSlot.tag === 'Red')
+            (m: any) => m.participationRole.tag !== 'Coach' && (m.teamSlot.tag === 'Blue' || m.teamSlot.tag === 'Red')
         );
         for (const member of participantMembers) {
             ctx.db.MatchResultParticipant.insert({
@@ -240,7 +240,7 @@ export const pick_character = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.isCoach) {
+        if (member.participationRole.tag === 'Coach') {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -259,7 +259,7 @@ export const pick_character = spacetimedb.reducer(
         // Captain check: only captain may pick (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && !m.isCoach
+                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -428,7 +428,7 @@ export const ban_character = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         // D-39 Coach guard (MOUS-03)
-        if (member.isCoach) {
+        if (member.participationRole.tag === 'Coach') {
             throw new SenderError('Coaches cannot perform draft actions.');
         }
 
@@ -447,7 +447,7 @@ export const ban_character = spacetimedb.reducer(
         // Captain check: only captain may ban (or sole player if no captain)
         if (!member.isCaptain) {
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                (m: any) => m.teamSlot.tag === member.teamSlot.tag && !m.isCoach
+                (m: any) => m.teamSlot.tag === member.teamSlot.tag && m.participationRole.tag !== 'Coach'
             );
             const hasCaptain = teamMembers.some((m: any) => m.isCaptain);
             if (hasCaptain) {
@@ -597,7 +597,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
                 // Determine who is acting (team with the current turn)
                 const actingTeam = currentStep.teamTurn.tag;
                 const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)].filter(
-                    (m: any) => m.teamSlot.tag === actingTeam && !m.isCoach
+                    (m: any) => m.teamSlot.tag === actingTeam && m.participationRole.tag !== 'Coach'
                 );
 
                 // Gather available pool: owned if requireOwnership, not banned/picked

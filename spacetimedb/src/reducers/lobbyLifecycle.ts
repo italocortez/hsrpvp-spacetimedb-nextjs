@@ -11,6 +11,7 @@ import {
     ensureNotBanned,
     ensureStageIs,
     canKickOrBan,
+    generateJoinCode,
 } from '../helpers/lobbyHelpers';
 
 // ─── create_lobby ─────────────────────────────────────────────────────────────
@@ -73,6 +74,9 @@ export const create_lobby = spacetimedb.reducer(
         // D-22: one lobby at a time
         ensureNotInLobby(ctx, user.id);
 
+        // Server-generated join code (Jackbox-style, 5 chars, deterministic hash)
+        const joinCode = generateJoinCode(ctx, user.id);
+
         // D-23: guest restrictions
         ensureGuestRestrictions(user, args.matchType);
 
@@ -93,7 +97,7 @@ export const create_lobby = spacetimedb.reducer(
         // Insert Lobby row
         const lobby = ctx.db.Lobby.insert({
             id: 0, // autoInc
-            joinCode: args.joinCode,
+            joinCode,
             hostUserId: user.id,
             teamBlueAlias: args.teamBlueAlias,
             teamRedAlias: args.teamRedAlias,
@@ -145,7 +149,6 @@ export const create_lobby = spacetimedb.reducer(
             isOnline: true,
             participationRole: { tag: 'Player', value: {} },
             isReferee: true,
-            isCoach: false,
             teamSlot: { tag: 'Spectator', value: {} },
             isConfirmed: false,
             isCaptain: false,
@@ -242,6 +245,16 @@ export const join_lobby = spacetimedb.reducer(
             }
         }
 
+        // Cap enforcement: max 20 members total, max 12 spectators
+        const allMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
+        if (allMembers.length >= 20) {
+            throw new SenderError('Lobby is full (max 20 members).');
+        }
+        const spectatorCount = allMembers.filter((m: any) => m.teamSlot.tag === 'Spectator').length;
+        if (spectatorCount >= 12) {
+            throw new SenderError('Spectator slots are full (max 12).');
+        }
+
         // D-27: join as Spectator
         ctx.db.LobbyMember.insert({
             lobbyId,
@@ -249,7 +262,6 @@ export const join_lobby = spacetimedb.reducer(
             isOnline: true,
             participationRole: { tag: 'Player', value: {} },
             isReferee: false,
-            isCoach: false,
             teamSlot: { tag: 'Spectator', value: {} },
             isConfirmed: false,
             isCaptain: false,

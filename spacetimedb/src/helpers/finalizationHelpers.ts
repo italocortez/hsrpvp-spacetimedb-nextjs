@@ -339,7 +339,7 @@ export function runFinalization(
             teamSide: p.teamSide,
             displayName: pUser ? pUser.displayName : `User#${p.userId}`,
             isReferee: memberRow ? memberRow.isReferee : false,
-            isCoach: memberRow ? memberRow.isCoach : false,
+            isCoach: memberRow ? memberRow.participationRole.tag === 'Coach' : false,
             isCaptain: p.isCaptain,
             ...auditInsert(ctx, actingUserId),
         } as any);
@@ -389,7 +389,7 @@ export function runFinalization(
 
     // 14. Increment matchesSpectated for spectators
     const spectators = [...ctx.db.LobbyMember.lobby_id.filter(matchResult.lobbyId)]
-        .filter((m: any) => m.teamSlot.tag === 'Spectator' && !m.isCoach && !m.isReferee);
+        .filter((m: any) => m.teamSlot.tag === 'Spectator' && m.participationRole.tag !== 'Coach' && !m.isReferee);
     for (const spec of spectators) {
         incrementSpectatedCount(ctx, spec.userId, gameMode, draftMode, seasonId, matchType, teamSize, actingUserId);
     }
