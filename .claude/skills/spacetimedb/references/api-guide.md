@@ -155,6 +155,8 @@ These cause the most wasted time in this project. If you're working with reducer
 | `(ctx.db.Table as any).primaryKey.find({...})` | Define multi-col btree index, then `.filter([val1, val2])` | `.primaryKey` is undefined at runtime — PANIC |
 | `JSON.stringify({ id: row.id })` | Convert BigInt first: `{ id: row.id.toString() }` | "Do not know how to serialize a BigInt" |
 | `ScheduleAt.Time(timestamp)` | `ScheduleAt.time(timestamp)` (lowercase) | "ScheduleAt.Time is not a function" |
+| `{ microsSinceUnixEpoch: BigInt }` in insert/update | `new Timestamp(BigInt)` from `import { Timestamp } from 'spacetimedb'` | PANIC: "Cannot convert undefined to a BigInt" — SDK reads `__timestamp_micros_since_unix_epoch__` internally |
+| `null`/`undefined` for optional struct fields | Use sentinel values (e.g. `255` for u8, `new Timestamp(0n)` for timestamp) | PANIC — optional fields inside `t.object()` can't serialize null/undefined |
 | `ctx.db.foo.myIndexName.filter()` | Use exact name: `ctx.db.foo.my_index_name.filter()` | "Cannot read properties of undefined" |
 | `.iter()` in views | Use index lookups | Severe performance issues (re-evaluates on any change) |
 | `ctx.db` in procedures | `ctx.withTx(tx => tx.db...)` | Procedures need explicit transactions |

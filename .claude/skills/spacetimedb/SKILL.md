@@ -226,10 +226,47 @@ if (!item) throw new SenderError('Item not found.');
 ### BigInt — all u64/i64 fields
 Use `0n`, `1n`, `100n` — never plain numbers for ID/u64 fields. JavaScript `number` loses precision above 2^53, so SpacetimeDB maps 64-bit integers to BigInt. Mixing `number` and `BigInt` (e.g. `row.id === 5`) silently returns `false` — no error, just wrong behavior.
 
-### Timestamps on client
+### Timestamps — server-side construction (CRITICAL)
+**Never construct timestamps as plain objects on the server.** The SDK serializer reads the internal `__timestamp_micros_since_unix_epoch__` property, not `microsSinceUnixEpoch`. A plain object `{ microsSinceUnixEpoch: BigInt }` causes a PANIC: "Cannot convert undefined to a BigInt".
+```typescript
+// ❌ WRONG — causes PANIC during insert/update serialization
+startAt: { microsSinceUnixEpoch: BigInt(param) }
+
+// ✅ CORRECT — use the Timestamp constructor
+import { Timestamp } from 'spacetimedb';
+startAt: new Timestamp(BigInt(param))
+
+// ✅ CORRECT — ctx.timestamp is already a proper Timestamp object
+createdDate: ctx.timestamp
+```
+
+**Reducer timestamp param pattern** (this project): Timestamps are passed as `t.string()` params (BigInt micros serialized as string) to avoid u64 encoding issues. Convert in the reducer body:
+```typescript
+const startMicros = BigInt(startAt);  // string → BigInt
+new Timestamp(startMicros)            // BigInt → Timestamp
+```
+
+**Optional timestamps:** For optional table columns, `undefined` writes `none` — this works. For optional fields **inside structs** (`t.u8().optional()`, `t.timestamp().optional()` in a `t.object()`), `null`/`undefined`/omission all PANIC during serialization. Use sentinel values instead:
+```typescript
+// ❌ PANIC — SDK can't serialize null/undefined for optional struct fields
+recurrenceRule = { ..., dayOfWeek: null, endDate: undefined };
+
+// ✅ Use sentinels for optional struct fields
+recurrenceRule = { ..., dayOfWeek: 255, endDate: new Timestamp(0n) };
+```
+
+### Timestamps on client (reading)
 ```typescript
 const date = new Date(Number(row.createdAt.microsSinceUnixEpoch / 1000n));
 ```
+
+### Timestamps — full flow
+```
+Frontend:  new Date() → BigInt(date.getTime()) * 1000n → .toString() → reducer string param
+Backend:   BigInt(param) → new Timestamp(BigInt(param)) → insert into t.timestamp() column
+Client:    row.field.microsSinceUnixEpoch → new Date(Number(micros / 1000n)) → display in local TZ
+```
+All timestamps are stored as UTC microseconds. Frontend converts to/from local timezone for display only.
 
 ## Multiplayer sync patterns (summary)
 
@@ -283,6 +320,8 @@ These are APIs that don't exist — LLMs hallucinate them frequently:
 | `ctx.db.Table.singleColIdx.filter([val1, val2])` (array on single-col) | `.filter(scalar)` — passing an array to a single-column btree index silently returns 0 rows |
 | `ctx.db.Table.btreeIdx.find(val)` | `[...ctx.db.Table.btreeIdx.filter(val)]` — btree indexes only have `.filter()`, not `.find()` (TypeError) |
 | `ctx.db.Table.pkCol.filter(val)` | `ctx.db.Table.pkCol.find(val)` — PK/unique columns only have `.find()`, not `.filter()` (TypeError) |
+| `{ microsSinceUnixEpoch: BigInt }` in server insert/update | `new Timestamp(BigInt)` — plain objects lack the internal `__timestamp_micros_since_unix_epoch__` property, causing PANIC |
+| `null` / `undefined` for optional struct fields | Use sentinel values (e.g. `255` for u8, `new Timestamp(0n)` for timestamp) — optional inside `t.object()` can't serialize null/undefined |
 
 ## Feature implementation checklist
 
