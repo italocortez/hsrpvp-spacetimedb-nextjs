@@ -654,7 +654,7 @@ The match session system manages the entire draft lifecycle within a lobby: char
 | Lobby not found | "Lobby not found." |
 | Caller not host/admin/mod | Permission error |
 | Session not found (Drafting) | "Match session not found." |
-| Currently in Scoring | "Use finalize_match_result to transition from Scoring to Finished." |
+| Currently in Scoring | "Use finalize_match_result to transition from Scoring to Finished." (legacy error text — finalization actually cascade-deletes the lobby via AwaitingResult) |
 | Other stage | "Cannot advance stage from {stage}." |
 
 ---
@@ -831,7 +831,7 @@ The match session system manages the entire draft lifecycle within a lobby: char
 
 **Given:** Lobby in Scoring stage
 **When:** Host calls `advance_stage(lobbyId)`
-**Then:** Throws "Use finalize_match_result to transition from Scoring to Finished."
+**Then:** Throws "Use finalize_match_result to transition from Scoring to Finished." (Note: the error string is legacy — finalization actually cascade-deletes the lobby via AwaitingResult, not sets Finished.)
 
 ### System Chat on Stage Transitions
 
@@ -918,7 +918,7 @@ The match session system manages the entire draft lifecycle within a lobby: char
 | BanMode.Two removed in Phase 9; only None, Four, Six remain | Phase 9 execution | 2026-03-29 |
 | refereeFullControl derived from spectator slot (D-44) | Phase 9 execution | 2026-03-29 |
 | MatchResultParticipant created at start_draft for all non-coach team members | Phase 9 execution | 2026-03-29 |
-| runFinalization step 19: lobby stage → Finished after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
+| runFinalization step 19: cascade-deletes lobby after ephemeral cleanup (was set Finished, changed to cascade-delete) | Phase 9 execution | 2026-03-29 |
 | AwaitingResult stage: submit_match_result sets AwaitingResult (frees players), finalization cascade-deletes lobby | Phase 9 execution | 2026-03-29 |
 
 ---

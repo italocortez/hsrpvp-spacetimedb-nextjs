@@ -3,7 +3,7 @@ status: complete
 phase: 04-bracket-generation-and-advancement
 source: [04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md]
 started: 2026-03-18T15:00:00Z
-updated: 2026-03-19T08:45:00Z
+updated: 2026-03-29T00:00:00Z
 ---
 
 ## Current Test
@@ -46,32 +46,32 @@ result: pass
 
 ### 9. Advance Bracket Match
 expected: After a match result exists, calling `advance_bracket_match` places the winning team into the next match slot (via nextWinnerMatchId). In double elimination, the losing team is routed to the losers bracket (via nextLoserMatchId). The source match is marked complete (winnerId set).
-result: deferred
-reason: Requires MatchResultRecord creation — no insert reducer exists until Phase 5
+result: pass
+notes: "Verified in cross-phase sweep. Auto-advance via finalization step 17."
 
 ### 10. Submit and Advance Bracket
 expected: `submit_and_advance_bracket` is a convenience wrapper — it takes a userId (not teamId), maps to the team via TournamentParticipant, then performs the advancement. This is the primary reducer clients call after match results are submitted.
-result: deferred
-reason: Requires MatchResultRecord creation — no insert reducer exists until Phase 5
+result: pass
+notes: "Verified in cross-phase sweep. Guards work correctly. Rollback+re-advance after finalization is edge case (Phase 10)."
 
 ### 11. Rollback Bracket Match
 expected: `rollback_bracket_match` reverses a previous advancement — removes the winner from the next match slot, clears winnerId on the source match. Fails with an error if the match result has already been processed for MMR (mmrProcessedAt is set). Group standings are also reversed if applicable.
-result: deferred
-reason: Requires MatchResultRecord with winnerId set — depends on Phase 5 match result flow
+result: pass
+notes: "Verified in cross-phase sweep. Winner cleared, next match slot emptied."
 
 ### 12. DQ Auto-Advance
 expected: When `dq_participant` is called and the tournament has `autoAdvanceBracket=true` and is InProgress, any BracketMatch involving the DQ'd team's group is auto-advanced — the opponent is placed as the winner. If autoAdvanceBracket is false, no auto-advance occurs.
-result: deferred
-reason: DQ auto-advance scans BracketMatch for the team's active match — testable in isolation but full verification needs match results from Phase 5
+result: pass
+notes: "Verified in cross-phase sweep. DQ'd team1 → opponent auto-wins (autoAdvanceBracket=true)."
 
 ## Summary
 
 total: 12
-passed: 8
+passed: 12
 issues: 0
 pending: 0
 skipped: 0
-deferred: 4
+deferred: 0
 
 ## Gaps
 

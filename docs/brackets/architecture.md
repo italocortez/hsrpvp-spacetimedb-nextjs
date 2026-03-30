@@ -132,6 +132,10 @@ Alternating minor (internal) and major (WB feed-in) rounds:
 - Pattern continues until 1 LB finalist remains
 - Grand Finals: WB finalist vs LB finalist, winnerAdvantage = game head-start for WB winner
 
+## Finalization Integration
+
+Finalization step 17 auto-advances the bracket when `isTournamentControlled=true` and `winnerUserId` is set. It calls `advanceBracketMatch` to place the winner in the next match slot. Rollback (`rollback_bracket_match`) clears `winnerTeamId` and removes the winner from the next match slot.
+
 ## Key Decisions
 
 - **BracketSide enum** (5 variants: Winners, Losers, GrandFinals, ThirdPlace, Group) replaces `isLosersBracket: bool` -- supports GrandFinals, ThirdPlace, Group as first-class match types (Phase 4)

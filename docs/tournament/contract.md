@@ -206,7 +206,7 @@
 | accept_team_request cleans up user's other pending requests in tournament | Retroactive cleanup | 2026-03-28 |
 | Registration→Seeding cleans up pending team requests | Retroactive cleanup | 2026-03-28 |
 | TournamentParticipant and MatchResultRecord preserved on cancellation (audit trail / player history) | Retroactive cleanup | 2026-03-28 |
-| cancel_tournament cascade-deletes CalendarEvent + CalendarEventInvite for linked bracket matches | Phase 08 CONTEXT.md (D-21) | 2026-03-28 |
+| cancel_tournament cascade-deletes CalendarEvent + CalendarEventInvite via bracketMatchId FK (not tournamentId — events link to bracket matches, not tournaments directly) | Phase 08 CONTEXT.md (D-21) | 2026-03-28 |
 | withdraw_from_tournament deletes player's CalendarEventInvite rows for tournament's scheduled matches | Phase 08 CONTEXT.md (D-24) | 2026-03-28 |
 
 ---

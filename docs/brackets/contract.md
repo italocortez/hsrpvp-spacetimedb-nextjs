@@ -122,7 +122,9 @@ During an active tournament, rollback is FREE because MMR has not been processed
 | Rollback during tournament is free -- MMR not yet processed (batched at tournament end) | Phase 04.1 execution | 2026-03-20 |
 | rollback_bracket_match cascade-deletes linked CalendarEvent + CalendarEventInvite | Phase 08 CONTEXT.md (D-22) | 2026-03-28 |
 | dq_participant cascade-deletes linked CalendarEvent + CalendarEventInvite | Phase 08 CONTEXT.md (D-22) | 2026-03-28 |
+| Finalization step 17 auto-advances bracket (isTournamentControlled + winnerUserId set) | Phase 9 execution | 2026-03-29 |
+| Rollback after finalization leaves no re-advance path (match record + lobby deleted) — deferred admin bracket override to Phase 10 | Phase 9 execution | 2026-03-29 |
 
 ---
 
-*Last updated: 2026-03-28*
+*Last updated: 2026-03-29*

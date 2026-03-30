@@ -134,7 +134,7 @@ All flat structured rows, zero JSON blobs (D-55). Self-contained for replay rend
 | History tables denormalize display names for self-containment (D-53) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Finalization reads MatchSessionStep for both stats and archival (D-54) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Four history tables, all flat rows, zero JSON (D-55) | Phase 6 CONTEXT.md | 2026-03-21 |
-| 18-step finalization pipeline (D-56) | Phase 6 CONTEXT.md | 2026-03-21 |
+| 19-step finalization pipeline (D-56) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Update 38 existing tests for new PK shapes (D-65) | Phase 6 CONTEXT.md | 2026-03-21 |
 
 ---

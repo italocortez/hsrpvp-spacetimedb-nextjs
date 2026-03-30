@@ -281,11 +281,11 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 **When:** User A subscribes to `view_my_player_stats`
 **Then:** User A receives only their own PlayerStat rows.
 
-### Security: Lobby browser excludes Finished lobbies
+### Security: Lobby browser excludes non-active lobbies
 
-**Given:** 3 lobbies exist: Lobby 1 (Waiting), Lobby 2 (Finished), Lobby 3 (Drafting).
+**Given:** 3 lobbies exist: Lobby 1 (Waiting), Lobby 2 (Finished — abandoned/closed, not from finalization which cascade-deletes), Lobby 3 (AwaitingResult).
 **When:** Any client subscribes to `view_lobby_browser`
-**Then:** Only Lobby 1 and Lobby 3 are returned. Lobby 2 (Finished) is excluded.
+**Then:** Only Lobby 1 is returned. Lobby 2 (Finished) and Lobby 3 (AwaitingResult) are excluded. Only Waiting, Drafting, Equipping, and Scoring stages are shown.
 
 ### Security: Lobby browser excludes config details
 

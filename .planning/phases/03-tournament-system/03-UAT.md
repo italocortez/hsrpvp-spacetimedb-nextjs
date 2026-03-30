@@ -3,7 +3,7 @@ status: complete
 phase: 03-tournament-system
 source: [03-01-SUMMARY.md, 03-02-SUMMARY.md, 03-03-SUMMARY.md, 03-04-SUMMARY.md, 03-05-SUMMARY.md]
 started: 2026-03-18T00:00:00Z
-updated: 2026-03-18T00:00:00Z
+updated: 2026-03-29T00:00:00Z
 ---
 
 ## Current Test
@@ -59,23 +59,23 @@ result: pass
 
 ### 12. Referee Transfer & Reclaim
 expected: In a lobby, the host calls `transfer_referee` targeting another member. That member's isReferee becomes true, host's becomes false. Host calls `reclaim_referee` — referee flag returns to host.
-result: deferred
-reason: No lobby CRUD reducers exist yet (Phase 9). Cannot create lobby + members as prerequisite state. Retest when Phase 9 lobby lifecycle reducers are implemented.
+result: pass
+notes: "Verified in cross-phase sweep. Transfer/reclaim working. Self-transfer returns 'You are already the referee.'"
 
 ### 13. Match Score Confirmation & Submission
 expected: With a MatchResultRecord in Pending status, Team 1 captain calls `confirm_match_scores` — team1Confirmed=true. Team 2 captain calls `confirm_match_scores` — team2Confirmed=true. Referee calls `submit_match_result` with winnerId — status changes to Submitted. Attempting to submit without both confirmations is rejected.
-result: deferred
-reason: No reducer creates MatchResultRecord rows. Requires lobby members (Phase 9) and bracket match generation (Phase 4) to produce prerequisite state. Retest after Phase 9.
+result: pass
+notes: "Verified in cross-phase sweep. Both captains must confirm before submit. Submit without confirm rejected."
 
 ### 14. Match Dispute
 expected: After a match result is submitted, a participant calls `dispute_match_result` with a reason. disputedByUserId is set and disputeReason recorded. A second dispute attempt (by anyone) on the same match is rejected — single-dispute-per-match enforcement.
-result: deferred
-reason: Depends on MatchResultRecord in Submitted status — requires tests 13's prerequisites. Retest after Phase 9.
+result: pass
+notes: "Verified in cross-phase sweep. Ranked match disputed, second dispute blocked."
 
 ### 15. Tournament Admin Operations
 expected: Moderator+ or organizer calls `dq_participant` — participant status changes to Disqualified. `override_match_result` changes the winner and stores the reason in disputeReason. `assign_tournament_assistant` adds an assistant (self-assignment blocked). `remove_tournament_assistant` removes the assistant.
-result: deferred
-reason: override_match_result requires MatchResultRecord rows (no insert reducer exists). dq_participant and assistant reducers are testable individually but test spec requires full coverage. Retest after Phase 9.
+result: pass
+notes: "Verified in cross-phase sweep. DQ→Disqualified, assistant assign/remove, self-assign blocked."
 
 ### 16. Moderator Role Management
 expected: A Moderator+ calls `mod_promote_to_host` on a User-role player — their role changes to TournamentHost. `mod_demote_from_host` on a TournamentHost — role reverts to User. Attempting to promote/demote Admin or Moderator roles is rejected.
@@ -83,17 +83,17 @@ result: pass
 
 ### 17. Coach Role Management
 expected: In a lobby, the host or referee calls `set_coach` targeting a member — that member's isCoach becomes true. `remove_coach` sets isCoach back to false. Non-host/non-referee callers are rejected.
-result: deferred
-reason: No lobby CRUD reducers exist yet (Phase 9). Cannot create lobby + members as prerequisite state. Retest when Phase 9 lobby lifecycle reducers are implemented.
+result: pass
+notes: "Verified in cross-phase sweep via LobbySlot. Coach assign/remove via set_team_slot(BlueCoach/BluePlayer)."
 
 ## Summary
 
 total: 17
-passed: 12
+passed: 17
 issues: 0
 pending: 0
 skipped: 0
-deferred: 5
+deferred: 0
 
 ## Gaps
 

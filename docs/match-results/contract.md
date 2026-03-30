@@ -159,7 +159,7 @@
 | refereeFullControl (default true): spectator referee can fill scores + confirm both sides | Phase 5 discussion | 2026-03-20 |
 | Participant referee ignores refereeFullControl — confirms own side only | Phase 5 discussion | 2026-03-20 |
 | Casual auto-finalize inline in submit_match_result (D-37) | Phase 6 CONTEXT.md | 2026-03-21 |
-| 19-step finalization pipeline extracted to shared helper (step 19: lobby → Finished) | Phase 6 execution / Phase 9 execution | 2026-03-22 / 2026-03-29 |
+| 19-step finalization pipeline extracted to shared helper (step 19: cascade-deletes lobby) | Phase 6 execution / Phase 9 execution | 2026-03-22 / 2026-03-29 |
 | Character stat increments (pick/ban/faced) during finalization | Phase 6 execution | 2026-03-22 |
 | GlobalCharacterStat increments during finalization | Phase 6 execution | 2026-03-22 |
 | Match replay archival: step rows + game history + participant history | Phase 6 execution | 2026-03-22 |
@@ -167,7 +167,7 @@
 | requireOwnership on Lobby for pick validation helper | Phase 6 CONTEXT.md | 2026-03-21 |
 | LobbySlot refactor: set_coach/remove_coach eliminated — coach via set_team_slot(BlueCoach/RedCoach) | Phase 9 execution | 2026-03-29 |
 | TeamLabel renamed to TeamSide (same values: Blue, Red, Spectator) | Phase 9 execution | 2026-03-29 |
-| runFinalization step 19: lobby → Finished after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
+| runFinalization step 19: cascade-deletes lobby after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
 | Finalization step 19 cascade-deletes lobby (not set Finished). submit_match_result transitions to AwaitingResult first. | Phase 9 execution | 2026-03-29 |
 
 ---

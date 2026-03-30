@@ -202,7 +202,8 @@ Junction table linking users to match history records. Enables indexed "show me 
 The Lobby.stage field drives which reducers are allowed.
 
 ```
-Waiting → Drafting → Equipping → Scoring → Finished
+Waiting → Drafting → Equipping → Scoring → AwaitingResult → (cascade-deleted)
+                                                          → Finished (abandoned only, via close_lobby)
 ```
 
 | Stage | Triggered By | What's Allowed |
@@ -211,16 +212,17 @@ Waiting → Drafting → Equipping → Scoring → Finished
 | Drafting | `start_draft` | Picks, bans, nominations, bids, pause/resume, undo |
 | Equipping | Last pick/pass (auto) or `advance_stage` | `equip_lightcone`, `arrange_lineup`, `confirm_lineup` |
 | Scoring | `advance_stage` (Equipping→Scoring) | Score submission, screenshot upload |
-| Finished | `runFinalization` step 19 (lobby stage → Finished) | `close_lobby` only; 30-min GC countdown begins |
+| AwaitingResult | `submit_match_result` (Scoring → AwaitingResult) | Players freed to join new lobbies; finalization cascade-deletes the lobby |
+| Finished | `close_lobby` on AwaitingResult lobbies (abandoned) | GC safety net target; 30-min auto-delete |
 
 **Automatic transitions:**
 - Classic mode: after last pick → `Equipping`
 - Auction mode: after both teams reach target character count → `Equipping`
-- Scoring → Finished: only via `runFinalization` (step 19 transitions lobby stage to Finished)
+- Scoring → AwaitingResult: set by `submit_match_result`; finalization step 19 cascade-deletes the lobby (not set to Finished)
 
 **Manual overrides:**
 - Host can call `advance_stage` to skip Equipping → Scoring early (D-58)
-- Scoring → Finished CANNOT be manually advanced; must finalize
+- Scoring → AwaitingResult CANNOT be manually advanced; only `submit_match_result` triggers it
 
 ---
 

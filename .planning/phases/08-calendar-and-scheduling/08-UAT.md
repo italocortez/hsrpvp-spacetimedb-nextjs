@@ -3,7 +3,7 @@ status: complete
 phase: 08-calendar-and-scheduling
 source: [08-01-SUMMARY.md, 08-02-SUMMARY.md]
 started: 2026-03-28T13:00:00Z
-updated: 2026-03-28T23:30:00Z
+updated: 2026-03-29T00:00:00Z
 ---
 
 ## Current Test
@@ -74,7 +74,8 @@ result: PASS — "Forbidden: Only the organizer or an Admin can delete this even
 
 ### 16. Cancel Tournament Cascades Calendar Events
 expected: cancel_tournament deletes all linked CalendarEvents and invites.
-result: DEFERRED — Requires tournament + bracket match setup (Phase 9 dependencies)
+result: PASS
+notes: "Cross-phase sweep. cancel_tournament cascades calendar events linked via bracketMatchId. Events without bracket link correctly preserved."
 
 ### 17. User Deletion Cascades Calendar Data
 expected: User soft-delete cascades all calendar data: AvailabilitySlots, SavedCalendar (both directions), organized CalendarEvents + invites, CalendarEventInvite as invitee.
@@ -83,11 +84,11 @@ result: PASS — All 5 categories of calendar data deleted. User anonymized to "
 ## Summary
 
 total: 17
-passed: 15
+passed: 17
 issues: 1 (Timestamp constructor bug, fixed during UAT)
 pending: 0
 skipped: 0
-blocked: 1 (Test 16 — deferred to Phase 9)
+blocked: 0
 
 ## Bugs Found and Fixed
 
@@ -103,6 +104,5 @@ blocked: 1 (Test 16 — deferred to Phase 9)
 ## Gaps
 
 ### Test 16: Tournament cascade
-status: deferred
-reason: Requires tournament lifecycle + bracket match infrastructure (Phase 9)
-deferred_to: Phase 9 UAT
+status: passed
+reason: Verified in cross-phase integration sweep (2026-03-29)
