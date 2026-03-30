@@ -30,10 +30,10 @@ function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         joinCode: '',
         presetId: 0,
         teamSize: 1,
-        draftMode: { tag: 'Classic', value: {} },
-        banMode: { tag: 'None', value: {} },
-        gameMode: { tag: 'MemoryOfChaos', value: {} },
-        matchType: { tag: 'Casual', value: {} },
+        draftMode: { tag: 'Classic' as const, value: {} },
+        banMode: { tag: 'None' as const, value: {} },
+        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
+        matchType: { tag: 'Casual' as const, value: {} },
         isPublic: true,
         password: '',
         standardTurnSeconds: 60,
@@ -48,10 +48,10 @@ function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         deathPenalty: 0,
         isAnonymousPlayers: false,
         isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster', value: {} },
+        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
         requireOwnership: false,
         costSetId: 0,
-        disconnectPolicy: { tag: 'Pause', value: {} },
+        disconnectPolicy: { tag: 'Pause' as const, value: {} },
         disconnectForfeitSeconds: 0,
         allowMirrorPicks: true,
         autoRandomPick: false,
@@ -71,10 +71,10 @@ function settingsArgs(lobbyId: number, overrides: Record<string, unknown> = {}) 
     return {
         lobbyId,
         teamSize: 1,
-        draftMode: { tag: 'Classic', value: {} },
-        banMode: { tag: 'None', value: {} },
-        gameMode: { tag: 'MemoryOfChaos', value: {} },
-        matchType: { tag: 'Casual', value: {} },
+        draftMode: { tag: 'Classic' as const, value: {} },
+        banMode: { tag: 'None' as const, value: {} },
+        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
+        matchType: { tag: 'Casual' as const, value: {} },
         standardTurnSeconds: 60,
         reserveBankSeconds: 120,
         characterBudget: 100,
@@ -87,10 +87,10 @@ function settingsArgs(lobbyId: number, overrides: Record<string, unknown> = {}) 
         deathPenalty: 0,
         isAnonymousPlayers: false,
         isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster', value: {} },
+        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
         requireOwnership: false,
         costSetId: 0,
-        disconnectPolicy: { tag: 'Pause', value: {} },
+        disconnectPolicy: { tag: 'Pause' as const, value: {} },
         disconnectForfeitSeconds: 0,
         allowMirrorPicks: true,
         autoRandomPick: false,
@@ -150,14 +150,14 @@ describe('Lobby Settings, Slots & Ready', () => {
 
     describe('update_lobby_settings', () => {
         it('updates settings in Waiting stage', async () => {
-            await host.call.createLobby(defaultLobbyArgs({ draftMode: { tag: 'Classic', value: {} } }));
+            await host.call.createLobby(defaultLobbyArgs({ draftMode: { tag: 'Classic' as const, value: {} } }));
             await host.sync(1500);
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
 
             await host.call.updateLobbySettings(
-                settingsArgs(lobby.id, { draftMode: { tag: 'Auction', value: {} }, standardTurnSeconds: 90 })
+                settingsArgs(lobby.id, { draftMode: { tag: 'Auction' as const, value: {} }, standardTurnSeconds: 90 })
             );
             await host.sync();
 
@@ -318,7 +318,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await member1.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BluePlayer', value: {} },
+                lobbySlot: { tag: 'BluePlayer' as const },
             });
             await member1.sync();
             await host.sync();
@@ -348,7 +348,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await host.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'RedPlayer', value: {} },
+                lobbySlot: { tag: 'RedPlayer' as const },
             });
             await host.sync();
             await member1.sync();
@@ -378,7 +378,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await host.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BlueCoach', value: {} },
+                lobbySlot: { tag: 'BlueCoach' as const },
             });
             await host.sync();
             await member1.sync();
@@ -410,7 +410,7 @@ describe('Lobby Settings, Slots & Ready', () => {
                 member1.call.setTeamSlot({
                     lobbyId: lobby.id,
                     targetUserId: member1.userId,
-                    lobbySlot: { tag: 'BlueCoach', value: {} },
+                    lobbySlot: { tag: 'BlueCoach' as const },
                 })
             );
             expect(err).toContain('Only the lobby host or referee can assign the coach role.');
@@ -442,7 +442,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await member1.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BluePlayer', value: {} },
+                lobbySlot: { tag: 'BluePlayer' as const },
             });
             await member1.sync();
             await host.sync();
@@ -452,7 +452,7 @@ describe('Lobby Settings, Slots & Ready', () => {
                 member2.call.setTeamSlot({
                     lobbyId: lobby.id,
                     targetUserId: member2.userId,
-                    lobbySlot: { tag: 'BluePlayer', value: {} },
+                    lobbySlot: { tag: 'BluePlayer' as const },
                 })
             );
             expect(err).toContain('Blue team is full (max 1 players).');
@@ -485,7 +485,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await host.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BlueCoach', value: {} },
+                lobbySlot: { tag: 'BlueCoach' as const },
             });
             await host.sync();
 
@@ -494,7 +494,7 @@ describe('Lobby Settings, Slots & Ready', () => {
                 host.call.setTeamSlot({
                     lobbyId: lobby.id,
                     targetUserId: member2.userId,
-                    lobbySlot: { tag: 'BlueCoach', value: {} },
+                    lobbySlot: { tag: 'BlueCoach' as const },
                 })
             );
             expect(err).toContain('Blue team already has a coach.');
@@ -529,7 +529,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await member1.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BluePlayer', value: {} },
+                lobbySlot: { tag: 'BluePlayer' as const },
             });
             await member1.sync();
             await host.sync();
@@ -547,7 +547,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await member1.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'RedPlayer', value: {} },
+                lobbySlot: { tag: 'RedPlayer' as const },
             });
             await member1.sync();
             await host.sync();
@@ -637,7 +637,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await member1.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BluePlayer', value: {} },
+                lobbySlot: { tag: 'BluePlayer' as const },
             });
             await member1.sync();
             await host.sync();
@@ -678,7 +678,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await member1.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BluePlayer', value: {} },
+                lobbySlot: { tag: 'BluePlayer' as const },
             });
             await member1.sync();
             await host.sync();
@@ -686,7 +686,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await member2.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member2.userId,
-                lobbySlot: { tag: 'BluePlayer', value: {} },
+                lobbySlot: { tag: 'BluePlayer' as const },
             });
             await member2.sync();
             await host.sync();
@@ -757,7 +757,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await host.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BlueCoach', value: {} },
+                lobbySlot: { tag: 'BlueCoach' as const },
             });
             await host.sync();
 
@@ -793,7 +793,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await member1.call.setTeamSlot({
                 lobbyId: lobby.id,
                 targetUserId: member1.userId,
-                lobbySlot: { tag: 'BluePlayer', value: {} },
+                lobbySlot: { tag: 'BluePlayer' as const },
             });
             await member1.sync();
             await host.sync();

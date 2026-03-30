@@ -32,10 +32,10 @@ function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         joinCode: '',
         presetId: 0,
         teamSize: 1,
-        draftMode: { tag: 'Classic', value: {} },
-        banMode: { tag: 'None', value: {} },
-        gameMode: { tag: 'MemoryOfChaos', value: {} },
-        matchType: { tag: 'Casual', value: {} },
+        draftMode: { tag: 'Classic' as const, value: {} },
+        banMode: { tag: 'None' as const, value: {} },
+        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
+        matchType: { tag: 'Casual' as const, value: {} },
         isPublic: true,
         password: '',
         standardTurnSeconds: 60,
@@ -50,10 +50,10 @@ function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         deathPenalty: 0,
         isAnonymousPlayers: false,
         isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster', value: {} },
+        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
         requireOwnership: false,
         costSetId: 0,
-        disconnectPolicy: { tag: 'Pause', value: {} },
+        disconnectPolicy: { tag: 'Pause' as const, value: {} },
         disconnectForfeitSeconds: 0,
         allowMirrorPicks: true,
         autoRandomPick: false,
@@ -178,7 +178,7 @@ describe('Lobby Lifecycle', () => {
         });
 
         it('guest creates Casual lobby with forced ClosedNoRating', async () => {
-            await guest.call.createLobby(defaultLobbyArgs({ rosterVisibility: { tag: 'OpenRoster', value: {} } }));
+            await guest.call.createLobby(defaultLobbyArgs({ rosterVisibility: { tag: 'OpenRoster' as const, value: {} } }));
             await guest.sync(1500);
 
             const lobbies = [...guest.conn.db.Lobby.iter()].filter(l => l.hostUserId === guest.userId);
@@ -195,13 +195,13 @@ describe('Lobby Lifecycle', () => {
 
         it('guest blocked from Ranked lobby', async () => {
             const err = await expectReducerError(
-                guest.call.createLobby(defaultLobbyArgs({ matchType: { tag: 'Ranked', value: {} } }))
+                guest.call.createLobby(defaultLobbyArgs({ matchType: { tag: 'Ranked' as const, value: {} } }))
             );
             expect(err).toContain('Guests cannot create or join Ranked lobbies.');
         });
 
         it('Ranked lobby forces allowMirrorPicks=false', async () => {
-            await host.call.createLobby(defaultLobbyArgs({ matchType: { tag: 'Ranked', value: {} }, allowMirrorPicks: true }));
+            await host.call.createLobby(defaultLobbyArgs({ matchType: { tag: 'Ranked' as const, value: {} }, allowMirrorPicks: true }));
             await host.sync(1500);
 
             const lobbies = myLobbies(host);

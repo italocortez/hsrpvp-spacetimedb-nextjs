@@ -47,10 +47,10 @@ function settingsArgs(lobbyId: number, overrides: Record<string, unknown> = {}) 
     return {
         lobbyId,
         teamSize: 1,
-        draftMode: { tag: 'Classic', value: {} },
-        banMode: { tag: 'None', value: {} },
-        gameMode: { tag: 'MemoryOfChaos', value: {} },
-        matchType: { tag: 'Casual', value: {} },
+        draftMode: { tag: 'Classic' as const, value: {} },
+        banMode: { tag: 'None' as const, value: {} },
+        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
+        matchType: { tag: 'Casual' as const, value: {} },
         standardTurnSeconds: 60,
         reserveBankSeconds: 120,
         characterBudget: 100,
@@ -63,10 +63,10 @@ function settingsArgs(lobbyId: number, overrides: Record<string, unknown> = {}) 
         deathPenalty: 0,
         isAnonymousPlayers: false,
         isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster', value: {} },
+        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
         requireOwnership: false,
         costSetId: 0,
-        disconnectPolicy: { tag: 'Pause', value: {} },
+        disconnectPolicy: { tag: 'Pause' as const, value: {} },
         disconnectForfeitSeconds: 0,
         allowMirrorPicks: true,
         autoRandomPick: false,
@@ -412,10 +412,10 @@ describe('Tournament Lobby & Stand-In', () => {
                 settingsArgs(lockedLobbyId, {
                     // Locked fields — should NOT change
                     teamSize: 3,
-                    gameMode: { tag: 'ApocalypticShadow', value: {} },
-                    matchType: { tag: 'Casual', value: {} },
+                    gameMode: { tag: 'ApocalypticShadow' as const, value: {} },
+                    matchType: { tag: 'Casual' as const, value: {} },
                     // Free fields — SHOULD change
-                    draftMode: { tag: 'Auction', value: {} },
+                    draftMode: { tag: 'Auction' as const, value: {} },
                     standardTurnSeconds: 90,
                     teamBlueAlias: 'Champions',
                 })
