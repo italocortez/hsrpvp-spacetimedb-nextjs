@@ -56,6 +56,16 @@
 
 During an active tournament, rollback is FREE because MMR has not been processed yet (tournament MMR is batched at tournament end via process_tournament_mmr). The mmrProcessedAt guard only blocks rollback AFTER the tournament ends and the MMR batch has run. For casual/ranked matches, the guard applies immediately since MMR is processed per-match.
 
+### Group Phase Scoring
+**Given:** GroupOnly or hybrid tournament with group phase, matches in a group complete
+**When:** `advance_bracket_match` processes group-phase BracketMatch (bracketSide=Group)
+**Then:** GroupStanding rows updated: Win=2pts, Draw=1pt, Loss=0pts. Tiebreaker order: head-to-head result, then total points, then seeding.
+
+### Hybrid Format Group-to-Elimination Advancement
+**Given:** Hybrid format (GroupIntoSingleElim or GroupIntoDoubleElim) tournament, all group matches complete
+**When:** Group winners determined by GroupStanding points + tiebreaker
+**Then:** Top N teams from each group (N = tournament.groupAdvanceCount) advance to elimination bracket slots.
+
 ### DQ Auto-Advance
 **Given:** Tournament InProgress, autoAdvanceBracket=true, team A vs team B in bracket
 **When:** `dq_participant(tournamentId, playerA)`
@@ -79,6 +89,7 @@ During an active tournament, rollback is FREE because MMR has not been processed
 | rollback without winnerTeamId | Throws "No winner to rollback." |
 | submit_and_advance_bracket on non-bracket match | Throws "Not a bracket match" |
 | submit_and_advance_bracket without winnerUserId | Throws "No winner on match result. Submit scores first." |
+| Hybrid format: fewer teams in group than groupAdvanceCount | All teams in that group advance (no error — groupAdvanceCount is a cap, not a minimum) |
 | Client binding uses `has3RdPlaceMatch` (capital R) | SpacetimeDB codegen quirk -- callers must use binding's casing |
 
 ## Integration Points
@@ -124,6 +135,8 @@ During an active tournament, rollback is FREE because MMR has not been processed
 | dq_participant cascade-deletes linked CalendarEvent + CalendarEventInvite | Phase 08 CONTEXT.md (D-22) | 2026-03-28 |
 | Finalization step 17 auto-advances bracket (isTournamentControlled + winnerUserId set) | Phase 9 execution | 2026-03-29 |
 | Rollback after finalization leaves no re-advance path (match record + lobby deleted) — deferred admin bracket override to Phase 10 | Phase 9 execution | 2026-03-29 |
+| Group phase scoring: Win=2pts, Draw=1pt, Loss=0pts; tiebreaker: head-to-head, total points, seeding | Phase 9 execution | 2026-03-29 |
+| Hybrid format: groupAdvanceCount determines how many teams per group advance to elimination bracket | Phase 9 execution | 2026-03-29 |
 
 ---
 

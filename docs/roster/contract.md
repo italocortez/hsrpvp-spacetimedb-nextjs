@@ -339,6 +339,13 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 **When:** `migrate_roster(source, target, "invalid")`
 **Then:** Throws error containing "copy"
 
+### Duplicate UID Detection (recalcDuplicateUid)
+**Given:** User A has HSR account with UID "800000099"
+**When:** User B calls `create_hsr_account(uid="800000099", ...)`
+**Then:** Both User A's and User B's accounts with that UID have isDuplicateUid=true
+**When:** User B later calls `delete_hsr_account` on their "800000099" account
+**Then:** recalcDuplicateUid recalculates — User A's account isDuplicateUid reverts to false (only one account remains with that UID)
+
 ### Admin Permission Guards
 **Given:** Non-admin (guest) user
 **When:** Any admin_* reducer called
@@ -354,6 +361,7 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 | Duplicate UID across users | isDuplicateUid=true on all accounts sharing that UID | recalcDuplicateUid runs on create and delete |
 | Batch upsert with duplicate names in same batch | Last entry wins (or deduped) | Implementation-dependent |
 | HsrAccountLightcone rows on deletion | NOT cascaded yet | Lightcone reducers descoped from Phase 2 |
+| User soft-deletion cascade (performUserDeletion) | Deletes UserIdentity rows, HsrAccountCharacter rows, HsrAccount rows, calendar data (AvailabilitySlot, SavedCalendar, CalendarEventInvite, CalendarEvent). Guest with no history refs: hard-delete User row. Otherwise: soft-delete (username='deleted_&lt;id&gt;', discordId cleared, displayName preserved). TournamentPlayerAccount and LobbyMember rows are NOT cascaded by deletion — they are cleaned up by their own domain reducers (withdrawal, lobby leave). | See architecture.md User Deletion Cascade |
 
 ## Integration Points
 
@@ -377,8 +385,10 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 | costSetId=0 sentinel for default cost set | Phase 2 review (STATE.md) | 2026-03-16 |
 | Number() cast on BigInt sort comparator | Phase 2 review (STATE.md) | 2026-03-16 |
 | UID validation: 9 digits, region 6/7/8/9 | Phase 1 schema | 2026-03-16 |
+| recalcDuplicateUid bidirectional flag sync on create and delete | Phase 9 execution | 2026-03-29 |
+| User soft-deletion cascade documented (performUserDeletion) | Phase 9 execution | 2026-03-29 |
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-29*
 *Feature owner: Phase 2*

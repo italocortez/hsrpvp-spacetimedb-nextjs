@@ -81,6 +81,35 @@
 **When:** Host calls `reclaim_referee(lobbyId)`
 **Then:** Current referee's isReferee=false, host's isReferee=true
 
+### Record Game Scores — Captain Own-Side Scoring
+**Given:** MatchResultRecord in Pending status, caller is a Blue captain (MatchResultParticipant.isCaptain=true, teamSide=Blue)
+**When:** `record_game_scores(matchResultId, gameNumber, winnerTeamSide, teamBlueCyclesUsed, teamBlueScore, teamBlueScreenshotUrl)` — providing only Blue-side fields
+**Then:** MatchResultGame row created (or updated via delete+insert upsert) with Blue-side values set. Red-side fields remain empty (or preserved from prior entry if updating). gameMode inherited from Lobby. validationStatus defaults to Pending.
+
+**Rejection:** Blue captain provides any Red-side field (teamRedCyclesUsed, teamRedScore, teamRedBoss1Score, teamRedBoss2Score, teamRedScreenshotUrl) → error "Captains can only enter scores for their own side." Same logic for Red captain providing Blue-side fields.
+
+**Rejection:** Non-captain participant calls record_game_scores → error "Only the team captain can record game scores."
+
+### Record Game Scores — Spectator Referee Full Control
+**Given:** MatchResultRecord in Pending status with refereeFullControl=true, caller is a spectator referee (LobbyMember.isReferee=true, no MatchResultParticipant row)
+**When:** `record_game_scores(matchResultId, gameNumber, winnerTeamSide, teamBlueCyclesUsed, teamRedCyclesUsed, teamBlueScore, teamRedScore, teamBlueScreenshotUrl, teamRedScreenshotUrl)` — providing BOTH Blue and Red side fields
+**Then:** All fields set in one call on MatchResultGame row. Existing row updated (delete+insert), new row inserted if first entry. gameMode inherited from Lobby.
+
+**Rejection:** Non-participant who is NOT the lobby referee → error "You are not a participant or authorized referee of this match."
+
+**Rejection:** Spectator referee when refereeFullControl=false → error "You are not a participant or authorized referee of this match."
+
+### Process Tournament MMR — Batch MMR
+**Given:** Ranked tournament (countTowardsMmr=true) at Completed or Cancelled stage with multiple Validated MatchResultRecords where mmrProcessedAt is undefined
+**When:** TO/assistant/Mod/Admin calls `process_tournament_mmr(tournamentId)`
+**Then:** All unprocessed Validated matches for that tournament are iterated. For each match: participants and games read, `processMatchMmr` called with matchHistoryId=0 as sentinel (back-filled later by runFinalization step 12), mmrProcessedAt stamped with current timestamp. After all matches processed, leaderboard rebuilt once with active seasonId.
+
+**Rejection:** Tournament stage is not Completed or Cancelled → error "Tournament must be Completed or Cancelled to process MMR."
+
+**Rejection:** Tournament has countTowardsMmr=false → error "This tournament does not count toward MMR (countTowardsMmr=false)."
+
+**No-op:** Zero unprocessed matches found → logs and returns silently (no error).
+
 ### Coach Assignment
 **Given:** Lobby with host and members
 **When:** Host or referee calls `set_team_slot(lobbyId, targetUserId, BlueCoach)` or `set_team_slot(lobbyId, targetUserId, RedCoach)`
@@ -106,6 +135,12 @@
 | Reclaim referee when not host | Throws "Only the lobby host can reclaim" |
 | Self-assign coach slot (BlueCoach/RedCoach) | Throws "Only the lobby host or referee can assign the coach role." |
 | Override with invalid status tag | Throws "Invalid status override" |
+| Record scores on non-Pending match | Throws "Scores can only be recorded when the match is in Pending status." |
+| Record scores — invalid winnerTeamSide | Throws "winnerTeamSide must be \"Blue\" or \"Red\"." |
+| Draw outcome (winnerUserId=0 on submit) | winnerUserId stored as undefined on MatchResultRecord. Finalization sets matchOutcome=Draw. Stats increment with isDraw=true (draws+1, no win/loss). MMR uses 0.5 actual result for both sides. |
+| Handicap — Classic mode | handicapApplied = rosterDiffAdvantage × (teamBlueAccountRating − teamRedAccountRating). Stored on MatchSessionHistory.handicapApplied. teamBlueSpent/teamRedSpent are null for Classic. |
+| Handicap — Auction mode | teamBlueSpent = characterBudget + lightconeBudget − remainingLcBudget (after carryover). teamRedSpent calculated identically. Both stored on MatchSessionHistory. handicapApplied = delta between spent amounts applied via same MoC/AS formula as Classic. |
+| process_tournament_mmr — sentinel back-fill | MmrHistory rows written with matchHistoryId=0 during batch MMR. Finalization step 12 finds these sentinel rows per participant and updates the latest one with the real historyRow.id. |
 
 ## Testing Notes
 
@@ -167,6 +202,7 @@
 | requireOwnership on Lobby for pick validation helper | Phase 6 CONTEXT.md | 2026-03-21 |
 | LobbySlot refactor: set_coach/remove_coach eliminated — coach via set_team_slot(BlueCoach/RedCoach) | Phase 9 execution | 2026-03-29 |
 | TeamLabel renamed to TeamSide (same values: Blue, Red, Spectator) | Phase 9 execution | 2026-03-29 |
+| Added record_game_scores (captain own-side, spectator referee full control), process_tournament_mmr (batch), handicap, draw scenarios | Phase 9 execution | 2026-03-29 |
 | runFinalization step 19: cascade-deletes lobby after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
 | Finalization step 19 cascade-deletes lobby (not set Finished). submit_match_result transitions to AwaitingResult first. | Phase 9 execution | 2026-03-29 |
 

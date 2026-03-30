@@ -835,6 +835,56 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 **When:** `delete_lobby_preset(presetId=99)`
 **Then:** Throws "Lobby preset not found."
 
+### Create Tournament Lobby (Happy Path)
+**Given:** Tournament at InProgress with bracket match #42 (team1Id and team2Id assigned). TO is the caller.
+**When:** TO calls `create_tournament_lobby(bracketMatchId=42, joinCode="")`
+**Then:** Lobby created with `isTournamentControlled=true`, `tournamentId` and `bracketMatchId` set. Settings inherited from tournament: teamSize, gameMode (`tournament.defaultGameMode`), anonymity (`isAnonymousDefault`, `isAnonymousSpectators`), rosterVisibility, costSetId, disconnectPolicy (forfeit seconds derived from `autoForfeitEnabled` + `autoForfeitMinutes`). matchType derived from `countTowardsMmr` (true→Ranked, false→Casual). Host joins as Spectator with `isReferee=true`. Lobby stage=Waiting, isPublic=true.
+
+### Create Tournament Lobby (Duplicate bracketMatchId Prevention)
+**Given:** Lobby #50 already exists for bracketMatchId=42 and its stage is Waiting (not Finished).
+**When:** TO calls `create_tournament_lobby(bracketMatchId=42, joinCode="")`
+**Then:** Throws "A lobby already exists for this bracket match."
+
+### Create Tournament Lobby (Finished Lobby Allows Recreation)
+**Given:** Lobby #50 exists for bracketMatchId=42 but stage=Finished.
+**When:** TO calls `create_tournament_lobby(bracketMatchId=42, joinCode="")`
+**Then:** New lobby created successfully. Finished lobbies do not block duplicate prevention.
+
+### Create Tournament Lobby (Unauthorized User)
+**Given:** User is not a match participant, not the TO, not an assistant, and not Admin/Moderator.
+**When:** User calls `create_tournament_lobby(bracketMatchId=42, joinCode="")`
+**Then:** Throws "You are not authorized to create a lobby for this bracket match."
+
+### Create Tournament Lobby (Match Participant Authorization)
+**Given:** User is a TournamentParticipant on team1Id for bracket match #42.
+**When:** User calls `create_tournament_lobby(bracketMatchId=42, joinCode="")`
+**Then:** Lobby created. Match participants are authorized to create the lobby (D-64).
+
+### Approve Stand-In (Happy Path)
+**Given:** Tournament lobby exists for bracket match #42. User #15 is registered but not a participant in the match.
+**When:** TO calls `approve_stand_in(bracketMatchId=42, userId=15)`
+**Then:** TournamentStandIn row inserted with `[bracketMatchId=42, userId=15, approvedByUserId=TO]`. User #15 can now join the lobby and use `set_team_slot` to Blue/Red despite not being a registered tournament participant.
+
+### Approve Stand-In (Duplicate — Already Approved)
+**Given:** TournamentStandIn row already exists for (bracketMatchId=42, userId=15).
+**When:** TO calls `approve_stand_in(bracketMatchId=42, userId=15)`
+**Then:** Throws "Stand-in already approved for this bracket match."
+
+### Approve Stand-In (Unauthorized Caller)
+**Given:** Caller is a regular user (not TO, not assistant, not Admin/Moderator).
+**When:** Caller calls `approve_stand_in(bracketMatchId=42, userId=15)`
+**Then:** Throws "Only a tournament organizer, assistant, moderator, or admin can approve stand-ins."
+
+### Approve Stand-In (Target User Not Found)
+**Given:** No user exists with id=999.
+**When:** TO calls `approve_stand_in(bracketMatchId=42, userId=999)`
+**Then:** Throws "Target user not found."
+
+### Tournament Lobby Settings Lock (Split Fields)
+**Given:** Tournament-controlled lobby #10 with locked fields: teamSize=3, gameMode=MemoryOfChaos, matchType=Ranked, isAnonymousPlayers=true, isAnonymousSpectators=false, rosterVisibility=ClosedWithRating, costSetId=2, disconnectPolicy=TimerThenForfeit, allowMirrorPicks=false.
+**When:** Host calls `update_lobby_settings(lobbyId=10, teamSize=1, gameMode=ApocalypticShadow, draftMode=Auction, standardTurnSeconds=90, teamBlueAlias="Alpha", refereeCanUndo=false)`
+**Then:** Locked fields unchanged: teamSize=3, gameMode=MemoryOfChaos, matchType=Ranked, isAnonymousPlayers=true, isAnonymousSpectators=false, rosterVisibility=ClosedWithRating, costSetId=2, disconnectPolicy=TimerThenForfeit, allowMirrorPicks=false. Free fields updated: draftMode=Auction, standardTurnSeconds=90, teamBlueAlias="Alpha", refereeCanUndo=false. All members' isConfirmed reset to false.
+
 ## Edge Cases
 
 | Case | Expected Behavior | Notes |
@@ -854,6 +904,13 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | Preset name 51 chars | Rejected | "Preset name must be between 1 and 50 characters." |
 | Moderator editing another moderator's preset | Allowed | Mods can edit mod/TO presets (not system) |
 | Host is auto-referee | LobbyMember.isReferee=true at creation | No explicit set_referee reducer needed |
+| lobby_gc on Waiting lobby idle > 30 min | Hard-deleted via `_hardDeleteLobby` | `lastActivityAt` compared to current time |
+| lobby_gc on Finished lobby idle > 30 min | Hard-deleted via `_hardDeleteLobby` | Safety net for abandoned closed lobbies |
+| lobby_gc on Drafting/Equipping/Scoring/AwaitingResult | NOT touched — GC skips active stages | Active lobbies cleaned by finalization cascade, not GC |
+| Tournament with countTowardsMmr=true | Lobby matchType=Ranked | D-67: matchType derived from tournament flag |
+| Tournament with countTowardsMmr=false | Lobby matchType=Casual | D-67: matchType derived from tournament flag |
+| Duplicate bracketMatchId (non-Finished lobby exists) | Throws "A lobby already exists for this bracket match." | D-45: iterates all lobbies checking bracketMatchId + stage |
+| Duplicate bracketMatchId (only Finished lobby exists) | New lobby created successfully | Finished lobbies do not block recreation |
 
 ## Integration Points
 
@@ -907,6 +964,7 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | LobbyCursorEvent is event table — auto-deleted after broadcast, no cascade needed | Phase 9 execution | 2026-03-29 |
 | Finalization cascade-deletes lobby (step 19 of runFinalization) — not set to Finished | Phase 9 execution | 2026-03-29 |
 | AwaitingResult stage: players freed on submit, finalization cascade-deletes lobby, GC safety net for Waiting+Finished only | Phase 9 execution | 2026-03-29 |
+| Added tournament lobby + stand-in + settings split + GC scenarios | Phase 9 execution | 2026-03-29 |
 
 ---
 

@@ -143,6 +143,7 @@
 | Advance backward (Seeding → Registration) | Throws stage transition error |
 | Cancel completed tournament | Throws "Cannot cancel terminal state" |
 | Cancel already-cancelled tournament | Throws "Cannot cancel terminal state" |
+| Advance Registration → Seeding with pending team requests | `cleanupTeamRequests()` deletes all pending TournamentTeamRequest rows for the tournament. Teams with no accepted members are NOT deleted — only requests are cleaned up. |
 | DQ already withdrawn participant | Throws "Cannot disqualify a participant who has already withdrawn" |
 | DQ already disqualified participant | Throws "Participant is already disqualified" |
 | Update tournament during InProgress | Throws "Can only update during Draft or Registration" |
@@ -205,10 +206,11 @@
 | withdraw_from_tournament auto-disbands captain's team, cleans up pending requests | Retroactive cleanup | 2026-03-28 |
 | accept_team_request cleans up user's other pending requests in tournament | Retroactive cleanup | 2026-03-28 |
 | Registration→Seeding cleans up pending team requests | Retroactive cleanup | 2026-03-28 |
+| Registration→Seeding cleanup edge case: teams with no accepted members preserved | Phase 9 execution | 2026-03-29 |
 | TournamentParticipant and MatchResultRecord preserved on cancellation (audit trail / player history) | Retroactive cleanup | 2026-03-28 |
 | cancel_tournament cascade-deletes CalendarEvent + CalendarEventInvite via bracketMatchId FK (not tournamentId — events link to bracket matches, not tournaments directly) | Phase 08 CONTEXT.md (D-21) | 2026-03-28 |
 | withdraw_from_tournament deletes player's CalendarEventInvite rows for tournament's scheduled matches | Phase 08 CONTEXT.md (D-24) | 2026-03-28 |
 
 ---
 
-*Last updated: 2026-03-28*
+*Last updated: 2026-03-29*

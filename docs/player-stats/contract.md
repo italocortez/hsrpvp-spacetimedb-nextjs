@@ -60,6 +60,16 @@
 
 All flat structured rows, zero JSON blobs (D-55). Self-contained for replay rendering with zero lookups.
 
+### Create Season (Admin)
+**Given:** Admin user
+**When:** `create_season(name="Patch 3.0", startDate, endDate)`
+**Then:** Season row inserted with isActive=false. Season is inert until explicitly activated.
+
+### Set Active Season (Single-Active Guarantee)
+**Given:** Season #1 is active (isActive=true), Season #2 exists (isActive=false)
+**When:** Admin calls `set_active_season(seasonId=2)`
+**Then:** Season #1.isActive set to false, Season #2.isActive set to true. Only one season active at any time.
+
 ### Casual Auto-Finalize (D-37)
 **Given:** MatchResultRecord with matchType=Casual, all captains confirmed
 **When:** `submit_match_result(matchResultId, winnerUserId)` called
@@ -77,6 +87,9 @@ All flat structured rows, zero JSON blobs (D-55). Self-contained for replay rend
 | Spectator identities not in history | matchesSpectated incremented on PlayerStat, but no MatchParticipantHistory row for spectators (D-31) |
 | Pre-season match | seasonId=0 used when no active Season exists (D-45) |
 | No active season at finalization | seasonId defaults to 0, stats still written (D-45) |
+| create_season by non-admin | Throws permission error (ensureAdmin) |
+| set_active_season with invalid seasonId | Throws "Season #X not found." |
+| set_active_season on already-active season | No-op on deactivation (season is in active list, gets deactivated then reactivated). Result: same season remains active. |
 | PlayerRelationship self-reference | Never created -- userId and otherUserId are always different participants |
 | Ban stat semantics differ per table | PlayerCharacterStat.timesBannedInMatch = personal experience; GlobalCharacterStat.timesBanned = community meta (D-29) |
 
@@ -136,7 +149,8 @@ All flat structured rows, zero JSON blobs (D-55). Self-contained for replay rend
 | Four history tables, all flat rows, zero JSON (D-55) | Phase 6 CONTEXT.md | 2026-03-21 |
 | 19-step finalization pipeline (D-56) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Update 38 existing tests for new PK shapes (D-65) | Phase 6 CONTEXT.md | 2026-03-21 |
+| create_season creates inactive season; set_active_season enforces single-active guarantee | Phase 9 execution | 2026-03-29 |
 
 ---
 
-*Last updated: 2026-03-22*
+*Last updated: 2026-03-29*
