@@ -57,8 +57,11 @@ export function hardDeleteLobby(ctx: any, lobbyId: number): void {
 }
 
 // ─── run_lobby_gc ─────────────────────────────────────────────────────────────
-// Scheduled GC reducer: cleans abandoned Waiting + Finished lobbies idle > 30 min.
-// Per D-25: Active lobbies (Drafting/Equipping/Scoring) are NEVER auto-cleaned.
+// Scheduled GC reducer: safety net for abandoned lobbies idle > 30 min.
+// Cleans: Waiting (AFK lobbies) + Finished (closed/abandoned lobbies).
+// NEVER touches: Drafting, Equipping, Scoring (active match), AwaitingResult (pending validation).
+// Normal match lifecycle: finalization cascade-deletes the lobby directly.
+// GC is backup for lobbies that never reach finalization.
 // Reschedules itself every 5 minutes after each run.
 
 export const run_lobby_gc = spacetimedb.reducer(

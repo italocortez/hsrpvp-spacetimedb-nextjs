@@ -919,6 +919,7 @@ The match session system manages the entire draft lifecycle within a lobby: char
 | refereeFullControl derived from spectator slot (D-44) | Phase 9 execution | 2026-03-29 |
 | MatchResultParticipant created at start_draft for all non-coach team members | Phase 9 execution | 2026-03-29 |
 | runFinalization step 19: lobby stage → Finished after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
+| AwaitingResult stage: submit_match_result sets AwaitingResult (frees players), finalization cascade-deletes lobby | Phase 9 execution | 2026-03-29 |
 
 ---
 

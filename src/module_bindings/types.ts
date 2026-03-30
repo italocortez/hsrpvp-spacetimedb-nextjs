@@ -829,6 +829,7 @@ export const LobbyStage = __t.enum("LobbyStage", {
   Drafting: __t.unit(),
   Equipping: __t.unit(),
   Scoring: __t.unit(),
+  AwaitingResult: __t.unit(),
   Finished: __t.unit(),
 });
 export type LobbyStage = __Infer<typeof LobbyStage>;

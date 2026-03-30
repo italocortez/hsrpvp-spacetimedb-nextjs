@@ -155,6 +155,17 @@ export const submit_match_result = spacetimedb.reducer(
             ...auditUpdate(ctx, matchResult, user.id),
         } as any);
 
+        // Transition lobby → AwaitingResult (frees players to join new lobbies)
+        const lobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
+        if (lobby && lobby.stage.tag !== 'AwaitingResult' && lobby.stage.tag !== 'Finished') {
+            ctx.db.Lobby.id.update({
+                ...lobby,
+                stage: { tag: 'AwaitingResult', value: {} },
+                lastActivityAt: ctx.timestamp,
+                ...auditUpdate(ctx, lobby, user.id),
+            } as any);
+        }
+
         const statusLabel = matchResult.matchType.tag === 'Casual' ? 'Validated (auto)' : 'Submitted';
         console.log(`[MATCH] Match result #${matchResultId} ${statusLabel} by user #${user.id}, winner: #${winnerUserId}`);
 

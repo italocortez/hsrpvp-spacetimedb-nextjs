@@ -13,6 +13,7 @@ import {
     canKickOrBan,
     generateJoinCode,
 } from '../helpers/lobbyHelpers';
+import { hardDeleteLobby } from './lobbyGc';
 
 // ─── create_lobby ─────────────────────────────────────────────────────────────
 // Creates a new lobby and inserts the creator as the host/referee.
@@ -317,7 +318,7 @@ export const leave_lobby = spacetimedb.reducer(
 
         // Auto-close empty Waiting lobby
         if (newCount === 0 && lobby.stage.tag === 'Waiting') {
-            _hardDeleteLobby(ctx, lobby);
+            hardDeleteLobby(ctx, lobby.id);
             console.log(`[LOBBY] Lobby #${lobbyId} auto-closed after last member left`);
             return;
         }
@@ -373,7 +374,7 @@ export const close_lobby = spacetimedb.reducer(
         ensureStageIs(lobby, 'Waiting', 'Finished');
 
         // D-19: hard delete cascade
-        _hardDeleteLobby(ctx, lobby);
+        hardDeleteLobby(ctx, lobby.id);
 
         console.log(`[LOBBY] Lobby #${lobbyId} closed by user #${user.id}`);
     }
@@ -541,47 +542,5 @@ export const ban_member = spacetimedb.reducer(
 );
 
 // ─── Internal helper ──────────────────────────────────────────────────────────
-// Hard-delete a lobby and all associated data per D-19.
-// Used by close_lobby and leave_lobby (empty lobby auto-close).
-
-function _hardDeleteLobby(ctx: any, lobby: any): void {
-    const lobbyId = lobby.id;
-
-    // 1. Delete all ChatMessage rows
-    for (const msg of [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)]) {
-        ctx.db.ChatMessage.id.delete(msg.id);
-    }
-
-    // 2. Delete all LobbyMember rows
-    for (const member of [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]) {
-        ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, member.userId]);
-    }
-
-    // 3. Delete all LobbyBan rows
-    for (const ban of [...ctx.db.LobbyBan.lobby_id.filter(lobbyId)]) {
-        ctx.db.LobbyBan.by_lobby_and_user.delete([lobbyId, ban.bannedUserId]);
-    }
-
-    // 4. Delete LobbyPassword if exists
-    const pw = ctx.db.LobbyPassword.lobbyId.find(lobbyId);
-    if (pw) {
-        ctx.db.LobbyPassword.lobbyId.delete(lobbyId);
-    }
-
-    // 5. LobbyCursorEvent is an event table — rows are auto-deleted after broadcast.
-    //    No manual cleanup needed.
-
-    // 6. Delete all MatchSessionStep rows for this lobby
-    for (const step of [...ctx.db.MatchSessionStep.lobby_id.filter(lobbyId)]) {
-        ctx.db.MatchSessionStep.id.delete(step.id);
-    }
-
-    // 7. Delete MatchSession if exists (1-to-1 with lobbyId as PK)
-    const ms = ctx.db.MatchSession.lobbyId.find(lobbyId);
-    if (ms) {
-        ctx.db.MatchSession.lobbyId.delete(lobbyId);
-    }
-
-    // 8. Delete Lobby row
-    ctx.db.Lobby.id.delete(lobbyId);
-}
+// Hard-delete consolidated in lobbyGc.ts → hardDeleteLobby(ctx, lobbyId).
+// Used by close_lobby, leave_lobby (empty auto-close), and runFinalization.

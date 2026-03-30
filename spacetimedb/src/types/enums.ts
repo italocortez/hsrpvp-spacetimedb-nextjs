@@ -57,7 +57,8 @@ export const LobbyStage = t.enum('LobbyStage', {
     Drafting: t.unit(),
     Equipping: t.unit(),
     Scoring: t.unit(),
-    Finished: t.unit(),
+    AwaitingResult: t.unit(), // Match submitted, players freed — lobby alive for finalization
+    Finished: t.unit(),       // Lobby closed/abandoned — GC cleans up after 30 min
 });
 
 // LobbySlot — unified team + role for lobby members.

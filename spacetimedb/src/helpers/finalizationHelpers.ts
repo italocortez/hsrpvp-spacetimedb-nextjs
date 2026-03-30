@@ -1,5 +1,5 @@
 // ─── Finalization Pipeline Helpers ────────────────────────────────────────────
-// Shared 18-step finalization logic callable by both finalize_match_result
+// Shared 19-step finalization logic callable by both finalize_match_result
 // (ranked/tournament) and submit_match_result (casual auto-finalize per D-37).
 
 import { SenderError } from 'spacetimedb/server';
@@ -13,6 +13,7 @@ import { rebuildLeaderboard } from './leaderboardRebuild';
 import { advanceBracketMatch } from './bracketHelpers';
 import { checkAndAwardAchievements } from './achievementChecker';
 import { slotIsCoach, slotIsSpectator, slotTeam } from './lobbyHelpers';
+import { hardDeleteLobby } from '../reducers/lobbyGc';
 
 // ─── Internal: getOrCreateRating ─────────────────────────────────────────────
 // Returns existing MmrRating row for user+mode+season, or creates a new one.
@@ -498,16 +499,11 @@ export function runFinalization(
     const finalResult = ctx.db.MatchResultRecord.id.find(matchResult.id);
     if (finalResult) { ctx.db.MatchResultRecord.delete(finalResult); }
 
-    // 19. Transition lobby → Finished (starts 30-min GC countdown)
-    const finalLobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
-    if (finalLobby && finalLobby.stage.tag !== 'Finished') {
-        ctx.db.Lobby.id.update({
-            ...finalLobby,
-            stage: { tag: 'Finished', value: {} },
-            lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, finalLobby, actingUserId),
-        } as any);
-    }
+    // 19. Cascade-delete lobby (all data archived to history tables above)
+    // The lobby was in AwaitingResult since submit — now it's fully processed.
+    // hardDeleteLobby removes: ChatMessage, LobbyMember, LobbyBan, LobbyPassword,
+    // MatchSessionStep (already deleted in step 18), MatchSession, Lobby row.
+    hardDeleteLobby(ctx, matchResult.lobbyId);
 
     console.log(`[MATCH] Match result #${matchResult.id} finalized by user #${actingUserId}. History ID: ${historyRow.id}`);
 }

@@ -362,7 +362,7 @@ Extracted to `helpers/finalizationHelpers.ts` as `runFinalization()`. Called by 
 16. Increment character stats — PlayerCharacterStat (pick/ban/faced), GlobalCharacterStat (per D-54)
 17. Bracket advancement (tournament-controlled matches)
 18. Delete ephemeral records (games, participants, steps, MatchResultRecord)
-19. Transition lobby stage → Finished (starts 30-min GC countdown via LobbyGcJob)
+19. Cascade-delete lobby via `_hardDeleteLobby` (lobby no longer needed — submit_match_result already set AwaitingResult and freed players)
 
 ---
 

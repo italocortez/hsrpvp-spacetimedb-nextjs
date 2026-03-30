@@ -92,7 +92,7 @@ Lobby (PK: id autoInc)
 | disconnectForfeitAt | timestamp? | Set when disconnect timer starts |
 | hostDisconnectTime | timestamp? | When host disconnected (for host transfer logic) |
 | lastActivityAt | timestamp | Updated on join/leave/chat/picks/cursor events |
-| stage | LobbyStage | Waiting, Drafting, Equipping, Scoring, Finished |
+| stage | LobbyStage | Waiting, Drafting, Equipping, Scoring, AwaitingResult, Finished |
 | currentPlayerCount | u8 | Denormalized member count for browser view (D-07) |
 
 **Indexes:** `host_user_id` btree, `stage` btree, `tournament_id` btree
@@ -107,7 +107,8 @@ Lobby (PK: id autoInc)
 | Drafting | Active draft — picks, bans, auction in progress |
 | Equipping | Post-draft — lightcone equipping and lineup arrangement |
 | Scoring | Score submission — screenshot upload and captain confirmation |
-| Finished | Match finalized — close_lobby allowed; set by step 19 of runFinalization, starts 30-min GC countdown |
+| AwaitingResult | Set by submit_match_result — players freed to join new lobbies; finalization cascade-deletes the lobby |
+| Finished | Abandoned closed lobbies only — set by close_lobby on AwaitingResult lobbies; GC safety net target |
 
 `BanMode.Two` was removed in Phase 9 — only `None`, `Four`, `Six` remain.
 
@@ -195,7 +196,7 @@ SpacetimeDB scheduled table. One row = one scheduled run of `lobby_gc`.
 - Waiting lobbies idle > 30 minutes (`lastActivityAt` check)
 - Finished lobbies idle > 30 minutes
 
-Active stages (Drafting, Equipping, Scoring) are never auto-cleaned.
+Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-cleaned. AwaitingResult lobbies are cleaned up by finalization cascade-delete, not GC.
 
 ---
 
@@ -210,7 +211,7 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned.
 - tournamentName (resolved via PK lookup on Tournament table, server-side)
 - costSetName (resolved via PK lookup on CostSet table; undefined if costSetId=0)
 
-**Filtering (D-08):** Only Waiting, Drafting, Equipping, Scoring stages shown. Finished lobbies excluded. Uses the `stage` btree index with 4 individual filter calls.
+**Filtering (D-08):** Only Waiting, Drafting, Equipping, Scoring stages shown. AwaitingResult and Finished lobbies excluded. Uses the `stage` btree index with 4 individual filter calls.
 
 **Implementation:** Uses `anonymousView` (no authentication required). Tournament and cost set names resolved server-side at view computation time — no extra client roundtrips.
 
@@ -297,7 +298,7 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned.
 
 ## One-Lobby-Per-User Enforcement (D-22)
 
-`ensureNotInLobby` checks `LobbyMember.user_id.filter(userId)`. If any row exists, the create/join is rejected. Users must leave before joining another.
+`ensureNotInLobby` checks `LobbyMember.user_id.filter(userId)`. Memberships in AwaitingResult lobbies are skipped — players are freed to join new lobbies once the result is submitted. If any non-AwaitingResult membership exists, the create/join is rejected.
 
 ---
 
@@ -331,7 +332,7 @@ Runs on schedule via `LobbyGcJob` scheduled table. Hard-deletes abandoned lobbie
 - Stage = Waiting AND `lastActivityAt` > 30 minutes ago
 - Stage = Finished AND `lastActivityAt` > 30 minutes ago
 
-Active stages (Drafting, Equipping, Scoring) are never auto-cleaned. This protects live matches from accidental cleanup.
+Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-cleaned. AwaitingResult lobbies are cleaned up by finalization cascade-delete. GC only handles Waiting (AFK) and Finished (abandoned closed).
 
 ---
 
@@ -355,7 +356,7 @@ Active stages (Drafting, Equipping, Scoring) are never auto-cleaned. This protec
 | `delete_lobby_preset` | lobbyPresets.ts | Permission hierarchy (see above) | Deletes preset |
 | `create_tournament_lobby` | tournamentLobby.ts | Participants / TO / assistant / Admin / Moderator | Tournament-linked lobby with inherited settings |
 | `approve_stand_in` | tournamentLobby.ts | TO / assistant / Admin / Moderator | Approves stand-in player for a bracket match |
-| `lobby_gc` | lobbyGc.ts | Scheduled (LobbyGcJob) | Hard-deletes idle Waiting/Finished lobbies |
+| `lobby_gc` | lobbyGc.ts | Scheduled (LobbyGcJob) | Hard-deletes idle Waiting/Finished lobbies; consolidated `_hardDeleteLobby` helper |
 
 ---
 

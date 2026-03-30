@@ -69,7 +69,7 @@
 ### Finalization Pipeline (Phase 6)
 **Given:** MatchResultRecord in Validated status
 **When:** `finalize_match_result` (ranked) or auto-finalize (casual)
-**Then:** 19-step pipeline runs: reads participants/games/lobby/steps/season, then writes MatchSessionHistory, MatchSessionStepHistory (individual rows), MatchResultGameHistory, MatchParticipantHistory (with displayName), processes MMR (ranked only), increments PlayerStat, PlayerCharacterStat, PlayerRelationship, GlobalCharacterStat, advances bracket (tournament), deletes ephemeral records, transitions lobby → Finished. Single transaction -- full rollback on failure. (D-56)
+**Then:** 19-step pipeline runs: reads participants/games/lobby/steps/season, then writes MatchSessionHistory, MatchSessionStepHistory (individual rows), MatchResultGameHistory, MatchParticipantHistory (with displayName), processes MMR (ranked only), increments PlayerStat, PlayerCharacterStat, PlayerRelationship, GlobalCharacterStat, advances bracket (tournament), deletes ephemeral records, cascade-deletes lobby. Single transaction -- full rollback on failure. (D-56)
 
 ### Referee Transfer
 **Given:** Lobby with host and members, host has isReferee=true
@@ -168,6 +168,7 @@
 | LobbySlot refactor: set_coach/remove_coach eliminated — coach via set_team_slot(BlueCoach/RedCoach) | Phase 9 execution | 2026-03-29 |
 | TeamLabel renamed to TeamSide (same values: Blue, Red, Spectator) | Phase 9 execution | 2026-03-29 |
 | runFinalization step 19: lobby → Finished after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
+| Finalization step 19 cascade-deletes lobby (not set Finished). submit_match_result transitions to AwaitingResult first. | Phase 9 execution | 2026-03-29 |
 
 ---
 
