@@ -47,7 +47,7 @@ export const finalize_match_result = spacetimedb.reducer(
             throw new SenderError('You do not have authority to finalize this match result.');
         }
 
-        // 4. Run the 18-step finalization pipeline
+        // 4. Run the 19-step finalization pipeline
         runFinalization(ctx, matchResult, user.id);
     }
 );
