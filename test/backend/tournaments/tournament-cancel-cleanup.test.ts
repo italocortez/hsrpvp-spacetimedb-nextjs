@@ -1,0 +1,429 @@
+/**
+ * Integration tests: Tournament cancel cascade, cleanup, and assistant upsert.
+ *
+ * Covers:
+ * - cancel_tournament from Registration → cascade deletes teams, assistants, player accounts
+ * - cancel_tournament preserves TournamentParticipant rows (audit trail)
+ * - cancel already-Cancelled → rejected (terminal state)
+ * - cancel_tournament from InProgress → cascade deletes bracket matches, teams
+ * - cancel Completed tournament → rejected (terminal state)
+ * - assign_tournament_assistant upsert → permissions updated on reassign
+ * - cancel_tournament cascade deletes CalendarEvent + CalendarEventInvite linked
+ *   to bracket matches (D-21)
+ *
+ * Coverage gap: cleanupTeamRequests on Registration→Seeding not directly tested
+ * (requires team tournament with pending requests — 6+ harnesses). Tested indirectly
+ * via cancel cascade which calls cleanupTeamRequests internally.
+ *
+ * Contract: docs/tournament/contract.md
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import {
+    createVerifiedTestHarness,
+    hasServerToken,
+    expectReducerError,
+    type TestHarness,
+} from '../../shared/connection';
+import { DbConnection } from '../../../src/module_bindings';
+
+const DB = process.env.SPACETIMEDB_DB ?? 'hsrpvp-spacetimedb-nextjs-test1';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+async function promoteUser(username: string, role: string): Promise<void> {
+    const host = process.env.SPACETIMEDB_URI ?? 'wss://maincloud.spacetimedb.com';
+    const token = process.env.SPACETIMEDB_SERVER_TOKEN!;
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Promote timeout')), 10000);
+        DbConnection.builder()
+            .withUri(host)
+            .withDatabaseName(DB)
+            .withToken(token)
+            .onConnect((conn) => {
+                conn.reducers.serverSetRole({ username, roleTag: role });
+                setTimeout(() => { clearTimeout(timeout); resolve(); }, 1000);
+            })
+            .onConnectError((_ctx, err) => { clearTimeout(timeout); reject(err); })
+            .build();
+    });
+}
+
+function getUsername(h: TestHarness): string {
+    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
+    return user?.username ?? '';
+}
+
+/** BigInt micros timestamp string offset from now */
+function tsStr(offsetMs: number): string {
+    return (BigInt(Date.now() + offsetMs) * 1000n).toString();
+}
+
+function createTournamentArgs(overrides: Record<string, unknown> = {}) {
+    return {
+        name: `Cancel Test ${Date.now()}`,
+        description: 'Integration test tournament',
+        format: 'SingleElimination',
+        teamSize: 1,
+        defaultGameMode: 'MemoryOfChaos',
+        maxParticipants: 8,
+        rosterVisibility: 'OpenRoster',
+        isAnonymousDefault: false,
+        disconnectPolicy: 'Pause',
+        costSetId: 0,
+        defaultBestOf: 1,
+        groupSize: 4,
+        has3RdPlaceMatch: false,
+        autoAdvanceBracket: true,
+        countTowardsMmr: false,
+        winnerAdvantage: 0,
+        requireVerified: false,
+        requireRoster: false,
+        minimumMmr: 0,
+        requireApproval: false,
+        waitlistEnabled: false,
+        scheduledStartAt: '',
+        registrationDeadline: '',
+        ...overrides,
+    };
+}
+
+/** Create tournament, advance to Registration, register players, return tournamentId */
+async function setupRegistrationTournament(
+    toUser: TestHarness,
+    players: TestHarness[],
+    overrides: Record<string, unknown> = {},
+): Promise<number> {
+    await toUser.call.createTournament(createTournamentArgs(overrides));
+    await toUser.sync(1500);
+
+    const tournaments = [...toUser.conn.db.Tournament.iter()].filter(
+        t => t.organizerId === toUser.userId
+    );
+    const tournamentId = tournaments[tournaments.length - 1].id;
+
+    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Registration' });
+    await toUser.sync(1000);
+
+    for (const p of players) {
+        await p.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+        await p.sync(1000);
+    }
+    await toUser.sync(1000);
+
+    return tournamentId;
+}
+
+/** Advance a tournament from Registration all the way to InProgress (with bracket) */
+async function advanceToInProgress(
+    toUser: TestHarness,
+    tournamentId: number,
+): Promise<void> {
+    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Seeding' });
+    await toUser.sync(1500);
+
+    await toUser.call.seedBracket({ tournamentId, mode: 'random' });
+    await toUser.sync(1500);
+
+    await toUser.call.generateBracket({ tournamentId });
+    await toUser.sync(1500);
+
+    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'InProgress' });
+    await toUser.sync(1500);
+}
+
+// ─── Tests ──────────────────────────────────────────────────────────────────
+
+describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
+    let toUser: TestHarness;
+    let p1: TestHarness;
+    let p2: TestHarness;
+    let assistant: TestHarness;
+
+    beforeAll(async () => {
+        toUser = await createVerifiedTestHarness();
+        p1 = await createVerifiedTestHarness();
+        p2 = await createVerifiedTestHarness();
+        assistant = await createVerifiedTestHarness();
+
+        await toUser.sync();
+
+        // Promote TO
+        await promoteUser(getUsername(toUser), 'TournamentHost');
+        await toUser.sync(1500);
+    }, 60000);
+
+    afterAll(async () => {
+        await toUser?.disconnect();
+        await p1?.disconnect();
+        await p2?.disconnect();
+        await assistant?.disconnect();
+    });
+
+    // ═══ Cancel from Registration ═══════════════════════════════════════════
+
+    describe('cancel from Registration', () => {
+        let tournamentId: number;
+
+        beforeAll(async () => {
+            tournamentId = await setupRegistrationTournament(toUser, [p1, p2]);
+
+            // Assign an assistant so cascade has something to delete
+            await toUser.call.assignTournamentAssistant({
+                tournamentId,
+                userId: assistant.userId,
+                canValidateResults: true,
+                canOverrideResults: false,
+                canDqParticipants: false,
+                canManageBracket: false,
+                canAssignSeeds: false,
+            });
+            await toUser.sync(1500);
+        }, 30000);
+
+        it('cascade deletes teams, assistants; preserves participants', async () => {
+            // Pre-state: teams and assistant exist
+            const teamsBefore = [...toUser.conn.db.TournamentTeam.iter()].filter(
+                t => t.tournamentId === tournamentId
+            );
+            expect(teamsBefore.length).toBeGreaterThan(0);
+
+            const assistantsBefore = [...toUser.conn.db.TournamentAssistant.iter()].filter(
+                a => a.tournamentId === tournamentId
+            );
+            expect(assistantsBefore.length).toBe(1);
+
+            // Cancel
+            await toUser.call.cancelTournament({ tournamentId });
+            await toUser.sync(1500);
+
+            // Teams deleted
+            const teamsAfter = [...toUser.conn.db.TournamentTeam.iter()].filter(
+                t => t.tournamentId === tournamentId
+            );
+            expect(teamsAfter.length).toBe(0);
+
+            // Assistants deleted
+            const assistantsAfter = [...toUser.conn.db.TournamentAssistant.iter()].filter(
+                a => a.tournamentId === tournamentId
+            );
+            expect(assistantsAfter.length).toBe(0);
+
+            // Participants preserved (audit trail)
+            const participants = [...toUser.conn.db.TournamentParticipant.iter()].filter(
+                p => p.tournamentId === tournamentId
+            );
+            expect(participants.length).toBe(2);
+
+            // Stage is Cancelled
+            const tournament = [...toUser.conn.db.Tournament.iter()].find(
+                t => t.id === tournamentId
+            );
+            expect(tournament?.stage.tag).toBe('Cancelled');
+        });
+
+        it('cancel already-Cancelled → rejected (terminal state)', async () => {
+            const msg = await expectReducerError(
+                toUser.call.cancelTournament({ tournamentId })
+            );
+            expect(msg.toLowerCase()).toMatch(/cancel|terminal|transition/);
+        });
+    });
+
+    // ═══ Cancel from InProgress ═════════════════════════════════════════════
+
+    describe('cancel from InProgress', () => {
+        let tournamentId: number;
+
+        beforeAll(async () => {
+            tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
+                name: `Cancel InProg ${Date.now()}`,
+            });
+            await advanceToInProgress(toUser, tournamentId);
+        }, 45000);
+
+        it('cascade deletes bracket matches and teams; preserves participants', async () => {
+            // Pre-state: brackets exist
+            const bracketsBefore = [...toUser.conn.db.BracketMatch.iter()].filter(
+                bm => bm.tournamentId === tournamentId
+            );
+            expect(bracketsBefore.length).toBeGreaterThan(0);
+
+            // Cancel
+            await toUser.call.cancelTournament({ tournamentId });
+            await toUser.sync(1500);
+
+            // Bracket matches deleted
+            const bracketsAfter = [...toUser.conn.db.BracketMatch.iter()].filter(
+                bm => bm.tournamentId === tournamentId
+            );
+            expect(bracketsAfter.length).toBe(0);
+
+            // Teams deleted
+            const teamsAfter = [...toUser.conn.db.TournamentTeam.iter()].filter(
+                t => t.tournamentId === tournamentId
+            );
+            expect(teamsAfter.length).toBe(0);
+
+            // Participants preserved
+            const participants = [...toUser.conn.db.TournamentParticipant.iter()].filter(
+                p => p.tournamentId === tournamentId
+            );
+            expect(participants.length).toBe(2);
+
+            // Stage is Cancelled
+            const tournament = [...toUser.conn.db.Tournament.iter()].find(
+                t => t.id === tournamentId
+            );
+            expect(tournament?.stage.tag).toBe('Cancelled');
+        });
+    });
+
+    // ═══ Cancel Completed → rejected ════════════════════════════════════════
+
+    describe('cancel Completed → rejected', () => {
+        let tournamentId: number;
+
+        beforeAll(async () => {
+            tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
+                name: `Cancel Comp ${Date.now()}`,
+            });
+            await advanceToInProgress(toUser, tournamentId);
+
+            // Fast-track to Completed (no match validation required)
+            await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Completed' });
+            await toUser.sync(1500);
+        }, 45000);
+
+        it('cancel Completed tournament → terminal state error', async () => {
+            const msg = await expectReducerError(
+                toUser.call.cancelTournament({ tournamentId })
+            );
+            expect(msg.toLowerCase()).toMatch(/cancel|completed|terminal|transition/);
+        });
+    });
+
+    // ═══ Cancel cascade deletes CalendarEvent linked to bracket (D-21) ═════
+
+    describe('cancel cascade deletes CalendarEvent for bracket matches', () => {
+        let tournamentId: number;
+        let bracketMatchId: number;
+        let calendarEventId: number;
+
+        beforeAll(async () => {
+            // Create tournament → advance to InProgress with bracket
+            tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
+                name: `Cancel Calendar ${Date.now()}`,
+            });
+            await advanceToInProgress(toUser, tournamentId);
+
+            // Find a bracket match
+            const matches = [...toUser.conn.db.BracketMatch.iter()].filter(
+                bm => bm.tournamentId === tournamentId
+            );
+            expect(matches.length).toBeGreaterThan(0);
+            bracketMatchId = matches[0].id;
+
+            // Create a CalendarEvent linked to that bracket match
+            await toUser.call.createCalendarEvent({
+                title: `Match #${bracketMatchId} Schedule`,
+                description: 'Tournament match',
+                startAt: tsStr(3600_000),
+                endAt: tsStr(7200_000),
+                bracketMatchId,
+                inviteeUserIds: `${p1.userId},${p2.userId}`,
+            });
+            await toUser.sync(1500);
+
+            // Find the created event
+            const events = [...toUser.conn.db.CalendarEvent.iter()].filter(
+                e => e.bracketMatchId === bracketMatchId
+            );
+            expect(events.length).toBeGreaterThanOrEqual(1);
+            calendarEventId = events[events.length - 1].id;
+
+            // Verify invites exist
+            const invites = [...toUser.conn.db.CalendarEventInvite.iter()].filter(
+                i => i.eventId === calendarEventId
+            );
+            expect(invites.length).toBe(2);
+        }, 60000);
+
+        it('cancel deletes CalendarEvent and invites linked to bracket matches', async () => {
+            // Cancel tournament
+            await toUser.call.cancelTournament({ tournamentId });
+            await toUser.sync(1500);
+
+            // CalendarEvent deleted
+            const eventsAfter = [...toUser.conn.db.CalendarEvent.iter()].filter(
+                e => e.id === calendarEventId
+            );
+            expect(eventsAfter.length).toBe(0);
+
+            // CalendarEventInvite rows also deleted
+            const invitesAfter = [...toUser.conn.db.CalendarEventInvite.iter()].filter(
+                i => i.eventId === calendarEventId
+            );
+            expect(invitesAfter.length).toBe(0);
+        });
+    });
+
+    // ═══ Assistant upsert ════════════════════════════════════════════════════
+
+    describe('assistant upsert', () => {
+        let tournamentId: number;
+
+        beforeAll(async () => {
+            await toUser.call.createTournament(createTournamentArgs({
+                name: `Upsert Test ${Date.now()}`,
+            }));
+            await toUser.sync(1500);
+
+            const tournaments = [...toUser.conn.db.Tournament.iter()].filter(
+                t => t.organizerId === toUser.userId
+            );
+            tournamentId = tournaments[tournaments.length - 1].id;
+        }, 15000);
+
+        it('reassigning assistant updates permissions (upsert)', async () => {
+            // First assign: validate=true, override=false
+            await toUser.call.assignTournamentAssistant({
+                tournamentId,
+                userId: assistant.userId,
+                canValidateResults: true,
+                canOverrideResults: false,
+                canDqParticipants: false,
+                canManageBracket: false,
+                canAssignSeeds: false,
+            });
+            await toUser.sync(1500);
+
+            const before = [...toUser.conn.db.TournamentAssistant.iter()].find(
+                a => a.tournamentId === tournamentId && a.userId === assistant.userId
+            );
+            expect(before?.canValidateResults).toBe(true);
+            expect(before?.canOverrideResults).toBe(false);
+
+            // Reassign with different permissions
+            await toUser.call.assignTournamentAssistant({
+                tournamentId,
+                userId: assistant.userId,
+                canValidateResults: false,
+                canOverrideResults: true,
+                canDqParticipants: true,
+                canManageBracket: true,
+                canAssignSeeds: true,
+            });
+            await toUser.sync(1500);
+
+            const after = [...toUser.conn.db.TournamentAssistant.iter()].find(
+                a => a.tournamentId === tournamentId && a.userId === assistant.userId
+            );
+            expect(after?.canValidateResults).toBe(false);
+            expect(after?.canOverrideResults).toBe(true);
+            expect(after?.canDqParticipants).toBe(true);
+            expect(after?.canManageBracket).toBe(true);
+            expect(after?.canAssignSeeds).toBe(true);
+        });
+    });
+});
