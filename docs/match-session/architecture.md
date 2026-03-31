@@ -216,9 +216,11 @@ Waiting → Drafting → Equipping → Scoring → AwaitingResult → (cascade-d
 | Finished | `close_lobby` on AwaitingResult lobbies (abandoned) | GC safety net target; 30-min auto-delete |
 
 **Automatic transitions:**
-- Classic mode: after last pick → `Equipping`
-- Auction mode: after both teams reach target character count → `Equipping`
+- Classic mode: after last pick → `Equipping` (D-50: charBudget rolls into lcBudget, charBudget zeroed)
+- Auction mode: after both teams reach target character count → `Equipping` (D-50: same rollover)
 - Scoring → AwaitingResult: set by `submit_match_result`; finalization step 19 cascade-deletes the lobby (not set to Finished)
+
+**D-50 Budget rollover** applies to ALL Drafting→Equipping transitions (auto and manual): `teamLcBudget += teamCharBudget; teamCharBudget = 0` for both teams. Applied in 5 code paths: `pick_character` (last Classic step), `timer_expiry_classic` (last Classic step), `pass_bid` (auction complete), `timer_expiry_auction` (auction complete), and `advance_stage` (manual).
 
 **Manual overrides:**
 - Host can call `advance_stage` to skip Equipping → Scoring early (D-58)

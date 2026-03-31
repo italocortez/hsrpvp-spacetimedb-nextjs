@@ -488,13 +488,18 @@ export const pass_bid = spacetimedb.reducer(
 
         if (auctionComplete) {
             // Clear auction state and transition to Equipping
+            // D-50: Budget rollover — carry leftover charBudget into lcBudget
+            const finalBlueCharBudget = newBlueCharBudget;
+            const finalRedCharBudget = newRedCharBudget;
             ctx.db.MatchSession.lobbyId.update({
                 ...session,
                 currentNomination: undefined,
                 currentBidAmount: undefined,
                 currentBidTeam: { tag: 'Spectator', value: {} } as any,
-                teamBlueCharBudget: newBlueCharBudget,
-                teamRedCharBudget: newRedCharBudget,
+                teamBlueCharBudget: 0,
+                teamRedCharBudget: 0,
+                teamBlueLcBudget: session.teamBlueLcBudget + finalBlueCharBudget,
+                teamRedLcBudget: session.teamRedLcBudget + finalRedCharBudget,
                 blueCharactersWon: newBlueCharactersWon,
                 redCharactersWon: newRedCharactersWon,
                 nextNominatorTeam,
@@ -721,13 +726,18 @@ export const timer_expiry_auction = spacetimedb.reducer(
             const auctionComplete = isAuctionComplete(updatedSessionForCheck);
 
             if (auctionComplete) {
+                // D-50: Budget rollover — carry leftover charBudget into lcBudget
+                const finalBlueChar = newBlueCharBudget;
+                const finalRedChar = newRedCharBudget;
                 ctx.db.MatchSession.lobbyId.update({
                     ...session,
                     currentNomination: undefined,
                     currentBidAmount: undefined,
                     currentBidTeam: { tag: 'Spectator', value: {} } as any,
-                    teamBlueCharBudget: newBlueCharBudget,
-                    teamRedCharBudget: newRedCharBudget,
+                    teamBlueCharBudget: 0,
+                    teamRedCharBudget: 0,
+                    teamBlueLcBudget: session.teamBlueLcBudget + finalBlueChar,
+                    teamRedLcBudget: session.teamRedLcBudget + finalRedChar,
                     blueCharactersWon: newBlueCharactersWon,
                     redCharactersWon: newRedCharactersWon,
                     nextNominatorTeam,

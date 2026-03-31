@@ -228,15 +228,17 @@ describe('Post-Draft (Equipping + Scoring)', () => {
             expect(pickSteps.length).toBe(16);
         });
 
-        it('session has LC budget available for Equipping stage', () => {
-            // Classic mode does not deduct charBudget (picks are free).
-            // Budget rollover (D-50) is Auction-specific — in Classic mode,
-            // charBudget stays unchanged and lcBudget is set from lobby config.
+        it('D-50 budget rollover: charBudget zeroed, lcBudget gains residual', () => {
+            // D-50: On Drafting→Equipping, leftover charBudget carries into lcBudget.
+            // Classic picks are free (seeded costSetId=0 has no cost rows), so full
+            // charBudget (30) rolls over. lcBudget starts at 20 → after: 20 + 30 = 50.
             const session = getSession(host, lobbyId);
             expect(session).toBeDefined();
-            // LC budget must be positive (from lobby lightconeBudget=20)
-            expect(session!.teamBlueLcBudget).toBeGreaterThanOrEqual(0);
-            expect(session!.teamRedLcBudget).toBeGreaterThanOrEqual(0);
+            expect(session!.teamBlueCharBudget).toBe(0);
+            expect(session!.teamRedCharBudget).toBe(0);
+            // LC budget = original lightconeBudget (20) + full charBudget rollover (30) = 50
+            expect(session!.teamBlueLcBudget).toBe(50);
+            expect(session!.teamRedLcBudget).toBe(50);
         });
     });
 

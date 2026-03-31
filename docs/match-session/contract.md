@@ -821,11 +821,13 @@ The match session system manages the entire draft lifecycle within a lobby: char
 **When:** Blue captain calls `confirm_lineup(lobbyId)`
 **Then:** ConfirmLineup step recorded with confirmed=true.
 
-### Budget Rollover on Advance Stage
+### Budget Rollover on Drafting → Equipping (D-50)
+
+D-50 applies to ALL Drafting→Equipping transitions: auto (last Classic pick, last Auction pass, timer expiry completions) and manual (`advance_stage`). Leftover `charBudget` is added to `lcBudget`; `charBudget` is zeroed for both teams.
 
 **Given:** Drafting stage, Blue charBudget=30 remaining, Blue lcBudget=50
-**When:** Host calls `advance_stage(lobbyId)`
-**Then:** Lobby transitions to Equipping. Blue lcBudget = 50 + 30 = 80. Blue charBudget = 0. System chat: "Draft complete. Stage: Equipping"
+**When:** Last Classic pick completes (auto-transition) OR host calls `advance_stage(lobbyId)`
+**Then:** Lobby transitions to Equipping. Blue lcBudget = 50 + 30 = 80. Blue charBudget = 0.
 
 ### Advance Stage: Scoring Blocked
 

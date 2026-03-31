@@ -341,9 +341,14 @@ export const pick_character = spacetimedb.reducer(
 
         if (isClassicComplete) {
             // Classic draft complete — transition to Equipping
+            // D-50: Budget rollover — carry leftover charBudget into lcBudget
             ctx.db.MatchSession.lobbyId.update({
                 ...session,
                 turnIndex: newTurnIndex,
+                teamBlueLcBudget: session.teamBlueLcBudget + session.teamBlueCharBudget,
+                teamRedLcBudget: session.teamRedLcBudget + session.teamRedCharBudget,
+                teamBlueCharBudget: 0,
+                teamRedCharBudget: 0,
                 timerState: {
                     ...session.timerState,
                     turnStartAt: ctx.timestamp,
@@ -718,9 +723,14 @@ export const timer_expiry_classic = spacetimedb.reducer(
             newTurnIndex >= session.draftSequence.length;
 
         if (isClassicComplete) {
+            // D-50: Budget rollover — carry leftover charBudget into lcBudget
             ctx.db.MatchSession.lobbyId.update({
                 ...session,
                 turnIndex: newTurnIndex,
+                teamBlueLcBudget: session.teamBlueLcBudget + session.teamBlueCharBudget,
+                teamRedLcBudget: session.teamRedLcBudget + session.teamRedCharBudget,
+                teamBlueCharBudget: 0,
+                teamRedCharBudget: 0,
                 timerState: {
                     ...session.timerState,
                     turnStartAt: ctx.timestamp,
