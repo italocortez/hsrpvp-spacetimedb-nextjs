@@ -23,6 +23,7 @@ import AdminUpdateHsrAccountReducer from "../admin_update_hsr_account_reducer";
 import AdminUpdateUserReducer from "../admin_update_user_reducer";
 import AdminUpsertArchetypeReducer from "../admin_upsert_archetype_reducer";
 import AdvanceBracketMatchReducer from "../advance_bracket_match_reducer";
+import AdvanceGroupToEliminationReducer from "../advance_group_to_elimination_reducer";
 import AdvanceStageReducer from "../advance_stage_reducer";
 import AdvanceTournamentStageReducer from "../advance_tournament_stage_reducer";
 import ApproveParticipantReducer from "../approve_participant_reducer";
@@ -152,6 +153,7 @@ export type AdminUpdateHsrAccountParams = __Infer<typeof AdminUpdateHsrAccountRe
 export type AdminUpdateUserParams = __Infer<typeof AdminUpdateUserReducer>;
 export type AdminUpsertArchetypeParams = __Infer<typeof AdminUpsertArchetypeReducer>;
 export type AdvanceBracketMatchParams = __Infer<typeof AdvanceBracketMatchReducer>;
+export type AdvanceGroupToEliminationParams = __Infer<typeof AdvanceGroupToEliminationReducer>;
 export type AdvanceStageParams = __Infer<typeof AdvanceStageReducer>;
 export type AdvanceTournamentStageParams = __Infer<typeof AdvanceTournamentStageReducer>;
 export type ApproveParticipantParams = __Infer<typeof ApproveParticipantReducer>;

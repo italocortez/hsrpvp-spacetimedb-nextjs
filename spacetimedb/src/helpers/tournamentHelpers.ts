@@ -199,11 +199,19 @@ export function validateSeedingToInProgress(ctx: any, tournamentId: number): voi
         throw new SenderError('Bracket must be generated before advancing to InProgress. Call generate_bracket first.');
     }
 
-    // Check first-round matches (roundNumber === 1, non-Losers bracket) have at least one participant
+    // Check first-round matches (roundNumber === 1, non-Losers bracket) have at least one participant.
+    // For hybrid formats (GroupIntoSingleElim, GroupIntoDoubleElim), exclude elimination R1 matches —
+    // those slots are intentionally empty at InProgress start and get filled by advance_group_to_elimination.
+    const formatTag2 = tournament.format.tag as string;
+    const isHybrid = formatTag2 === 'GroupIntoSingleElim' || formatTag2 === 'GroupIntoDoubleElim';
+
     const firstRoundMatches = bracketMatches.filter((m: any) =>
         m.roundNumber === 1 && m.bracketSide.tag !== 'Losers'
     );
     for (const match of firstRoundMatches) {
+        // For hybrid formats, only check group matches — elimination slots are empty by design
+        if (isHybrid && match.bracketSide.tag !== 'Group') continue;
+
         if (match.team1Id === undefined && match.team2Id === undefined) {
             throw new SenderError(`Match ${match.id} has no participants. Seed all bracket slots before advancing.`);
         }

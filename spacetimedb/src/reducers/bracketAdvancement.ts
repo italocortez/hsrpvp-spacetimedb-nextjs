@@ -3,8 +3,9 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
 import { auditUpdate } from '../helpers/auditColumns';
-import { placeParticipantInNextMatch, updateGroupStandings } from '../helpers/bracketHelpers';
+import { placeParticipantInNextMatch, updateGroupStandings, sortGroupStandings } from '../helpers/bracketHelpers';
 import { deleteCalendarEventForBracketMatch } from '../helpers/calendarCascade';
+import { foldSeeding } from '../helpers/bracketGeneration';
 
 // ─── Group standings points ────────────────────────────────────────────────────
 // Win=2, Draw=1, Loss=0 (per CONTEXT.md)
@@ -129,18 +130,21 @@ export const advance_bracket_match = spacetimedb.reducer(
             throw new SenderError('Bracket advancement is only allowed during InProgress stage.');
         }
 
-        // Verify winner is set
-        if (bracketMatch.winnerTeamId === undefined) {
+        // For group matches, allow draws (winnerTeamId undefined) — only update standings.
+        // For elimination matches, a winner is required to advance.
+        const isGroupMatch = bracketMatch.bracketSide.tag === 'Group';
+
+        if (!isGroupMatch && bracketMatch.winnerTeamId === undefined) {
             throw new SenderError('No winner set on this bracket match. Submit a result first.');
         }
 
-        // Place winner in nextWinnerMatchId slot (if exists)
-        if (bracketMatch.nextWinnerMatchId) {
+        // Place winner in nextWinnerMatchId slot (if exists and winner is set)
+        if (bracketMatch.winnerTeamId !== undefined && bracketMatch.nextWinnerMatchId) {
             placeParticipantInNextMatch(ctx, bracketMatch.nextWinnerMatchId, bracketMatch.winnerTeamId, user.id);
         }
 
         // Route loser to nextLoserMatchId (for double elim, 3rd place)
-        if (bracketMatch.nextLoserMatchId) {
+        if (bracketMatch.winnerTeamId !== undefined && bracketMatch.nextLoserMatchId) {
             const loserId = bracketMatch.team1Id === bracketMatch.winnerTeamId
                 ? bracketMatch.team2Id
                 : bracketMatch.team1Id;
@@ -149,12 +153,21 @@ export const advance_bracket_match = spacetimedb.reducer(
             }
         }
 
-        // Update group standings if this is a group match
-        if (bracketMatch.bracketSide.tag === 'Group' && bracketMatch.team1Id && bracketMatch.team2Id) {
+        // Update group standings if this is a group match (handles wins, losses, AND draws)
+        if (isGroupMatch && bracketMatch.team1Id && bracketMatch.team2Id) {
             updateGroupStandings(ctx, bracketMatch, user.id);
+
+            // Mark group draw as resolved (resultStatus → Validated) so TO knows it's processed
+            if (bracketMatch.winnerTeamId === undefined && bracketMatch.resultStatus.tag !== 'Validated') {
+                ctx.db.BracketMatch.id.update({
+                    ...bracketMatch,
+                    resultStatus: { tag: 'Validated', value: {} } as any,
+                    ...auditUpdate(ctx, bracketMatch, user.id),
+                } as any);
+            }
         }
 
-        console.log(`[BRACKET] Bracket match #${bracketMatchId} advanced: winner team #${bracketMatch.winnerTeamId}`);
+        console.log(`[BRACKET] Bracket match #${bracketMatchId} advanced: winner team #${bracketMatch.winnerTeamId ?? 'draw'}`);
     }
 );
 
@@ -326,5 +339,132 @@ export const rollback_bracket_match = spacetimedb.reducer(
         } as any);
 
         console.log(`[BRACKET] rollback_bracket_match: bracket match #${bracketMatchId} rolled back by user #${user.id}`);
+    }
+);
+
+// ─── advance_group_to_elimination ────────────────────────────────────────────
+// After all group matches are resolved, places top N teams from each group
+// into the elimination bracket slots using cross-seeded fold placement.
+// Permission: Tournament Access (TO/assistant/mod/admin).
+
+export const advance_group_to_elimination = spacetimedb.reducer(
+    {
+        tournamentId: t.u32(),
+    },
+    (ctx, { tournamentId }) => {
+        const { user, tournament } = ensureTournamentAccess(ctx, tournamentId);
+
+        // Verify tournament is InProgress
+        if (tournament.stage.tag !== 'InProgress') {
+            throw new SenderError('Group-to-elimination advancement is only allowed during InProgress stage.');
+        }
+
+        // Verify tournament is a hybrid format
+        const formatTag = tournament.format.tag;
+        if (formatTag !== 'GroupIntoSingleElim' && formatTag !== 'GroupIntoDoubleElim') {
+            throw new SenderError('This reducer is only for hybrid (group-into-elimination) tournament formats.');
+        }
+
+        const groupAdvanceCount = tournament.groupAdvanceCount;
+        if (!groupAdvanceCount || groupAdvanceCount < 1) {
+            throw new SenderError('Tournament groupAdvanceCount must be at least 1.');
+        }
+
+        // Load all bracket matches for this tournament
+        const allMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
+        const groupMatches = allMatches.filter((m: any) => m.bracketSide.tag === 'Group');
+        const elimMatches = allMatches.filter((m: any) => m.bracketSide.tag !== 'Group');
+
+        // Verify all group matches are resolved (resultStatus = Validated)
+        const unresolvedGroup = groupMatches.find((m: any) => m.resultStatus.tag !== 'Validated');
+        if (unresolvedGroup) {
+            throw new SenderError(
+                `Not all group matches are resolved. Match #${unresolvedGroup.id} is still ${unresolvedGroup.resultStatus.tag}.`
+            );
+        }
+
+        // Verify elimination bracket has empty slots (not already populated)
+        const elimR1 = elimMatches.filter((m: any) => m.roundNumber === 1);
+        const alreadyPopulated = elimR1.find((m: any) => m.team1Id !== undefined || m.team2Id !== undefined);
+        if (alreadyPopulated) {
+            throw new SenderError('Elimination bracket already has teams placed. Rollback first if re-advancing.');
+        }
+
+        // Load group standings and sort each group
+        const allStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
+        const groupIds = [...new Set(allStandings.map(s => s.groupId))].sort((a, b) => a - b);
+
+        // Collect advancing teams: cross-seed across groups
+        // Pattern: rank 1 from each group first, then rank 2 from each, etc.
+        // This ensures cross-seeding (group winners face group runners-up)
+        const advancingTeams: number[] = [];
+        const groupRankings = new Map<number, any[]>();
+
+        for (const groupId of groupIds) {
+            const groupStandings = allStandings.filter(s => s.groupId === groupId);
+            const sorted = sortGroupStandings(ctx, groupStandings, tournamentId);
+            groupRankings.set(groupId, sorted);
+
+            // Validate enough teams in group
+            const advanceFromThis = Math.min(groupAdvanceCount, sorted.length);
+            if (advanceFromThis === 0) {
+                throw new SenderError(`Group ${groupId} has no teams to advance.`);
+            }
+        }
+
+        // Snake-seed across groups: rank 1 from all groups, then rank 2 from all groups, etc.
+        for (let rank = 0; rank < groupAdvanceCount; rank++) {
+            for (const groupId of groupIds) {
+                const sorted = groupRankings.get(groupId)!;
+                if (rank < sorted.length) {
+                    advancingTeams.push(sorted[rank].teamId);
+                }
+            }
+        }
+
+        if (advancingTeams.length < 2) {
+            throw new SenderError('At least 2 teams must advance to form an elimination bracket.');
+        }
+
+        // Use fold seeding to determine matchups
+        const bracketSize = Math.pow(2, Math.ceil(Math.log2(advancingTeams.length)));
+        const matchups = foldSeeding(bracketSize);
+
+        // Sort R1 elimination matches by matchNumber for deterministic placement
+        const sortedElimR1 = [...elimR1].sort((a: any, b: any) => a.matchNumber - b.matchNumber);
+
+        // Place teams into R1 slots
+        for (let i = 0; i < matchups.length && i < sortedElimR1.length; i++) {
+            const [seed1, seed2] = matchups[i];
+            const t1 = seed1 <= advancingTeams.length ? advancingTeams[seed1 - 1] : undefined;
+            const t2 = seed2 <= advancingTeams.length ? advancingTeams[seed2 - 1] : undefined;
+
+            const match = sortedElimR1[i];
+            const updates: any = {
+                ...match,
+                ...auditUpdate(ctx, match, user.id),
+            };
+
+            if (t1 !== undefined) updates.team1Id = t1;
+            if (t2 !== undefined) updates.team2Id = t2;
+
+            // If one team is a BYE (undefined), auto-advance the other
+            if (t1 !== undefined && t2 === undefined) {
+                updates.winnerTeamId = t1;
+                updates.resultStatus = { tag: 'Validated', value: {} } as any;
+            } else if (t2 !== undefined && t1 === undefined) {
+                updates.winnerTeamId = t2;
+                updates.resultStatus = { tag: 'Validated', value: {} } as any;
+            }
+
+            ctx.db.BracketMatch.id.update(updates as any);
+
+            // Auto-advance BYE winners to next round
+            if (updates.winnerTeamId !== undefined && match.nextWinnerMatchId) {
+                placeParticipantInNextMatch(ctx, match.nextWinnerMatchId, updates.winnerTeamId, user.id);
+            }
+        }
+
+        console.log(`[BRACKET] advance_group_to_elimination: ${advancingTeams.length} teams placed in elimination bracket for tournament #${tournamentId}`);
     }
 );

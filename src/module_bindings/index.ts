@@ -51,6 +51,7 @@ import AdminUpdateHsrAccountReducer from "./admin_update_hsr_account_reducer";
 import AdminUpdateUserReducer from "./admin_update_user_reducer";
 import AdminUpsertArchetypeReducer from "./admin_upsert_archetype_reducer";
 import AdvanceBracketMatchReducer from "./advance_bracket_match_reducer";
+import AdvanceGroupToEliminationReducer from "./advance_group_to_elimination_reducer";
 import AdvanceStageReducer from "./advance_stage_reducer";
 import AdvanceTournamentStageReducer from "./advance_tournament_stage_reducer";
 import ApproveParticipantReducer from "./approve_participant_reducer";
@@ -1026,6 +1027,7 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_update_user", AdminUpdateUserReducer),
   __reducerSchema("admin_upsert_archetype", AdminUpsertArchetypeReducer),
   __reducerSchema("advance_bracket_match", AdvanceBracketMatchReducer),
+  __reducerSchema("advance_group_to_elimination", AdvanceGroupToEliminationReducer),
   __reducerSchema("advance_stage", AdvanceStageReducer),
   __reducerSchema("advance_tournament_stage", AdvanceTournamentStageReducer),
   __reducerSchema("approve_participant", ApproveParticipantReducer),

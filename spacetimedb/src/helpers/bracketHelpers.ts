@@ -107,6 +107,66 @@ export function updateGroupStandings(ctx: any, bracketMatch: any, userId: number
 }
 
 /**
+ * Sorts GroupStanding rows for a single group using tiebreaker rules:
+ * 1. Head-to-head result (did A beat B in their direct match?)
+ * 2. Total points (higher = better)
+ * 3. Seed number (lower = better)
+ *
+ * Returns standings sorted best-first (index 0 = group winner).
+ */
+export function sortGroupStandings(
+    ctx: any,
+    standings: any[],
+    tournamentId: number,
+): any[] {
+    // Pre-load bracket matches for head-to-head lookups (group matches only)
+    const groupMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)]
+        .filter((m: any) => m.bracketSide.tag === 'Group');
+
+    // Pre-load teams for seed number tiebreaker
+    const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)];
+    const teamSeed = new Map<number, number>();
+    for (const t of teams) {
+        teamSeed.set(t.id, t.seedNumber ?? 9999);
+    }
+
+    // Head-to-head cache: key "teamA-teamB" → 1 if A beat B, -1 if B beat A, 0 if draw/no match
+    const h2hCache = new Map<string, number>();
+    function headToHead(a: number, b: number): number {
+        const key = `${a}-${b}`;
+        if (h2hCache.has(key)) return h2hCache.get(key)!;
+
+        const match = groupMatches.find((m: any) =>
+            ((m.team1Id === a && m.team2Id === b) || (m.team1Id === b && m.team2Id === a)) &&
+            m.resultStatus.tag === 'Validated'
+        );
+
+        let result = 0;
+        if (match && match.winnerTeamId === a) result = 1;
+        else if (match && match.winnerTeamId === b) result = -1;
+        // draw or no match = 0
+
+        h2hCache.set(key, result);
+        h2hCache.set(`${b}-${a}`, -result);
+        return result;
+    }
+
+    return [...standings].sort((a, b) => {
+        // 1. Head-to-head
+        const h2h = headToHead(a.teamId, b.teamId);
+        if (h2h !== 0) return -h2h; // negative because sort is ascending, we want winner first
+
+        // 2. Total points (higher = better)
+        if (a.points !== b.points) return b.points - a.points;
+
+        // 3. Seed number (lower = better)
+        const seedA = teamSeed.get(a.teamId) ?? 9999;
+        const seedB = teamSeed.get(b.teamId) ?? 9999;
+        return seedA - seedB;
+    });
+}
+
+/**
  * Advances a bracket match: sets winnerTeamId, places winner/loser in next matches,
  * and updates group standings. Called from matchFinalization.ts for tournament bracket
  * matches that need advancement during finalization.

@@ -23,7 +23,7 @@ export { confirm_match_scores, submit_match_result, dispute_match_result } from 
 export { record_game_scores } from './reducers/scoreEntry';
 export { dq_participant, override_match_result, assign_tournament_assistant, remove_tournament_assistant, mod_promote_to_host, mod_demote_from_host } from './reducers/tournamentAdmin';
 export { generate_bracket, seed_bracket, swap_seeds } from './reducers/bracketGeneration';
-export { advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match } from './reducers/bracketAdvancement';
+export { advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match, advance_group_to_elimination } from './reducers/bracketAdvancement';
 export { finalize_match_result, process_tournament_mmr } from './reducers/matchFinalization';
 export { create_season, set_active_season } from './reducers/seasonAdmin';
 export { create_achievement, update_achievement, delete_achievement, add_achievement_criteria, remove_achievement_criteria, manual_award_achievement, set_displayed_achievement } from './reducers/achievementManagement';
