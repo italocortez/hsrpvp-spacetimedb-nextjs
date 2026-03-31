@@ -183,3 +183,34 @@ export async function expectReducerError(
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Query private tables via `spacetime sql` CLI.
+ * Returns parsed rows as key-value objects (snake_case column names).
+ *
+ * Use this for tables with `public: false` (PlayerStat, PlayerCharacterStat,
+ * PlayerRelationship) that aren't accessible via WebSocket subscriptions.
+ */
+export async function queryPrivateTable(sql: string): Promise<Record<string, string>[]> {
+  const { execSync } = await import('child_process');
+  const db = getDb();
+  const raw = execSync(`spacetime sql ${db} "${sql.replace(/"/g, '\\"')}"`, {
+    encoding: 'utf-8',
+    timeout: 15000,
+  });
+
+  // Parse text table: header row, separator row, then data rows
+  const lines = raw.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('WARNING'));
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split('|').map(h => h.trim());
+  // Skip separator line (dashes)
+  const rows: Record<string, string>[] = [];
+  for (let i = 2; i < lines.length; i++) {
+    const vals = lines[i].split('|').map(v => v.trim());
+    const row: Record<string, string> = {};
+    headers.forEach((h, idx) => { if (h) row[h] = vals[idx] ?? ''; });
+    rows.push(row);
+  }
+  return rows;
+}

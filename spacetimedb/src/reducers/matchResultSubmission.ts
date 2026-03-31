@@ -196,6 +196,13 @@ export const dispute_match_result = spacetimedb.reducer(
             throw new SenderError('Match result not found.');
         }
 
+        // Check idempotency first — more specific error when already disputed
+        // Note: use status.tag check instead of disputedByUserId !== undefined
+        // because SpacetimeDB optional u32 representation may not equal JS undefined.
+        if (matchResult.status.tag === 'Disputed') {
+            throw new SenderError('This match result has already been disputed.');
+        }
+
         // Validate status is Submitted (can only dispute after submission)
         if (matchResult.status.tag !== 'Submitted') {
             throw new SenderError('A match result can only be disputed after it has been submitted.');
@@ -205,11 +212,6 @@ export const dispute_match_result = spacetimedb.reducer(
         const participant = [...ctx.db.MatchResultParticipant.by_result_and_user.filter([matchResultId, user.id])][0];
         if (!participant) {
             throw new SenderError('You are not a participant of this match.');
-        }
-
-        // Validate only one dispute per match
-        if (matchResult.disputedByUserId !== undefined) {
-            throw new SenderError('This match result has already been disputed.');
         }
 
         // Validate reason length

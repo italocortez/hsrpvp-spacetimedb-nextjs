@@ -357,8 +357,8 @@ export function runFinalization(
             mmrProcessedAt: ctx.timestamp,
             ...auditUpdate(ctx, freshResult, actingUserId),
         } as any);
-        // Rebuild leaderboard with season awareness
-        rebuildLeaderboard(ctx, actingUserId, seasonId);
+        // Note: leaderboard rebuild moved after step 13 (PlayerStat increment)
+        // so that Leaderboard.wins reflects the current match's stats.
     }
 
     // 12. Tournament batch back-fill MmrHistory sentinel matchHistoryId
@@ -387,6 +387,11 @@ export function runFinalization(
         }
         const isDraw = matchResult.winnerUserId === undefined;
         incrementPlayerStat(ctx, p.userId, gameMode, draftMode, seasonId, matchType, teamSize, participantWon, isDraw, actingUserId);
+    }
+
+    // 13b. Rebuild leaderboard after PlayerStat increments (reads PlayerStat.wins)
+    if (matchResult.matchType.tag === 'Ranked' && !matchResult.isTournamentControlled) {
+        rebuildLeaderboard(ctx, actingUserId, seasonId);
     }
 
     // 14. Increment matchesSpectated for spectators
