@@ -23,7 +23,7 @@ User
 |     previousRating -> e.g., 1000
 |     newRating      -> e.g., 1028
 |     delta          -> e.g., +28 (i32, can be negative)
-|     seasonId       -> Season.id (u32, required; 0 = pre-season)
+|     seasonId?      -> Season.id (u32, optional)
 |
 +-- EloConfig (single-row config table -- admin-tunable)
       id (PK)             -> sentinel value 1

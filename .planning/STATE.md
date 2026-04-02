@@ -121,6 +121,7 @@ See: .planning/PROJECT.md
 | 260318-94t | Migrate feature docs to centralized docs/ directory | 2026-03-18 | unstaged | [260318-94t](./quick/260318-94t-migrate-feature-docs-to-centralized-docs/) |
 | 260318-r63 | Add multi-column btree indexes to 19 composite PK tables, migrate filter+find patterns | 2026-03-19 | 310f9b5 | [260318-r63](./quick/260318-r63-add-multi-column-btree-indexes-to-compos/) |
 | 260319-39z | Organize unstaged files into logical commits | 2026-03-19 | dc7eb25 | [260319-39z](./quick/260319-39z-organize-unstaged-files-into-logical-com/) |
+| 260401-7zs | Audit ERD mermaid core entities chunk — fix 10 inaccuracies | 2026-04-01 | unstaged | [260401-7zs](./quick/260401-7zs-audit-erd-mermaid-core-entities-chunk-ag/) |
 
 ## Accumulated Context
 
@@ -128,6 +129,8 @@ See: .planning/PROJECT.md
 
 - Phase 04.1 inserted after Phase 04: Schema Normalization & Match Result Rework (URGENT)
 - Phase 06.1 inserted after Phase 06: Landing Page Migration (INSERTED)
+- Phase 10.1 inserted after Phase 10: Match schema rework — multi-draft (gameNumber on steps), team-centric model (TournamentEnrolled + TournamentTeamMember replacing TournamentParticipant), winnerTeamSide replacing winnerUserId (URGENT)
+- Phase 10.2 inserted after Phase 10.1: Remove tournamentId from MatchResultRecord — single source of truth, derive from bracketMatch.tournamentId (URGENT)
 
 ## Session Log
 

@@ -9,7 +9,8 @@ Architecture documentation for the tournament system feature domain.
 ```
 Tournament (PK: id autoInc)
 ├── TournamentParticipant (PK: [tournamentId, userId])
-│   └── teamGroupId → TournamentTeam.id
+│   ├── teamGroupId? → TournamentTeam.id
+│   └── hsrAccountId? → HsrAccount.id
 ├── TournamentAssistant (PK: [tournamentId, userId])
 ├── TournamentTeam (PK: id autoInc)
 │   └── TournamentTeamRequest (PK: [teamId, userId])
