@@ -1,7 +1,7 @@
 # Phase 10: Disconnect Handling and Cost Parity - Context
 
-**Gathered:** 2026-03-31 (in progress — ParticipantStatus lifecycle still to discuss)
-**Status:** Discussion in progress
+**Gathered:** 2026-04-02 (resumed — ParticipantStatus deferred to 10.1)
+**Status:** Ready for planning
 
 <domain>
 ## Phase Boundary
@@ -131,9 +131,9 @@ Requirements: DISC-01, DISC-02, DISC-03, DISC-04, COST-01
 - Disconnect pool initialization value (300000ms = 5 min)
 - Error message wording for all new reducers
 
-### Pending Discussion
-- ParticipantStatus lifecycle (CheckedIn, Active, Eliminated — deferred from Phase 4)
-- check_in_tournament reducer (Tournament.checkInEnabled exists but no reducer)
+### Resolved
+- ParticipantStatus lifecycle (CheckedIn, Active, Eliminated) — **deferred to Phase 10.1** (touches same tables/reducers being restructured: TournamentParticipant→TournamentEnrolled rename, bracket advancement winnerTeamSide changes)
+- check_in_tournament reducer — **deferred to Phase 10.1** (enrollment lifecycle, not disconnect handling)
 
 </decisions>
 
@@ -218,6 +218,8 @@ Requirements: DISC-01, DISC-02, DISC-03, DISC-04, COST-01
 - AFK detection (connected but not acting) — v1 concern, turn timers handle it during drafting
 - Application-level heartbeat for faster disconnect detection — conflicts with energy budget, 60s grace period absorbs detection delay
 - SpacetimeDB keepalive interval tuning — worth checking docs during implementation, not a design decision
+- ParticipantStatus lifecycle (CheckedIn, Active, Eliminated) — deferred to Phase 10.1 (same tables/reducers being restructured)
+- check_in_tournament reducer — deferred to Phase 10.1 (enrollment lifecycle fits alongside TournamentParticipant→TournamentEnrolled rename)
 
 </deferred>
 

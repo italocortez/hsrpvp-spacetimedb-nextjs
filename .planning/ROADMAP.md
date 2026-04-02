@@ -283,6 +283,11 @@ Plans:
   11. Update all reducers/helpers that read winnerUserId (finalizationHelpers, bracketAdvancement, tournamentAdmin, matchResultSubmission, statsIncrement)
   12. Bracket advancement: winnerTeamSide → determine which bracket slot (team1Id or team2Id) was Blue/Red in the lobby → advance that team. No participant lookup needed.
 
+  **E. ParticipantStatus lifecycle (deferred from Phase 10):**
+  13. Wire CheckedIn status — add `check_in_tournament` reducer (Tournament.checkInEnabled exists but no reducer)
+  14. Wire Active status — set when tournament advances to InProgress stage
+  15. Wire Eliminated status — set when player loses final bracket match (no loser bracket path)
+
 **Research needed (resolve during /gsd:plan-phase):**
   - TournamentStandIn: stand-ins are NOT enrolled — verify they still work without TournamentParticipant
   - TournamentPlayerAccount: has (tournamentId, userId) — should it reference TournamentEnrolled or TournamentTeamMember? Or both?
@@ -290,6 +295,7 @@ Plans:
   - DQ flow: currently sets participant status to Disqualified — moves to TournamentEnrolled, but should DQ also delete TournamentTeamMember rows?
   - How does lobby know Blue team = team1Id or team2Id? Is this already stored on LobbyMember or derived from bracket match slot assignment?
   - MMR processing: currently reads TournamentParticipant to get user list per tournament — needs new query path through TournamentEnrolled or TournamentTeamMember
+  - ParticipantStatus: which variants survive the rename? CheckedIn/Active/Eliminated are being wired — confirm they map cleanly to TournamentEnrolled
 
 **Plans:** 0 plans
 

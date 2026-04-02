@@ -3,9 +3,9 @@
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
-**Date:** 2026-03-31
+**Date:** 2026-03-31 (resumed 2026-04-02)
 **Phase:** 10-disconnect-handling-and-cost-parity
-**Status:** In progress (ParticipantStatus lifecycle still pending)
+**Status:** Complete
 **Areas discussed:** Forfeit timer mechanism, Disconnect-to-pause behavior, Rejoin flow & state preservation, Deferred Phase 9 items, Disconnect detection, Voluntary leave, Admin tooling, Schema changes
 
 ---
@@ -145,7 +145,18 @@ User clarified: "players are not expected to close the tabs when they go play HS
 
 ---
 
-## Pending
+## Resolved (2026-04-02)
 
-- ParticipantStatus lifecycle (CheckedIn, Active, Eliminated)
-- check_in_tournament reducer
+### ParticipantStatus + check_in_tournament — Deferred to Phase 10.1
+
+Cross-referenced Phase 10 pending items against Phase 10.1/10.2 scope. Found medium conflict:
+- All 3 status variants (CheckedIn, Active, Eliminated) touch the same tables/reducers Phase 10.1 restructures (TournamentParticipant→TournamentEnrolled, bracket advancement for winnerTeamSide)
+- check_in_tournament is enrollment lifecycle, not disconnect handling
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Defer all to 10.1 | Phase 10 stays focused on disconnect/admin. ParticipantStatus wiring alongside TournamentParticipant rename. | ✓ |
+| Keep CheckedIn in 10 | check_in_tournament is admin tooling, fits Phase 10 | |
+| Keep all in 10 | Accept double work in 10.1 rename | |
+
+**User's choice:** Defer all to 10.1 — "I wasn't planning on doing a lot regarding participant lifecycle so its best to move it there"
