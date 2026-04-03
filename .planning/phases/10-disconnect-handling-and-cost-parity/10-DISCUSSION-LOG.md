@@ -160,3 +160,100 @@ Cross-referenced Phase 10 pending items against Phase 10.1/10.2 scope. Found med
 | Keep all in 10 | Accept double work in 10.1 rename | |
 
 **User's choice:** Defer all to 10.1 — "I wasn't planning on doing a lot regarding participant lifecycle so its best to move it there"
+
+---
+
+## Session 2: Gray Areas (2026-04-02)
+
+### Mid-Match Concede Finalization
+
+User designed a full stage × match-type matrix for what gets recorded on concede. Key progression:
+
+1. Started with "Abandonment" (nothing recorded) vs "Concede" (someone wins)
+2. Claude flagged: "game scores" during Drafting don't exist. User corrected to "archive what exists."
+3. Claude flagged: Ranked non-tournament MMR said "deferred to tournament" — user confirmed mistake, should be immediate.
+4. Claude flagged: Scoring casual non-tournament = abandonment (nothing). User revised: "We can get at the very least the win and lose."
+5. User asked: "Do we even need Abandonment now?" → Unified everything under Concede.
+
+**Decision:** Single `runFinalization()` with `matchOutcome`-based branching. 3 tiers:
+- Tier 1 (casual non-tournament): cleanup only (Drafting/Equipping), win/loss only (Scoring)
+- Tier 2 (casual tournament): win/loss + participants + relationships, no char stats, no MMR
+- Tier 3 (ranked): full stats, char stats at Equipping+ (draft complete), MMR immediate or tournament-batch
+
+### Forfeit Path Data Source
+
+User asked: "do our current flows/tables handle player-against-player for forfeits? is there no moment where we lost the datapoint?"
+
+**Finding:** MatchResultParticipant (normal data source for PlayerRelationship) doesn't exist for forfeits. LobbyMember has all participants including voluntarily-left players.
+
+**Gap:** LobbyMember has `lobbySlot` (BluePlayer/RedPlayer) but not `teamSide`. Current `incrementPlayerRelationship` reads `MatchResultParticipant.teamSide`.
+
+**Fix:** New `lobbySlotToTeamSide()` helper derives teamSide from lobbySlot. Forfeit finalization reads LobbyMember instead of MatchResultParticipant.
+
+### Single Finalization Path
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Modify existing runFinalization | matchOutcome-based branching, ~60% shared code | ✓ |
+| Separate runForfeitFinalization | Dedicated function, code duplication | |
+
+**User's choice:** Modified existing path — "it makes sense to modify the existing finalization to behave like this during a disconnect forfeit/concede scenario rather than creating a new one"
+
+### Terminology & Naming
+
+User corrected naming confusion: "Forfeit is when related to disconnection problems, not self retiring or conceding voluntarily."
+
+| Term | Meaning | Reducer |
+|------|---------|---------|
+| Concede | Voluntary surrender or disconnect-caused loss | `concede_match` / `claim_forfeit` |
+| claim_forfeit | Opponent claims win after disconnect grace expires | `claim_forfeit` |
+| ~~Abandonment~~ | Dropped — unified under Concede | N/A |
+
+**Decision:** MatchOutcome.Concede (replaces Forfeit) + ConcedeTrigger enum (Disconnect/VoluntaryLeave/RefereeDecision).
+
+### Last-Player-Leaves
+
+When `refereeExclusiveConcede` active with 3rd party referee: auto-concede blocked. Referee decides.
+When no exclusive referee: auto-concede fires immediately.
+
+### 3rd Party Referee Exclusive Concede
+
+User: "For all cases where concede is available and there is a 3rd party referee... referee should be the one to be able to call the concede"
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Referee exclusive | Only referee calls concede/forfeit. Players blocked. Fallback on referee disconnect. | ✓ |
+| Referee + players | Both can call | |
+| Referee gated | Player requests, referee approves | |
+
+**Fallback:** Referee disconnects → flag transfers to host (team player) → no longer 3rd party → exclusive lock releases.
+
+### Bracket Advancement on Concede
+
+User: "Concede shouldn't auto advance, it must need the TO to manually approve them because we never know the true story due to it being incomplete."
+
+**Decision:** Concede sets winnerTeamId on BracketMatch but does NOT call placeParticipantInNextMatch.
+
+### Disconnect Visibility
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Subscription only | LobbyMember.isOnline via existing subscription | ✓ |
+| System chat message | Auto-insert disconnect message in chat | |
+| Dedicated event table | New table with disconnect/reconnect timestamps | |
+
+### Anonymous + Disconnect
+
+User: "3rd party referees can see the real ids as far as I'm concerned"
+
+**Decisions:**
+- 3rd party referees see real IDs (privileged view)
+- concedeSummary includes both anonymous labels and real userIds
+
+### MMR Abuse Detection
+
+**Decision:** No new table. MatchResultRecord with matchOutcome=Concede + concedeTrigger + userId who triggered = admin query path for abuse patterns.
+
+### Auction Draft + Disconnect
+
+Verified via codebase analysis: timer_expiry handles all auction disconnect scenarios. Captain transfer mid-auction works — budget is per-team. No additional decisions needed.
