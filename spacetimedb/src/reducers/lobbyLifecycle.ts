@@ -14,6 +14,7 @@ import {
     generateJoinCode,
     slotTeam,
     slotIsCoach,
+    slotIsSpectator,
 } from '../helpers/lobbyHelpers';
 import { hardDeleteLobby } from './lobbyGc';
 import { transferCaptain, transferReferee, transferHost } from '../helpers/flagTransferHelpers';
@@ -358,7 +359,20 @@ export const leave_lobby = spacetimedb.reducer(
         // D-29, D-30, D-31, D-32, D-33: Active match leave handling
         const activeStages = ['Drafting', 'Equipping', 'Scoring'];
         if (activeStages.includes(lobby.stage.tag)) {
-            // D-31: Set voluntarilyLeft=true, keep row for finalization
+            // D-29: Spectators/Coaches get clean deletion even during active stages
+            if (slotIsSpectator(member.lobbySlot) || slotIsCoach(member.lobbySlot)) {
+                ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
+                ctx.db.Lobby.id.update({
+                    ...lobby,
+                    currentPlayerCount: lobby.currentPlayerCount - 1,
+                    lastActivityAt: ctx.timestamp,
+                    ...auditUpdate(ctx, lobby, user.id),
+                } as any);
+                console.log(`[LOBBY] Spectator/Coach #${user.id} cleanly left active lobby #${lobbyId}`);
+                return;
+            }
+
+            // D-31: Players — set voluntarilyLeft=true, keep row for finalization
             ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
             ctx.db.LobbyMember.insert({
                 ...member,
@@ -374,6 +388,7 @@ export const leave_lobby = spacetimedb.reducer(
 
             // Check if last player on team — auto-concede (D-31)
             // But NOT if refereeExclusiveConcede + 3rd party referee present (D-82)
+            let autoConcedeFired = false;
             const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
                 .filter((m: any) => slotTeam(m.lobbySlot) === slotTeam(member.lobbySlot)
                     && !slotIsCoach(m.lobbySlot)
@@ -388,6 +403,7 @@ export const leave_lobby = spacetimedb.reducer(
                     // D-31: Auto-concede — conceding team = leaving player's team
                     const losingTeam = slotTeam(member.lobbySlot)!;
                     performConcede(ctx, lobby, losingTeam, user.id, { tag: 'VoluntaryLeave', value: {} });
+                    autoConcedeFired = true;
                 }
             }
 
@@ -404,11 +420,15 @@ export const leave_lobby = spacetimedb.reducer(
             } as any);
 
             // Update activity (do NOT decrement currentPlayerCount — row is kept)
-            ctx.db.Lobby.id.update({
-                ...lobby,
-                lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            // Skip if auto-concede fired — performConcede already updated the lobby
+            // (spreading the stale `lobby` object here would overwrite AwaitingResult back to Drafting)
+            if (!autoConcedeFired) {
+                ctx.db.Lobby.id.update({
+                    ...lobby,
+                    lastActivityAt: ctx.timestamp,
+                    ...auditUpdate(ctx, lobby, user.id),
+                } as any);
+            }
 
             console.log(`[LOBBY] User #${user.id} voluntarily left active match in lobby #${lobbyId}`);
             return;

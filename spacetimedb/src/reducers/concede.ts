@@ -3,6 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureLobbyMember, slotTeam, slotIsCoach, slotIsSpectator } from '../helpers/lobbyHelpers';
 import { buildConcedeSummary, isForfeitEligible, isThirdPartyReferee } from '../helpers/disconnectHelpers';
+import { runFinalization } from '../helpers/finalizationHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 
 // ─── Shared concede helper ──────────────────────────────────────────────────
@@ -33,7 +34,7 @@ export function performConcede(
         : `${losingTeam} team conceded. Trigger: ${concedeTrigger.tag} by userId:${triggerUserId}, stage: ${lobby.stage.tag}`;
 
     // 4. Create MatchResultRecord
-    ctx.db.MatchResultRecord.insert({
+    const insertedResult = ctx.db.MatchResultRecord.insert({
         id: 0, // autoInc
         bracketMatchId: lobby.bracketMatchId ?? undefined,
         lobbyId: lobby.id,
@@ -93,7 +94,17 @@ export function performConcede(
         ...auditInsert(ctx, triggerUserId),
     } as any);
 
-    console.log(`[CONCEDE] Lobby #${lobby.id} conceded. Winner: ${winnerTeamSide}. Trigger: ${concedeTrigger.tag} by userId:${triggerUserId}`);
+    // 8. Auto-finalize for casual non-tournament concedes
+    // Tournament concedes go to AwaitingResult for TO resolution (D-80: no auto-advance).
+    // Non-tournament concedes finalize immediately — no reason to wait for admin.
+    if (!lobby.isTournamentControlled) {
+        const freshResult = ctx.db.MatchResultRecord.id.find(insertedResult.id);
+        if (freshResult) {
+            runFinalization(ctx, freshResult, triggerUserId);
+        }
+    }
+
+    console.log(`[CONCEDE] Lobby #${lobby.id} conceded. Winner: ${winnerTeamSide}. Trigger: ${concedeTrigger.tag} by userId:${triggerUserId}${!lobby.isTournamentControlled ? ' (auto-finalized)' : ''}`);
 }
 
 // ─── concede_match ───────────────────────────────────────────────────────────
@@ -103,8 +114,9 @@ export function performConcede(
 export const concede_match = spacetimedb.reducer(
     {
         lobbyId: t.u32(),
+        losingTeamSide: t.u8(), // 0 = derive from caller's lobbySlot (players always pass 0). 1 = Blue, 2 = Red (referee-only — matches winnerTeamId convention)
     },
-    (ctx, { lobbyId }) => {
+    (ctx, { lobbyId, losingTeamSide }) => {
         const user = getAuthenticatedUser(ctx);
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
@@ -119,27 +131,43 @@ export const concede_match = spacetimedb.reducer(
             throw new SenderError('Concede is only available during Drafting, Equipping, or Scoring.');
         }
 
-        // Not spectator, not coach (D-26)
-        if (slotIsSpectator(member.lobbySlot)) {
-            throw new SenderError('Spectators cannot concede.');
-        }
-        if (slotIsCoach(member.lobbySlot)) {
-            throw new SenderError('Coaches cannot concede.');
-        }
-
-        // D-81: 3rd party referee exclusive concede
+        // D-81: 3rd party referee exclusive concede (checked BEFORE spectator/coach guards
+        // because the 3rd party referee IS on Spectator slot — they must bypass that guard)
+        let isCallerExclusiveReferee = false;
         if (lobby.refereeExclusiveConcede) {
             const thirdPartyRef = isThirdPartyReferee(ctx, lobbyId);
             if (thirdPartyRef) {
-                // Only the referee can call when exclusive concede is active
                 if (thirdPartyRef.userId !== user.id) {
                     throw new SenderError('Only the referee can concede when referee exclusive concede is active.');
                 }
+                isCallerExclusiveReferee = true;
             }
         }
 
-        // Determine losing team from caller's slot
-        const losingTeam = slotTeam(member.lobbySlot);
+        // Not spectator, not coach (D-26) — skipped for 3rd party referee (D-81)
+        if (!isCallerExclusiveReferee) {
+            if (slotIsSpectator(member.lobbySlot)) {
+                throw new SenderError('Spectators cannot concede.');
+            }
+            if (slotIsCoach(member.lobbySlot)) {
+                throw new SenderError('Coaches cannot concede.');
+            }
+        }
+
+        // Determine losing team: referee specifies via losingTeamSide, players derive from slot
+        // Determine losing team: referee specifies via losingTeamSide, players derive from slot
+        let losingTeam: 'Blue' | 'Red' | null;
+        if (isCallerExclusiveReferee) {
+            if (losingTeamSide === 1) losingTeam = 'Blue';
+            else if (losingTeamSide === 2) losingTeam = 'Red';
+            else throw new SenderError('Referee must specify losingTeamSide: 1=Blue, 2=Red.');
+        } else {
+            // Players must pass 0 — reject attempts to concede the opposing team
+            if (losingTeamSide !== 0) {
+                throw new SenderError('Players must pass losingTeamSide=0 (derived from your team slot).');
+            }
+            losingTeam = slotTeam(member.lobbySlot) as 'Blue' | 'Red' | null;
+        }
         if (!losingTeam) {
             throw new SenderError('Cannot determine team for concede.');
         }
@@ -176,27 +204,31 @@ export const claim_forfeit = spacetimedb.reducer(
             throw new SenderError('Forfeit claim is only available during Drafting, Equipping, or Scoring.');
         }
 
-        // Not spectator, not coach
-        if (slotIsSpectator(member.lobbySlot)) {
-            throw new SenderError('Spectators cannot claim forfeit.');
-        }
-        if (slotIsCoach(member.lobbySlot)) {
-            throw new SenderError('Coaches cannot claim forfeit.');
-        }
-
-        // D-15: Standard policy only
-        if (lobby.disconnectPolicy.tag !== 'Standard') {
-            throw new SenderError('Forfeit claim is only available under Standard disconnect policy.');
-        }
-
-        // D-81: 3rd party referee exclusive concede
+        // D-81: 3rd party referee exclusive concede (before spectator/coach guards)
+        let isCallerExclusiveReferee = false;
         if (lobby.refereeExclusiveConcede) {
             const thirdPartyRef = isThirdPartyReferee(ctx, lobbyId);
             if (thirdPartyRef) {
                 if (thirdPartyRef.userId !== user.id) {
                     throw new SenderError('Only the referee can claim forfeit when referee exclusive concede is active.');
                 }
+                isCallerExclusiveReferee = true;
             }
+        }
+
+        // Not spectator, not coach — skipped for 3rd party referee (D-81)
+        if (!isCallerExclusiveReferee) {
+            if (slotIsSpectator(member.lobbySlot)) {
+                throw new SenderError('Spectators cannot claim forfeit.');
+            }
+            if (slotIsCoach(member.lobbySlot)) {
+                throw new SenderError('Coaches cannot claim forfeit.');
+            }
+        }
+
+        // D-15: Standard policy only
+        if (lobby.disconnectPolicy.tag !== 'Standard') {
+            throw new SenderError('Forfeit claim is only available under Standard disconnect policy.');
         }
 
         // Determine caller's team and target (opposing) team
@@ -247,27 +279,31 @@ export const defer_match = spacetimedb.reducer(
             throw new SenderError('Defer is only available during Drafting, Equipping, or Scoring.');
         }
 
-        // Not spectator, not coach
-        if (slotIsSpectator(member.lobbySlot)) {
-            throw new SenderError('Spectators cannot defer a match.');
-        }
-        if (slotIsCoach(member.lobbySlot)) {
-            throw new SenderError('Coaches cannot defer a match.');
-        }
-
-        // D-18: Deferred policy only
-        if (lobby.disconnectPolicy.tag !== 'Deferred') {
-            throw new SenderError('Defer is only available under Deferred disconnect policy.');
-        }
-
-        // D-81: 3rd party referee exclusive concede
+        // D-81: 3rd party referee exclusive concede (before spectator/coach guards)
+        let isCallerExclusiveReferee = false;
         if (lobby.refereeExclusiveConcede) {
             const thirdPartyRef = isThirdPartyReferee(ctx, lobbyId);
             if (thirdPartyRef) {
                 if (thirdPartyRef.userId !== user.id) {
                     throw new SenderError('Only the referee can defer when referee exclusive concede is active.');
                 }
+                isCallerExclusiveReferee = true;
             }
+        }
+
+        // Not spectator, not coach — skipped for 3rd party referee (D-81)
+        if (!isCallerExclusiveReferee) {
+            if (slotIsSpectator(member.lobbySlot)) {
+                throw new SenderError('Spectators cannot defer a match.');
+            }
+            if (slotIsCoach(member.lobbySlot)) {
+                throw new SenderError('Coaches cannot defer a match.');
+            }
+        }
+
+        // D-18: Deferred policy only
+        if (lobby.disconnectPolicy.tag !== 'Deferred') {
+            throw new SenderError('Defer is only available under Deferred disconnect policy.');
         }
 
         // Get all disconnected members (any team) for summary
