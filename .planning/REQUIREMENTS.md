@@ -130,10 +130,10 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Disconnect & Rejoin
 
-- [ ] **DISC-01**: Configurable disconnect behavior per tournament/lobby (pause, timer+forfeit, no action)
-- [ ] **DISC-02**: Graceful rejoin logic preserving full match state
-- [ ] **DISC-03**: Every pick/ban reducer includes liveness check (is match still in valid state?) to prevent post-forfeit actions
-- [ ] **DISC-04**: Disconnect forfeit uses timestamp-check pattern (write disconnectForfeitAt, check on next reducer call)
+- [x] **DISC-01**: Configurable disconnect behavior per tournament/lobby (pause, timer+forfeit, no action)
+- [x] **DISC-02**: Graceful rejoin logic preserving full match state
+- [x] **DISC-03**: Every pick/ban reducer includes liveness check (is match still in valid state?) to prevent post-forfeit actions
+- [x] **DISC-04**: Disconnect forfeit uses timestamp-check pattern (write disconnectForfeitAt, check on next reducer call)
 
 ### Cost Table Improvements
 
@@ -260,10 +260,10 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | CHAT-03 | Phase 9 | Complete |
 | LBBY-01 | Phase 9 | Complete |
 | LBBY-02 | Phase 9 | Complete |
-| DISC-01 | Phase 10 | Pending |
-| DISC-02 | Phase 10 | Pending |
-| DISC-03 | Phase 10 | Pending |
-| DISC-04 | Phase 10 | Pending |
+| DISC-01 | Phase 10 | Complete |
+| DISC-02 | Phase 10 | Complete |
+| DISC-03 | Phase 10 | Complete |
+| DISC-04 | Phase 10 | Complete |
 | COST-01 | Phase 10 | Pending |
 | ARCH-01 | Phase 11 | Pending |
 | ARCH-02 | Phase 11 | Pending |

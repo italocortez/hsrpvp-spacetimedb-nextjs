@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 10
-current_plan: Not started
-status: planning
-last_updated: "2026-03-29T12:45:54.621Z"
+current_plan: 1
+status: executing
+last_updated: "2026-04-03T06:17:59.945Z"
 progress:
-  total_phases: 13
+  total_phases: 15
   completed_phases: 11
-  total_plans: 35
-  completed_plans: 35
+  total_plans: 37
+  completed_plans: 36
 ---
 
 # Session State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 10
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current plan:** 1
+**Status:** Executing Phase 10
 
 ## Decisions
 
@@ -111,6 +111,11 @@ See: .planning/PROJECT.md
 - [Phase 09-08]: revealTournamentHistory uses iter() on MatchSessionHistory — acceptable for infrequent tournament completion batch; no lobbyId column on MatchSessionHistory
 - [Phase 09-08]: view_match_history scans via 3 GameMode btree filter calls to avoid .iter() anti-pattern in views
 - [Phase 09-mouse-tracking-chat-and-lobby-browser]: No test file renames needed — renamed fields not referenced in actual test suite; docs/views/architecture.md rewritten from scratch to cover all 18 views
+- [Phase 10]: DisconnectPolicy enum renamed: Pause->Deferred, TimerThenForfeit->Standard (requires --clear-database)
+- [Phase 10]: MatchOutcome.Aborted replaced with Concede; ConcedeTrigger enum (Disconnect/VoluntaryLeave/RefereeDecision)
+- [Phase 10]: clientDisconnected auto-pauses drafting sessions with isAutoPause=true; flag transfers permanent on disconnect
+- [Phase 10]: disconnectPoolRemainingMs=300000 (5min) initialized at start_draft; decremented on reconnect
+- [Phase 10]: leave_lobby active match: voluntarilyLeft=true preserves row; auto-concede deferred to Plan 02
 
 ### Quick Tasks Completed
 

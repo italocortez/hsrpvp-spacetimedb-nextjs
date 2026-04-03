@@ -249,10 +249,10 @@ Plans:
   3. Every pick/ban/equip/score reducer begins with an ensureMatchAlive liveness check that rejects the call if the match has been conceded
   4. Disconnect forfeit uses the timestamp-check pattern: per-player disconnectedAt is written at disconnect time, and claim_forfeit computes eligibility at call time rather than running a timer
   5. COST-01 already complete: HsrLightconeCost PK is ['lightconeName', 'gameMode', 'costSetId'] — no work needed
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 10-01-PLAN.md — Schema changes (enum renames, new ConcedeTrigger enum, LobbyMember disconnect columns, MatchResultRecord concede columns), new helpers (disconnectHelpers, flagTransferHelpers), clientDisconnected extension, ensureMatchAlive guard in all reducers, join_lobby reconnect extension, leave_lobby active-match handling, GC + hardDeleteLobby extension, publish --clear-database
+- [x] 10-01-PLAN.md — Schema changes (enum renames, new ConcedeTrigger enum, LobbyMember disconnect columns, MatchResultRecord concede columns), new helpers (disconnectHelpers, flagTransferHelpers), clientDisconnected extension, ensureMatchAlive guard in all reducers, join_lobby reconnect extension, leave_lobby active-match handling, GC + hardDeleteLobby extension, publish --clear-database
 - [ ] 10-02-PLAN.md — Concede/forfeit/defer reducers (concede_match, claim_forfeit, defer_match), concede finalization matrix branching in runFinalization (3 tiers x 3 stages), admin toolbox (admin_force_finalize, admin_void_match, admin_set_bracket_winner), auto-concede wiring in leave_lobby, architecture + contract doc updates
 
 ### Phase 10.1: Match Schema Rework — Multi-Draft, Team-Centric Model, winnerTeamSide (INSERTED)
@@ -352,7 +352,7 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 7. Achievements and Titles | 2/2 | Complete   | 2026-03-28 |
 | 8. Calendar and Scheduling | 2/2 | Complete   | 2026-03-28 |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 7/9 | In Progress|  |
-| 10. Disconnect Handling and Cost Parity | 0/2 | Not started | - |
+| 10. Disconnect Handling and Cost Parity | 1/2 | In Progress|  |
 | 10.1. Best-of-N Multi-Draft & Match Result Cleanup | 0/? | Not started | - |
 | 10.2. Remove tournamentId from MatchResultRecord | 0/? | Not started | - |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
