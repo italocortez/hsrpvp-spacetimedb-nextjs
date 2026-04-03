@@ -18,6 +18,7 @@ import {
 import { hardDeleteLobby } from './lobbyGc';
 import { transferCaptain, transferReferee, transferHost } from '../helpers/flagTransferHelpers';
 import { isThirdPartyReferee } from '../helpers/disconnectHelpers';
+import { performConcede } from './concede';
 
 // ─── create_lobby ─────────────────────────────────────────────────────────────
 // Creates a new lobby and inserts the creator as the host/referee.
@@ -384,8 +385,9 @@ export const leave_lobby = spacetimedb.reducer(
                     // D-82: Blocked — referee decides
                     console.log(`[LOBBY] Last player on team left lobby #${lobbyId}, but referee exclusive concede active. Referee decides.`);
                 } else {
-                    // Auto-concede: handled by Plan 02's concede_match. For now, leave as-is.
-                    console.log(`[LOBBY] Last player on team left lobby #${lobbyId} — auto-concede will be wired in Plan 02.`);
+                    // D-31: Auto-concede — conceding team = leaving player's team
+                    const losingTeam = slotTeam(member.lobbySlot)!;
+                    performConcede(ctx, lobby, losingTeam, user.id, { tag: 'VoluntaryLeave', value: {} });
                 }
             }
 

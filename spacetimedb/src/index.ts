@@ -42,6 +42,7 @@ export { start_draft, pick_character, ban_character, timer_expiry_classic } from
 export { undo_last_step, pause_draft, resume_draft } from './reducers/draftControl';
 export { nominate_character, place_bid, pass_bid, timer_expiry_auction } from './reducers/draftAuction';
 export { equip_lightcone, arrange_lineup, confirm_lineup, advance_stage } from './reducers/postDraft';
+export { concede_match, claim_forfeit, defer_match } from './reducers/concede';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);
