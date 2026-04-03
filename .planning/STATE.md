@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 10
-current_plan: 1
+current_plan: 2
 status: executing
-last_updated: "2026-04-03T06:17:59.945Z"
+last_updated: "2026-04-03T06:30:39.000Z"
 progress:
   total_phases: 15
   completed_phases: 11
-  total_plans: 37
-  completed_plans: 36
+  total_plans: 38
+  completed_plans: 37
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 10
-**Current plan:** 1
+**Current plan:** 2
 **Status:** Executing Phase 10
 
 ## Decisions
@@ -115,7 +115,11 @@ See: .planning/PROJECT.md
 - [Phase 10]: MatchOutcome.Aborted replaced with Concede; ConcedeTrigger enum (Disconnect/VoluntaryLeave/RefereeDecision)
 - [Phase 10]: clientDisconnected auto-pauses drafting sessions with isAutoPause=true; flag transfers permanent on disconnect
 - [Phase 10]: disconnectPoolRemainingMs=300000 (5min) initialized at start_draft; decremented on reconnect
-- [Phase 10]: leave_lobby active match: voluntarilyLeft=true preserves row; auto-concede deferred to Plan 02
+- [Phase 10]: leave_lobby active match: voluntarilyLeft=true preserves row; auto-concede wired via performConcede in Plan 02
+- [Phase 10]: Concede finalization matrix: 3-tier (casual-nontourn/casual-tourn/ranked) x 3-stage gating in runFinalization
+- [Phase 10]: Achievement check ALWAYS skipped for concede (D-76); bracket advance NEVER auto-triggers for concede (D-80)
+- [Phase 10]: admin_force_finalize/admin_void_match/admin_set_bracket_winner for AwaitingResult resolution
+- [Phase 10]: performConcede shared by concede_match, claim_forfeit, and leave_lobby auto-concede
 
 ### Quick Tasks Completed
 
@@ -169,3 +173,4 @@ See: .planning/PROJECT.md
 - 2026-03-29: Completed 09-02-PLAN.md — 6 lobby lifecycle reducers (create/join/leave/close/kick/ban), lobbyHelpers.ts + anonymousHelpers.ts, published to maincloud, bindings regenerated
 - 2026-03-29: Completed 09-03-PLAN.md — send_chat_message (D-12/D-13/D-14/D-18) + delete_chat_message (D-26), spectator cursor silencing (D-34), projected view_lobby_browser with LobbyBrowserRow (D-05/D-06/D-08), published to maincloud, bindings regenerated
 - 2026-03-29: Completed 09-06-PLAN.md — 7 draft reducers (start_draft, pick_character, ban_character, timer_expiry_classic, undo_last_step, pause_draft, resume_draft), draftSequences.ts helper with exact 0/4/6-ban Classic sequences, MOUS-03 coach guard enforced throughout, D-29/D-30/D-40/D-42/D-43/D-43b/D-60/D-61/D-62 all implemented, published to maincloud, bindings regenerated
+- 2026-04-03: Completed 10-02-PLAN.md — 3 concede reducers (concede_match, claim_forfeit, defer_match), performConcede shared helper, concede finalization matrix (3-tier x 3-stage) in runFinalization, 3 admin reducers (admin_force_finalize, admin_void_match, admin_set_bracket_winner), leave_lobby auto-concede wired, published to maincloud, 124/124 tests pass, Phase 10 complete

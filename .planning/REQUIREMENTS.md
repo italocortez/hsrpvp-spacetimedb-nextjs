@@ -137,7 +137,7 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 ### Cost Table Improvements
 
-- [ ] **COST-01**: HsrLightconeCost gains gameMode composite key (parity with HsrCharacterCost)
+- [x] **COST-01**: HsrLightconeCost gains gameMode composite key (parity with HsrCharacterCost)
 
 ### Archetype Playstyle Stats
 
@@ -264,7 +264,7 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | DISC-02 | Phase 10 | Complete |
 | DISC-03 | Phase 10 | Complete |
 | DISC-04 | Phase 10 | Complete |
-| COST-01 | Phase 10 | Pending |
+| COST-01 | Phase 10 | Complete |
 | ARCH-01 | Phase 11 | Pending |
 | ARCH-02 | Phase 11 | Pending |
 
