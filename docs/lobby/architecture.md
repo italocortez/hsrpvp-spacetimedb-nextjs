@@ -16,12 +16,13 @@ Lobby (PK: id autoInc)
 │  Roster: rosterVisibility, requireOwnership, costSetId
 │  Visibility: isPublic
 │  Tournament: tournamentId?, bracketMatchId?, isTournamentControlled
-│  Disconnect: disconnectPolicy, disconnectForfeitSeconds?, disconnectForfeitAt?
+│  Disconnect: disconnectPolicy, disconnectForfeitSeconds?, refereeExclusiveConcede
 │  Browser: currentPlayerCount (denormalized)
-│  Lifecycle: stage (LobbyStage), lastActivityAt, hostDisconnectTime?
+│  Lifecycle: stage (LobbyStage), lastActivityAt
 │
 ├── LobbyMember (PK: [lobbyId, userId])
 │     isOnline, lobbySlot, isReferee, isConfirmed, isCaptain
+│     voluntarilyLeft, disconnectedAt?, disconnectPoolRemainingMs
 │
 ├── LobbyBan (PK: [lobbyId, bannedUserId])
 │     bannedByUserId → User.id
@@ -87,10 +88,9 @@ Lobby (PK: id autoInc)
 | requireOwnership | bool | Pick validation requires HsrAccountCharacter ownership |
 | costSetId | u32 | FK to CostSet.id (0 = default set) |
 | isPublic | bool | Public = no password; Private = password required |
-| disconnectPolicy | DisconnectPolicy | Behavior on member disconnect |
-| disconnectForfeitSeconds | u32? | Auto-forfeit timeout (TimerThenForfeit policy) |
-| disconnectForfeitAt | timestamp? | Set when disconnect timer starts |
-| hostDisconnectTime | timestamp? | When host disconnected (for host transfer logic) |
+| disconnectPolicy | DisconnectPolicy | Standard / Deferred / NoAction (Phase 10 rename) |
+| disconnectForfeitSeconds | u32? | Grace period before forfeit eligibility (Standard policy) |
+| refereeExclusiveConcede | bool | 3rd party referee exclusive control over concede/forfeit/defer (D-81, D-84) |
 | lastActivityAt | timestamp | Updated on join/leave/chat/picks/cursor events |
 | stage | LobbyStage | Waiting, Drafting, Equipping, Scoring, AwaitingResult, Finished |
 | currentPlayerCount | u8 | Denormalized member count for browser view (D-07) |
@@ -107,7 +107,7 @@ Lobby (PK: id autoInc)
 | Drafting | Active draft — picks, bans, auction in progress |
 | Equipping | Post-draft — lightcone equipping and lineup arrangement |
 | Scoring | Score submission — screenshot upload and captain confirmation |
-| AwaitingResult | Set by submit_match_result — players freed to join new lobbies; finalization cascade-deletes the lobby |
+| AwaitingResult | Set by submit_match_result or concede/defer — players freed to join new lobbies; finalization cascade-deletes the lobby; admin-only resolution for deferred matches (D-45, D-46) |
 | Finished | Abandoned closed lobbies only — set by close_lobby on AwaitingResult lobbies; GC safety net target |
 
 `BanMode.Two` was removed in Phase 9 — only `None`, `Four`, `Six` remain.
@@ -125,6 +125,9 @@ Lobby (PK: id autoInc)
 | isReferee | bool | Has admin powers in this lobby (host has this by default) |
 | isConfirmed | bool | Ready-up status (D-29); required for start_draft |
 | isCaptain | bool | Can act on behalf of team in draft (D-30) |
+| voluntarilyLeft | bool | True when player voluntarily left active match (D-31); row kept for finalization |
+| disconnectedAt | timestamp? | When member disconnected (D-08); cleared on reconnect |
+| disconnectPoolRemainingMs | u32 | 5-minute budget per player per match (D-10); decremented on reconnect |
 
 **PK:** `[lobbyId, userId]`
 **Indexes:** `lobby_id` btree, `user_id` btree, `by_lobby_and_user` btree
@@ -232,20 +235,20 @@ Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-clea
 - One lobby per user enforced (D-22)
 - Guest restrictions: no Ranked lobbies (D-23)
 - Ban check: `LobbyBan[lobbyId, userId]` (D-21)
-- Stage-specific join (D-04):
+- Stage-specific join (D-04, D-37):
   - Waiting: normal join
-  - Drafting: reconnect (if existing offline member) or new spectator only
-  - Other stages: rejected
+  - Drafting/Equipping/Scoring/AwaitingResult: reconnect (if existing offline member with `voluntarilyLeft=false`) or new spectator only. Reconnect clears `disconnectedAt`, decrements pool by elapsed time, auto-resumes if auto-paused (D-39)
+  - `voluntarilyLeft=true` blocks reconnect (D-38)
 - Password check for private lobbies (D-02)
 - Joined as `lobbySlot=Spectator` (D-27)
 - `currentPlayerCount` incremented
 - System chat message: "{name} joined the lobby."
 
 ### Leave (`leave_lobby`)
-- Removes LobbyMember row
-- `currentPlayerCount` decremented
-- If lobby empties in Waiting: auto-close (`_hardDeleteLobby`)
-- System chat message: "{name} left the lobby."
+- **Waiting/AwaitingResult/Finished:** Normal leave — removes LobbyMember row, decrements count
+- **Active stages (Drafting/Equipping/Scoring):** Sets `voluntarilyLeft=true`, `isOnline=false` (row kept for finalization archival, D-31). Transfers captain/referee/host flags permanently (D-34/D-35/D-36). If last player on team: auto-concede via `performConcede` (D-31), UNLESS `refereeExclusiveConcede` + 3rd party referee present (D-82)
+- If lobby empties in Waiting: auto-close (`hardDeleteLobby`)
+- System chat message: "{name} left the lobby/match."
 
 ### Close (`close_lobby`)
 - Permission: host, admin, moderator (D-21)
@@ -298,7 +301,7 @@ Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-clea
 
 ## One-Lobby-Per-User Enforcement (D-22)
 
-`ensureNotInLobby` checks `LobbyMember.user_id.filter(userId)`. Memberships in AwaitingResult lobbies are skipped — players are freed to join new lobbies once the result is submitted. If any non-AwaitingResult membership exists, the create/join is rejected.
+`ensureNotInLobby` checks `LobbyMember.user_id.filter(userId)`. Memberships in AwaitingResult lobbies and `voluntarilyLeft=true` members are skipped (D-41). Players are freed to join new lobbies once the result is submitted or they voluntarily leave. If any active membership exists, the create/join is rejected.
 
 ---
 
@@ -328,11 +331,12 @@ Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-clea
 
 ## Scheduled GC (`lobby_gc`)
 
-Runs on schedule via `LobbyGcJob` scheduled table. Hard-deletes abandoned lobbies (D-25):
+Runs on schedule via `LobbyGcJob` scheduled table. Hard-deletes abandoned lobbies (D-25, D-47):
 - Stage = Waiting AND `lastActivityAt` > 30 minutes ago
 - Stage = Finished AND `lastActivityAt` > 30 minutes ago
+- Stage = Drafting/Equipping/Scoring AND ALL members offline AND `lastActivityAt` > 30 minutes ago (D-47 — void, no winner)
 
-Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-cleaned. AwaitingResult lobbies are cleaned up by finalization cascade-delete. GC only handles Waiting (AFK) and Finished (abandoned closed).
+AwaitingResult lobbies are NEVER GC'd (D-48) — admin-only resolution via `admin_force_finalize` or `admin_void_match`.
 
 ---
 
@@ -356,7 +360,10 @@ Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-clea
 | `delete_lobby_preset` | lobbyPresets.ts | Permission hierarchy (see above) | Deletes preset |
 | `create_tournament_lobby` | tournamentLobby.ts | Participants / TO / assistant / Admin / Moderator | Tournament-linked lobby with inherited settings |
 | `approve_stand_in` | tournamentLobby.ts | TO / assistant / Admin / Moderator | Approves stand-in player for a bracket match |
-| `lobby_gc` | lobbyGc.ts | Scheduled (LobbyGcJob) | Hard-deletes idle Waiting/Finished lobbies; consolidated `_hardDeleteLobby` helper |
+| `lobby_gc` | lobbyGc.ts | Scheduled (LobbyGcJob) | Hard-deletes idle Waiting/Finished/abandoned-active lobbies |
+| `concede_match` | concede.ts | Any non-spectator/non-coach member (or exclusive referee) | Surrender own side; creates MatchResultRecord with Concede outcome (D-26, D-62) |
+| `claim_forfeit` | concede.ts | Any non-spectator/non-coach member (or exclusive referee) | Claim forfeit when all opposing team offline > grace; Standard policy only (D-15, D-61) |
+| `defer_match` | concede.ts | Any non-spectator/non-coach member (or exclusive referee) | Shelve match to AwaitingResult for TO/admin resolution; Deferred policy only (D-18, D-63) |
 
 ---
 
@@ -374,3 +381,36 @@ Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-clea
 - `LobbyCursorEvent` is an event table — rows auto-deleted after broadcast, no manual cascade needed
 - `BanMode.Two` removed in Phase 9 — only None/Four/Six remain
 - `isSystemPreset` admin-only in edit/delete permission check — moderators cannot edit system presets
+
+---
+
+## Disconnect Handling (Phase 10)
+
+### DisconnectPolicy Enum
+| Variant | Behavior |
+|---------|----------|
+| Standard | 60s grace on disconnect, auto-pause drafting, opponent can claim forfeit after grace expires (D-05) |
+| Deferred | 60s grace on disconnect, auto-pause drafting, no forfeit claim — players call defer_match to shelve (D-06) |
+| NoAction | No pause, no pool, no forfeit. Tracking only (D-07) |
+
+### Disconnect Detection
+SpacetimeDB `clientDisconnected` lifecycle hook. No application heartbeat (D-01, D-02). Standard/Deferred policies set `disconnectedAt` and auto-pause drafting sessions with `isAutoPause=true` (D-08).
+
+### Disconnect Pool
+5-minute budget per player per match (`disconnectPoolRemainingMs`, initialized at `start_draft`). Decremented on reconnect by elapsed disconnect time. When depleted: Standard = forfeit eligible immediately, Deferred = auto-shelve (D-10).
+
+### Flag Transfers (D-34, D-35, D-36)
+On disconnect or voluntary leave:
+- **Captain:** transfers to next non-coach player on same team (deterministic: lowest userId)
+- **Referee:** transfers to host, then next eligible online member
+- **Host:** transfers to referee (if online), then longest-tenured non-coach/non-spectator
+All transfers are permanent — not restored on reconnect.
+
+### 3rd Party Referee Exclusive Concede (D-81, D-84)
+When `refereeExclusiveConcede=true` and a 3rd party referee (Spectator slot, isReferee=true) is present:
+- Only the referee can call `concede_match`, `claim_forfeit`, `defer_match`
+- Auto-concede on last-player-leave is blocked (referee decides)
+- If referee disconnects, flag transfers to host (on a team) — exclusive lock releases
+
+### ensureMatchAlive Guard (D-12)
+Every draft/equip/score reducer calls `ensureMatchAlive(ctx, lobby)` at the top. Blocks post-concede actions. Checks lobby stage and MatchResultRecord matchOutcome.

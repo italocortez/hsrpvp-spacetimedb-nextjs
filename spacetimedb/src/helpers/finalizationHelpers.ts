@@ -12,7 +12,7 @@ import { incrementGlobalCharacterStat } from './globalCharacterStatsIncrement';
 import { rebuildLeaderboard } from './leaderboardRebuild';
 import { advanceBracketMatch } from './bracketHelpers';
 import { checkAndAwardAchievements } from './achievementChecker';
-import { slotIsCoach, slotIsSpectator, slotTeam } from './lobbyHelpers';
+import { slotIsCoach, slotIsSpectator, slotTeam, slotToTeamSide } from './lobbyHelpers';
 import { hardDeleteLobby } from '../reducers/lobbyGc';
 
 // ─── Internal: getOrCreateRating ─────────────────────────────────────────────
@@ -228,10 +228,61 @@ export function runFinalization(
         }
     }
 
+    // ── Concede Detection (D-74) ────────────────────────────────────────────
+    const isConcede = matchResult.matchOutcome?.tag === 'Concede';
+    if (isConcede) {
+        // Override matchOutcome to use what's stored on the record
+        matchOutcome = matchResult.matchOutcome;
+    }
+
+    // For concede: determine tier and stage flags per finalization matrix (D-77, D-78, D-79)
+    // Tier 1: Casual non-tournament (no archive, only Scoring gets win/loss)
+    // Tier 2: Casual tournament (archive + win/loss + relationships at all stages, no MMR/char stats)
+    // Tier 3: Ranked (archive + win/loss + relationships + MMR + leaderboard + spectated; char stats at Equipping+)
+    let concedeFlags: any = null;
+    if (isConcede) {
+        const isRanked = matchResult.matchType?.tag === 'Ranked';
+        const isTournament = matchResult.isTournamentControlled;
+        const concedeStage = matchResult.concedeAtStage ?? 'Scoring'; // fallback
+        const isCasualNonTournament = !isRanked && !isTournament;
+        const isDrafting = concedeStage === 'Drafting';
+
+        concedeFlags = {
+            doArchiveSteps: !isCasualNonTournament,           // T2/T3: archive what exists
+            doArchiveSession: isRanked,                        // T3 only
+            doArchiveParticipants: !isCasualNonTournament,     // T2/T3: always
+            doArchiveGames: !isCasualNonTournament,            // T2/T3: archive what exists
+            doWinLoss: isCasualNonTournament ? (concedeStage === 'Scoring') : true,  // T1: scoring only, T2/T3: always
+            doRelationships: !isCasualNonTournament,           // T2/T3: always
+            doCharStats: isRanked && !isDrafting,              // T3: equipping+ only
+            doGlobalCharStats: isRanked && !isDrafting,        // T3: equipping+ only
+            doMmr: isRanked && !isTournament,                 // T3 non-tournament only (tournament defers to batch)
+            doLeaderboard: isRanked && !isTournament,          // T3 non-tournament only
+            doSpectated: isRanked,                             // T3 only
+            doAchievements: false,                             // D-76: ALWAYS skipped for concede
+            doBracketAdvance: false,                           // D-80: NEVER auto-advance for concede
+        };
+    }
+
+    // D-75: For concede, derive participants from LobbyMember as fallback
+    let concedeParticipants = participants;
+    if (isConcede && participants.length === 0) {
+        const lobbyMembers = [...ctx.db.LobbyMember.lobby_id.filter(matchResult.lobbyId)]
+            .filter((m: any) => !slotIsSpectator(m.lobbySlot) && !slotIsCoach(m.lobbySlot));
+        concedeParticipants = lobbyMembers.map((m: any) => ({
+            userId: m.userId,
+            teamSide: slotToTeamSide(m.lobbySlot),
+            isCaptain: m.isCaptain,
+        }));
+    }
+
     // ── Writes (7-18) ────────────────────────────────────────────────────────
 
     // 7. Write MatchSessionHistory row (no rosterBlue/rosterRed per D-52/D-57)
-    const historyRow = ctx.db.MatchSessionHistory.insert({
+    // For concede: only create if archival is needed (T2/T3), skip for T1 casual non-tournament
+    let historyRow: any = null;
+    if (!isConcede || concedeFlags.doArchiveSteps || concedeFlags.doArchiveSession) {
+    historyRow = ctx.db.MatchSessionHistory.insert({
         id: 0, // autoInc
         lobbyCode: lobby ? lobby.joinCode : 'UNKNOWN',
         playedAt: matchResult.createdDate,
@@ -276,227 +327,239 @@ export function runFinalization(
         isPubliclyVisible: lobby?.isTournamentControlled ? false : true,
         ...auditInsert(ctx, actingUserId),
     } as any);
+    } // end step 7 concede gate
+
+    // Select participant list: use concedeParticipants for concede paths (D-75 fallback)
+    const effectiveParticipants = isConcede ? concedeParticipants : participants;
 
     // 8. Write MatchSessionStepHistory rows (per D-50/D-54/D-86/D-90)
-    for (const step of steps) {
-        const user = ctx.db.User.id.find(step.actorUserId);
-        // Extract targetName from payload based on variant tag (D-86)
-        // Covers characters (Pick/Ban/AuctionSold/Nominate), LCs (EquipLightcone), and Bid targetCharacter
-        // ArrangeLineup and ConfirmLineup: targetName stays undefined
-        let targetName: string | undefined;
-        if (step.payload) {
-            const tag = step.payload.tag;
-            if (tag === 'Pick' || tag === 'Ban' || tag === 'AuctionSold' || tag === 'Nominate') {
-                targetName = step.payload.value?.characterName;
-            } else if (tag === 'Bid') {
-                targetName = step.payload.value?.targetCharacter;
-            } else if (tag === 'EquipLightcone') {
-                targetName = step.payload.value?.lightconeName;
-            }
-            // ArrangeLineup and ConfirmLineup: targetName stays undefined
-        }
-
-        ctx.db.MatchSessionStepHistory.insert({
-            matchHistoryId: historyRow.id,
-            sequence: step.sequence,
-            actorUserId: step.actorUserId,
-            actorDisplayName: user ? user.displayName : `User#${step.actorUserId}`,
-            teamSide: step.actorSlot,
-            action: step.action,
-            targetName,
-            payload: step.payload ? JSON.stringify(step.payload) : undefined,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
-    }
-
-    // 9. Write MatchResultGameHistory rows (per D-51)
-    for (const game of games) {
-        ctx.db.MatchResultGameHistory.insert({
-            matchHistoryId: historyRow.id,
-            gameNumber: game.gameNumber,
-            gameMode: game.gameMode,
-            teamBlueScreenshotUrl: game.teamBlueScreenshotUrl,
-            teamRedScreenshotUrl: game.teamRedScreenshotUrl,
-            teamBlueCyclesUsed: game.teamBlueCyclesUsed,
-            teamRedCyclesUsed: game.teamRedCyclesUsed,
-            teamBlueScore: game.teamBlueScore,
-            teamRedScore: game.teamRedScore,
-            teamBlueBoss1Score: game.teamBlueBoss1Score,
-            teamBlueBoss2Score: game.teamBlueBoss2Score,
-            teamRedBoss1Score: game.teamRedBoss1Score,
-            teamRedBoss2Score: game.teamRedBoss2Score,
-            winnerTeamSide: game.winnerTeamSide,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
-    }
-
-    // 10. Write MatchParticipantHistory per participant (per D-53/D-87)
-    for (const p of participants) {
-        const pUser = ctx.db.User.id.find(p.userId);
-        // D-87: Include role flags from LobbyMember
-        const memberRow = [...ctx.db.LobbyMember.by_lobby_and_user.filter([matchResult.lobbyId, p.userId])][0];
-        ctx.db.MatchParticipantHistory.insert({
-            userId: p.userId,
-            matchHistoryId: historyRow.id,
-            teamSide: p.teamSide,
-            displayName: pUser ? pUser.displayName : `User#${p.userId}`,
-            isReferee: memberRow ? memberRow.isReferee : false,
-            isCoach: memberRow ? slotIsCoach(memberRow.lobbySlot) : false,
-            isCaptain: p.isCaptain,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
-    }
-
-    // 11. Process MMR — standalone Ranked only (not tournament-controlled)
-    if (matchResult.matchType.tag === 'Ranked' && !matchResult.isTournamentControlled) {
-        processMatchMmr(ctx, matchResult, participants, gameMode, seasonId, historyRow.id, actingUserId);
-        // Stamp mmrProcessedAt
-        const freshResult = ctx.db.MatchResultRecord.id.find(matchResult.id)!;
-        ctx.db.MatchResultRecord.id.update({
-            ...freshResult,
-            mmrProcessedAt: ctx.timestamp,
-            ...auditUpdate(ctx, freshResult, actingUserId),
-        } as any);
-        // Note: leaderboard rebuild moved after step 13 (PlayerStat increment)
-        // so that Leaderboard.wins reflects the current match's stats.
-    }
-
-    // 12. Tournament batch back-fill MmrHistory sentinel matchHistoryId
-    if (matchResult.isTournamentControlled && matchResult.mmrProcessedAt !== undefined) {
-        const participantUserIds = new Set(participants.map((p: any) => p.userId));
-        for (const uid of participantUserIds) {
-            const mmrRows = [...ctx.db.MmrHistory.user_id.filter(uid)]
-                .filter((h: any) => h.matchHistoryId === 0);
-            if (mmrRows.length > 0) {
-                const latest = mmrRows.sort((a: any, b: any) => b.id - a.id)[0];
-                ctx.db.MmrHistory.id.update({
-                    ...latest,
+    if (!isConcede || concedeFlags.doArchiveSteps) {
+        if (historyRow) {
+            for (const step of steps) {
+                const user = ctx.db.User.id.find(step.actorUserId);
+                let targetName: string | undefined;
+                if (step.payload) {
+                    const tag = step.payload.tag;
+                    if (tag === 'Pick' || tag === 'Ban' || tag === 'AuctionSold' || tag === 'Nominate') {
+                        targetName = step.payload.value?.characterName;
+                    } else if (tag === 'Bid') {
+                        targetName = step.payload.value?.targetCharacter;
+                    } else if (tag === 'EquipLightcone') {
+                        targetName = step.payload.value?.lightconeName;
+                    }
+                }
+                ctx.db.MatchSessionStepHistory.insert({
                     matchHistoryId: historyRow.id,
-                    ...auditUpdate(ctx, latest, actingUserId),
+                    sequence: step.sequence,
+                    actorUserId: step.actorUserId,
+                    actorDisplayName: user ? user.displayName : `User#${step.actorUserId}`,
+                    teamSide: step.actorSlot,
+                    action: step.action,
+                    targetName,
+                    payload: step.payload ? JSON.stringify(step.payload) : undefined,
+                    ...auditInsert(ctx, actingUserId),
                 } as any);
             }
         }
     }
 
-    // 13. Increment PlayerStat per participant
-    for (const p of participants) {
-        let participantWon = false;
-        if (matchResult.winnerUserId !== undefined) {
-            const winnerParticipant = participants.find((wp: any) => wp.userId === matchResult.winnerUserId);
-            participantWon = winnerParticipant ? winnerParticipant.teamSide.tag === p.teamSide.tag : false;
+    // 9. Write MatchResultGameHistory rows (per D-51)
+    if (!isConcede || concedeFlags.doArchiveGames) {
+        if (historyRow) {
+            for (const game of games) {
+                ctx.db.MatchResultGameHistory.insert({
+                    matchHistoryId: historyRow.id,
+                    gameNumber: game.gameNumber,
+                    gameMode: game.gameMode,
+                    teamBlueScreenshotUrl: game.teamBlueScreenshotUrl,
+                    teamRedScreenshotUrl: game.teamRedScreenshotUrl,
+                    teamBlueCyclesUsed: game.teamBlueCyclesUsed,
+                    teamRedCyclesUsed: game.teamRedCyclesUsed,
+                    teamBlueScore: game.teamBlueScore,
+                    teamRedScore: game.teamRedScore,
+                    teamBlueBoss1Score: game.teamBlueBoss1Score,
+                    teamBlueBoss2Score: game.teamBlueBoss2Score,
+                    teamRedBoss1Score: game.teamRedBoss1Score,
+                    teamRedBoss2Score: game.teamRedBoss2Score,
+                    winnerTeamSide: game.winnerTeamSide,
+                    ...auditInsert(ctx, actingUserId),
+                } as any);
+            }
         }
-        const isDraw = matchResult.winnerUserId === undefined;
-        incrementPlayerStat(ctx, p.userId, gameMode, draftMode, seasonId, matchType, teamSize, participantWon, isDraw, actingUserId);
+    }
+
+    // 10. Write MatchParticipantHistory per participant (per D-53/D-87)
+    if (!isConcede || concedeFlags.doArchiveParticipants) {
+        if (historyRow) {
+            for (const p of effectiveParticipants) {
+                const pUser = ctx.db.User.id.find(p.userId);
+                const memberRow = [...ctx.db.LobbyMember.by_lobby_and_user.filter([matchResult.lobbyId, p.userId])][0];
+                ctx.db.MatchParticipantHistory.insert({
+                    userId: p.userId,
+                    matchHistoryId: historyRow.id,
+                    teamSide: p.teamSide,
+                    displayName: pUser ? pUser.displayName : `User#${p.userId}`,
+                    isReferee: memberRow ? memberRow.isReferee : false,
+                    isCoach: memberRow ? slotIsCoach(memberRow.lobbySlot) : false,
+                    isCaptain: p.isCaptain,
+                    ...auditInsert(ctx, actingUserId),
+                } as any);
+            }
+        }
+    }
+
+    // 11. Process MMR — standalone Ranked only (not tournament-controlled)
+    if (!isConcede || concedeFlags.doMmr) {
+        if (matchResult.matchType.tag === 'Ranked' && !matchResult.isTournamentControlled) {
+            processMatchMmr(ctx, matchResult, effectiveParticipants, gameMode, seasonId, historyRow ? historyRow.id : 0, actingUserId);
+            // Stamp mmrProcessedAt
+            const freshResult = ctx.db.MatchResultRecord.id.find(matchResult.id)!;
+            ctx.db.MatchResultRecord.id.update({
+                ...freshResult,
+                mmrProcessedAt: ctx.timestamp,
+                ...auditUpdate(ctx, freshResult, actingUserId),
+            } as any);
+        }
+    }
+
+    // 12. Tournament batch back-fill MmrHistory sentinel matchHistoryId
+    if (!isConcede || concedeFlags.doMmr) {
+        if (matchResult.isTournamentControlled && matchResult.mmrProcessedAt !== undefined && historyRow) {
+            const participantUserIds = new Set(effectiveParticipants.map((p: any) => p.userId));
+            for (const uid of participantUserIds) {
+                const mmrRows = [...ctx.db.MmrHistory.user_id.filter(uid)]
+                    .filter((h: any) => h.matchHistoryId === 0);
+                if (mmrRows.length > 0) {
+                    const latest = mmrRows.sort((a: any, b: any) => b.id - a.id)[0];
+                    ctx.db.MmrHistory.id.update({
+                        ...latest,
+                        matchHistoryId: historyRow.id,
+                        ...auditUpdate(ctx, latest, actingUserId),
+                    } as any);
+                }
+            }
+        }
+    }
+
+    // 13. Increment PlayerStat per participant
+    if (!isConcede || concedeFlags.doWinLoss) {
+        for (const p of effectiveParticipants) {
+            let participantWon = false;
+            if (matchResult.winnerUserId !== undefined) {
+                const winnerParticipant = effectiveParticipants.find((wp: any) => wp.userId === matchResult.winnerUserId);
+                participantWon = winnerParticipant ? winnerParticipant.teamSide.tag === p.teamSide.tag : false;
+            }
+            const isDraw = matchResult.winnerUserId === undefined;
+            incrementPlayerStat(ctx, p.userId, gameMode, draftMode, seasonId, matchType, teamSize, participantWon, isDraw, actingUserId);
+        }
     }
 
     // 13b. Rebuild leaderboard after PlayerStat increments (reads PlayerStat.wins)
-    if (matchResult.matchType.tag === 'Ranked' && !matchResult.isTournamentControlled) {
-        rebuildLeaderboard(ctx, actingUserId, seasonId);
+    if (!isConcede || concedeFlags.doLeaderboard) {
+        if (matchResult.matchType.tag === 'Ranked' && !matchResult.isTournamentControlled) {
+            rebuildLeaderboard(ctx, actingUserId, seasonId);
+        }
     }
 
     // 14. Increment matchesSpectated for spectators
-    const spectators = [...ctx.db.LobbyMember.lobby_id.filter(matchResult.lobbyId)]
-        .filter((m: any) => slotIsSpectator(m.lobbySlot) && !slotIsCoach(m.lobbySlot) && !m.isReferee);
-    for (const spec of spectators) {
-        incrementSpectatedCount(ctx, spec.userId, gameMode, draftMode, seasonId, matchType, teamSize, actingUserId);
+    if (!isConcede || concedeFlags.doSpectated) {
+        const spectators = [...ctx.db.LobbyMember.lobby_id.filter(matchResult.lobbyId)]
+            .filter((m: any) => slotIsSpectator(m.lobbySlot) && !slotIsCoach(m.lobbySlot) && !m.isReferee);
+        for (const spec of spectators) {
+            incrementSpectatedCount(ctx, spec.userId, gameMode, draftMode, seasonId, matchType, teamSize, actingUserId);
+        }
     }
 
     // 15. Increment PlayerRelationship per participant pair
-    for (let i = 0; i < participants.length; i++) {
-        for (let j = i + 1; j < participants.length; j++) {
-            const a = participants[i];
-            const b = participants[j];
-            const isAlly = a.teamSide.tag === b.teamSide.tag;
-            let aWon = false;
-            let bWon = false;
-            if (matchResult.winnerUserId !== undefined) {
-                const winnerP = participants.find((wp: any) => wp.userId === matchResult.winnerUserId);
-                aWon = winnerP ? winnerP.teamSide.tag === a.teamSide.tag : false;
-                bWon = winnerP ? winnerP.teamSide.tag === b.teamSide.tag : false;
+    if (!isConcede || concedeFlags.doRelationships) {
+        for (let i = 0; i < effectiveParticipants.length; i++) {
+            for (let j = i + 1; j < effectiveParticipants.length; j++) {
+                const a = effectiveParticipants[i];
+                const b = effectiveParticipants[j];
+                const isAlly = a.teamSide.tag === b.teamSide.tag;
+                let aWon = false;
+                let bWon = false;
+                if (matchResult.winnerUserId !== undefined) {
+                    const winnerP = effectiveParticipants.find((wp: any) => wp.userId === matchResult.winnerUserId);
+                    aWon = winnerP ? winnerP.teamSide.tag === a.teamSide.tag : false;
+                    bWon = winnerP ? winnerP.teamSide.tag === b.teamSide.tag : false;
+                }
+                incrementPlayerRelationship(ctx, a.userId, b.userId, gameMode, draftMode, seasonId, matchType, teamSize, isAlly, aWon, actingUserId);
+                incrementPlayerRelationship(ctx, b.userId, a.userId, gameMode, draftMode, seasonId, matchType, teamSize, isAlly, bWon, actingUserId);
             }
-            incrementPlayerRelationship(ctx, a.userId, b.userId, gameMode, draftMode, seasonId, matchType, teamSize, isAlly, aWon, actingUserId);
-            incrementPlayerRelationship(ctx, b.userId, a.userId, gameMode, draftMode, seasonId, matchType, teamSize, isAlly, bWon, actingUserId);
         }
     }
 
     // 16. Increment character stats (per D-54)
-    // Build a map of participant userId -> teamSide tag for quick lookup
-    const participantTeamMap = new Map<number, string>();
-    for (const p of participants) {
-        participantTeamMap.set(p.userId, p.teamSide.tag);
-    }
-    // Determine winner's team side
-    let winnerTeamSideTag: string | undefined;
-    if (matchResult.winnerUserId !== undefined) {
-        const winnerP = participants.find((wp: any) => wp.userId === matchResult.winnerUserId);
-        winnerTeamSideTag = winnerP?.teamSide.tag;
-    }
-
-    for (const step of steps) {
-        const actionTag = step.action.tag;
-        // Extract character name from payload
-        let charName: string | undefined;
-        if (step.payload) {
-            const payloadTag = step.payload.tag;
-            if (payloadTag === 'Pick' || payloadTag === 'Ban' || payloadTag === 'AuctionSold' || payloadTag === 'Nominate') {
-                charName = step.payload.value?.characterName;
-            } else if (payloadTag === 'Bid') {
-                charName = step.payload.value?.targetCharacter;
-            }
+    if (!isConcede || concedeFlags.doCharStats) {
+        const participantTeamMap = new Map<number, string>();
+        for (const p of effectiveParticipants) {
+            participantTeamMap.set(p.userId, p.teamSide.tag);
         }
-        if (!charName) continue;
+        let winnerTeamSideTag: string | undefined;
+        if (matchResult.winnerUserId !== undefined) {
+            const winnerP = effectiveParticipants.find((wp: any) => wp.userId === matchResult.winnerUserId);
+            winnerTeamSideTag = winnerP?.teamSide.tag;
+        }
 
-        const actorTeamSide = step.actorSlot?.tag;
-
-        if (actionTag === 'Pick' || actionTag === 'AuctionSold') {
-            // Determine if the actor won
-            const didActorWin = winnerTeamSideTag !== undefined && actorTeamSide === winnerTeamSideTag;
-
-            // Increment pick stat for the actor
-            incrementPlayerCharacterStat(ctx, step.actorUserId, charName, gameMode, draftMode, seasonId, matchType, teamSize, didActorWin, actingUserId);
-
-            // Increment faced stat for each OPPONENT participant
-            for (const p of participants) {
-                if (p.teamSide.tag !== actorTeamSide) {
-                    const didOpponentWin = winnerTeamSideTag !== undefined && p.teamSide.tag === winnerTeamSideTag;
-                    incrementFacedStat(ctx, p.userId, charName, gameMode, draftMode, seasonId, matchType, teamSize, didOpponentWin, actingUserId);
+        for (const step of steps) {
+            const actionTag = step.action.tag;
+            let charName: string | undefined;
+            if (step.payload) {
+                const payloadTag = step.payload.tag;
+                if (payloadTag === 'Pick' || payloadTag === 'Ban' || payloadTag === 'AuctionSold' || payloadTag === 'Nominate') {
+                    charName = step.payload.value?.characterName;
+                } else if (payloadTag === 'Bid') {
+                    charName = step.payload.value?.targetCharacter;
                 }
             }
+            if (!charName) continue;
 
-            // Increment global character stat (pick)
-            incrementGlobalCharacterStat(ctx, charName, gameMode, draftMode, seasonId, matchType, teamSize, true, didActorWin, actingUserId);
-        }
+            const actorTeamSide = step.actorSlot?.tag;
 
-        if (actionTag === 'Ban') {
-            // Increment ban stat for ALL participants (per D-23)
-            for (const p of participants) {
-                incrementBanStat(ctx, p.userId, charName, gameMode, draftMode, seasonId, matchType, teamSize, actingUserId);
+            if (actionTag === 'Pick' || actionTag === 'AuctionSold') {
+                const didActorWin = winnerTeamSideTag !== undefined && actorTeamSide === winnerTeamSideTag;
+                incrementPlayerCharacterStat(ctx, step.actorUserId, charName, gameMode, draftMode, seasonId, matchType, teamSize, didActorWin, actingUserId);
+                for (const p of effectiveParticipants) {
+                    if (p.teamSide.tag !== actorTeamSide) {
+                        const didOpponentWin = winnerTeamSideTag !== undefined && p.teamSide.tag === winnerTeamSideTag;
+                        incrementFacedStat(ctx, p.userId, charName, gameMode, draftMode, seasonId, matchType, teamSize, didOpponentWin, actingUserId);
+                    }
+                }
+                incrementGlobalCharacterStat(ctx, charName, gameMode, draftMode, seasonId, matchType, teamSize, true, didActorWin, actingUserId);
             }
 
-            // Increment global character stat (ban)
-            incrementGlobalCharacterStat(ctx, charName, gameMode, draftMode, seasonId, matchType, teamSize, false, false, actingUserId);
-        }
-    }
-
-    // 16.5. Check and award achievements per participant (D-14)
-    // Runs after all stat increments (steps 13-16) so criteria evaluate against up-to-date data
-    for (const p of participants) {
-        checkAndAwardAchievements(ctx, p.userId, actingUserId);
-    }
-
-    // 17. Bracket advancement
-    if (matchResult.isTournamentControlled && matchResult.bracketMatchId !== undefined && matchResult.winnerUserId !== undefined) {
-        const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
-        if (bracketMatch && bracketMatch.winnerTeamId === undefined) {
-            const winnerParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user
-                .filter([matchResult.tournamentId!, matchResult.winnerUserId])][0];
-            if (winnerParticipant && winnerParticipant.teamGroupId) {
-                advanceBracketMatch(ctx, matchResult.bracketMatchId, winnerParticipant.teamGroupId, actingUserId);
+            if (actionTag === 'Ban') {
+                for (const p of effectiveParticipants) {
+                    incrementBanStat(ctx, p.userId, charName, gameMode, draftMode, seasonId, matchType, teamSize, actingUserId);
+                }
+                incrementGlobalCharacterStat(ctx, charName, gameMode, draftMode, seasonId, matchType, teamSize, false, false, actingUserId);
             }
         }
     }
 
-    // 18. Delete ephemeral records (children first, then steps, then record)
+    // 16.5. Check and award achievements per participant (D-14, D-76: ALWAYS skipped for concede)
+    if (!isConcede || concedeFlags.doAchievements) {
+        for (const p of effectiveParticipants) {
+            checkAndAwardAchievements(ctx, p.userId, actingUserId);
+        }
+    }
+
+    // 17. Bracket advancement (D-80: NEVER auto-advance for concede)
+    if (!isConcede || concedeFlags.doBracketAdvance) {
+        if (matchResult.isTournamentControlled && matchResult.bracketMatchId !== undefined && matchResult.winnerUserId !== undefined) {
+            const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
+            if (bracketMatch && bracketMatch.winnerTeamId === undefined) {
+                const winnerParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user
+                    .filter([matchResult.tournamentId!, matchResult.winnerUserId])][0];
+                if (winnerParticipant && winnerParticipant.teamGroupId) {
+                    advanceBracketMatch(ctx, matchResult.bracketMatchId, winnerParticipant.teamGroupId, actingUserId);
+                }
+            }
+        }
+    }
+
+    // 18. Delete ephemeral records (children first, then steps, then record) — always runs
     for (const g of games) { ctx.db.MatchResultGame.delete(g); }
     for (const p of participants) { ctx.db.MatchResultParticipant.delete(p); }
     // Delete MatchSessionStep rows (archived to history in step 8)
@@ -504,13 +567,10 @@ export function runFinalization(
     const finalResult = ctx.db.MatchResultRecord.id.find(matchResult.id);
     if (finalResult) { ctx.db.MatchResultRecord.delete(finalResult); }
 
-    // 19. Cascade-delete lobby (all data archived to history tables above)
-    // The lobby was in AwaitingResult since submit — now it's fully processed.
-    // hardDeleteLobby removes: ChatMessage, LobbyMember, LobbyBan, LobbyPassword,
-    // MatchSessionStep (already deleted in step 18), MatchSession, Lobby row.
+    // 19. Cascade-delete lobby — always runs
     hardDeleteLobby(ctx, matchResult.lobbyId);
 
-    console.log(`[MATCH] Match result #${matchResult.id} finalized by user #${actingUserId}. History ID: ${historyRow.id}`);
+    console.log(`[MATCH] Match result #${matchResult.id} finalized by user #${actingUserId}. History ID: ${historyRow?.id ?? 'none'}`);
 }
 
 // ─── revealTournamentHistory ──────────────────────────────────────────────────

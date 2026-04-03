@@ -44,12 +44,15 @@ import AdminCreateHsrAccountReducer from "./admin_create_hsr_account_reducer";
 import AdminDeleteArchetypeReducer from "./admin_delete_archetype_reducer";
 import AdminDeleteHsrAccountReducer from "./admin_delete_hsr_account_reducer";
 import AdminDeleteRowReducer from "./admin_delete_row_reducer";
+import AdminForceFinalizeReducer from "./admin_force_finalize_reducer";
 import AdminRemoveCharacterArchetypesReducer from "./admin_remove_character_archetypes_reducer";
 import AdminSeedEloConfigReducer from "./admin_seed_elo_config_reducer";
+import AdminSetBracketWinnerReducer from "./admin_set_bracket_winner_reducer";
 import AdminUpdateEloConfigReducer from "./admin_update_elo_config_reducer";
 import AdminUpdateHsrAccountReducer from "./admin_update_hsr_account_reducer";
 import AdminUpdateUserReducer from "./admin_update_user_reducer";
 import AdminUpsertArchetypeReducer from "./admin_upsert_archetype_reducer";
+import AdminVoidMatchReducer from "./admin_void_match_reducer";
 import AdvanceBracketMatchReducer from "./advance_bracket_match_reducer";
 import AdvanceGroupToEliminationReducer from "./advance_group_to_elimination_reducer";
 import AdvanceStageReducer from "./advance_stage_reducer";
@@ -64,7 +67,9 @@ import BatchRemoveCharactersReducer from "./batch_remove_characters_reducer";
 import BatchUpsertCharactersReducer from "./batch_upsert_characters_reducer";
 import BroadcastCursorReducer from "./broadcast_cursor_reducer";
 import CancelTournamentReducer from "./cancel_tournament_reducer";
+import ClaimForfeitReducer from "./claim_forfeit_reducer";
 import CloseLobbyReducer from "./close_lobby_reducer";
+import ConcedeMatchReducer from "./concede_match_reducer";
 import ConfirmLineupReducer from "./confirm_lineup_reducer";
 import ConfirmMatchScoresReducer from "./confirm_match_scores_reducer";
 import ConfirmReadyReducer from "./confirm_ready_reducer";
@@ -79,6 +84,7 @@ import CreateSeasonReducer from "./create_season_reducer";
 import CreateTournamentReducer from "./create_tournament_reducer";
 import CreateTournamentLobbyReducer from "./create_tournament_lobby_reducer";
 import CreateTournamentTeamReducer from "./create_tournament_team_reducer";
+import DeferMatchReducer from "./defer_match_reducer";
 import DeleteAchievementReducer from "./delete_achievement_reducer";
 import DeleteAvailabilitySlotReducer from "./delete_availability_slot_reducer";
 import DeleteCalendarEventReducer from "./delete_calendar_event_reducer";
@@ -1020,12 +1026,15 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_delete_archetype", AdminDeleteArchetypeReducer),
   __reducerSchema("admin_delete_hsr_account", AdminDeleteHsrAccountReducer),
   __reducerSchema("admin_delete_row", AdminDeleteRowReducer),
+  __reducerSchema("admin_force_finalize", AdminForceFinalizeReducer),
   __reducerSchema("admin_remove_character_archetypes", AdminRemoveCharacterArchetypesReducer),
   __reducerSchema("admin_seed_elo_config", AdminSeedEloConfigReducer),
+  __reducerSchema("admin_set_bracket_winner", AdminSetBracketWinnerReducer),
   __reducerSchema("admin_update_elo_config", AdminUpdateEloConfigReducer),
   __reducerSchema("admin_update_hsr_account", AdminUpdateHsrAccountReducer),
   __reducerSchema("admin_update_user", AdminUpdateUserReducer),
   __reducerSchema("admin_upsert_archetype", AdminUpsertArchetypeReducer),
+  __reducerSchema("admin_void_match", AdminVoidMatchReducer),
   __reducerSchema("advance_bracket_match", AdvanceBracketMatchReducer),
   __reducerSchema("advance_group_to_elimination", AdvanceGroupToEliminationReducer),
   __reducerSchema("advance_stage", AdvanceStageReducer),
@@ -1040,7 +1049,9 @@ const reducersSchema = __reducers(
   __reducerSchema("batch_upsert_characters", BatchUpsertCharactersReducer),
   __reducerSchema("broadcast_cursor", BroadcastCursorReducer),
   __reducerSchema("cancel_tournament", CancelTournamentReducer),
+  __reducerSchema("claim_forfeit", ClaimForfeitReducer),
   __reducerSchema("close_lobby", CloseLobbyReducer),
+  __reducerSchema("concede_match", ConcedeMatchReducer),
   __reducerSchema("confirm_lineup", ConfirmLineupReducer),
   __reducerSchema("confirm_match_scores", ConfirmMatchScoresReducer),
   __reducerSchema("confirm_ready", ConfirmReadyReducer),
@@ -1055,6 +1066,7 @@ const reducersSchema = __reducers(
   __reducerSchema("create_tournament", CreateTournamentReducer),
   __reducerSchema("create_tournament_lobby", CreateTournamentLobbyReducer),
   __reducerSchema("create_tournament_team", CreateTournamentTeamReducer),
+  __reducerSchema("defer_match", DeferMatchReducer),
   __reducerSchema("delete_achievement", DeleteAchievementReducer),
   __reducerSchema("delete_availability_slot", DeleteAvailabilitySlotReducer),
   __reducerSchema("delete_calendar_event", DeleteCalendarEventReducer),

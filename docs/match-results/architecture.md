@@ -203,6 +203,10 @@ The `disputeReason` column on `MatchResultRecord` is reused to store the overrid
 | redConfirmed | bool | True when Red side captain (or spectator referee) has confirmed scores |
 | refereeFullControl | bool | When true, spectator referee can fill scores and confirm both sides (default true) |
 | matchType | MatchType enum | Casual or Ranked (derived from tournament.countTowardsMmr for tournament matches) |
+| matchOutcome | MatchOutcome? | BlueWins, RedWins, Draw, or **Concede** (Phase 10); optional, set when outcome is determined |
+| concedeTrigger | ConcedeTrigger? | Disconnect, VoluntaryLeave, or RefereeDecision (Phase 10); what caused the concede |
+| concedeSummary | string? | Deterministic audit string (Phase 10): who disconnected, at what step, pool remaining, stage |
+| concedeAtStage | string? | LobbyStage tag at time of concede (Phase 10): "Drafting", "Equipping", or "Scoring" |
 
 ### Indexes
 
@@ -420,3 +424,92 @@ The cost input is different — Classic uses cost table sums, Auction uses budge
 - Phase 3 implements the confirmation and submission flow only -- no per-game scoring rows in this phase
 - Per-game scoring (MatchResultGame rows, screenshot URLs, cycle counts) added in Phase 04.1
 - `mmrProcessedAt` is reserved for Phase 5 ELO processing and is not set by Phase 3 reducers
+
+---
+
+## ConcedeTrigger Enum (Phase 10)
+
+| Variant | When |
+|---------|------|
+| Disconnect | All opposing team players offline > grace period; forfeit claimed |
+| VoluntaryLeave | Player/team voluntarily surrenders or last player leaves team |
+| RefereeDecision | 3rd party referee makes the call |
+
+---
+
+## Admin Match Toolbox (Phase 10)
+
+| Reducer | Permission | Description |
+|---------|-----------|-------------|
+| `admin_force_finalize` | Moderator+ / TO / assistant | Resolves AwaitingResult match: sets winner, runs full finalization pipeline (D-52) |
+| `admin_void_match` | Moderator+ / TO / assistant | Erases AwaitingResult match via hardDeleteLobby — no stats written (D-53) |
+| `admin_set_bracket_winner` | Moderator+ / TO / assistant | Directly sets BracketMatch.winnerTeamId and advances bracket; requires winnerTeamId=0 first (D-54) |
+
+### Processed Match Protection (D-56)
+Once `mmrProcessedAt` is set, the match result is permanent:
+- `admin_force_finalize` rejects
+- `admin_void_match` rejects (lobby already gone post-finalization)
+- `admin_set_bracket_winner` requires `winnerTeamId=0` (rollback first)
+
+### Tournament Void Workflow (D-55)
+`rollback_bracket_match` (undo advancement) -> `admin_void_match` (erase match) -> BracketMatch back to Pending -> TO creates new lobby for rematch
+
+---
+
+## Concede Finalization Matrix (Phase 10)
+
+`runFinalization()` branches on `matchResult.matchOutcome?.tag === 'Concede'`. Each step is gated by `concedeFlags` per the 3-tier x 3-stage matrix.
+
+### Tier 1: Casual Non-Tournament
+
+| Step | Drafting | Equipping | Scoring |
+|------|----------|-----------|---------|
+| Archive steps/session/participants/games | No | No | No |
+| Win/loss | No | No | Yes |
+| Relationships | No | No | No |
+| Character/global stats | No | No | No |
+| MMR/Leaderboard | No | No | No |
+| Spectated | No | No | No |
+| Achievements | No | No | No |
+| Bracket advance | N/A | N/A | N/A |
+| Cleanup | Yes | Yes | Yes |
+
+### Tier 2: Casual Tournament
+
+| Step | Drafting | Equipping | Scoring |
+|------|----------|-----------|---------|
+| Archive steps | What exists | What exists | What exists |
+| Archive session | No | No | No |
+| Archive participants | Yes | Yes | Yes |
+| Archive games | What exists | What exists | What exists |
+| Win/loss | Yes | Yes | Yes |
+| Relationships | Yes | Yes | Yes |
+| Character/global stats | No | No | No |
+| MMR/Leaderboard | No | No | No |
+| Spectated | No | No | No |
+| Achievements | No | No | No |
+| Bracket advance | No (TO approval) | No (TO approval) | No (TO approval) |
+| Cleanup | Yes | Yes | Yes |
+
+### Tier 3: Ranked (tournament and non-tournament)
+
+| Step | Drafting | Equipping | Scoring |
+|------|----------|-----------|---------|
+| Archive steps | What exists | What exists | What exists |
+| Archive session | Yes | Yes | Yes |
+| Archive participants | Yes | Yes | Yes |
+| Archive games | What exists | What exists | What exists |
+| Win/loss | Yes | Yes | Yes |
+| Relationships | Yes | Yes | Yes |
+| Character/global stats | No (draft incomplete) | Yes | Yes |
+| MMR | Yes (non-tourn) | Yes (non-tourn) | Yes (non-tourn) |
+| Leaderboard | Yes (non-tourn) | Yes (non-tourn) | Yes (non-tourn) |
+| Spectated | Yes | Yes | Yes |
+| Achievements | No | No | No |
+| Bracket advance | No (TO approval) | No (TO approval) | No (TO approval) |
+| Cleanup | Yes | Yes | Yes |
+
+**Key rules:**
+- Achievement check ALWAYS skipped for concede (D-76)
+- Bracket advancement NEVER auto-triggers for concede (D-80) — BracketMatch.winnerTeamId set by performConcede, but placeParticipantInNextMatch not called
+- Tournament MMR deferred to batch `process_tournament_mmr` (not inline)

@@ -205,7 +205,16 @@
 | Added record_game_scores (captain own-side, spectator referee full control), process_tournament_mmr (batch), handicap, draw scenarios | Phase 9 execution | 2026-03-29 |
 | runFinalization step 19: cascade-deletes lobby after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
 | Finalization step 19 cascade-deletes lobby (not set Finished). submit_match_result transitions to AwaitingResult first. | Phase 9 execution | 2026-03-29 |
+| MatchOutcome.Concede + ConcedeTrigger enum (Disconnect/VoluntaryLeave/RefereeDecision) (D-69, D-70, D-91) | Phase 10 execution | 2026-04-03 |
+| MatchResultRecord: matchOutcome, concedeTrigger, concedeSummary, concedeAtStage columns added (D-58, D-71) | Phase 10 execution | 2026-04-03 |
+| Concede finalization matrix: 3-tier (casual-nontourn/casual-tourn/ranked) x 3-stage (Drafting/Equipping/Scoring) branching in runFinalization (D-74, D-77-79) | Phase 10 execution | 2026-04-03 |
+| Achievement check ALWAYS skipped for concede outcomes (D-76) | Phase 10 execution | 2026-04-03 |
+| Bracket advancement NEVER auto-triggers for concede outcomes (D-80) — winnerTeamId set but placeParticipantInNextMatch not called | Phase 10 execution | 2026-04-03 |
+| admin_force_finalize: resolves AwaitingResult match with winner via runFinalization (D-52) | Phase 10 execution | 2026-04-03 |
+| admin_void_match: erases AwaitingResult match via hardDeleteLobby without finalization (D-53) | Phase 10 execution | 2026-04-03 |
+| admin_set_bracket_winner: directly sets BracketMatch.winnerTeamId and advances bracket; requires winnerTeamId=0 (D-54) | Phase 10 execution | 2026-04-03 |
+| Processed match protection: mmrProcessedAt blocks force-finalize and void (D-56) | Phase 10 execution | 2026-04-03 |
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-03*

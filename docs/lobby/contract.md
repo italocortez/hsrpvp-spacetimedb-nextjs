@@ -965,8 +965,17 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | Finalization cascade-deletes lobby (step 19 of runFinalization) — not set to Finished | Phase 9 execution | 2026-03-29 |
 | AwaitingResult stage: players freed on submit, finalization cascade-deletes lobby, GC safety net for Waiting+Finished only | Phase 9 execution | 2026-03-29 |
 | Added tournament lobby + stand-in + settings split + GC scenarios | Phase 9 execution | 2026-03-29 |
+| DisconnectPolicy renamed: Pause->Deferred, TimerThenForfeit->Standard (D-04) | Phase 10 execution | 2026-04-03 |
+| LobbyMember: voluntarilyLeft, disconnectedAt, disconnectPoolRemainingMs columns added (D-57) | Phase 10 execution | 2026-04-03 |
+| Lobby: refereeExclusiveConcede column added (D-84, D-92), hostDisconnectTime/disconnectForfeitAt removed (D-60) | Phase 10 execution | 2026-04-03 |
+| clientDisconnected: auto-pause drafting with isAutoPause=true, flag transfers permanent (D-08, D-34-36) | Phase 10 execution | 2026-04-03 |
+| leave_lobby active match: voluntarilyLeft=true preserves row, last-player auto-concede via performConcede (D-31) | Phase 10 execution | 2026-04-03 |
+| join_lobby reconnect extended to Equipping/Scoring/AwaitingResult with pool decrement (D-37) | Phase 10 execution | 2026-04-03 |
+| concede_match/claim_forfeit/defer_match reducers added with 3rd party referee exclusive control (D-26, D-61-63, D-81) | Phase 10 execution | 2026-04-03 |
+| lobby_gc extended for active stages: ALL members offline + 30min -> hard delete (D-47) | Phase 10 execution | 2026-04-03 |
+| ensureMatchAlive guard in all draft/equip/score reducers (D-12) | Phase 10 execution | 2026-04-03 |
 
 ---
 
-*Last updated: 2026-03-29*
-*Feature owner: Phase 9*
+*Last updated: 2026-04-03*
+*Feature owner: Phase 10*
