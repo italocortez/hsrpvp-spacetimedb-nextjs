@@ -31,10 +31,10 @@ export function generateJoinCode(ctx: any, userId: number): string {
  */
 export function ensureNotInLobby(ctx: any, userId: number): void {
     const memberships = [...ctx.db.LobbyMember.user_id.filter(userId)];
-    // Skip memberships in AwaitingResult lobbies — players are freed after match submission
+    // Skip memberships in AwaitingResult lobbies and voluntarilyLeft members
     const activeMemberships = memberships.filter((m: any) => {
         const lobby = ctx.db.Lobby.id.find(m.lobbyId);
-        return lobby && lobby.stage.tag !== 'AwaitingResult';
+        return lobby && lobby.stage.tag !== 'AwaitingResult' && !m.voluntarilyLeft;
     });
     if (activeMemberships.length > 0) {
         throw new SenderError('You are already in a lobby. Leave it before creating or joining another.');

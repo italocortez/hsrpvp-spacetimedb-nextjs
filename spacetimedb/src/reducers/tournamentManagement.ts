@@ -10,7 +10,7 @@ import { revealTournamentHistory } from '../helpers/finalizationHelpers';
 const VALID_TOURNAMENT_FORMATS = ['SingleElimination', 'DoubleElimination', 'GroupOnly', 'GroupIntoSingleElim', 'GroupIntoDoubleElim'];
 const VALID_GAME_MODES = ['MemoryOfChaos', 'ApocalypticShadow', 'AnomalyArbitration'];
 const VALID_ROSTER_VISIBILITIES = ['OpenRoster', 'ClosedWithRating', 'ClosedNoRating'];
-const VALID_DISCONNECT_POLICIES = ['Pause', 'TimerThenForfeit', 'NoAction'];
+const VALID_DISCONNECT_POLICIES = ['Standard', 'Deferred', 'NoAction'];
 
 function validateEnumTag(value: string, validTags: string[], fieldName: string): void {
     if (!validTags.includes(value)) {

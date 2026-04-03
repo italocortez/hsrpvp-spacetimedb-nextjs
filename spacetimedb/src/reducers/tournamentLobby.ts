@@ -176,13 +176,14 @@ export const create_tournament_lobby = spacetimedb.reducer(
             // Disconnect behavior inherited from tournament
             disconnectPolicy: tournament.disconnectPolicy,
             disconnectForfeitSeconds: tournament.autoForfeitEnabled ? tournament.autoForfeitMinutes * 60 : undefined,
-            disconnectForfeitAt: undefined,
 
             // Game mode from tournament
             gameMode: tournament.defaultGameMode,
 
+            // Referee exclusive concede (D-92)
+            refereeExclusiveConcede: true,
+
             // Lifecycle
-            hostDisconnectTime: undefined,
             lastActivityAt: ctx.timestamp,
             stage: { tag: 'Waiting', value: {} } as any,
 
@@ -199,6 +200,9 @@ export const create_tournament_lobby = spacetimedb.reducer(
             isReferee: true,
             isConfirmed: false,
             isCaptain: false,
+            voluntarilyLeft: false,
+            disconnectedAt: undefined,
+            disconnectPoolRemainingMs: 0,
             ...auditInsert(ctx, user.id),
         } as any);
 

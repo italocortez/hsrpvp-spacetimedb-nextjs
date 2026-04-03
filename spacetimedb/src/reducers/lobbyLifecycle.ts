@@ -124,6 +124,7 @@ export const create_lobby = spacetimedb.reducer(
             refereeCanSetCaptain: args.refereeCanSetCaptain,
             refereeCanKick: args.refereeCanKick,
             allowPlayerPause: args.allowPlayerPause,
+            refereeExclusiveConcede: true,
             tournamentId: undefined,
             bracketMatchId: undefined,
             isTournamentControlled: false,
@@ -135,9 +136,7 @@ export const create_lobby = spacetimedb.reducer(
             isPublic: args.isPublic,
             disconnectPolicy: args.disconnectPolicy,
             disconnectForfeitSeconds,
-            disconnectForfeitAt: undefined,
             gameMode: args.gameMode,
-            hostDisconnectTime: undefined,
             lastActivityAt: ctx.timestamp,
             stage: { tag: 'Waiting', value: {} },
             ...auditInsert(ctx, user.id),
@@ -152,6 +151,9 @@ export const create_lobby = spacetimedb.reducer(
             isReferee: true,
             isConfirmed: false,
             isCaptain: false,
+            voluntarilyLeft: false,
+            disconnectedAt: undefined,
+            disconnectPoolRemainingMs: 0,
             ...auditInsert(ctx, user.id),
         } as any);
 
@@ -264,6 +266,9 @@ export const join_lobby = spacetimedb.reducer(
             isReferee: false,
             isConfirmed: false,
             isCaptain: false,
+            voluntarilyLeft: false,
+            disconnectedAt: undefined,
+            disconnectPoolRemainingMs: 0,
             ...auditInsert(ctx, user.id),
         } as any);
 

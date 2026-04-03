@@ -84,7 +84,13 @@ export const MatchOutcome = t.enum('MatchOutcome', {
     BlueWins: t.unit(),
     RedWins: t.unit(),
     Draw: t.unit(),
-    Aborted: t.unit(),
+    Concede: t.unit(),
+});
+
+export const ConcedeTrigger = t.enum('ConcedeTrigger', {
+    Disconnect: t.unit(),
+    VoluntaryLeave: t.unit(),
+    RefereeDecision: t.unit(),
 });
 
 export const MatchType = t.enum('MatchType', {
@@ -143,8 +149,8 @@ export const ValidationStatus = t.enum('ValidationStatus', {
 });
 
 export const DisconnectPolicy = t.enum('DisconnectPolicy', {
-    Pause: t.unit(),
-    TimerThenForfeit: t.unit(),
+    Standard: t.unit(),
+    Deferred: t.unit(),
     NoAction: t.unit(),
 });
 

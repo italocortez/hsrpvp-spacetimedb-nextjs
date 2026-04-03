@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { MatchResultStatus, MatchType } from '../types/enums';
+import { MatchResultStatus, MatchType, MatchOutcome, ConcedeTrigger } from '../types/enums';
 
 export const matchResultColumns = {
     id: t.u32().primaryKey().autoInc(),
@@ -17,6 +17,10 @@ export const matchResultColumns = {
     redConfirmed: t.bool(),
     refereeFullControl: t.bool(),
     matchType: MatchType,
+    matchOutcome: MatchOutcome.optional(),
+    concedeTrigger: ConcedeTrigger.optional(),
+    concedeSummary: t.string().optional(),
+    concedeAtStage: t.string().optional(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

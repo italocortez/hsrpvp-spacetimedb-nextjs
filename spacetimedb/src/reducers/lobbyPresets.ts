@@ -86,6 +86,7 @@ export const create_lobby_preset = spacetimedb.reducer(
         refereeCanSetCaptain: t.bool(),
         refereeCanKick: t.bool(),
         allowPlayerPause: t.bool(),
+        refereeExclusiveConcede: t.bool(),
     },
     (ctx, args) => {
         const user = getAuthenticatedUser(ctx);
@@ -140,6 +141,7 @@ export const create_lobby_preset = spacetimedb.reducer(
             refereeCanSetCaptain: args.refereeCanSetCaptain,
             refereeCanKick: args.refereeCanKick,
             allowPlayerPause: args.allowPlayerPause,
+            refereeExclusiveConcede: args.refereeExclusiveConcede,
             ...auditInsert(ctx, user.id),
         } as any);
 
@@ -185,6 +187,7 @@ export const update_lobby_preset = spacetimedb.reducer(
         refereeCanSetCaptain: t.bool(),
         refereeCanKick: t.bool(),
         allowPlayerPause: t.bool(),
+        refereeExclusiveConcede: t.bool(),
     },
     (ctx, args) => {
         const user = getAuthenticatedUser(ctx);
@@ -240,6 +243,7 @@ export const update_lobby_preset = spacetimedb.reducer(
             refereeCanSetCaptain: args.refereeCanSetCaptain,
             refereeCanKick: args.refereeCanKick,
             allowPlayerPause: args.allowPlayerPause,
+            refereeExclusiveConcede: args.refereeExclusiveConcede,
             ...auditUpdate(ctx, preset, user.id),
         } as any);
 

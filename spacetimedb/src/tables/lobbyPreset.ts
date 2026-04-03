@@ -38,6 +38,7 @@ export const lobbyPresetColumns = {
     refereeCanSetCaptain: t.bool(),
     refereeCanKick: t.bool(),
     allowPlayerPause: t.bool(),
+    refereeExclusiveConcede: t.bool(),
 
     // Audit:
     createdById: t.u32(),

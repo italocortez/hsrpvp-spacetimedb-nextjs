@@ -44,6 +44,9 @@ export const lobbyColumns = {
     // Player pause per D-33:
     allowPlayerPause: t.bool(),
 
+    // Referee exclusive concede per D-92:
+    refereeExclusiveConcede: t.bool(),
+
     // Tournament linkage:
     tournamentId: t.u32().optional(),
     bracketMatchId: t.u32().optional(),
@@ -64,14 +67,12 @@ export const lobbyColumns = {
 
     // Disconnect behavior:
     disconnectPolicy: DisconnectPolicy,
-    disconnectForfeitSeconds: t.u32().optional(), // If disconnected for this many seconds, auto-forfeit (used with TimerThenForfeit policy)
-    disconnectForfeitAt: t.timestamp().optional(), // Set when disconnect timer starts; checked by scheduled reducer
+    disconnectForfeitSeconds: t.u32().optional(), // Grace period in seconds, default 60
 
     // Game mode:
     gameMode: GameMode,
 
     // Lifecycle:
-    hostDisconnectTime: t.timestamp().optional(),
     lastActivityAt: t.timestamp(),
     stage: LobbyStage,
 
