@@ -7,6 +7,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureLobbyMember, ensureStageIs, ensureHostOrAbove, slotTeam, slotIsCoach, slotIsSpectator, slotToTeamSide } from '../helpers/lobbyHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
 // ─── equip_lightcone ─────────────────────────────────────────────────────────
 // Records LC equip as a backend step. Deducts LC cost from team's LC budget.
@@ -27,6 +28,7 @@ export const equip_lightcone = spacetimedb.reducer(
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
         ensureStageIs(lobby, 'Equipping');
+        ensureMatchAlive(ctx, lobby);
 
         // Coach guard (D-39): coaches blocked from all draft/post-draft actions
         if (slotIsCoach(member.lobbySlot)) {
@@ -128,6 +130,7 @@ export const arrange_lineup = spacetimedb.reducer(
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
         ensureStageIs(lobby, 'Equipping');
+        ensureMatchAlive(ctx, lobby);
 
         // Coach guard (D-39)
         if (slotIsCoach(member.lobbySlot)) {
@@ -197,6 +200,7 @@ export const confirm_lineup = spacetimedb.reducer(
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
         ensureStageIs(lobby, 'Equipping');
+        ensureMatchAlive(ctx, lobby);
 
         // Coach guard (D-39)
         if (slotIsCoach(member.lobbySlot)) {
@@ -255,6 +259,7 @@ export const advance_stage = spacetimedb.reducer(
         if (!lobby) throw new SenderError('Lobby not found.');
 
         ensureHostOrAbove(ctx, lobby, user);
+        ensureMatchAlive(ctx, lobby);
 
         const currentStage = lobby.stage.tag;
 

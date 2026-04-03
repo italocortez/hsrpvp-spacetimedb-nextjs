@@ -5,6 +5,7 @@ import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { ensureLobbyMember, ensureHostOrAbove, ensureStageIs, slotTeam, slotIsCoach, slotToTeamSide } from '../helpers/lobbyHelpers';
 import { validateCharacterOwnership } from '../helpers/ownershipValidation';
 import { buildClassicSequence, buildAuctionBanSequence } from '../helpers/draftSequences';
+import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
 // ─── start_draft ──────────────────────────────────────────────────────────────
 // Initializes the draft for a lobby.
@@ -185,6 +186,19 @@ export const start_draft = spacetimedb.reducer(
             } as any);
         }
 
+        // D-10: Initialize disconnect pool for all members at match start
+        const allMembersForPool = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
+        for (const m of allMembersForPool) {
+            ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, m.userId]);
+            ctx.db.LobbyMember.insert({
+                ...m,
+                disconnectPoolRemainingMs: 300000,
+                voluntarilyLeft: false,
+                disconnectedAt: undefined,
+                ...auditUpdate(ctx, m, user.id),
+            } as any);
+        }
+
         // Transition lobby stage to Drafting
         ctx.db.Lobby.id.update({
             ...lobby,
@@ -236,6 +250,7 @@ export const pick_character = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
@@ -429,6 +444,7 @@ export const ban_character = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
@@ -565,6 +581,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         // Server-side timer validation: check that enough time has actually elapsed
         const elapsedMicros =

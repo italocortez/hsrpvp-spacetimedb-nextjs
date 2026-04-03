@@ -66,6 +66,7 @@ export default __t.row({
   refereeCanSetCaptain: __t.bool().name("referee_can_set_captain"),
   refereeCanKick: __t.bool().name("referee_can_kick"),
   allowPlayerPause: __t.bool().name("allow_player_pause"),
+  refereeExclusiveConcede: __t.bool().name("referee_exclusive_concede"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

@@ -64,4 +64,5 @@ export default {
   refereeCanSetCaptain: __t.bool(),
   refereeCanKick: __t.bool(),
   allowPlayerPause: __t.bool(),
+  refereeExclusiveConcede: __t.bool(),
 };

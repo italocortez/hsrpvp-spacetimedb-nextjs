@@ -11,9 +11,9 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
+  MatchOutcome,
   DraftMode,
   LobbyConfigSnapshot,
-  MatchOutcome,
 } from "./types";
 
 

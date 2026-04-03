@@ -2,6 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
 // ─── record_game_scores ─────────────────────────────────────────────────────
 // Records or updates per-game scores for a match result.
@@ -37,6 +38,12 @@ export const record_game_scores = spacetimedb.reducer(
         // Validate status is Pending
         if (matchResult.status.tag !== 'Pending') {
             throw new SenderError('Scores can only be recorded when the match is in Pending status.');
+        }
+
+        // D-12: Liveness guard — block scoring after concede
+        const scoreEntryLobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
+        if (scoreEntryLobby) {
+            ensureMatchAlive(ctx, scoreEntryLobby);
         }
 
         // Validate winnerTeamSide

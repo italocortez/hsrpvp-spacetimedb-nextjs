@@ -3,6 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { ensureLobbyMember, ensureStageIs, slotToTeamSide } from '../helpers/lobbyHelpers';
+import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
 // ─── undo_last_step ───────────────────────────────────────────────────────────
 // Undoes the last draft step.
@@ -27,6 +28,7 @@ export const undo_last_step = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
@@ -126,6 +128,7 @@ export const pause_draft = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
@@ -245,6 +248,7 @@ export const resume_draft = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         // Must be paused
         if (!session.timerState.isPaused) {

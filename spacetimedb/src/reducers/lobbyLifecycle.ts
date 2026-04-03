@@ -12,8 +12,12 @@ import {
     ensureStageIs,
     canKickOrBan,
     generateJoinCode,
+    slotTeam,
+    slotIsCoach,
 } from '../helpers/lobbyHelpers';
 import { hardDeleteLobby } from './lobbyGc';
+import { transferCaptain, transferReferee, transferHost } from '../helpers/flagTransferHelpers';
+import { isThirdPartyReferee } from '../helpers/disconnectHelpers';
 
 // ─── create_lobby ─────────────────────────────────────────────────────────────
 // Creates a new lobby and inserts the creator as the host/referee.
@@ -211,31 +215,65 @@ export const join_lobby = spacetimedb.reducer(
         // D-21: ban check
         ensureNotBanned(ctx, lobbyId, user.id);
 
-        // D-04: stage-specific join logic
-        if (lobby.stage.tag === 'Drafting') {
-            // Reconnect: existing offline member
-            const existingMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
-            if (existingMember) {
-                if (!existingMember.isOnline) {
-                    // Reconnect: restore online status via delete+insert (composite PK)
-                    ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
-                    ctx.db.LobbyMember.insert({
-                        ...existingMember,
-                        isOnline: true,
-                        ...auditUpdate(ctx, existingMember, user.id),
-                    } as any);
-                    ctx.db.Lobby.id.update({
-                        ...lobby,
-                        lastActivityAt: ctx.timestamp,
-                        ...auditUpdate(ctx, lobby, user.id),
-                    } as any);
-                    console.log(`[LOBBY] User #${user.id} reconnected to lobby #${lobbyId}`);
-                }
-                // Already online in drafting — no-op
-                return;
+        // D-04, D-37, D-38, D-39, D-40: stage-specific join logic with extended reconnect
+        const existingMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
+        if (existingMember) {
+            const reconnectStages = ['Drafting', 'Equipping', 'Scoring', 'AwaitingResult'];
+            if (!reconnectStages.includes(lobby.stage.tag)) {
+                throw new SenderError('Cannot rejoin this lobby in its current stage.');
             }
-            // New join during Drafting: allowed as Spectator only (falls through to insert below)
-        } else if (lobby.stage.tag !== 'Waiting') {
+            // Block reconnect if voluntarilyLeft (D-38)
+            if (existingMember.voluntarilyLeft) {
+                throw new SenderError('You voluntarily left this match and cannot rejoin.');
+            }
+            // Reconnect: set isOnline=true, clear disconnectedAt (D-39)
+            // Compute pool decrement if disconnectedAt was set
+            let newPool = existingMember.disconnectPoolRemainingMs;
+            if (existingMember.disconnectedAt && lobby.disconnectPolicy.tag !== 'NoAction') {
+                const diffMicros: bigint = BigInt(ctx.timestamp.microsSinceUnixEpoch) - BigInt(existingMember.disconnectedAt.microsSinceUnixEpoch);
+                const elapsed = Number(diffMicros / BigInt(1000));
+                newPool = Math.max(0, existingMember.disconnectPoolRemainingMs - elapsed);
+            }
+            ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
+            ctx.db.LobbyMember.insert({
+                ...existingMember,
+                isOnline: true,
+                disconnectedAt: undefined,
+                disconnectPoolRemainingMs: newPool,
+                ...auditUpdate(ctx, existingMember, user.id),
+            } as any);
+            // Auto-resume if draft was auto-paused (D-11, D-39)
+            if (lobby.stage.tag === 'Drafting') {
+                const session = ctx.db.MatchSession.lobbyId.find(lobbyId);
+                if (session && session.timerState.isPaused) {
+                    // Check if the last step was an auto-pause
+                    const lastStep = [...ctx.db.MatchSessionStep.lobby_id.filter(lobbyId)]
+                        .sort((a: any, b: any) => b.sequence - a.sequence)[0];
+                    if (lastStep?.payload?.tag === 'Pause' && lastStep.payload.value?.isAutoPause) {
+                        // Auto-resume
+                        ctx.db.MatchSession.lobbyId.update({
+                            ...session,
+                            timerState: {
+                                ...session.timerState,
+                                isPaused: false,
+                                turnStartAt: ctx.timestamp,
+                            },
+                            ...auditUpdate(ctx, session, user.id),
+                        } as any);
+                    }
+                }
+            }
+            // Update activity
+            ctx.db.Lobby.id.update({
+                ...lobby,
+                lastActivityAt: ctx.timestamp,
+                ...auditUpdate(ctx, lobby, user.id),
+            } as any);
+            console.log(`[LOBBY] User #${user.id} reconnected to lobby #${lobbyId} (stage: ${lobby.stage.tag})`);
+            return;
+        }
+        // New join: only allowed during Waiting or Drafting (as Spectator)
+        if (lobby.stage.tag !== 'Waiting' && lobby.stage.tag !== 'Drafting') {
             throw new SenderError('Cannot join a lobby in stage: ' + lobby.stage.tag);
         }
 
@@ -309,13 +347,72 @@ export const leave_lobby = spacetimedb.reducer(
         const lobbyId = args.lobbyId;
 
         // Validate membership
-        ensureLobbyMember(ctx, lobbyId, user.id);
+        const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         const lobby = ctx.db.Lobby.id.find(lobbyId);
         if (!lobby) {
             throw new SenderError('Lobby not found.');
         }
 
+        // D-29, D-30, D-31, D-32, D-33: Active match leave handling
+        const activeStages = ['Drafting', 'Equipping', 'Scoring'];
+        if (activeStages.includes(lobby.stage.tag)) {
+            // D-31: Set voluntarilyLeft=true, keep row for finalization
+            ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
+            ctx.db.LobbyMember.insert({
+                ...member,
+                voluntarilyLeft: true,
+                isOnline: false,
+                ...auditUpdate(ctx, member, user.id),
+            } as any);
+
+            // Transfer flags (D-34, D-35, D-36)
+            transferCaptain(ctx, lobbyId, user.id);
+            transferReferee(ctx, lobbyId, user.id);
+            transferHost(ctx, lobbyId, lobby, user.id);
+
+            // Check if last player on team — auto-concede (D-31)
+            // But NOT if refereeExclusiveConcede + 3rd party referee present (D-82)
+            const teamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
+                .filter((m: any) => slotTeam(m.lobbySlot) === slotTeam(member.lobbySlot)
+                    && !slotIsCoach(m.lobbySlot)
+                    && !m.voluntarilyLeft
+                    && m.userId !== user.id);
+            if (teamMembers.length === 0) {
+                const thirdPartyRef = isThirdPartyReferee(ctx, lobbyId);
+                if (lobby.refereeExclusiveConcede && thirdPartyRef) {
+                    // D-82: Blocked — referee decides
+                    console.log(`[LOBBY] Last player on team left lobby #${lobbyId}, but referee exclusive concede active. Referee decides.`);
+                } else {
+                    // Auto-concede: handled by Plan 02's concede_match. For now, leave as-is.
+                    console.log(`[LOBBY] Last player on team left lobby #${lobbyId} — auto-concede will be wired in Plan 02.`);
+                }
+            }
+
+            // D-11: system message
+            ctx.db.ChatMessage.insert({
+                id: 0,
+                lobbyId,
+                senderUserId: 0,
+                senderType: { tag: 'System', value: {} },
+                content: user.displayName + ' left the match.',
+                metadata: undefined,
+                anonymousLabel: undefined,
+                ...auditInsert(ctx, user.id),
+            } as any);
+
+            // Update activity (do NOT decrement currentPlayerCount — row is kept)
+            ctx.db.Lobby.id.update({
+                ...lobby,
+                lastActivityAt: ctx.timestamp,
+                ...auditUpdate(ctx, lobby, user.id),
+            } as any);
+
+            console.log(`[LOBBY] User #${user.id} voluntarily left active match in lobby #${lobbyId}`);
+            return;
+        }
+
+        // Waiting/AwaitingResult/Finished: normal leave path
         // Remove from lobby
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
 

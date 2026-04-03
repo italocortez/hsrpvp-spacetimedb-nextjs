@@ -12,6 +12,8 @@ import {
 import {
   MatchResultStatus,
   MatchType,
+  MatchOutcome,
+  ConcedeTrigger,
 } from "./types";
 
 
@@ -35,6 +37,14 @@ export default __t.row({
   get matchType() {
     return MatchType.name("match_type");
   },
+  get matchOutcome() {
+    return __t.option(MatchOutcome).name("match_outcome");
+  },
+  get concedeTrigger() {
+    return __t.option(ConcedeTrigger).name("concede_trigger");
+  },
+  concedeSummary: __t.option(__t.string()).name("concede_summary"),
+  concedeAtStage: __t.option(__t.string()).name("concede_at_stage"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

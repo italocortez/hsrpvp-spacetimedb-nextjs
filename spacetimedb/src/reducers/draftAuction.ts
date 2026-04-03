@@ -3,6 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { ensureLobbyMember, ensureStageIs, slotTeam, slotIsCoach, slotToTeamSide } from '../helpers/lobbyHelpers';
+import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
 // ─── Helper: Get set of characters already won via AuctionSold ──────────────
 // Auction characters are ALWAYS exclusive (D-42).
@@ -104,6 +105,7 @@ export const nominate_character = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
@@ -238,6 +240,7 @@ export const place_bid = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
@@ -362,6 +365,7 @@ export const pass_bid = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
@@ -586,6 +590,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
         }
 
         ensureStageIs(lobby, 'Drafting');
+        ensureMatchAlive(ctx, lobby);
 
         if (!session.isAuctionPhase) {
             throw new SenderError('Auction phase not active.');

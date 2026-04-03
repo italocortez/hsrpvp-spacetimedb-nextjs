@@ -243,6 +243,14 @@ export const ComparisonOperator = __t.enum("ComparisonOperator", {
 });
 export type ComparisonOperator = __Infer<typeof ComparisonOperator>;
 
+// The tagged union or sum type for the algebraic type `ConcedeTrigger`.
+export const ConcedeTrigger = __t.enum("ConcedeTrigger", {
+  Disconnect: __t.unit(),
+  VoluntaryLeave: __t.unit(),
+  RefereeDecision: __t.unit(),
+});
+export type ConcedeTrigger = __Infer<typeof ConcedeTrigger>;
+
 export const ConfirmLineupPayload = __t.object("ConfirmLineupPayload", {
   confirmed: __t.bool(),
 });
@@ -320,8 +328,8 @@ export type CostSetDraftSynergy = __Infer<typeof CostSetDraftSynergy>;
 
 // The tagged union or sum type for the algebraic type `DisconnectPolicy`.
 export const DisconnectPolicy = __t.enum("DisconnectPolicy", {
-  Pause: __t.unit(),
-  TimerThenForfeit: __t.unit(),
+  Standard: __t.unit(),
+  Deferred: __t.unit(),
   NoAction: __t.unit(),
 });
 export type DisconnectPolicy = __Infer<typeof DisconnectPolicy>;
@@ -650,6 +658,7 @@ export const Lobby = __t.object("Lobby", {
   refereeCanSetCaptain: __t.bool(),
   refereeCanKick: __t.bool(),
   allowPlayerPause: __t.bool(),
+  refereeExclusiveConcede: __t.bool(),
   tournamentId: __t.option(__t.u32()),
   bracketMatchId: __t.option(__t.u32()),
   isTournamentControlled: __t.bool(),
@@ -665,11 +674,9 @@ export const Lobby = __t.object("Lobby", {
     return DisconnectPolicy;
   },
   disconnectForfeitSeconds: __t.option(__t.u32()),
-  disconnectForfeitAt: __t.option(__t.timestamp()),
   get gameMode() {
     return GameMode;
   },
-  hostDisconnectTime: __t.option(__t.timestamp()),
   lastActivityAt: __t.timestamp(),
   get stage() {
     return LobbyStage;
@@ -742,6 +749,9 @@ export const LobbyMember = __t.object("LobbyMember", {
   isReferee: __t.bool(),
   isConfirmed: __t.bool(),
   isCaptain: __t.bool(),
+  voluntarilyLeft: __t.bool(),
+  disconnectedAt: __t.option(__t.timestamp()),
+  disconnectPoolRemainingMs: __t.u32(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -806,6 +816,7 @@ export const LobbyPreset = __t.object("LobbyPreset", {
   refereeCanSetCaptain: __t.bool(),
   refereeCanKick: __t.bool(),
   allowPlayerPause: __t.bool(),
+  refereeExclusiveConcede: __t.bool(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -839,7 +850,7 @@ export const MatchOutcome = __t.enum("MatchOutcome", {
   BlueWins: __t.unit(),
   RedWins: __t.unit(),
   Draw: __t.unit(),
-  Aborted: __t.unit(),
+  Concede: __t.unit(),
 });
 export type MatchOutcome = __Infer<typeof MatchOutcome>;
 
@@ -950,6 +961,14 @@ export const MatchResultRecord = __t.object("MatchResultRecord", {
   get matchType() {
     return MatchType;
   },
+  get matchOutcome() {
+    return __t.option(MatchOutcome);
+  },
+  get concedeTrigger() {
+    return __t.option(ConcedeTrigger);
+  },
+  concedeSummary: __t.option(__t.string()),
+  concedeAtStage: __t.option(__t.string()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),

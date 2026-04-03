@@ -54,6 +54,7 @@ export default __t.row({
   refereeCanSetCaptain: __t.bool().name("referee_can_set_captain"),
   refereeCanKick: __t.bool().name("referee_can_kick"),
   allowPlayerPause: __t.bool().name("allow_player_pause"),
+  refereeExclusiveConcede: __t.bool().name("referee_exclusive_concede"),
   tournamentId: __t.option(__t.u32()).name("tournament_id"),
   bracketMatchId: __t.option(__t.u32()).name("bracket_match_id"),
   isTournamentControlled: __t.bool().name("is_tournament_controlled"),
@@ -69,11 +70,9 @@ export default __t.row({
     return DisconnectPolicy.name("disconnect_policy");
   },
   disconnectForfeitSeconds: __t.option(__t.u32()).name("disconnect_forfeit_seconds"),
-  disconnectForfeitAt: __t.option(__t.timestamp()).name("disconnect_forfeit_at"),
   get gameMode() {
     return GameMode.name("game_mode");
   },
-  hostDisconnectTime: __t.option(__t.timestamp()).name("host_disconnect_time"),
   lastActivityAt: __t.timestamp().name("last_activity_at"),
   get stage() {
     return LobbyStage;

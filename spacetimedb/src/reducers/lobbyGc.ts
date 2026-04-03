@@ -17,6 +17,18 @@ import { ScheduleAt } from 'spacetimedb';
 //   8. Lobby row
 
 export function hardDeleteLobby(ctx: any, lobbyId: number): void {
+    // 0a. Delete MatchResult* rows (MatchResultParticipant, MatchResultGame, MatchResultRecord)
+    const matchResults = [...ctx.db.MatchResultRecord.lobby_id.filter(lobbyId)];
+    for (const mr of matchResults) {
+        for (const p of [...ctx.db.MatchResultParticipant.match_result_id.filter(mr.id)]) {
+            ctx.db.MatchResultParticipant.delete(p);
+        }
+        for (const g of [...ctx.db.MatchResultGame.match_result_id.filter(mr.id)]) {
+            ctx.db.MatchResultGame.delete(g);
+        }
+        ctx.db.MatchResultRecord.delete(mr);
+    }
+
     // 1. Delete all ChatMessage rows
     for (const msg of [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)]) {
         ctx.db.ChatMessage.id.delete(msg.id);
@@ -59,7 +71,8 @@ export function hardDeleteLobby(ctx: any, lobbyId: number): void {
 // ─── run_lobby_gc ─────────────────────────────────────────────────────────────
 // Scheduled GC reducer: safety net for abandoned lobbies idle > 30 min.
 // Cleans: Waiting (AFK lobbies) + Finished (closed/abandoned lobbies).
-// NEVER touches: Drafting, Equipping, Scoring (active match), AwaitingResult (pending validation).
+// D-47: Also cleans Drafting/Equipping/Scoring where ALL members are offline + idle > 30 min.
+// D-48: NEVER touches AwaitingResult (admin-only resolution).
 // Normal match lifecycle: finalization cascade-deletes the lobby directly.
 // GC is backup for lobbies that never reach finalization.
 // Reschedules itself every 5 minutes after each run.
@@ -70,13 +83,21 @@ export const run_lobby_gc = spacetimedb.reducer(
         const now = ctx.timestamp;
         const THIRTY_MINUTES_MICROS = BigInt(30 * 60 * 1_000_000);
 
-        // Iterate all lobbies — GC only runs on Waiting and Finished
+        // Iterate all lobbies — GC handles Waiting, Finished, and abandoned active stages
         for (const lobby of ctx.db.Lobby.iter()) {
-            // D-25: Only clean Waiting and Finished stages
-            if (lobby.stage.tag !== 'Waiting' && lobby.stage.tag !== 'Finished') {
-                continue;
+            // D-48: AwaitingResult NEVER GC'd (admin-only resolution)
+            if (lobby.stage.tag === 'AwaitingResult') continue;
+
+            // D-47: Drafting/Equipping/Scoring: ALL members offline + 30 min idle -> hard delete (void, no winner)
+            if (lobby.stage.tag === 'Drafting' || lobby.stage.tag === 'Equipping' || lobby.stage.tag === 'Scoring') {
+                // Check ALL members are offline
+                const members = [...ctx.db.LobbyMember.lobby_id.filter(lobby.id)];
+                const anyOnline = members.some((m: any) => m.isOnline && !m.voluntarilyLeft);
+                if (anyOnline) continue; // At least one active member — skip
+                // Fall through to idle time check below
             }
 
+            // D-49: Waiting + Finished: same 30-min idle rule
             // Check idle time based on lastActivityAt
             const idleTime = now.microsSinceUnixEpoch - lobby.lastActivityAt.microsSinceUnixEpoch;
             if (idleTime < THIRTY_MINUTES_MICROS) {

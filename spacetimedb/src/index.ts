@@ -1,5 +1,6 @@
 import spacetimedb from './schema';
-import { auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
+import { auditInsert, auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
+import { transferCaptain, transferReferee, transferHost } from './helpers/flagTransferHelpers';
 
 // Security views — must be imported so they register with the module
 import './views/securityViews';
@@ -64,15 +65,90 @@ spacetimedb.clientDisconnected((ctx) => {
 
   // Set isOnline = false for the disconnected user
   const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
-  if (mapping) {
-    const user = ctx.db.User.id.find(mapping.userId);
-    if (user) {
-      ctx.db.User.id.update({
-        ...user,
+  if (!mapping) return;
+  const userId = mapping.userId;
+
+  const user = ctx.db.User.id.find(userId);
+  if (user) {
+    ctx.db.User.id.update({
+      ...user,
+      isOnline: false,
+      ...auditUpdate(ctx, user, userId),
+    });
+  }
+
+  // Handle lobby member disconnect tracking (D-01, D-08, D-72, D-73)
+  const memberships = [...ctx.db.LobbyMember.user_id.filter(userId)];
+  for (const member of memberships) {
+    const lobby = ctx.db.Lobby.id.find(member.lobbyId);
+    if (!lobby) continue;
+
+    // Only process active stages (Drafting/Equipping/Scoring)
+    const stageTag = lobby.stage.tag;
+    if (stageTag !== 'Drafting' && stageTag !== 'Equipping' && stageTag !== 'Scoring') {
+      // For Waiting/AwaitingResult/Finished: just set isOnline=false
+      ctx.db.LobbyMember.by_lobby_and_user.delete([member.lobbyId, userId]);
+      ctx.db.LobbyMember.insert({
+        ...member,
         isOnline: false,
-        ...auditUpdate(ctx, user, user.id),
-      });
+        ...auditUpdate(ctx, member, SYSTEM_USER_ID),
+      } as any);
+      continue;
     }
+
+    // NoAction policy: tracking only, no pool/pause (D-23, D-25)
+    if (lobby.disconnectPolicy.tag === 'NoAction') {
+      ctx.db.LobbyMember.by_lobby_and_user.delete([member.lobbyId, userId]);
+      ctx.db.LobbyMember.insert({
+        ...member,
+        isOnline: false,
+        ...auditUpdate(ctx, member, SYSTEM_USER_ID),
+      } as any);
+      continue;
+    }
+
+    // Standard/Deferred: set disconnectedAt, isOnline=false (D-08)
+    ctx.db.LobbyMember.by_lobby_and_user.delete([member.lobbyId, userId]);
+    ctx.db.LobbyMember.insert({
+      ...member,
+      isOnline: false,
+      disconnectedAt: ctx.timestamp,
+      ...auditUpdate(ctx, member, SYSTEM_USER_ID),
+    } as any);
+
+    // Transfer captain/referee/host flags (D-34, D-35, D-36) — permanent
+    transferCaptain(ctx, member.lobbyId, userId);
+    transferReferee(ctx, member.lobbyId, userId);
+    transferHost(ctx, member.lobbyId, lobby, userId);
+
+    // Auto-pause if match session is not already paused (D-08)
+    if (stageTag === 'Drafting') {
+      const session = ctx.db.MatchSession.lobbyId.find(member.lobbyId);
+      if (session && !session.timerState.isPaused) {
+        ctx.db.MatchSessionStep.insert({
+          id: 0,
+          lobbyId: member.lobbyId,
+          sequence: session.turnIndex,
+          actorUserId: SYSTEM_USER_ID,
+          anonymousLabel: undefined,
+          actorSlot: member.lobbySlot,
+          action: { tag: 'Pause', value: {} },
+          payload: { tag: 'Pause', value: { isAutoPause: true, accumulatedPauseMs: session.timerState.accumulatedPauseMs ?? 0 } },
+          timestamp: ctx.timestamp,
+          ...auditInsert(ctx, SYSTEM_USER_ID),
+        } as any);
+        ctx.db.MatchSession.lobbyId.update({
+          ...session,
+          timerState: {
+            ...session.timerState,
+            isPaused: true,
+          },
+          ...auditUpdate(ctx, session, SYSTEM_USER_ID),
+        } as any);
+      }
+    }
+
+    console.log(`[DISCONNECT] User #${userId} disconnected from lobby #${member.lobbyId} (stage: ${stageTag})`);
   }
 });
 
