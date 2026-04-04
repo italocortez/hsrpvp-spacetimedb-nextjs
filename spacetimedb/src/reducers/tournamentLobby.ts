@@ -54,22 +54,14 @@ export const create_tournament_lobby = spacetimedb.reducer(
         }
 
         if (!isAuthorized) {
-            // Check if user is a participant in one of the bracket match's teams
+            // Check if user is a member of one of the bracket match's teams via TournamentTeamMember (D-20)
             const team1Id = bracketMatch.team1Id;
             const team2Id = bracketMatch.team2Id;
 
-            if (team1Id !== undefined && team1Id !== null) {
-                const team1Participants = [...ctx.db.TournamentParticipant.tournament_id.filter(bracketMatch.tournamentId)]
-                    .filter((p: any) => p.teamGroupId === team1Id && p.userId === user.id);
-                if (team1Participants.length > 0) {
-                    isAuthorized = true;
-                }
-            }
-
-            if (!isAuthorized && team2Id !== undefined && team2Id !== null) {
-                const team2Participants = [...ctx.db.TournamentParticipant.tournament_id.filter(bracketMatch.tournamentId)]
-                    .filter((p: any) => p.teamGroupId === team2Id && p.userId === user.id);
-                if (team2Participants.length > 0) {
+            const userTtm = [...ctx.db.TournamentTeamMember.by_tournament_and_user.filter([bracketMatch.tournamentId, user.id])][0];
+            if (userTtm) {
+                if ((team1Id !== undefined && team1Id !== null && userTtm.teamId === team1Id) ||
+                    (team2Id !== undefined && team2Id !== null && userTtm.teamId === team2Id)) {
                     isAuthorized = true;
                 }
             }

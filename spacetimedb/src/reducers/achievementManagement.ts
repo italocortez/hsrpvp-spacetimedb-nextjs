@@ -259,11 +259,11 @@ export const manual_award_achievement = spacetimedb.reducer(
         if (isRoleAtLeast(caller.role, 'Moderator')) {
             // Admin/Moderator — unrestricted
         } else if (isRoleAtLeast(caller.role, 'TournamentHost')) {
-            // TournamentHost — restricted to own tournament participants
+            // TournamentHost — restricted to own tournament participants (TournamentEnrolled)
             // Uses Tournament.organizer_id btree index (NOT hostUserId — the field is organizerId)
             const callerTournaments = [...ctx.db.Tournament.organizer_id.filter(caller.id)];
             const isParticipant = callerTournaments.some(
-                (tournament: any) => [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournament.id, targetUserId])].length > 0
+                (tournament: any) => [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([tournament.id, targetUserId])].length > 0
             );
             if (!isParticipant) {
                 throw new SenderError('Forbidden: Target user is not a participant in your tournaments.');

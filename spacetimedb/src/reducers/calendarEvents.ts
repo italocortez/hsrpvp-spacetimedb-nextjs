@@ -77,26 +77,30 @@ export const create_calendar_event = spacetimedb.reducer(
             linkedBracketMatchId = bracketMatchId;
 
             // Auto-invite bracket match participants (D-17, D-18)
-            const allParticipants = [...ctx.db.TournamentParticipant.tournament_id.filter(bracketMatch.tournamentId)];
-            const team1Participants = bracketMatch.team1Id !== undefined
-                ? allParticipants.filter((p: any) =>
-                    p.teamGroupId === bracketMatch.team1Id &&
-                    p.status.tag !== 'Withdrawn' &&
-                    p.status.tag !== 'Disqualified'
-                )
-                : [];
-            const team2Participants = bracketMatch.team2Id !== undefined
-                ? allParticipants.filter((p: any) =>
-                    p.teamGroupId === bracketMatch.team2Id &&
-                    p.status.tag !== 'Withdrawn' &&
-                    p.status.tag !== 'Disqualified'
-                )
-                : [];
+            // Use TournamentTeamMember.team_id to find team members (D-20)
+            const team1MemberIds: number[] = [];
+            const team2MemberIds: number[] = [];
 
-            autoInviteeIds = [
-                ...team1Participants.map((p: any) => p.userId),
-                ...team2Participants.map((p: any) => p.userId),
-            ];
+            if (bracketMatch.team1Id !== undefined) {
+                const team1Members = [...ctx.db.TournamentTeamMember.team_id.filter(bracketMatch.team1Id)];
+                for (const m of team1Members) {
+                    // Check enrolled status is not Withdrawn/Disqualified
+                    const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([bracketMatch.tournamentId, m.userId])][0];
+                    if (!enrolled || enrolled.status.tag === 'Withdrawn' || enrolled.status.tag === 'Disqualified') continue;
+                    team1MemberIds.push(m.userId);
+                }
+            }
+
+            if (bracketMatch.team2Id !== undefined) {
+                const team2Members = [...ctx.db.TournamentTeamMember.team_id.filter(bracketMatch.team2Id)];
+                for (const m of team2Members) {
+                    const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([bracketMatch.tournamentId, m.userId])][0];
+                    if (!enrolled || enrolled.status.tag === 'Withdrawn' || enrolled.status.tag === 'Disqualified') continue;
+                    team2MemberIds.push(m.userId);
+                }
+            }
+
+            autoInviteeIds = [...team1MemberIds, ...team2MemberIds];
             autoInviteCount = autoInviteeIds.length;
         }
 

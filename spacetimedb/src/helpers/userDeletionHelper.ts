@@ -16,7 +16,7 @@ function any(iter: Iterable<any>): boolean {
  *
  * Tables checked (HIGH risk — user-facing display breaks if User row is gone):
  *   MatchResultParticipant, MmrHistory, PlayerStat, PlayerCharacterStat,
- *   PlayerRelationship, Leaderboard, TournamentParticipant, UserAchievement
+ *   PlayerRelationship, Leaderboard, TournamentEnrolled, UserAchievement
  */
 export function hasHistoryReferences(ctx: any, userId: number): boolean {
     return any(ctx.db.MatchResultParticipant.user_id.filter(userId))
@@ -25,7 +25,7 @@ export function hasHistoryReferences(ctx: any, userId: number): boolean {
         || any(ctx.db.PlayerCharacterStat.by_user.filter(userId))
         || any(ctx.db.PlayerRelationship.by_user.filter(userId))
         || any(ctx.db.Leaderboard.by_user.filter(userId))
-        || any(ctx.db.TournamentParticipant.user_id.filter(userId))
+        || any(ctx.db.TournamentEnrolled.user_id.filter(userId))
         || any(ctx.db.UserAchievement.by_user.filter(userId));
 }
 
