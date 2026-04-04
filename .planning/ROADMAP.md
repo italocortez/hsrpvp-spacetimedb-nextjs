@@ -269,11 +269,11 @@ Plans:
   5. check_in_tournament reducer works; advance to InProgress sets Active status; bracket loss sets Eliminated status
   6. tournamentId removed from MatchResultRecord (derived from bracketMatch); lobbyId removed from BracketMatch (navigate via Lobby.bracketMatchId)
   7. All tests pass, module published to maincloud, bindings generated, docs updated
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 
 Plans:
 - [x] 10.1-01-PLAN.md — Schema foundation: enum changes (MatchEndReason, LobbyStage +BetweenGames/Shelved, TournamentStage +CheckIn), table renames (GroupPhaseRecord), new tables (TournamentEnrolled, TournamentTeamMember), column changes (winnerTeamSide, matchEndReason, bestOf, series tracking, gameNumber), column removals (tournamentId from MatchResultRecord, lobbyId from BracketMatch), schema.ts registration
-- [ ] 10.1-02-PLAN.md — Finalization pipeline + bracket system migration: winnerTeamSide in 6+ pipeline steps, matchEndReason, tournamentId derivation, GroupPhaseRecord rename, TournamentTeamMember, Eliminated status wiring
+- [x] 10.1-02-PLAN.md — Finalization pipeline + bracket system migration: winnerTeamSide in 6+ pipeline steps, matchEndReason, tournamentId derivation, GroupPhaseRecord rename, TournamentTeamMember, Eliminated status wiring
 - [x] 10.1-03-PLAN.md — Tournament rewiring: TournamentEnrolled + TournamentTeamMember across registration, teams, admin, helpers, lobby, calendar, deletion (14 source files), captain-transfer helper, DQ lobby-aware handling
 - [x] 10.1-04-PLAN.md — Match reducer migration: concede, admin tools, submit, draft, finalization MMR — winnerTeamSide, matchEndReason, tournamentId removal, series column initialization, process_tournament_mmr query rewrite
 - [ ] 10.1-05-PLAN.md — New features: series management reducers (advance/shelve/resume), GC Shelved/BetweenGames extensions, concede in BetweenGames, check-in reducer, tournament stage transitions (CheckIn, Active), bestOf wiring, post-draft series logic
@@ -318,5 +318,5 @@ Note: Phase 10.2 merged into Phase 10.1 — execution order updated.
 | 8. Calendar and Scheduling | 2/2 | Complete   | 2026-03-28 |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 7/9 | In Progress|  |
 | 10. Disconnect Handling and Cost Parity | 2/2 | Complete   | 2026-04-03 |
-| 10.1. Match Schema Rework (incl. 10.2) | 3/6 | In Progress|  |
+| 10.1. Match Schema Rework (incl. 10.2) | 4/6 | In Progress|  |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
