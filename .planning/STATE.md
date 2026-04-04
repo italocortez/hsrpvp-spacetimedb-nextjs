@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 10.1
 current_plan: 1
 status: executing
-last_updated: "2026-04-04T02:37:38.178Z"
+last_updated: "2026-04-04T02:38:19.736Z"
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 43
-  completed_plans: 39
+  completed_plans: 40
 ---
 
 # Session State
@@ -124,6 +124,8 @@ See: .planning/PROJECT.md
 - [Phase 10.1]: TournamentTeamMember includes tournamentId + by_tournament_and_user index for direct per-tournament membership queries
 - [Phase 10.1]: submit_match_result param renamed winnerId; converts to winnerTeamSide via MatchResultParticipant.teamSide lookup
 - [Phase 10.1]: process_tournament_mmr uses two-step query: BracketMatch.tournament_id.filter then MatchResultRecord.bracket_match_id.filter (replaces direct MatchResultRecord.tournament_id index)
+- [Phase 10.1]: register_for_tournament no longer takes teamGroupId arg — enrollment and team assignment fully decoupled; clients must call create_tournament_team/request_join_team after registering
+- [Phase 10.1]: override_match_result signature change: winnerId u32 replaced with winnerTeamSideTag string (Blue/Red/'' for draw) — breaking change for existing client calls
 
 ### Quick Tasks Completed
 
