@@ -105,7 +105,7 @@ describe('Group-to-Elimination Advancement', () => {
                 maxParticipants: 16,
                 rosterVisibility: 'OpenRoster',
                 isAnonymousDefault: false,
-                disconnectPolicy: 'Pause',
+                disconnectPolicy: 'Deferred',
                 costSetId: 0,
                 defaultBestOf: 1,
                 groupSize: 4,
@@ -176,7 +176,7 @@ describe('Group-to-Elimination Advancement', () => {
                 maxParticipants: 16,
                 rosterVisibility: 'OpenRoster',
                 isAnonymousDefault: false,
-                disconnectPolicy: 'Pause',
+                disconnectPolicy: 'Deferred',
                 costSetId: 0,
                 defaultBestOf: 1,
                 groupSize: 3, // 6 teams / 3 per group = 2 groups

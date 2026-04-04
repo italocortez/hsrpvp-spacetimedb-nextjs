@@ -49,7 +49,7 @@ function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
         requireOwnership: false,
         costSetId: 0,
-        disconnectPolicy: { tag: 'Pause' as const, value: {} },
+        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
         disconnectForfeitSeconds: 0,
         allowMirrorPicks: true,
         autoRandomPick: false,

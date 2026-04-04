@@ -50,7 +50,7 @@ function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
         requireOwnership: false,
         costSetId: 0,
-        disconnectPolicy: { tag: 'Pause' as const, value: {} },
+        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
         disconnectForfeitSeconds: 0,
         allowMirrorPicks: true,
         autoRandomPick: false,
@@ -459,17 +459,20 @@ describe('Post-Draft (Equipping + Scoring)', () => {
 
     // ─── advance_stage: Scoring blocked ──────────────────────────────────
 
-    describe('advance_stage: Scoring blocked', () => {
-        it('host blocked from advancing beyond Scoring via advance_stage', async () => {
+    describe('advance_stage: Scoring advances to AwaitingResult (bestOf=1)', () => {
+        it('advance_stage from Scoring transitions to AwaitingResult for bestOf=1', async () => {
             // Lobby should now be in Scoring from the previous describe block
             const lobby = [...host.conn.db.Lobby.iter()].find(l => l.id === lobbyId);
             expect(lobby).toBeDefined();
             expect(lobby!.stage.tag).toBe('Scoring');
 
-            const err = await expectReducerError(
-                host.call.advanceStage({ lobbyId })
-            );
-            expect(err).toContain('Use finalize_match_result to transition from Scoring to Finished.');
+            // Phase 10.1: advance_stage from Scoring now succeeds for bestOf=1
+            // Routes to AwaitingResult (series won or single game)
+            await host.call.advanceStage({ lobbyId });
+            await host.sync(1000);
+
+            const updated = [...host.conn.db.Lobby.iter()].find(l => l.id === lobbyId);
+            expect(updated!.stage.tag).toBe('AwaitingResult');
         });
     });
 

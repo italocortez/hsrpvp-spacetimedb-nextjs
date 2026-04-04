@@ -38,13 +38,14 @@ function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         isAnonymousPlayers: false, isAnonymousSpectators: false,
         rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
         requireOwnership: false, costSetId: 0,
-        disconnectPolicy: { tag: 'Pause' as const, value: {} },
+        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
         disconnectForfeitSeconds: 0,
         allowMirrorPicks: true, autoRandomPick: false,
         refereeCanUndo: true, refereeCanPause: true,
         refereeCanSetCaptain: true, refereeCanKick: true,
         allowPlayerPause: true,
         teamBlueAlias: 'Blue', teamRedAlias: 'Red',
+        bestOf: 1, refereeControlsShelving: false,
         ...overrides,
     };
 }
@@ -221,6 +222,11 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
         await outsider.sync();
 
         await promoteToRole(admin, 'Admin');
+        await admin.sync(1000);
+
+        // Seed EloConfig if not present (required for Ranked finalization)
+        try { await admin.call.adminSeedEloConfig({}); } catch { /* already exists */ }
+        await admin.sync(500);
     }, 60000);
 
     afterAll(async () => {

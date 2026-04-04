@@ -84,6 +84,23 @@ describe('ensureMatchAlive', () => {
         const lobby = { id: 1, stage: { tag: 'Drafting' } };
         expect(() => ensureMatchAlive(ctx, lobby)).toThrow('Match has been conceded.');
     });
+
+    // Phase 10.1: matchEndReason edge cases (D-31, D-32)
+    it('passes when matchEndReason is Completed (not concede)', () => {
+        const ctx = mockCtx({
+            matchResults: [{ lobbyId: 1, matchEndReason: { tag: 'Completed' } }],
+        });
+        const lobby = { id: 1, stage: { tag: 'Drafting' } };
+        expect(() => ensureMatchAlive(ctx, lobby)).not.toThrow();
+    });
+
+    it('passes when matchResult exists but matchEndReason is undefined', () => {
+        const ctx = mockCtx({
+            matchResults: [{ lobbyId: 1, matchEndReason: undefined }],
+        });
+        const lobby = { id: 1, stage: { tag: 'Drafting' } };
+        expect(() => ensureMatchAlive(ctx, lobby)).not.toThrow();
+    });
 });
 
 // ── buildConcedeSummary ───────────────────────────────────────────────────────

@@ -61,7 +61,7 @@ function createTournamentArgs(overrides: Record<string, unknown> = {}) {
         maxParticipants: 8,
         rosterVisibility: 'OpenRoster',
         isAnonymousDefault: false,
-        disconnectPolicy: 'Pause',
+        disconnectPolicy: 'Deferred',
         costSetId: 0,
         defaultBestOf: 1,
         groupSize: 4,

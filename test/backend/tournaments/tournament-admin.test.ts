@@ -88,7 +88,7 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,

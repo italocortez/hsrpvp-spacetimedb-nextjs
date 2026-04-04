@@ -171,7 +171,7 @@ describe('Concede / Forfeit / Defer', () => {
                 const err = await expectReducerError(
                     blue.call.concedeMatch({ lobbyId: lobby.id, losingTeamSide: 0 })
                 );
-                expect(err).toContain('only available during Drafting, Equipping, or Scoring');
+                expect(err).toContain('only available during Drafting, Equipping, Scoring, or BetweenGames');
             } finally {
                 await host.disconnect();
                 await blue.disconnect();

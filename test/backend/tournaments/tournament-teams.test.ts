@@ -88,7 +88,7 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -232,59 +232,61 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     expect(memberAfter).toBeUndefined();
   });
 
-  // ── Captain leave -> rejected ──
-  it('captain leave -> rejected', async () => {
+  // ── Captain leave -> captain transfers (Phase 10.1: D-22) ──
+  it('captain leave -> captain transfers to remaining member', async () => {
+    // After previous tests: player1 left, player2 was rejected (never joined).
+    // Team has only host (captain). Add player2 so transfer has a target.
     const team = teamsInTournament(host, tournamentId).find(t => t.captainUserId === host.userId);
     expect(team).toBeDefined();
     const teamId = team!.id;
 
-    const msg = await expectReducerError(
-      host.call.leaveTournamentTeam({ teamId })
-    );
-    expect(msg.toLowerCase()).toMatch(/captain|disband/);
-  });
+    await player2.call.requestJoinTeam({ teamId });
+    await player2.sync();
+    await host.sync();
+    await host.call.acceptTeamRequest({ teamId, userId: player2.userId });
+    await host.sync(1000);
+    await player2.sync(1000);
+
+    // Now team has host (captain) + player2. Captain leaves → transfer to player2.
+    await host.call.leaveTournamentTeam({ teamId });
+    await host.sync(1500);
+    await player2.sync(1500);
+
+    // Host's TournamentTeamMember should be removed
+    const hostMemberAfter = teamMemberFor(host, tournamentId, host.userId);
+    expect(hostMemberAfter).toBeUndefined();
+
+    // Team survives with player2 as new captain
+    const teamAfter = teamsInTournament(player2, tournamentId).find(t => t.id === teamId);
+    expect(teamAfter).toBeDefined();
+    expect(teamAfter!.captainUserId).toBe(player2.userId);
+  }, 30000);
 
   // ── Disband team ──
   it('disband team -> team deleted, members TournamentTeamMember removed', async () => {
-    // First, re-add player1 to the team so we have a member to check
-    const team = teamsInTournament(host, tournamentId).find(t => t.captainUserId === host.userId);
+    // player2 is now captain (from previous test — host left, captain transferred to player2)
+    const team = teamsInTournament(player2, tournamentId).find(t => t.captainUserId === player2.userId);
     expect(team).toBeDefined();
     const teamId = team!.id;
 
-    // Player1 requests again and captain accepts
-    await player1.call.requestJoinTeam({ teamId });
-    await player1.sync();
-    await host.sync();
-    await host.call.acceptTeamRequest({ teamId, userId: player1.userId });
-    await host.sync();
-    await player1.sync();
-
-    // Verify player1 has TournamentTeamMember set
-    const memberBefore = teamMemberFor(player1, tournamentId, player1.userId);
-    expect(memberBefore).toBeDefined();
-
-    // Disband
-    await host.call.disbandTournamentTeam({ teamId });
-    await host.sync();
-    await player1.sync();
+    // Disband (player2 is the solo remaining member and captain)
+    await player2.call.disbandTournamentTeam({ teamId });
+    await player2.sync();
 
     // Team should be gone
-    const teamAfter = teamsInTournament(host, tournamentId).find(t => t.id === teamId);
+    const teamAfter = teamsInTournament(player2, tournamentId).find(t => t.id === teamId);
     expect(teamAfter).toBeUndefined();
 
-    // Captain's TournamentTeamMember should be removed
-    const captainMemberAfter = teamMemberFor(host, tournamentId, host.userId);
-    expect(captainMemberAfter).toBeUndefined();
-
-    // Player1's TournamentTeamMember should be removed
-    const p1MemberAfter = teamMemberFor(player1, tournamentId, player1.userId);
-    expect(p1MemberAfter).toBeUndefined();
+    // player2's TournamentTeamMember should be removed
+    const p2MemberAfter = teamMemberFor(player2, tournamentId, player2.userId);
+    expect(p2MemberAfter).toBeUndefined();
   });
 
-  // ── Captain withdrawal auto-disbands team ──
-  it('captain withdrawal auto-disbands team and removes members', async () => {
-    // Create a fresh team (previous was disbanded)
-    await host.call.createTournamentTeam({ tournamentId, teamName: 'AutoDisband Squad' });
+  // ── Captain withdrawal transfers captaincy (Phase 10.1: D-21, D-22) ──
+  it('captain withdrawal transfers captaincy, team survives', async () => {
+    // Host left team in earlier test — re-create a fresh team
+    // Host is still enrolled (left team, not tournament). Create new team.
+    await host.call.createTournamentTeam({ tournamentId, teamName: 'Transfer Squad' });
     await host.sync();
 
     const team = teamsInTournament(host, tournamentId).find(t => t.captainUserId === host.userId);
@@ -309,13 +311,18 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     await host.sync();
     await player1.sync();
 
-    // Team should be deleted
-    const teamAfter = teamsInTournament(host, tournamentId).find(t => t.id === teamId);
-    expect(teamAfter).toBeUndefined();
+    // Phase 10.1: Team survives — captain transferred to player1 (lowest remaining userId)
+    const teamAfter = teamsInTournament(player1, tournamentId).find(t => t.id === teamId);
+    expect(teamAfter).toBeDefined();
+    expect(teamAfter!.captainUserId).toBe(player1.userId);
 
-    // Player1's TournamentTeamMember should be removed
+    // Host's TournamentTeamMember should be removed
+    const hostMemberAfter = teamMemberFor(host, tournamentId, host.userId);
+    expect(hostMemberAfter).toBeUndefined();
+
+    // Player1's TournamentTeamMember should still exist
     const p1MemberAfter = teamMemberFor(player1, tournamentId, player1.userId);
-    expect(p1MemberAfter).toBeUndefined();
+    expect(p1MemberAfter).toBeDefined();
 
     // Host enrollment status should be Withdrawn
     const hostEnrolled = enrolledFor(host, tournamentId, host.userId);
@@ -328,8 +335,14 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     // Need 2 captains + 1 player. Player2 creates team B, a new player creates team C.
     // player1 requests both, captain of B accepts -> player1's request to C is deleted.
 
-    // Re-register player2 as a fresh participant (they never registered)
     // player2 is already registered from beforeAll
+
+    // Player1 may still be on a team from the captain-transfer test — leave it first
+    const existingMember = teamMemberFor(player1, tournamentId, player1.userId);
+    if (existingMember) {
+      await player1.call.leaveTournamentTeam({ teamId: existingMember.teamId });
+      await player1.sync();
+    }
 
     // Create Team B (player2 is captain)
     await player2.call.createTournamentTeam({ tournamentId, teamName: 'Team Bravo' });
@@ -337,11 +350,6 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
 
     const teamB = teamsInTournament(player2, tournamentId).find(t => t.captainUserId === player2.userId);
     expect(teamB).toBeDefined();
-
-    // We need another team. Re-register host first (they withdrew in previous test).
-    // Host is withdrawn, can't create a team. Use player1 to create Team C instead.
-    // Actually player1 is not a captain. Let's just verify with one team.
-    // Simpler: player1 requests Team B. We check no other requests exist after accept.
 
     // Player1 requests Team B
     await player1.call.requestJoinTeam({ teamId: teamB!.id });

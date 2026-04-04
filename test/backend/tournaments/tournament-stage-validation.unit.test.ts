@@ -89,4 +89,25 @@ describe('validateStageTransition', () => {
         // Cancelled is not in STAGE_ORDER, so currentIdx = -1 → "Invalid stage"
         expect(() => validateStageTransition('Cancelled', 'Registration')).toThrow();
     });
+
+    // ── Phase 10.1: CheckIn stage transitions (D-35, D-37) ──
+    it('Registration → CheckIn: valid', () => {
+        expect(() => validateStageTransition('Registration', 'CheckIn')).not.toThrow();
+    });
+
+    it('CheckIn → Seeding: valid', () => {
+        expect(() => validateStageTransition('CheckIn', 'Seeding')).not.toThrow();
+    });
+
+    it('Registration → Seeding: valid (skip CheckIn allowed per D-37)', () => {
+        expect(() => validateStageTransition('Registration', 'Seeding')).not.toThrow();
+    });
+
+    it('Draft → CheckIn: rejected (skip not allowed)', () => {
+        expect(() => validateStageTransition('Draft', 'CheckIn')).toThrow(/skip/i);
+    });
+
+    it('CheckIn → InProgress: rejected (skip Seeding not allowed)', () => {
+        expect(() => validateStageTransition('CheckIn', 'InProgress')).toThrow(/skip/i);
+    });
 });

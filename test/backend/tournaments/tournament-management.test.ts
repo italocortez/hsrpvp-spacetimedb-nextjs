@@ -52,7 +52,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -87,7 +87,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       description: 'Updated description',
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 5,
       groupSize: 4,
@@ -124,7 +124,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       description: 'Updated in registration',
       rosterVisibility: 'ClosedWithRating',
       isAnonymousDefault: true,
-      disconnectPolicy: 'TimerThenForfeit',
+      disconnectPolicy: 'Standard',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -145,7 +145,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
     expect(t!.name).toBe('Reg Update');
     expect(t!.rosterVisibility.tag).toBe('ClosedWithRating');
     expect(t!.isAnonymousDefault).toBe(true);
-    expect(t!.disconnectPolicy.tag).toBe('TimerThenForfeit');
+    expect(t!.disconnectPolicy.tag).toBe('Standard');
   });
 
   // ── Reject update on Cancelled tournament ──
@@ -161,7 +161,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -192,7 +192,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
         description: 'Should not work',
         rosterVisibility: 'OpenRoster',
         isAnonymousDefault: false,
-        disconnectPolicy: 'Pause',
+        disconnectPolicy: 'Deferred',
         costSetId: 0,
         defaultBestOf: 3,
         groupSize: 4,
