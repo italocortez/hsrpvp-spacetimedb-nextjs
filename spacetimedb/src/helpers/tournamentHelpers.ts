@@ -1,5 +1,6 @@
 import { SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from './ensurePermissions';
+import { auditUpdate } from './auditColumns';
 import { deleteCalendarEventsForTournament } from './calendarCascade';
 
 // Forward-only stage order (Cancelled is handled separately as a terminal transition)
@@ -68,12 +69,38 @@ export function cleanupTeamRequests(ctx: any, tournamentId: number): void {
 }
 
 /**
+ * Transfers captain role within a TournamentTeam to the next lowest userId member
+ * (excluding the leaving/DQ'd user). Deterministic: lowest userId wins.
+ *
+ * Returns true if captain was transferred, false if no other members exist.
+ * When false, the caller is responsible for destroying the team if appropriate.
+ */
+export function transferTournamentCaptain(ctx: any, teamId: number, leavingUserId: number, actingUserId: number): boolean {
+    const team = ctx.db.TournamentTeam.id.find(teamId);
+    if (!team || team.captainUserId !== leavingUserId) return false; // not captain
+
+    const otherMembers = [...ctx.db.TournamentTeamMember.team_id.filter(teamId)]
+        .filter((m: any) => m.userId !== leavingUserId)
+        .sort((a: any, b: any) => a.userId - b.userId); // deterministic: lowest userId
+
+    if (otherMembers.length > 0) {
+        ctx.db.TournamentTeam.id.update({
+            ...team,
+            captainUserId: otherMembers[0].userId,
+            ...auditUpdate(ctx, team, actingUserId),
+        } as any);
+        return true; // captain transferred
+    }
+    return false; // no one to transfer to
+}
+
+/**
  * Cascade-deletes all tournament-scoped infrastructure rows on cancellation.
- * Preserves: TournamentParticipant (audit trail), MatchResultRecord (player history).
- * Deletes: TournamentTeamRequest, TournamentTeam, TournamentAssistant,
+ * Preserves: TournamentEnrolled (audit trail), MatchResultRecord (player history).
+ * Deletes: TournamentTeamRequest, TournamentTeamMember, TournamentTeam, TournamentAssistant,
  *          BracketMatch, GroupStanding, TournamentPlayerAccount.
  *
- * Order: requests → standings → bracket → player accounts → teams → assistants
+ * Order: requests → standings → calendar → bracket → player accounts → team members → teams → assistants
  * (child rows before parents to avoid referencing deleted data mid-transaction)
  */
 export function cascadeCleanupTournament(ctx: any, tournamentId: number): void {
@@ -95,53 +122,29 @@ export function cascadeCleanupTournament(ctx: any, tournamentId: number): void {
     }
 
     // 5. Tournament player accounts (locked roster snapshots)
-    const participants = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)];
-    for (const p of participants) {
-        for (const tpa of [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, p.userId])]) {
+    const enrolledRows = [...ctx.db.TournamentEnrolled.tournament_id.filter(tournamentId)];
+    for (const e of enrolledRows) {
+        for (const tpa of [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, e.userId])]) {
             ctx.db.TournamentPlayerAccount.delete(tpa);
         }
     }
 
-    // 6. Tournament teams
+    // 6. TournamentTeamMember rows — delete before TournamentTeam (child before parent)
+    for (const team of [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)]) {
+        for (const member of [...ctx.db.TournamentTeamMember.team_id.filter(team.id)]) {
+            ctx.db.TournamentTeamMember.delete(member);
+        }
+    }
+
+    // 7. Tournament teams
     for (const team of [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)]) {
         ctx.db.TournamentTeam.id.delete(team.id);
     }
 
-    // 7. Tournament assistants
+    // 8. Tournament assistants
     for (const assistant of [...ctx.db.TournamentAssistant.tournament_id.filter(tournamentId)]) {
         ctx.db.TournamentAssistant.delete(assistant);
     }
-}
-
-/**
- * Disbands a captain's team during withdrawal.
- * Resets all members' teamGroupId, deletes pending requests, deletes team row.
- */
-export function disbandTeamForWithdrawal(ctx: any, tournamentId: number, captainUserId: number, modifiedById: number): void {
-    const team = [...ctx.db.TournamentTeam.captain_user_id.filter(captainUserId)]
-        .find((t: any) => t.tournamentId === tournamentId);
-    if (!team) return;
-
-    // Reset all members' teamGroupId
-    const members = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)]
-        .filter((p: any) => p.teamGroupId === team.id);
-    for (const member of members) {
-        ctx.db.TournamentParticipant.delete(member);
-        ctx.db.TournamentParticipant.insert({
-            ...member,
-            teamGroupId: undefined,
-            lastModifiedById: modifiedById,
-            lastModifiedDate: ctx.timestamp,
-        } as any);
-    }
-
-    // Delete pending requests for this team
-    for (const req of [...ctx.db.TournamentTeamRequest.team_id.filter(team.id)]) {
-        ctx.db.TournamentTeamRequest.delete(req);
-    }
-
-    // Delete team row
-    ctx.db.TournamentTeam.id.delete(team.id);
 }
 
 /**
@@ -153,31 +156,25 @@ export function validateRegistrationToSeeding(ctx: any, tournamentId: number): v
     const tournament = ctx.db.Tournament.id.find(tournamentId);
     if (!tournament) throw new SenderError('Tournament not found.');
 
-    const allParticipants = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)];
-    const activeParticipants = allParticipants.filter((p: any) =>
+    const allEnrolled = [...ctx.db.TournamentEnrolled.tournament_id.filter(tournamentId)];
+    const activeEnrolled = allEnrolled.filter((p: any) =>
         p.status.tag !== 'Withdrawn' &&
         p.status.tag !== 'Disqualified' &&
         !p.isWaitlisted
     );
 
-    if (activeParticipants.length < 2) {
+    if (activeEnrolled.length < 2) {
         throw new SenderError('At least 2 active participants are required to advance to Seeding.');
     }
 
     // For team tournaments, check for at least 2 complete teams
     if (tournament.teamSize > 1) {
-        // Count members per teamGroupId
-        const teamMemberCounts = new Map<number, number>();
-        for (const p of activeParticipants) {
-            if (p.teamGroupId !== undefined && p.teamGroupId !== null) {
-                const count = teamMemberCounts.get(p.teamGroupId) ?? 0;
-                teamMemberCounts.set(p.teamGroupId, count + 1);
-            }
-        }
-        // Count complete teams (member count >= teamSize)
+        // Count members per team via TournamentTeamMember
+        const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)];
         let completeTeams = 0;
-        for (const [, count] of teamMemberCounts) {
-            if (count >= tournament.teamSize) completeTeams++;
+        for (const team of teams) {
+            const memberCount = [...ctx.db.TournamentTeamMember.team_id.filter(team.id)].length;
+            if (memberCount >= tournament.teamSize) completeTeams++;
         }
         if (completeTeams < 2) {
             throw new SenderError('At least 2 complete teams are required to advance to Seeding.');
