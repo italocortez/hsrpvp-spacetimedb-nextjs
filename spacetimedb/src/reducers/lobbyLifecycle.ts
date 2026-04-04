@@ -66,6 +66,8 @@ export const create_lobby = spacetimedb.reducer(
         allowPlayerPause: t.bool(),
         teamBlueAlias: t.string(),
         teamRedAlias: t.string(),
+        bestOf: t.u8(),                  // D-11: best-of-N series. 0 = sentinel for default (1).
+        refereeControlsShelving: t.bool(), // D-06: when true + 3rd party referee present, only referee controls shelve/continue.
     },
     (ctx, args) => {
         const user = getAuthenticatedUser(ctx);
@@ -143,6 +145,10 @@ export const create_lobby = spacetimedb.reducer(
             disconnectPolicy: args.disconnectPolicy,
             disconnectForfeitSeconds,
             gameMode: args.gameMode,
+            // D-11: bestOf 0 is sentinel for default (1)
+            bestOf: args.bestOf > 0 ? args.bestOf : 1,
+            // D-06: refereeControlsShelving default true per plan
+            refereeControlsShelving: args.refereeControlsShelving,
             lastActivityAt: ctx.timestamp,
             stage: { tag: 'Waiting', value: {} },
             ...auditInsert(ctx, user.id),

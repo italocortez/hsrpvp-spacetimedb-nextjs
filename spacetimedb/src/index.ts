@@ -17,6 +17,7 @@ export { create_hsr_account, update_hsr_account, set_active_hsr_account, delete_
 export { admin_create_hsr_account, admin_update_hsr_account, admin_delete_hsr_account, admin_batch_upsert_characters, admin_batch_remove_characters, admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetypes, admin_remove_character_archetypes } from './reducers/rosterAdmin';
 export { create_cost_set, edit_draft_character_cost, edit_draft_lightcone_cost, edit_draft_synergy_cost, publish_cost_set, lock_cost_set, unpublish_cost_set, delete_cost_set } from './reducers/costSetManagement';
 export { create_tournament, update_tournament, advance_tournament_stage, cancel_tournament } from './reducers/tournamentManagement';
+export { check_in_tournament } from './reducers/tournamentCheckIn';
 export { register_for_tournament, withdraw_from_tournament, approve_participant, waitlist_promote } from './reducers/tournamentRegistration';
 export { create_tournament_team, request_join_team, accept_team_request, reject_team_request, leave_tournament_team, disband_tournament_team } from './reducers/tournamentTeams';
 export { transfer_referee, reclaim_referee } from './reducers/refereeManagement';
@@ -43,6 +44,7 @@ export { undo_last_step, pause_draft, resume_draft } from './reducers/draftContr
 export { nominate_character, place_bid, pass_bid, timer_expiry_auction } from './reducers/draftAuction';
 export { equip_lightcone, arrange_lineup, confirm_lineup, advance_stage } from './reducers/postDraft';
 export { concede_match, claim_forfeit, defer_match } from './reducers/concede';
+export { advance_to_next_game, shelve_series, resume_series } from './reducers/seriesManagement';
 export { admin_force_finalize, admin_void_match, admin_set_bracket_winner } from './reducers/adminMatchTools';
 
 spacetimedb.clientConnected((ctx) => {

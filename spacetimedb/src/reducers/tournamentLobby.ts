@@ -175,6 +175,12 @@ export const create_tournament_lobby = spacetimedb.reducer(
             // Referee exclusive concede (D-92)
             refereeExclusiveConcede: true,
 
+            // D-11: Copy bestOf from BracketMatch (tournament match series length)
+            bestOf: bracketMatch.bestOf > 0 ? bracketMatch.bestOf : 1,
+
+            // D-06: Referee controls shelving for tournament lobbies (default true)
+            refereeControlsShelving: true,
+
             // Lifecycle
             lastActivityAt: ctx.timestamp,
             stage: { tag: 'Waiting', value: {} } as any,

@@ -341,8 +341,121 @@ export const advance_stage = spacetimedb.reducer(
             } as any);
 
         } else if (currentStage === 'Scoring') {
-            // Scoring → Finished handled by finalize_match_result
-            throw new SenderError('Use finalize_match_result to transition from Scoring to Finished.');
+            // D-14: Series-aware Scoring transition.
+            // For best-of-N (seriesBestOf > 1): count games won per side from MatchResultGame,
+            // update gamesWonBlue/gamesWonRed on MatchSession, then decide next stage.
+            // For bestOf=1: go directly to AwaitingResult (unchanged behavior).
+
+            const session = ctx.db.MatchSession.lobbyId.find(lobbyId);
+            if (!session) throw new SenderError('Match session not found.');
+
+            if (session.seriesBestOf > 1) {
+                // Find the MatchResultRecord for this lobby (created by submit_match_result or record_game_scores flow)
+                const matchResult = [...ctx.db.MatchResultRecord.lobby_id.filter(lobbyId)][0];
+
+                let newGamesWonBlue = session.gamesWonBlue;
+                let newGamesWonRed = session.gamesWonRed;
+
+                if (matchResult) {
+                    // Count wins per side from MatchResultGame rows
+                    const games = [...ctx.db.MatchResultGame.match_result_id.filter(matchResult.id)];
+                    let blueWins = 0;
+                    let redWins = 0;
+                    for (const game of games) {
+                        if (game.winnerTeamSide.tag === 'Blue') blueWins++;
+                        else if (game.winnerTeamSide.tag === 'Red') redWins++;
+                    }
+                    newGamesWonBlue = blueWins;
+                    newGamesWonRed = redWins;
+
+                    // Persist updated win counts to MatchSession
+                    ctx.db.MatchSession.lobbyId.update({
+                        ...session,
+                        gamesWonBlue: newGamesWonBlue,
+                        gamesWonRed: newGamesWonRed,
+                        ...auditUpdate(ctx, session, user.id),
+                    } as any);
+                }
+
+                const winsNeeded = Math.ceil(session.seriesBestOf / 2);
+                if (newGamesWonBlue >= winsNeeded || newGamesWonRed >= winsNeeded) {
+                    // Series won — go to AwaitingResult for finalization
+                    ctx.db.Lobby.id.update({
+                        ...lobby,
+                        stage: { tag: 'AwaitingResult', value: {} } as any,
+                        lastActivityAt: ctx.timestamp,
+                        ...auditUpdate(ctx, lobby, user.id),
+                    } as any);
+
+                    // System chat message
+                    const msgs2 = [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)];
+                    if (msgs2.length >= 50) {
+                        const sorted2 = [...msgs2].sort((a: any, b: any) => a.id - b.id);
+                        ctx.db.ChatMessage.id.delete(sorted2[0].id);
+                    }
+                    ctx.db.ChatMessage.insert({
+                        id: 0,
+                        lobbyId,
+                        senderUserId: 0,
+                        senderType: { tag: 'System', value: {} } as any,
+                        content: `Series complete (${newGamesWonBlue}-${newGamesWonRed}). Stage: AwaitingResult`,
+                        metadata: undefined,
+                        anonymousLabel: undefined,
+                        ...auditInsert(ctx, user.id),
+                    } as any);
+                } else {
+                    // Series not won — go to BetweenGames
+                    ctx.db.Lobby.id.update({
+                        ...lobby,
+                        stage: { tag: 'BetweenGames', value: {} } as any,
+                        lastActivityAt: ctx.timestamp,
+                        ...auditUpdate(ctx, lobby, user.id),
+                    } as any);
+
+                    // System chat message
+                    const msgs3 = [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)];
+                    if (msgs3.length >= 50) {
+                        const sorted3 = [...msgs3].sort((a: any, b: any) => a.id - b.id);
+                        ctx.db.ChatMessage.id.delete(sorted3[0].id);
+                    }
+                    ctx.db.ChatMessage.insert({
+                        id: 0,
+                        lobbyId,
+                        senderUserId: 0,
+                        senderType: { tag: 'System', value: {} } as any,
+                        content: `Game ${session.currentGameNumber} complete (${newGamesWonBlue}-${newGamesWonRed}). Stage: BetweenGames`,
+                        metadata: undefined,
+                        anonymousLabel: undefined,
+                        ...auditInsert(ctx, user.id),
+                    } as any);
+                }
+            } else {
+                // bestOf=1 — direct to AwaitingResult (original behavior)
+                ctx.db.Lobby.id.update({
+                    ...lobby,
+                    stage: { tag: 'AwaitingResult', value: {} } as any,
+                    lastActivityAt: ctx.timestamp,
+                    ...auditUpdate(ctx, lobby, user.id),
+                } as any);
+
+                // System chat message
+                const msgs4 = [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)];
+                if (msgs4.length >= 50) {
+                    const sorted4 = [...msgs4].sort((a: any, b: any) => a.id - b.id);
+                    ctx.db.ChatMessage.id.delete(sorted4[0].id);
+                }
+                ctx.db.ChatMessage.insert({
+                    id: 0,
+                    lobbyId,
+                    senderUserId: 0,
+                    senderType: { tag: 'System', value: {} } as any,
+                    content: 'Match complete. Stage: AwaitingResult',
+                    metadata: undefined,
+                    anonymousLabel: undefined,
+                    ...auditInsert(ctx, user.id),
+                } as any);
+            }
+
         } else {
             throw new SenderError(`Cannot advance stage from ${currentStage}.`);
         }

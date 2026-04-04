@@ -343,6 +343,10 @@ export function runFinalization(
                 }
                 ctx.db.MatchSessionStepHistory.insert({
                     matchHistoryId: historyRow.id,
+                    // PK is [matchHistoryId, gameNumber, sequence] — gameNumber required (D-13)
+                    // By finalization time only the last game's steps remain (advance_to_next_game deletes
+                    // inter-game steps). For bestOf=1 all steps have gameNumber=1.
+                    gameNumber: step.gameNumber ?? 1,
                     sequence: step.sequence,
                     actorUserId: step.actorUserId,
                     actorDisplayName: user ? user.displayName : `User#${step.actorUserId}`,
