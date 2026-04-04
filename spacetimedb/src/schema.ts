@@ -19,7 +19,7 @@ import { HsrCharacterArchetype } from './tables/hsrCharacterArchetype';
 
 // Tournament System
 import { Tournament } from './tables/tournament';
-import { TournamentParticipant } from './tables/tournamentParticipant';
+import { TournamentEnrolled } from './tables/tournamentEnrolled';
 import { TournamentAssistant } from './tables/tournamentAssistant';
 import { TournamentStandIn } from './tables/tournamentStandIn';
 
@@ -31,11 +31,12 @@ import { CostSetDraftSynergy } from './tables/costSetDraftSynergy';
 
 // Tournament Teams
 import { TournamentTeam } from './tables/tournamentTeam';
+import { TournamentTeamMember } from './tables/tournamentTeamMember';
 import { TournamentTeamRequest } from './tables/tournamentTeamRequest';
 
 // Bracket & Group
 import { BracketMatch } from './tables/bracketMatch';
-import { GroupStanding } from './tables/groupStanding';
+import { GroupPhaseRecord } from './tables/groupPhaseRecord';
 
 // Match Results
 import { MatchResultRecord } from './tables/matchResult';
@@ -128,7 +129,7 @@ const spacetimedb = schema({
 
     // Tournament System
     Tournament,
-    TournamentParticipant,
+    TournamentEnrolled,
     TournamentAssistant,
     TournamentStandIn,
 
@@ -140,11 +141,12 @@ const spacetimedb = schema({
 
     // Tournament Teams
     TournamentTeam,
+    TournamentTeamMember,
     TournamentTeamRequest,
 
     // Bracket & Group
     BracketMatch,
-    GroupStanding,
+    GroupPhaseRecord,
 
     // Match Results
     MatchResultRecord,
