@@ -147,7 +147,7 @@ performUserDeletion (helpers/userDeletionHelper.ts) cascades in order:
 
 Guest history check (`hasHistoryReferences`) scans 8 tables via btree indexes with early exit:
 MatchResultParticipant, MmrHistory, PlayerStat, PlayerCharacterStat, PlayerRelationship,
-Leaderboard, TournamentParticipant, UserAchievement.
+Leaderboard, TournamentEnrolled, UserAchievement.
 
 All deletion paths use `performUserDeletion`: run_user_deletion (scheduled), server_delete_user (CLI), server_link_discord (orphan guest cleanup).
 

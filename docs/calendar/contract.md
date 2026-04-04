@@ -187,7 +187,7 @@ Players can record recurring availability windows, bookmark other players' calen
    a. Verify caller is TO (tournament organizer), Admin, Moderator, or Tournament Assistant for that tournament
    b. Verify bracketMatchId exists
    c. Verify no other CalendarEvent already links to this bracketMatchId (one event per match)
-   d. Look up match participants: BracketMatch → TournamentTeam → TournamentParticipant
+   d. Look up match participants: BracketMatch → TournamentTeam → TournamentTeamMember → TournamentEnrolled
    e. Auto-create CalendarEventInvite rows for all players (InviteStatus.Pending)
 5. Check cap: organizer has < 40 active CalendarEvents
 6. Insert CalendarEvent row with organizerId = caller
@@ -548,7 +548,7 @@ When a user account is deleted, cascade-delete all calendar data:
 | CalendarEvent.bracketMatchId | BracketMatch.id | FK reference | Reads |
 | CalendarEvent.organizerId | User.id | FK reference | Reads |
 | CalendarEventInvite.inviteeUserId | User.id | FK reference | Reads |
-| Auto-invite | BracketMatch → TournamentTeam → TournamentParticipant | Participant lookup chain | Reads |
+| Auto-invite | BracketMatch → TournamentTeam → TournamentTeamMember → TournamentEnrolled | Participant lookup chain | Reads |
 | cancel_tournament cascade | CalendarEvent + CalendarEventInvite | Cleanup linked events | Writes (delete) |
 | rollback_bracket_match cascade | CalendarEvent + CalendarEventInvite | Cleanup linked event | Writes (delete) |
 | dq_participant cascade | CalendarEvent + CalendarEventInvite | Cleanup linked event | Writes (delete) |
@@ -591,5 +591,9 @@ When a user account is deleted, cascade-delete all calendar data:
 
 ---
 
-*Last updated: 2026-03-28*
+| TournamentParticipant renamed to TournamentEnrolled + TournamentTeamMember | Phase 10.1 execution | 2026-04-03 |
+
+---
+
+*Last updated: 2026-04-03*
 *Feature owner: Phase 8*

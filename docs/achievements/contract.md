@@ -283,7 +283,7 @@ The achievement checker runs at step 16.5 of `runFinalization`, after all stat i
 | AchievementCriteria | MmrRating | statTable="MmrRating" string reference | Reads |
 | checkAndAwardAchievements | runFinalization (step 16.5) | Called after stat increments | Writes UserAchievement |
 | User.displayedAchievementId | Achievement.id | FK reference | Reads |
-| manual_award_achievement | Tournament/TournamentParticipant | TO scope check via organizer_id index | Reads |
+| manual_award_achievement | Tournament/TournamentEnrolled | TO scope check via organizer_id index | Reads |
 | delete_achievement cascade | User table | Clears displayedAchievementId | Writes |
 | post-publish.ts | Achievement/AchievementCriteria | Seeds 3 starter achievements | Writes |
 

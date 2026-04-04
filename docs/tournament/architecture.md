@@ -129,8 +129,11 @@ Deletion order: requests → calendar events → shelved lobbies → standings �
 | `seed_bracket` | bracketGeneration.ts | TO/Assistant/Mod/Admin | Assign seedNumber to TournamentTeams |
 | `swap_seeds` | bracketGeneration.ts | TO/Assistant/Mod/Admin | Swap seedNumber between two teams |
 | `advance_bracket_match` | bracketAdvancement.ts | TO/Assistant/Mod/Admin | Place winner in next match slot; route loser (double elim) |
-| `submit_and_advance_bracket` | bracketAdvancement.ts | Authenticated | Map winnerUserId → winnerTeamId, set BracketMatch.winnerTeamId, auto-advance if enabled |
+| `submit_and_advance_bracket` | bracketAdvancement.ts | Authenticated | Map winnerTeamSide → winnerTeamId, set BracketMatch.winnerTeamId, auto-advance if enabled |
 | `rollback_bracket_match` | bracketAdvancement.ts | TO/Assistant/Mod/Admin | Reverse bracket advancement one step (blocked if MMR processed) |
+| `advance_to_next_game` | seriesManagement.ts | Host/TO/Assistant/Mod/Admin; Referee if refereeControlsShelving=true | Advance lobby from BetweenGames to next game in a best-of series (D-07) |
+| `shelve_series` | seriesManagement.ts | Host/TO/Assistant/Mod/Admin; Referee if refereeControlsShelving=true | Shelve a lobby between games (sets stage to Shelved) (D-07) |
+| `resume_series` | seriesManagement.ts | Host/TO/Assistant/Mod/Admin; Referee if refereeControlsShelving=true | Resume a shelved lobby (transitions from Shelved back to active) (D-07) |
 | `server_set_mmr` | server.ts | Server identity | Upsert MmrRating row for a user (test/admin utility) |
 
 ### TO/Assistant/Mod+ Access

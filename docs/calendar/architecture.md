@@ -98,7 +98,7 @@ Non-recurring `AvailabilitySlot` rows still carry a `RecurrenceRule` struct but 
 `create_calendar_event` with `bracketMatchId > 0`:
 1. Verifies TO/Admin/Mod/Assistant access for the bracket match's tournament
 2. Checks no existing event for that bracketMatchId (D-19)
-3. Resolves `BracketMatch → TournamentTeam → TournamentParticipant` for both teams
+3. Resolves `BracketMatch → TournamentTeam → TournamentTeamMember` for both teams (Phase 10.1: TournamentParticipant split into TournamentEnrolled + TournamentTeamMember)
 4. Auto-inserts `CalendarEventInvite` rows for all active participants
 5. Manual invitees (from `inviteeUserIds` arg) added after, excluding already-auto-invited users
 
@@ -188,7 +188,7 @@ All cascades run in the same transaction as the triggering reducer (no eventual 
 
 ## Integration Points
 
-- `docs/tournament/architecture.md` — BracketMatch, TournamentParticipant, TournamentTeam are FK targets
+- `docs/tournament/architecture.md` — BracketMatch, TournamentEnrolled, TournamentTeamMember, TournamentTeam are FK targets
 - `spacetimedb/src/helpers/tournamentHelpers.ts` — `cascadeCleanupTournament` extended with step 3 (D-21)
 - `spacetimedb/src/helpers/userDeletionHelper.ts` — `performUserDeletion` extended with calendar data cascade (D-23)
 - `spacetimedb/src/reducers/bracketAdvancement.ts` — `rollback_bracket_match` extended (D-22)

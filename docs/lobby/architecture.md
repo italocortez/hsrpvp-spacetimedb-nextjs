@@ -18,6 +18,7 @@ Lobby (PK: id autoInc)
 │  Tournament: tournamentId?, bracketMatchId?, isTournamentControlled
 │  Disconnect: disconnectPolicy, disconnectForfeitSeconds?, refereeExclusiveConcede
 │  Browser: currentPlayerCount (denormalized)
+│  Series: bestOf, refereeControlsShelving
 │  Lifecycle: stage (LobbyStage), lastActivityAt
 │
 ├── LobbyMember (PK: [lobbyId, userId])
@@ -88,14 +89,16 @@ Lobby (PK: id autoInc)
 | requireOwnership | bool | Pick validation requires HsrAccountCharacter ownership |
 | costSetId | u32 | FK to CostSet.id (0 = default set) |
 | isPublic | bool | Public = no password; Private = password required |
+| bestOf | u8 | Best-of series length (1, 3, 5); default 1 (Phase 10.1) |
+| refereeControlsShelving | bool | When true, referee can call series management reducers (Phase 10.1) |
 | disconnectPolicy | DisconnectPolicy | Standard / Deferred / NoAction (Phase 10 rename) |
 | disconnectForfeitSeconds | u32? | Grace period before forfeit eligibility (Standard policy) |
 | refereeExclusiveConcede | bool | 3rd party referee exclusive control over concede/forfeit/defer (D-81, D-84) |
 | lastActivityAt | timestamp | Updated on join/leave/chat/picks/cursor events |
-| stage | LobbyStage | Waiting, Drafting, Equipping, Scoring, AwaitingResult, Finished |
+| stage | LobbyStage | Waiting, Drafting, Equipping, Scoring, BetweenGames, Shelved, AwaitingResult, Finished |
 | currentPlayerCount | u8 | Denormalized member count for browser view (D-07) |
 
-**Indexes:** `host_user_id` btree, `stage` btree, `tournament_id` btree
+**Indexes:** `host_user_id` btree, `stage` btree, `tournament_id` btree, `bracket_match_id` btree (reverse lookup from BracketMatch, Phase 10.1)
 
 ---
 
@@ -107,6 +110,8 @@ Lobby (PK: id autoInc)
 | Drafting | Active draft — picks, bans, auction in progress |
 | Equipping | Post-draft — lightcone equipping and lineup arrangement |
 | Scoring | Score submission — screenshot upload and captain confirmation |
+| BetweenGames | Series game completed; awaiting advance_to_next_game to start next game (Phase 10.1) |
+| Shelved | Series paused between games; resume_series to continue (Phase 10.1) |
 | AwaitingResult | Set by submit_match_result or concede/defer — players freed to join new lobbies; finalization cascade-deletes the lobby; admin-only resolution for deferred matches (D-45, D-46) |
 | Finished | Abandoned closed lobbies only — set by close_lobby on AwaitingResult lobbies; GC safety net target |
 
@@ -413,4 +418,4 @@ When `refereeExclusiveConcede=true` and a 3rd party referee (Spectator slot, isR
 - If referee disconnects, flag transfers to host (on a team) — exclusive lock releases
 
 ### ensureMatchAlive Guard (D-12)
-Every draft/equip/score reducer calls `ensureMatchAlive(ctx, lobby)` at the top. Blocks post-concede actions. Checks lobby stage and MatchResultRecord matchOutcome.
+Every draft/equip/score reducer calls `ensureMatchAlive(ctx, lobby)` at the top. Blocks post-concede actions. Checks lobby stage and MatchResultRecord matchEndReason.

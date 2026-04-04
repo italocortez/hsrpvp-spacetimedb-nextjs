@@ -1,4 +1,4 @@
-# Brackets & Group Standings
+# Brackets & Group Phase Records
 
 **Architecture:** [architecture.md](architecture.md)
 
@@ -42,34 +42,47 @@
 ### Advance Bracket Match
 **Given:** Tournament InProgress, BracketMatch with winnerTeamId set
 **When:** `advance_bracket_match(bracketMatchId)`
-**Then:** Winner placed in nextWinnerMatchId slot. In double elim, loser routed to nextLoserMatchId. Group standings updated for Group matches.
+**Then:** Winner placed in nextWinnerMatchId slot. In double elim, loser routed to nextLoserMatchId. GroupPhaseRecord updated for Group matches.
 
 ### Submit and Advance Bracket
-**Given:** Tournament InProgress, MatchResultRecord with winnerUserId (userId), autoAdvanceBracket=true
+**Given:** Tournament InProgress, MatchResultRecord with winnerTeamSide (TeamSide: Blue/Red), autoAdvanceBracket=true
 **When:** `submit_and_advance_bracket(matchResultId)`
-**Then:** Maps winnerUserId (userId) -> winnerTeamId via TournamentParticipant. Sets BracketMatch.winnerTeamId. Auto-advances winner to next match.
+**Then:** Maps winnerTeamSide (Blue→team1Id, Red→team2Id) directly to winnerTeamId — no TournamentEnrolled lookup needed. Sets BracketMatch.winnerTeamId. Auto-advances winner to next match.
 
 ### Rollback Bracket Match
 **Given:** Tournament InProgress, BracketMatch with winnerTeamId set, no MMR processed
 **When:** `rollback_bracket_match(bracketMatchId)`
-**Then:** winnerTeamId cleared, winner removed from next match slot, loser removed from losers bracket slot. Group standings reversed. If a CalendarEvent is linked to this bracketMatchId, it and its CalendarEventInvite rows are cascade-deleted.
+**Then:** winnerTeamId cleared, winner removed from next match slot, loser removed from losers bracket slot. GroupPhaseRecord reversed. If a CalendarEvent is linked to this bracketMatchId, it and its CalendarEventInvite rows are cascade-deleted.
 
 During an active tournament, rollback is FREE because MMR has not been processed yet (tournament MMR is batched at tournament end via process_tournament_mmr). The mmrProcessedAt guard only blocks rollback AFTER the tournament ends and the MMR batch has run. For casual/ranked matches, the guard applies immediately since MMR is processed per-match.
 
 ### Group Phase Scoring
 **Given:** GroupOnly or hybrid tournament with group phase, matches in a group complete
 **When:** `advance_bracket_match` processes group-phase BracketMatch (bracketSide=Group)
-**Then:** GroupStanding rows updated: Win=2pts, Draw=1pt, Loss=0pts. Tiebreaker order: head-to-head result, then total points, then seeding.
+**Then:** GroupPhaseRecord rows updated: Win=2pts, Draw=1pt, Loss=0pts. Tiebreaker order: head-to-head result, then total points, then seeding.
 
 ### Hybrid Format Group-to-Elimination Advancement
 **Given:** Hybrid format (GroupIntoSingleElim or GroupIntoDoubleElim) tournament, all group matches complete
-**When:** Group winners determined by GroupStanding points + tiebreaker
+**When:** Group winners determined by GroupPhaseRecord points + tiebreaker
 **Then:** Top N teams from each group (N = tournament.groupAdvanceCount) advance to elimination bracket slots.
 
 ### DQ Auto-Advance
 **Given:** Tournament InProgress, autoAdvanceBracket=true, team A vs team B in bracket
 **When:** `dq_participant(tournamentId, playerA)`
-**Then:** Player A status=Disqualified. Team B auto-advanced to next bracket match. If a CalendarEvent is linked to this bracket match, it and its CalendarEventInvite rows are cascade-deleted.
+**Then:** Player A's TournamentEnrolled status=Disqualified. Team B auto-advanced to next bracket match. If a CalendarEvent is linked to this bracket match, it and its CalendarEventInvite rows are cascade-deleted.
+
+### Team Elimination on Final Bracket Loss *(Phase 10.1 execution)*
+**Given:** Tournament InProgress, team loses their final bracket match (eliminated from Winners in single elim, or from Losers in double elim)
+**When:** `advance_bracket_match` processes the loss
+**Then:** Losing team's TournamentEnrolled status set to Eliminated. Team cannot be placed in further bracket matches.
+
+### Series / Best-of-N *(Phase 10.1 execution)*
+**Given:** BracketMatch with `bestOf` column (e.g., bestOf=3)
+**When:** Tournament lobby is created for this bracket match
+**Then:** Lobby inherits the bestOf value from BracketMatch. Match result requires winning the series (e.g., first to 2 wins in best-of-3) before the bracket match can be advanced.
+
+### Match End Reasons *(Phase 10.1 execution)*
+MatchEndReason enum replaces MatchOutcome: Completed (normal finish), Draw (tied result), Concede (forfeit by a team). BlueWins/RedWins variants removed — winner is determined by winnerTeamSide on MatchResultRecord.
 
 ## Edge Cases
 
@@ -88,7 +101,7 @@ During an active tournament, rollback is FREE because MMR has not been processed
 | rollback after MMR processed | Throws "Cannot rollback: MMR has already been processed for this match." (Only applies after tournament ends + batch MMR runs, or immediately for casual/ranked) |
 | rollback without winnerTeamId | Throws "No winner to rollback." |
 | submit_and_advance_bracket on non-bracket match | Throws "Not a bracket match" |
-| submit_and_advance_bracket without winnerUserId | Throws "No winner on match result. Submit scores first." |
+| submit_and_advance_bracket without winnerTeamSide | Throws "No winner on match result. Submit scores first." |
 | Hybrid format: fewer teams in group than groupAdvanceCount | All teams in that group advance (no error — groupAdvanceCount is a cap, not a minimum) |
 | Client binding uses `has3RdPlaceMatch` (capital R) | SpacetimeDB codegen quirk -- callers must use binding's casing |
 
@@ -99,10 +112,12 @@ During an active tournament, rollback is FREE because MMR has not been processed
 | BracketMatch.tournamentId | Tournament.id | Reads |
 | BracketMatch.team1Id/team2Id/winnerTeamId | TournamentTeam.id | Reads/Writes |
 | BracketMatch.nextWinnerMatchId/nextLoserMatchId | BracketMatch.id | Self-referencing FK |
-| GroupStanding.teamId | TournamentTeam.id | Reads/Writes |
+| GroupPhaseRecord.teamId | TournamentTeam.id | Reads/Writes |
 | seed_bracket MMR mode | MmrRating (captain's rating) | Reads |
-| submit_and_advance_bracket | MatchResultRecord.winnerUserId | Reads |
-| submit_and_advance_bracket | TournamentParticipant (userId->teamId mapping) | Reads |
+| submit_and_advance_bracket | MatchResultRecord.winnerTeamSide (TeamSide enum) | Reads |
+| submit_and_advance_bracket | Maps Blue→team1Id, Red→team2Id directly | Reads |
+| Lobby.bracketMatchId | BracketMatch.id | Navigated via Lobby (BracketMatch.lobbyId removed) |
+| MatchResultRecord.tournamentId | Derived via BracketMatch (column removed from MatchResultRecord) | Derived |
 | rollback_bracket_match | MatchResultRecord.mmrProcessedAt | Reads (guard) |
 | dq_participant auto-advance | BracketMatch (scans for team's active match) | Reads/Writes |
 
@@ -113,7 +128,7 @@ During an active tournament, rollback is FREE because MMR has not been processed
 | BracketSide enum (5 variants) replaces isLosersBracket bool | Phase 4 CONTEXT.md | 2026-03-17 |
 | Explicit FK links (no JSON blob) | Phase 4 CONTEXT.md | 2026-03-17 |
 | seedNumber on TournamentTeam (not Participant) | Phase 4 CONTEXT.md | 2026-03-18 |
-| GroupStanding.teamId (not userId) | Phase 4 CONTEXT.md | 2026-03-18 |
+| GroupPhaseRecord.teamId (not userId) | Phase 4 CONTEXT.md | 2026-03-18 |
 | Solo auto-team creation on registration | Phase 4 CONTEXT.md | 2026-03-17 |
 | Win=2, Draw=1, Loss=0 group point system | Phase 4 CONTEXT.md | 2026-03-17 |
 | Grand finals: single match + winnerAdvantage | Phase 4 CONTEXT.md | 2026-03-17 |
@@ -129,15 +144,23 @@ During an active tournament, rollback is FREE because MMR has not been processed
 | server_set_mmr reducer for test seeding | Phase 4 UAT | 2026-03-19 |
 | Slot placement is first-empty-slot, not seed-ordered (frontend sorts by seedNumber) | Phase 4 UAT | 2026-03-19 |
 | team1Id/team2Id replace participant1Id/participant2Id, winnerTeamId replaces winnerId | Phase 04.1 execution | 2026-03-20 |
-| teamId replaces participantTeamId (GroupStanding) | Phase 04.1 execution | 2026-03-20 |
+| teamId replaces participantTeamId (GroupPhaseRecord) | Phase 04.1 execution | 2026-03-20 |
 | Rollback during tournament is free -- MMR not yet processed (batched at tournament end) | Phase 04.1 execution | 2026-03-20 |
 | rollback_bracket_match cascade-deletes linked CalendarEvent + CalendarEventInvite | Phase 08 CONTEXT.md (D-22) | 2026-03-28 |
 | dq_participant cascade-deletes linked CalendarEvent + CalendarEventInvite | Phase 08 CONTEXT.md (D-22) | 2026-03-28 |
-| Finalization step 17 auto-advances bracket (isTournamentControlled + winnerUserId set) | Phase 9 execution | 2026-03-29 |
+| Finalization step 17 auto-advances bracket (isTournamentControlled + winnerTeamSide set) | Phase 10.1 execution | 2026-04-03 |
 | Rollback after finalization leaves no re-advance path (match record + lobby deleted) — deferred admin bracket override to Phase 10 | Phase 9 execution | 2026-03-29 |
-| Group phase scoring: Win=2pts, Draw=1pt, Loss=0pts; tiebreaker: head-to-head, total points, seeding | Phase 9 execution | 2026-03-29 |
+| Group phase scoring (GroupPhaseRecord): Win=2pts, Draw=1pt, Loss=0pts; tiebreaker: head-to-head, total points, seeding | Phase 9 execution | 2026-03-29 |
 | Hybrid format: groupAdvanceCount determines how many teams per group advance to elimination bracket | Phase 9 execution | 2026-03-29 |
+| GroupStanding → GroupPhaseRecord rename | Phase 10.1 execution | 2026-04-03 |
+| winnerUserId → winnerTeamSide (TeamSide enum: Blue/Red); direct team1Id/team2Id mapping, no TournamentParticipant lookup | Phase 10.1 execution | 2026-04-03 |
+| TournamentParticipant → TournamentEnrolled + TournamentTeamMember split | Phase 10.1 execution | 2026-04-03 |
+| MatchOutcome → MatchEndReason (Completed/Draw/Concede); BlueWins/RedWins removed | Phase 10.1 execution | 2026-04-03 |
+| BracketMatch.lobbyId removed — relationship navigated via Lobby.bracketMatchId | Phase 10.1 execution | 2026-04-03 |
+| MatchResultRecord.tournamentId removed — derived via BracketMatch | Phase 10.1 execution | 2026-04-03 |
+| Team elimination: TournamentEnrolled status=Eliminated on final bracket loss | Phase 10.1 execution | 2026-04-03 |
+| BracketMatch.bestOf column; tournament lobbies inherit bestOf for series play | Phase 10.1 execution | 2026-04-03 |
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-03*

@@ -21,8 +21,8 @@
 
 ### Submit Match Result
 **Given:** MatchResultRecord with all captains confirmed, caller has referee authority
-**When:** `submit_match_result(matchResultId, winnerUserId)`
-**Then:** Status changes to Submitted. winnerUserId and refereeUserId set.
+**When:** `submit_match_result(matchResultId, winnerId)` — winnerId is u32, mapped to winnerTeamSide server-side via MatchResultParticipant lookup
+**Then:** Status changes to Submitted. winnerTeamSide and refereeUserId set.
 
 ### Submit Without All Confirmations (blocked)
 **Given:** MatchResultRecord where blueConfirmed or redConfirmed is false
@@ -41,8 +41,8 @@
 
 ### Override Match Result
 **Given:** MatchResultRecord exists, caller is TO/Mod/Admin
-**When:** `override_match_result(matchResultId, "Validated", winnerUserId, reason)`
-**Then:** Status changes to Validated. winnerUserId updated. disputeReason stores override reason.
+**When:** `override_match_result(matchResultId, "Validated", winnerTeamSideTag, reason)` — winnerTeamSideTag is string: 'Blue'/'Red'/'' for draw
+**Then:** Status changes to Validated. winnerTeamSide updated. disputeReason stores override reason.
 
 ### Match Finalization (Phase 5)
 **Given:** MatchResultRecord in Validated status, MMR processed (or matchType=Casual)
@@ -53,7 +53,7 @@
 
 ### Casual Auto-Validation (Phase 5)
 **Given:** MatchResultRecord with matchType=Casual, all captains confirmed
-**When:** `submit_match_result(matchResultId, winnerUserId)` is called
+**When:** `submit_match_result(matchResultId, winnerId)` is called
 **Then:** Status changes directly to Validated (skips Submitted). Finalization can proceed immediately (no MMR gate).
 
 ### Ranked Screenshot Requirement (Phase 5)
@@ -63,7 +63,7 @@
 
 ### Casual Auto-Finalize (Phase 6)
 **Given:** MatchResultRecord with matchType=Casual, all captains confirmed
-**When:** `submit_match_result(matchResultId, winnerUserId)` is called
+**When:** `submit_match_result(matchResultId, winnerId)` is called
 **Then:** Status changes to Validated AND finalization runs inline in same transaction -- stats, history, MMR all written atomically. No separate finalize_match_result call needed. (D-37)
 
 ### Finalization Pipeline (Phase 6)
@@ -137,7 +137,7 @@
 | Override with invalid status tag | Throws "Invalid status override" |
 | Record scores on non-Pending match | Throws "Scores can only be recorded when the match is in Pending status." |
 | Record scores — invalid winnerTeamSide | Throws "winnerTeamSide must be \"Blue\" or \"Red\"." |
-| Draw outcome (winnerUserId=0 on submit) | winnerUserId stored as undefined on MatchResultRecord. Finalization sets matchOutcome=Draw. Stats increment with isDraw=true (draws+1, no win/loss). MMR uses 0.5 actual result for both sides. |
+| Draw outcome (winnerId=0 on submit) | winnerTeamSide stored as undefined on MatchResultRecord. Finalization sets matchEndReason=Draw. Stats increment with isDraw=true (draws+1, no win/loss). MMR uses 0.5 actual result for both sides. |
 | Handicap — Classic mode | handicapApplied = rosterDiffAdvantage × (teamBlueAccountRating − teamRedAccountRating). Stored on MatchSessionHistory.handicapApplied. teamBlueSpent/teamRedSpent are null for Classic. |
 | Handicap — Auction mode | teamBlueSpent = characterBudget + lightconeBudget − remainingLcBudget (after carryover). teamRedSpent calculated identically. Both stored on MatchSessionHistory. handicapApplied = delta between spent amounts applied via same MoC/AS formula as Classic. |
 | process_tournament_mmr — sentinel back-fill | MmrHistory rows written with matchHistoryId=0 during batch MMR. Finalization step 12 finds these sentinel rows per participant and updates the latest one with the real historyRow.id. |
@@ -152,7 +152,7 @@
 |-------------|------------|-----------|
 | MatchResultRecord.lobbyId | Lobby.id | Reads |
 | MatchResultParticipant.userId | User.id | Reads |
-| MatchResultRecord.tournamentId | Tournament.id | Reads |
+| MatchResultRecord.bracketMatchId → BracketMatch.tournamentId | Tournament.id | Derived (D-42) |
 | MatchResultRecord.bracketMatchId | BracketMatch.id | Phase 4 |
 | LobbyMember.isReferee | Referee authority check | Reads |
 | LobbyMember.lobbySlot | Coach encoded as BlueCoach/RedCoach | Reads |
@@ -205,8 +205,8 @@
 | Added record_game_scores (captain own-side, spectator referee full control), process_tournament_mmr (batch), handicap, draw scenarios | Phase 9 execution | 2026-03-29 |
 | runFinalization step 19: cascade-deletes lobby after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
 | Finalization step 19 cascade-deletes lobby (not set Finished). submit_match_result transitions to AwaitingResult first. | Phase 9 execution | 2026-03-29 |
-| MatchOutcome.Concede + ConcedeTrigger enum (Disconnect/VoluntaryLeave/RefereeDecision) (D-69, D-70, D-91) | Phase 10 execution | 2026-04-03 |
-| MatchResultRecord: matchOutcome, concedeTrigger, concedeSummary, concedeAtStage columns added (D-58, D-71) | Phase 10 execution | 2026-04-03 |
+| MatchEndReason.Concede + ConcedeTrigger enum (Disconnect/VoluntaryLeave/RefereeDecision) (D-69, D-70, D-91) | Phase 10 execution | 2026-04-03 |
+| MatchResultRecord: matchEndReason, concedeTrigger, concedeSummary, concedeAtStage columns added (D-58, D-71) | Phase 10 execution | 2026-04-03 |
 | Concede finalization matrix: 3-tier (casual-nontourn/casual-tourn/ranked) x 3-stage (Drafting/Equipping/Scoring) branching in runFinalization (D-74, D-77-79) | Phase 10 execution | 2026-04-03 |
 | Achievement check ALWAYS skipped for concede outcomes (D-76) | Phase 10 execution | 2026-04-03 |
 | Bracket advancement NEVER auto-triggers for concede outcomes (D-80) — winnerTeamId set but placeParticipantInNextMatch not called | Phase 10 execution | 2026-04-03 |
@@ -214,6 +214,7 @@
 | admin_void_match: erases AwaitingResult match via hardDeleteLobby without finalization (D-53) | Phase 10 execution | 2026-04-03 |
 | admin_set_bracket_winner: directly sets BracketMatch.winnerTeamId and advances bracket; requires winnerTeamId=0 (D-54) | Phase 10 execution | 2026-04-03 |
 | Processed match protection: mmrProcessedAt blocks force-finalize and void (D-56) | Phase 10 execution | 2026-04-03 |
+| submit_match_result param renamed to winnerId (u32, mapped to winnerTeamSide via MatchResultParticipant); override_match_result param renamed to winnerTeamSideTag (string); matchOutcome renamed to matchEndReason (Completed/Draw/Concede); tournamentId column removed from MatchResultRecord (derived via bracketMatchId FK) | Phase 10.1 execution | 2026-04-03 |
 
 ---
 

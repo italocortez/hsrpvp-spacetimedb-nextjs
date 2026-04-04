@@ -370,7 +370,7 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 | HsrAccount.userId | User.id | FK (application-enforced) | Reads |
 | HsrAccountCharacter.characterName | HsrCharacter.name | Validated on write | Reads |
 | HsrCharacterArchetype.archetypeId | Archetype.id | FK (application-enforced) | Reads |
-| HsrAccount.id | TournamentParticipant.hsrAccountId | Phase 3 | Read by tournaments |
+| HsrAccount.id | TournamentEnrolled.hsrAccountId | Phase 3 | Read by tournaments |
 | HsrCharacterCost.costSetId | CostSet.id | Phase 3 default=0 | Read by cost system |
 | run_user_deletion | HsrAccount + HsrAccountCharacter | Cascade delete | Writes |
 

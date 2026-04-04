@@ -1,4 +1,4 @@
-# Brackets & Group Standings
+# Brackets & Group Phase Records
 
 ## Tables
 
@@ -16,11 +16,11 @@ Tournament
 |     nextWinnerMatchId?    -> BracketMatch.id (winner advances here)
 |     nextLoserMatchId?     -> BracketMatch.id (loser goes here -- double elim, 3rd place)
 |     winnerTeamId?         -> TournamentTeam.id (set when match resolved)
-|     lobbyId?              -> Lobby.id (set when match played -- Phase 9)
-|     bestOf, gameMode, winnerAdvantage
+|     bestOf (u8)           -> series length (copied to Lobby.bestOf on lobby creation)
+|     gameMode, winnerAdvantage
 |     resultStatus          -> MatchResultStatus enum
 |
-+-- GroupStanding (round-robin standings per group)
++-- GroupPhaseRecord (round-robin standings per group)
       PK: [tournamentId, groupId, teamId]
       tournamentId          -> Tournament.id
       groupId               -> group number
@@ -44,7 +44,15 @@ Invariant: bracketSide=Group if and only if groupId is set.
 
 All participant references on BracketMatch (team1Id, team2Id, winnerTeamId) are **TournamentTeam.id** values, NOT userId values. Even solo players have auto-created TournamentTeam rows.
 
-MatchResultRecord.winnerUserId is a userId. The advancement reducer maps: winnerUserId (userId) -> TournamentParticipant (tournamentId + userId) -> teamGroupId -> BracketMatch team slot.
+MatchResultRecord.winnerTeamSide is a TeamSide enum (Blue/Red). The advancement reducer maps: `winnerTeamSide.tag === 'Blue' ? team1Id : team2Id` — no TournamentEnrolled/TournamentTeamMember lookup needed.
+
+### Enrollment Model (Phase 10.1)
+
+TournamentParticipant was split into two tables:
+- **TournamentEnrolled** (PK: tournamentId+userId) — enrollment record tracking a user's registration status in a tournament
+- **TournamentTeamMember** (PK: teamId+userId) — team membership linking a user to a TournamentTeam
+
+Bracket code references TournamentTeamMember when resolving team composition and TournamentEnrolled when checking enrollment/elimination status.
 
 ## Reducers
 
@@ -54,9 +62,16 @@ MatchResultRecord.winnerUserId is a userId. The advancement reducer maps: winner
 - `swap_seeds(tournamentId, teamId1, teamId2)` -- Swaps seedNumber between two teams. Only during Seeding stage.
 
 ### Bracket Advancement (bracketAdvancement.ts)
-- `advance_bracket_match(bracketMatchId)` -- Places winner in nextWinnerMatchId slot. Routes loser to nextLoserMatchId (double elim). Updates GroupStanding for group matches. Requires tournament InProgress.
-- `submit_and_advance_bracket(matchResultId)` -- Wrapper for tournament matches. Maps winnerUserId (userId) -> winnerTeamId. Sets BracketMatch.winnerTeamId. If autoAdvanceBracket=true, auto-advances.
+- `advance_bracket_match(bracketMatchId)` -- Places winner in nextWinnerMatchId slot. Routes loser to nextLoserMatchId (double elim). Updates GroupPhaseRecord for group matches via `updateGroupPhaseRecords`. When a team loses their final bracket match (single elim: any loss; double elim: losers bracket loss), sets team members' TournamentEnrolled status to Eliminated via `setEliminatedStatus`. Requires tournament InProgress.
+- `submit_and_advance_bracket(matchResultId)` -- Wrapper for tournament matches. Maps winnerTeamSide (TeamSide enum: Blue/Red) -> winnerTeamId via `winnerTeamSide.tag === 'Blue' ? team1Id : team2Id`. Sets BracketMatch.winnerTeamId. If autoAdvanceBracket=true, auto-advances.
 - `rollback_bracket_match(bracketMatchId)` -- Cascade-deletes linked CalendarEvent + invites (Phase 8, D-22), then clears winnerTeamId, removes winner/loser from next matches. Blocks if mmrProcessedAt is set on MatchResultRecord. Only during InProgress.
+
+### Series Management (seriesManagement.ts)
+- `advance_to_next_game(lobbyId)` -- Advances a best-of-N series to the next game. Requires series authority (lobby host, TO, TO assistant, admin/mod, or referee if refereeControlsShelving=true).
+- `shelve_series(lobbyId)` -- Pauses a series mid-way (e.g., between games). Requires series authority.
+- `resume_series(lobbyId)` -- Resumes a shelved series. Requires series authority.
+
+BracketMatch.bestOf (u8) defines the series length. When a tournament lobby is created, `Lobby.bestOf` is copied from `BracketMatch.bestOf`. The relationship from BracketMatch to Lobby is navigated via `Lobby.bracketMatchId` (btree index), not a lobbyId on BracketMatch.
 
 ## Flow -- Single Elimination
 
@@ -75,15 +90,15 @@ Same as single elim, but losers go to Losers bracket via nextLoserMatchId. Winne
 
 ## Flow -- Group Phase
 
-1. generate_bracket creates round-robin BracketMatch rows (bracketSide=Group) + GroupStanding rows
+1. generate_bracket creates round-robin BracketMatch rows (bracketSide=Group) + GroupPhaseRecord rows
 2. Points: Win=2, Draw=1, Loss=0
-3. Tiebreaker: head-to-head result first, then game differential
+3. Tiebreaker: head-to-head result first, then game differential (sorted via `sortGroupPhaseRecords`)
 4. Top N per group advance (groupAdvanceCount from Tournament)
 
 ## Flow -- Hybrid (GroupIntoSingleElim / GroupIntoDoubleElim)
 
 1. generate_bracket creates group matches AND empty elimination bracket
-2. Groups play out; GroupStanding tracks results
+2. Groups play out; GroupPhaseRecord tracks results
 3. When all groups complete, group winners/runners-up fill elimination bracket slots
 4. Elimination phase plays out normally
 
@@ -134,15 +149,20 @@ Alternating minor (internal) and major (WB feed-in) rounds:
 
 ## Finalization Integration
 
-Finalization step 17 auto-advances the bracket when `isTournamentControlled=true` and `winnerUserId` is set. It calls `advanceBracketMatch` to place the winner in the next match slot. Rollback (`rollback_bracket_match`) clears `winnerTeamId` and removes the winner from the next match slot.
+Finalization auto-advances the bracket when `isTournamentControlled=true` and `winnerTeamSide` is set. It calls `advanceBracketMatch` to place the winner in the next match slot. Rollback (`rollback_bracket_match`) clears `winnerTeamId` and removes the winner from the next match slot.
 
 ## Key Decisions
 
 - **BracketSide enum** (5 variants: Winners, Losers, GrandFinals, ThirdPlace, Group) replaces `isLosersBracket: bool` -- supports GrandFinals, ThirdPlace, Group as first-class match types (Phase 4)
 - **Explicit FK links** (nextWinnerMatchId, nextLoserMatchId) -- no JSON blob storage
-- **teamId** on GroupStanding (renamed from participantUserId in Phase 4, then from participantTeamId in Phase 04.1) -- standings track teams
+- **teamId** on GroupPhaseRecord (renamed from GroupStanding in Phase 10.1; originally participantUserId in Phase 4, then participantTeamId in Phase 04.1) -- standings track teams
 - **seedNumber** on TournamentTeam (moved from TournamentParticipant in Phase 4) -- seeding is team-level
+- **TournamentParticipant split** (Phase 10.1): split into TournamentEnrolled (enrollment) + TournamentTeamMember (team join) -- enrollment and team membership are independent concerns
+- **winnerTeamSide** (Phase 10.1): replaces winnerUserId on MatchResultRecord -- uses TeamSide enum (Blue/Red), maps directly to BracketMatch team slots without participant lookup
+- **MatchEndReason** (Phase 10.1): replaces MatchOutcome enum -- variants: Completed, Draw, Concede (old BlueWins/RedWins removed)
+- **BracketMatch.lobbyId removed** (Phase 10.1): relationship inverted -- Lobby.bracketMatchId with btree index navigates BracketMatch -> Lobby
+- **MatchResultRecord.tournamentId removed** (Phase 10.1): derived from bracketMatch.tournamentId via bracketMatchId FK
 - **Solo auto-team**: solo tournament registrations auto-create TournamentTeam rows -- bracket generation treats all participants uniformly as teams
 - `groupId` is a simple number, not a separate table -- groups are implicit within a tournament
 - Deterministic seeding hash for 'random' mode: `(tournamentId * 31 + teamId) % 2147483647` -- reducers must be deterministic (no Math.random())
-- **Cancellation cleanup**: BracketMatch and GroupStanding rows cascade-deleted by `cancel_tournament` via `cascadeCleanupTournament()`. MatchResultRecord preserved (player history)
+- **Cancellation cleanup**: BracketMatch and GroupPhaseRecord rows cascade-deleted by `cancel_tournament` via `cascadeCleanupTournament()`. MatchResultRecord preserved (player history)
