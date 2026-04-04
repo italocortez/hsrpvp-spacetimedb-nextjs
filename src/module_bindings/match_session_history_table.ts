@@ -11,7 +11,7 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
-  MatchOutcome,
+  MatchEndReason,
   DraftMode,
   LobbyConfigSnapshot,
 } from "./types";
@@ -33,7 +33,7 @@ export default __t.row({
     return LobbyConfigSnapshot.name("snapshot_config");
   },
   get outcome() {
-    return MatchOutcome;
+    return MatchEndReason;
   },
   teamBlueSpent: __t.option(__t.f32()).name("team_blue_spent"),
   teamRedSpent: __t.option(__t.f32()).name("team_red_spent"),

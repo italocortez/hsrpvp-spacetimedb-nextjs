@@ -11,6 +11,5 @@ import {
 } from "spacetimedb";
 
 export default {
-  matchResultId: __t.u32(),
-  winnerId: __t.u32(),
+  lobbyId: __t.u32(),
 };

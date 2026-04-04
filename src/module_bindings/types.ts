@@ -149,7 +149,6 @@ export const BracketMatch = __t.object("BracketMatch", {
   },
   winnerAdvantage: __t.u8(),
   scheduledAt: __t.option(__t.timestamp()),
-  lobbyId: __t.option(__t.u32()),
   checkInRequired: __t.bool(),
   winnerTeamId: __t.option(__t.u32()),
   get resultStatus() {
@@ -440,7 +439,7 @@ export const GroupAssignmentMode = __t.enum("GroupAssignmentMode", {
 });
 export type GroupAssignmentMode = __Infer<typeof GroupAssignmentMode>;
 
-export const GroupStanding = __t.object("GroupStanding", {
+export const GroupPhaseRecord = __t.object("GroupPhaseRecord", {
   tournamentId: __t.u32(),
   groupId: __t.u32(),
   teamId: __t.u32(),
@@ -453,7 +452,7 @@ export const GroupStanding = __t.object("GroupStanding", {
   lastModifiedById: __t.u32(),
   lastModifiedDate: __t.timestamp(),
 });
-export type GroupStanding = __Infer<typeof GroupStanding>;
+export type GroupPhaseRecord = __Infer<typeof GroupPhaseRecord>;
 
 export const HsrAccount = __t.object("HsrAccount", {
   id: __t.u32(),
@@ -670,6 +669,8 @@ export const Lobby = __t.object("Lobby", {
   requireOwnership: __t.bool(),
   costSetId: __t.u32(),
   isPublic: __t.bool(),
+  bestOf: __t.u8(),
+  refereeControlsShelving: __t.bool(),
   get disconnectPolicy() {
     return DisconnectPolicy;
   },
@@ -840,19 +841,20 @@ export const LobbyStage = __t.enum("LobbyStage", {
   Drafting: __t.unit(),
   Equipping: __t.unit(),
   Scoring: __t.unit(),
+  BetweenGames: __t.unit(),
+  Shelved: __t.unit(),
   AwaitingResult: __t.unit(),
   Finished: __t.unit(),
 });
 export type LobbyStage = __Infer<typeof LobbyStage>;
 
-// The tagged union or sum type for the algebraic type `MatchOutcome`.
-export const MatchOutcome = __t.enum("MatchOutcome", {
-  BlueWins: __t.unit(),
-  RedWins: __t.unit(),
+// The tagged union or sum type for the algebraic type `MatchEndReason`.
+export const MatchEndReason = __t.enum("MatchEndReason", {
+  Completed: __t.unit(),
   Draw: __t.unit(),
   Concede: __t.unit(),
 });
-export type MatchOutcome = __Infer<typeof MatchOutcome>;
+export type MatchEndReason = __Infer<typeof MatchEndReason>;
 
 export const MatchParticipantHistory = __t.object("MatchParticipantHistory", {
   userId: __t.u32(),
@@ -949,20 +951,21 @@ export const MatchResultRecord = __t.object("MatchResultRecord", {
   get status() {
     return MatchResultStatus;
   },
-  winnerUserId: __t.option(__t.u32()),
+  get winnerTeamSide() {
+    return __t.option(TeamSide);
+  },
   mmrProcessedAt: __t.option(__t.timestamp()),
   refereeUserId: __t.option(__t.u32()),
   disputedByUserId: __t.option(__t.u32()),
   disputeReason: __t.option(__t.string()),
-  tournamentId: __t.option(__t.u32()),
   blueConfirmed: __t.bool(),
   redConfirmed: __t.bool(),
   refereeFullControl: __t.bool(),
   get matchType() {
     return MatchType;
   },
-  get matchOutcome() {
-    return __t.option(MatchOutcome);
+  get matchEndReason() {
+    return __t.option(MatchEndReason);
   },
   get concedeTrigger() {
     return __t.option(ConcedeTrigger);
@@ -1012,6 +1015,10 @@ export const MatchSession = __t.object("MatchSession", {
   teamRedLcBudget: __t.f32(),
   pausesUsedBlue: __t.u8(),
   pausesUsedRed: __t.u8(),
+  currentGameNumber: __t.u8(),
+  gamesWonBlue: __t.u8(),
+  gamesWonRed: __t.u8(),
+  seriesBestOf: __t.u8(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -1035,7 +1042,7 @@ export const MatchSessionHistory = __t.object("MatchSessionHistory", {
     return LobbyConfigSnapshot;
   },
   get outcome() {
-    return MatchOutcome;
+    return MatchEndReason;
   },
   teamBlueSpent: __t.option(__t.f32()),
   teamRedSpent: __t.option(__t.f32()),
@@ -1051,6 +1058,7 @@ export type MatchSessionHistory = __Infer<typeof MatchSessionHistory>;
 export const MatchSessionStep = __t.object("MatchSessionStep", {
   id: __t.u32(),
   lobbyId: __t.u32(),
+  gameNumber: __t.u8(),
   sequence: __t.u32(),
   actorUserId: __t.u32(),
   anonymousLabel: __t.option(__t.string()),
@@ -1073,6 +1081,7 @@ export type MatchSessionStep = __Infer<typeof MatchSessionStep>;
 
 export const MatchSessionStepHistory = __t.object("MatchSessionStepHistory", {
   matchHistoryId: __t.u32(),
+  gameNumber: __t.u8(),
   sequence: __t.u32(),
   actorUserId: __t.u32(),
   actorDisplayName: __t.string(),
@@ -1451,20 +1460,9 @@ export const TournamentAssistant = __t.object("TournamentAssistant", {
 });
 export type TournamentAssistant = __Infer<typeof TournamentAssistant>;
 
-// The tagged union or sum type for the algebraic type `TournamentFormat`.
-export const TournamentFormat = __t.enum("TournamentFormat", {
-  SingleElimination: __t.unit(),
-  DoubleElimination: __t.unit(),
-  GroupOnly: __t.unit(),
-  GroupIntoSingleElim: __t.unit(),
-  GroupIntoDoubleElim: __t.unit(),
-});
-export type TournamentFormat = __Infer<typeof TournamentFormat>;
-
-export const TournamentParticipant = __t.object("TournamentParticipant", {
+export const TournamentEnrolled = __t.object("TournamentEnrolled", {
   tournamentId: __t.u32(),
   userId: __t.u32(),
-  teamGroupId: __t.option(__t.u32()),
   get status() {
     return ParticipantStatus;
   },
@@ -1478,7 +1476,17 @@ export const TournamentParticipant = __t.object("TournamentParticipant", {
   lastModifiedById: __t.u32(),
   lastModifiedDate: __t.timestamp(),
 });
-export type TournamentParticipant = __Infer<typeof TournamentParticipant>;
+export type TournamentEnrolled = __Infer<typeof TournamentEnrolled>;
+
+// The tagged union or sum type for the algebraic type `TournamentFormat`.
+export const TournamentFormat = __t.enum("TournamentFormat", {
+  SingleElimination: __t.unit(),
+  DoubleElimination: __t.unit(),
+  GroupOnly: __t.unit(),
+  GroupIntoSingleElim: __t.unit(),
+  GroupIntoDoubleElim: __t.unit(),
+});
+export type TournamentFormat = __Infer<typeof TournamentFormat>;
 
 export const TournamentPlayerAccount = __t.object("TournamentPlayerAccount", {
   tournamentId: __t.u32(),
@@ -1495,6 +1503,7 @@ export type TournamentPlayerAccount = __Infer<typeof TournamentPlayerAccount>;
 export const TournamentStage = __t.enum("TournamentStage", {
   Draft: __t.unit(),
   Registration: __t.unit(),
+  CheckIn: __t.unit(),
   Seeding: __t.unit(),
   InProgress: __t.unit(),
   Completed: __t.unit(),
@@ -1525,6 +1534,17 @@ export const TournamentTeam = __t.object("TournamentTeam", {
   lastModifiedDate: __t.timestamp(),
 });
 export type TournamentTeam = __Infer<typeof TournamentTeam>;
+
+export const TournamentTeamMember = __t.object("TournamentTeamMember", {
+  teamId: __t.u32(),
+  userId: __t.u32(),
+  tournamentId: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type TournamentTeamMember = __Infer<typeof TournamentTeamMember>;
 
 export const TournamentTeamRequest = __t.object("TournamentTeamRequest", {
   teamId: __t.u32(),

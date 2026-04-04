@@ -35,7 +35,6 @@ export default __t.row({
   },
   winnerAdvantage: __t.u8().name("winner_advantage"),
   scheduledAt: __t.option(__t.timestamp()).name("scheduled_at"),
-  lobbyId: __t.option(__t.u32()).name("lobby_id"),
   checkInRequired: __t.bool().name("check_in_required"),
   winnerTeamId: __t.option(__t.u32()).name("winner_team_id"),
   get resultStatus() {

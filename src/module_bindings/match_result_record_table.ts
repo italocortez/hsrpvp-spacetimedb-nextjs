@@ -11,8 +11,9 @@ import {
 } from "spacetimedb";
 import {
   MatchResultStatus,
+  TeamSide,
   MatchType,
-  MatchOutcome,
+  MatchEndReason,
   ConcedeTrigger,
 } from "./types";
 
@@ -25,20 +26,21 @@ export default __t.row({
   get status() {
     return MatchResultStatus;
   },
-  winnerUserId: __t.option(__t.u32()).name("winner_user_id"),
+  get winnerTeamSide() {
+    return __t.option(TeamSide).name("winner_team_side");
+  },
   mmrProcessedAt: __t.option(__t.timestamp()).name("mmr_processed_at"),
   refereeUserId: __t.option(__t.u32()).name("referee_user_id"),
   disputedByUserId: __t.option(__t.u32()).name("disputed_by_user_id"),
   disputeReason: __t.option(__t.string()).name("dispute_reason"),
-  tournamentId: __t.option(__t.u32()).name("tournament_id"),
   blueConfirmed: __t.bool().name("blue_confirmed"),
   redConfirmed: __t.bool().name("red_confirmed"),
   refereeFullControl: __t.bool().name("referee_full_control"),
   get matchType() {
     return MatchType.name("match_type");
   },
-  get matchOutcome() {
-    return __t.option(MatchOutcome).name("match_outcome");
+  get matchEndReason() {
+    return __t.option(MatchEndReason).name("match_end_reason");
   },
   get concedeTrigger() {
     return __t.option(ConcedeTrigger).name("concede_trigger");

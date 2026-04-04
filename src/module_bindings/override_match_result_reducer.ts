@@ -13,6 +13,6 @@ import {
 export default {
   matchResultId: __t.u32(),
   newStatusTag: __t.string(),
-  winnerId: __t.u32(),
+  winnerTeamSideTag: __t.string(),
   reason: __t.string(),
 };

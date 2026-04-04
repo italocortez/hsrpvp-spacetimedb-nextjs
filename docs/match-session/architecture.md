@@ -4,6 +4,8 @@
 
 ```
 Lobby (PK: id)
+│  bestOf: u8                                    -- Best-of-N series length (Phase 10.1, D-11)
+│  refereeControlsShelving: bool                 -- Phase 10.1, D-06
 │
 ├── MatchSession (PK: lobbyId → Lobby.id)       -- Active draft state per lobby
 │     turnIndex, draftSequence, timerState
@@ -11,6 +13,10 @@ Lobby (PK: id)
 │     currentNomination, currentBidAmount, currentBidTeam
 │     teamBlueCharBudget, teamRedCharBudget, teamBlueLcBudget, teamRedLcBudget
 │     pausesUsedBlue, pausesUsedRed
+│     currentGameNumber: u8                      -- Phase 10.1, D-12: 1-indexed game number
+│     gamesWonBlue: u8                           -- Phase 10.1, D-12: series wins for Blue
+│     gamesWonRed: u8                            -- Phase 10.1, D-12: series wins for Red
+│     seriesBestOf: u8                           -- Phase 10.1, D-12: copied from Lobby.bestOf at start
 │
 ├── MatchSessionStep (PK: id autoInc)            -- Per-action records during draft
 │     lobbyId → Lobby.id
@@ -18,16 +24,18 @@ Lobby (PK: id)
 │     actorSlot: TeamSide (Blue/Red/Spectator)
 │     action: ActionType
 │     payload: StepPayload
+│     gameNumber: u8                             -- Phase 10.1, D-13: which game in series
 │
 ├── MatchSessionHistory (PK: id autoInc)         -- Archived completed matches
 │     lobbyCode, playedAt, draftMode, gameMode
 │     snapshotConfig: LobbyConfigSnapshot
-│     outcome: MatchOutcome
+│     outcome: MatchEndReason                    -- Phase 10.1: Completed/Draw/Concede
 │     teamBlueSpent, teamRedSpent, handicapApplied (Auction mode, D-88)
 │     isPubliclyVisible (scouting prevention, D-84)
 │
-├── MatchSessionStepHistory (PK: [matchHistoryId, sequence]) -- Replay data
-│     matchHistoryId → MatchSessionHistory.id
+├── MatchSessionStepHistory (PK: [matchHistoryId, gameNumber, sequence]) -- Replay data
+│     matchHistoryId → MatchSessionHistory.id    -- Phase 10.1: PK includes gameNumber
+│     gameNumber: u8                             -- Which game in the series
 │     actorUserId, actorDisplayName (denormalized), teamSide
 │     action: ActionType
 │     targetName? (character or LC name)
@@ -68,6 +76,10 @@ Active draft state. Created by `start_draft`, deleted by `finalize_match_result`
 | teamRedLcBudget | f32 | Remaining lightcone budget for Red team |
 | pausesUsedBlue | u8 | Number of player pauses used by Blue team (max 3) |
 | pausesUsedRed | u8 | Number of player pauses used by Red team (max 3) |
+| currentGameNumber | u8 | Current game in the series (1-indexed); starts at 1 (Phase 10.1, D-12) |
+| gamesWonBlue | u8 | Games won by Blue team in this series (Phase 10.1, D-12) |
+| gamesWonRed | u8 | Games won by Red team in this series (Phase 10.1, D-12) |
+| seriesBestOf | u8 | Series length (copied from Lobby.bestOf or BracketMatch.bestOf at start_draft; Phase 10.1, D-12) |
 | createdById | u32 | Audit |
 | createdDate | timestamp | Audit |
 | lastModifiedById | u32 | Audit |
@@ -92,7 +104,8 @@ Individual step records during an active draft. Deleted on lobby close or finali
 |--------|------|-------------|
 | id | u32 autoInc | Primary key |
 | lobbyId | u32 | FK to Lobby.id |
-| sequence | u32 | Step number within this lobby's draft |
+| sequence | u32 | Step number within this game's draft (reset between games) |
+| gameNumber | u8 | Which game in the series this step belongs to (1-indexed; Phase 10.1, D-13) |
 | actorUserId | u32 | Who performed this action (0 = system) |
 | anonymousLabel | string? | Anonymized label when lobby has anonymous mode |
 | actorSlot | TeamSide | Blue, Red, or Spectator |
@@ -146,7 +159,7 @@ Archived completed matches. Permanent record after finalization.
 | teamBlueAlias | string | Blue team name |
 | teamRedAlias | string | Red team name |
 | snapshotConfig | LobbyConfigSnapshot | Frozen lobby settings at match time |
-| outcome | MatchOutcome | BlueWins, RedWins, Draw, Aborted |
+| outcome | MatchEndReason | **Completed**, **Draw**, or **Concede** (Phase 10.1, D-31/D-32) |
 | teamBlueSpent | f32? | Budget spent by Blue team (Auction mode, D-88) |
 | teamRedSpent | f32? | Budget spent by Red team (Auction mode, D-88) |
 | handicapApplied | f32? | Handicap delta applied during finalization (D-88) |
@@ -160,12 +173,13 @@ Archived completed matches. Permanent record after finalization.
 
 Archived per-step data for match replay. One row per step (not a JSON blob).
 
-**PK:** `[matchHistoryId, sequence]`
+**PK:** `[matchHistoryId, gameNumber, sequence]` (Phase 10.1: gameNumber added to PK to prevent collision between game 1 step 1 and game 2 step 1)
 
 | Column | Type | Description |
 |--------|------|-------------|
 | matchHistoryId | u32 | FK to MatchSessionHistory.id |
-| sequence | u32 | Step number (1, 2, 3...) |
+| gameNumber | u8 | Which game in the series (1-indexed; Phase 10.1, D-13) |
+| sequence | u32 | Step number within that game (1, 2, 3...) |
 | actorUserId | u32 | Who performed the action |
 | actorDisplayName | string | Denormalized display name for replay |
 | teamSide | TeamSide | Blue, Red, or Spectator |

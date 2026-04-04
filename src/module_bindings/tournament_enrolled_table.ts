@@ -10,25 +10,21 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 import {
-  TeamSide,
-  ActionType,
+  ParticipantStatus,
 } from "./types";
 
 
 export default __t.row({
-  matchHistoryId: __t.u32().name("match_history_id"),
-  gameNumber: __t.u8().name("game_number"),
-  sequence: __t.u32(),
-  actorUserId: __t.u32().name("actor_user_id"),
-  actorDisplayName: __t.string().name("actor_display_name"),
-  get teamSide() {
-    return TeamSide.name("team_side");
+  tournamentId: __t.u32().name("tournament_id"),
+  userId: __t.u32().name("user_id"),
+  get status() {
+    return ParticipantStatus;
   },
-  get action() {
-    return ActionType;
-  },
-  targetName: __t.option(__t.string()).name("target_name"),
-  payload: __t.option(__t.string()),
+  anonymousAlias: __t.option(__t.string()).name("anonymous_alias"),
+  isWaitlisted: __t.bool().name("is_waitlisted"),
+  allowRandomTeamAssignment: __t.bool().name("allow_random_team_assignment"),
+  approvedByToAt: __t.option(__t.timestamp()).name("approved_by_to_at"),
+  hsrAccountId: __t.option(__t.u32()).name("hsr_account_id"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

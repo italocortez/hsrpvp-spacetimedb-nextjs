@@ -67,4 +67,6 @@ export default {
   allowPlayerPause: __t.bool(),
   teamBlueAlias: __t.string(),
   teamRedAlias: __t.string(),
+  bestOf: __t.u8(),
+  refereeControlsShelving: __t.bool(),
 };

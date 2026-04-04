@@ -189,29 +189,38 @@ The `disputeReason` column on `MatchResultRecord` is reused to store the overrid
 | Column | Type | Description |
 |--------|------|-------------|
 | id | u32 autoInc | Primary key |
-| bracketMatchId | u32? | FK to BracketMatch (Phase 4) |
+| bracketMatchId | u32? | FK to BracketMatch (Phase 4); tournamentId derived via bracketMatch.tournamentId (Phase 10.1, D-42) |
 | lobbyId | u32 | FK to Lobby where match was played |
 | isTournamentControlled | bool | Behavioral flag: true if lobby inherits tournament config and TO has authority |
 | status | MatchResultStatus | Pending, Submitted, Disputed, Validated, Rejected |
-| winnerUserId | u32? | Winning user ID; undefined = draw |
+| winnerTeamSide | TeamSide? | **Blue** or **Red** (WHO won); undefined = draw or unresolved (Phase 10.1, D-30) |
 | mmrProcessedAt | timestamp? | Set when MMR is applied (Phase 5); finalization gate |
 | refereeUserId | u32? | User who submitted the result |
 | disputedByUserId | u32? | User who raised the dispute |
 | disputeReason | string? | Dispute reason or admin override reason |
-| tournamentId | u32? | FK to Tournament (if isTournamentControlled) |
 | blueConfirmed | bool | True when Blue side captain (or spectator referee) has confirmed scores |
 | redConfirmed | bool | True when Red side captain (or spectator referee) has confirmed scores |
 | refereeFullControl | bool | When true, spectator referee can fill scores and confirm both sides (default true) |
 | matchType | MatchType enum | Casual or Ranked (derived from tournament.countTowardsMmr for tournament matches) |
-| matchOutcome | MatchOutcome? | BlueWins, RedWins, Draw, or **Concede** (Phase 10); optional, set when outcome is determined |
+| matchEndReason | MatchEndReason? | **Completed**, **Draw**, or **Concede** (HOW it ended) (Phase 10.1, D-31/D-32) |
 | concedeTrigger | ConcedeTrigger? | Disconnect, VoluntaryLeave, or RefereeDecision (Phase 10); what caused the concede |
 | concedeSummary | string? | Deterministic audit string (Phase 10): who disconnected, at what step, pool remaining, stage |
 | concedeAtStage | string? | LobbyStage tag at time of concede (Phase 10): "Drafting", "Equipping", or "Scoring" |
 
+**Field semantics (Phase 10.1, D-33):**
+- `winnerTeamSide` answers **WHO won** (operational routing: bracket advance, stats, MMR)
+- `matchEndReason` answers **HOW it ended** (display, history, concede branching)
+- Both fields kept; they serve different consumers
+
+**tournamentId derivation (Phase 10.1, D-42):**
+- `tournamentId` column removed from MatchResultRecord
+- Derive from `bracketMatch.tournamentId` via `MatchResultRecord.bracketMatchId`
+- `process_tournament_mmr` uses two-step query: `BracketMatch.tournament_id.filter` → `MatchResultRecord.bracket_match_id.filter`
+
 ### Indexes
 
 - `lobby_id` -- filter by lobby
-- `tournament_id` -- filter by tournament
+- `bracket_match_id` -- btree index for two-step tournament query path (Phase 10.1, D-42)
 
 ### MatchResultParticipant
 
@@ -458,7 +467,7 @@ Once `mmrProcessedAt` is set, the match result is permanent:
 
 ## Concede Finalization Matrix (Phase 10)
 
-`runFinalization()` branches on `matchResult.matchOutcome?.tag === 'Concede'`. Each step is gated by `concedeFlags` per the 3-tier x 3-stage matrix.
+`runFinalization()` branches on `matchResult.matchEndReason?.tag === 'Concede'`. Each step is gated by `concedeFlags` per the 3-tier x 3-stage matrix.
 
 ### Tier 1: Casual Non-Tournament
 
