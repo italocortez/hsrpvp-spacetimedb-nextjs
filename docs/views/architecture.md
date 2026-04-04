@@ -270,6 +270,86 @@ Returns `MatchSessionStepHistory` rows (pick/ban/bid replay data) only for match
 
 ---
 
+### 21. `view_my_tournaments` (per-user view)
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(Tournament.rowType)`
+
+Returns `Tournament` rows where the caller is the organizer or an assistant. Uses the `getMyTournamentIds` shared helper (two-path resolution: `Tournament.organizer_id` btree + `TournamentAssistant.user_id` btree). Each tournament ID is resolved via `Tournament.id` PK lookup. (TO-VIEW-01)
+
+---
+
+### 22. `view_my_tournament_enrolled` (per-user view)
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(TournamentEnrolled.rowType)`
+
+Returns `TournamentEnrolled` rows for all tournaments where the caller is the organizer or an assistant. Direct `TournamentEnrolled.tournament_id` btree filter per tournament ID. (TO-VIEW-02)
+
+---
+
+### 23. `view_my_tournament_teams` (per-user view)
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(TournamentTeam.rowType)`
+
+Returns `TournamentTeam` rows for all tournaments where the caller is the organizer or an assistant. Direct `TournamentTeam.tournament_id` btree filter per tournament ID. (TO-VIEW-02)
+
+---
+
+### 24. `view_my_tournament_team_members` (per-user view)
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(TournamentTeamMember.rowType)`
+
+Returns `TournamentTeamMember` rows for all tournaments where the caller is the organizer or an assistant. Navigates via `TournamentTeam.tournament_id` btree → `TournamentTeamMember.team_id` btree (no single-column `tournament_id` index exists on `TournamentTeamMember`). (TO-VIEW-02)
+
+---
+
+### 25. `view_my_tournament_matches` (per-user view)
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(BracketMatch.rowType)`
+
+Returns `BracketMatch` rows for all tournaments where the caller is the organizer or an assistant. Direct `BracketMatch.tournament_id` btree filter per tournament ID. (TO-VIEW-03)
+
+---
+
+### 26. `view_my_tournament_match_results` (per-user view)
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(MatchResultRecord.rowType)`
+
+Returns `MatchResultRecord` rows for all tournaments where the caller is the organizer or an assistant. Navigates via `BracketMatch.tournament_id` btree → `MatchResultRecord.bracket_match_id` btree (`MatchResultRecord` has no `tournament_id` column — D-07). (TO-VIEW-03)
+
+---
+
+### 27. `view_my_tournament_lobbies` (per-user view)
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(Lobby.rowType)`
+
+Returns `Lobby` rows for all tournaments where the caller is the organizer or an assistant. Uses the direct `Lobby.tournament_id` btree index. (TO-VIEW-03)
+
+---
+
+### 28. `view_my_tournament_group_standings` (per-user view)
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(GroupPhaseRecord.rowType)`
+
+Returns `GroupPhaseRecord` rows for all tournaments where the caller is the organizer or an assistant. Direct `GroupPhaseRecord.tournament_id` btree filter per tournament ID. (TO-VIEW-02)
+
+---
+
 ## Anonymous Enforcement Pattern (D-92)
 
 All anonymous views follow the same pattern:
@@ -313,6 +393,15 @@ conn.subscriptionBuilder().subscribe([
     'SELECT * FROM view_match_history',
     'SELECT * FROM view_match_participant_history',
     'SELECT * FROM view_match_step_history',
+    // Tournament organizer views (Phase 10.3)
+    'SELECT * FROM view_my_tournaments',
+    'SELECT * FROM view_my_tournament_enrolled',
+    'SELECT * FROM view_my_tournament_teams',
+    'SELECT * FROM view_my_tournament_team_members',
+    'SELECT * FROM view_my_tournament_matches',
+    'SELECT * FROM view_my_tournament_match_results',
+    'SELECT * FROM view_my_tournament_lobbies',
+    'SELECT * FROM view_my_tournament_group_standings',
 ]);
 ```
 
@@ -327,3 +416,4 @@ conn.subscriptionBuilder().subscribe([
 - `view_my_lobby_chat` uses pre-stored `anonymousLabel` on ChatMessage rows rather than recomputing at view time — consistent labels within a session
 - `anonymousView` type used for views accessible without authentication (lobby browser, user directory)
 - `view` type used for views requiring caller identity resolution via `ctx.sender`
+- `getMyTournamentIds` shared helper extracts two-path TO resolution (organizer + assistant) into a file-local function, matching the `buildVisibleMatchIds` DRY pattern in anonymousViews.ts. All 8 TO views reuse it. Views are bandwidth optimizations, not security gates — all tournament tables remain public.

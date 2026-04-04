@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 10.2
-current_plan: Not started
-status: planning
-last_updated: "2026-04-04T03:21:51.879Z"
+current_phase: 10.3
+current_plan: 1
+status: executing
+last_updated: "2026-04-04T10:20:01.853Z"
 progress:
-  total_phases: 15
-  completed_phases: 13
-  total_plans: 43
-  completed_plans: 43
+  total_phases: 16
+  completed_phases: 14
+  total_plans: 44
+  completed_plans: 44
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 10.2
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current phase:** 10.3
+**Current plan:** 1
+**Status:** Executing Phase 10.3
 
 ## Decisions
 
@@ -129,6 +129,8 @@ See: .planning/PROJECT.md
 - [Phase 10.1]: Helper functions renamed from updateGroupStandings/sortGroupStandings to updateGroupPhaseRecords/sortGroupPhaseRecords — plan verify required zero occurrences of GroupStanding string in all bracket files
 - [Phase 10.1]: hasSeriesAuthority helper checks host/TO/assistant/mod/admin plus referee-if-refereeControlsShelving — D-07 authority for all 3 series reducers
 - [Phase 10.1]: STAGE_ORDER includes CheckIn but Registration->Seeding skip allowed — tournament checkInEnabled flag controls which path callers use without blocking either
+- [Phase 10.3]: getMyTournamentIds returns { userId, tournamentIds } (not just Set) — preserves userId for views that might need it without a redundant UserIdentity lookup
+- [Phase 10.3]: view_my_tournament_lobbies uses direct Lobby.tournament_id btree index; view_my_tournament_match_results navigates via BracketMatch.tournament_id -> MatchResultRecord.bracket_match_id; view_my_tournament_team_members navigates via TournamentTeam.tournament_id -> TournamentTeamMember.team_id
 
 ### Quick Tasks Completed
 
@@ -186,3 +188,4 @@ See: .planning/PROJECT.md
 - 2026-03-29: Completed 09-06-PLAN.md — 7 draft reducers (start_draft, pick_character, ban_character, timer_expiry_classic, undo_last_step, pause_draft, resume_draft), draftSequences.ts helper with exact 0/4/6-ban Classic sequences, MOUS-03 coach guard enforced throughout, D-29/D-30/D-40/D-42/D-43/D-43b/D-60/D-61/D-62 all implemented, published to maincloud, bindings regenerated
 - 2026-04-03: Completed 10-02-PLAN.md — 3 concede reducers (concede_match, claim_forfeit, defer_match), performConcede shared helper, concede finalization matrix (3-tier x 3-stage) in runFinalization, 3 admin reducers (admin_force_finalize, admin_void_match, admin_set_bracket_winner), leave_lobby auto-concede wired, published to maincloud, 124/124 tests pass, Phase 10 complete
 - 2026-04-04: Completed 10.1-06-PLAN.md — 15 test files updated for TournamentEnrolled/TournamentTeamMember/GroupPhaseRecord/winnerTeamSide/matchEndReason, module published --clear-database, bindings regenerated (7 new + 2 deleted + 10+ updated), 4 architecture docs updated, 72/72 unit tests pass, Phase 10.1 complete
+- 2026-04-04: Completed 10.3-01-PLAN.md — 8 TO-scoped views added to securityViews.ts (getMyTournamentIds helper + view_my_tournaments/enrolled/teams/team_members/matches/match_results/lobbies/group_standings), module published --clear-database, bindings regenerated, docs/views/architecture.md updated, 72/72 unit tests pass, Phase 10.3 complete
