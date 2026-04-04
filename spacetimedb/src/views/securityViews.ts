@@ -16,6 +16,13 @@ import { LobbyMember } from '../tables/lobbyMember';
 import { HsrAccount } from '../tables/hsrAccount';
 import { HsrAccountCharacter } from '../tables/hsrAccountCharacter';
 import { slotTeam } from '../helpers/lobbyHelpers';
+import { BracketMatch } from '../tables/bracketMatch';
+import { GroupPhaseRecord } from '../tables/groupPhaseRecord';
+import { MatchResultRecord } from '../tables/matchResult';
+import { TournamentAssistant } from '../tables/tournamentAssistant';
+import { TournamentEnrolled } from '../tables/tournamentEnrolled';
+import { TournamentTeam } from '../tables/tournamentTeam';
+import { TournamentTeamMember } from '../tables/tournamentTeamMember';
 
 // ---------------------------------------------------------------------------
 // 1. Lobby Browser (anonymous view) — projected subset of lobby columns
@@ -402,6 +409,202 @@ spacetimedb.view(
             }
         }
 
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// Tournament Organizer Views (Phase 10.3)
+// Shared helper resolves the calling user's tournament set via two paths:
+//   Path 1: Tournament.organizer_id btree -> tournaments where caller is organizer
+//   Path 2: TournamentAssistant.user_id btree -> tournaments where caller is assistant
+// Same two-path pattern as ensureTournamentAccess in tournamentHelpers.ts.
+// ---------------------------------------------------------------------------
+function getMyTournamentIds(ctx: any): { userId: number; tournamentIds: Set<number> } | null {
+    const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+    if (!mapping) return null;
+    const userId = mapping.userId;
+    const tournamentIds = new Set<number>();
+    // Path 1: Organizer
+    for (const t of ctx.db.Tournament.organizer_id.filter(userId)) {
+        tournamentIds.add(t.id);
+    }
+    // Path 2: Assistant
+    for (const a of ctx.db.TournamentAssistant.user_id.filter(userId)) {
+        tournamentIds.add(a.tournamentId);
+    }
+    return { userId, tournamentIds };
+}
+
+// ---------------------------------------------------------------------------
+// 14. My Tournaments (per-user view) — Tournament rows where the caller is the
+//     organizer or an assistant. Resolves both paths via getMyTournamentIds.
+//     (TO-VIEW-01)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_tournaments', public: true },
+    t.array(Tournament.rowType),
+    (ctx) => {
+        const resolved = getMyTournamentIds(ctx);
+        if (!resolved || resolved.tournamentIds.size === 0) return [];
+        const results: any[] = [];
+        for (const tid of resolved.tournamentIds) {
+            const tournament = ctx.db.Tournament.id.find(tid);
+            if (tournament) results.push(tournament);
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 15. My Tournament Enrolled (per-user view) — TournamentEnrolled rows for all
+//     tournaments where the caller is the organizer or an assistant.
+//     Direct tournament_id btree filter. (TO-VIEW-02)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_tournament_enrolled', public: true },
+    t.array(TournamentEnrolled.rowType),
+    (ctx) => {
+        const resolved = getMyTournamentIds(ctx);
+        if (!resolved || resolved.tournamentIds.size === 0) return [];
+        const results: any[] = [];
+        for (const tid of resolved.tournamentIds) {
+            for (const row of ctx.db.TournamentEnrolled.tournament_id.filter(tid)) {
+                results.push(row);
+            }
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 16. My Tournament Teams (per-user view) — TournamentTeam rows for all
+//     tournaments where the caller is the organizer or an assistant.
+//     Direct tournament_id btree filter. (TO-VIEW-02)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_tournament_teams', public: true },
+    t.array(TournamentTeam.rowType),
+    (ctx) => {
+        const resolved = getMyTournamentIds(ctx);
+        if (!resolved || resolved.tournamentIds.size === 0) return [];
+        const results: any[] = [];
+        for (const tid of resolved.tournamentIds) {
+            for (const row of ctx.db.TournamentTeam.tournament_id.filter(tid)) {
+                results.push(row);
+            }
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 17. My Tournament Team Members (per-user view) — TournamentTeamMember rows for
+//     all tournaments where the caller is the organizer or an assistant.
+//     Navigates via TournamentTeam.tournament_id -> TournamentTeamMember.team_id
+//     (no single-column tournament_id index on TournamentTeamMember). (TO-VIEW-02)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_tournament_team_members', public: true },
+    t.array(TournamentTeamMember.rowType),
+    (ctx) => {
+        const resolved = getMyTournamentIds(ctx);
+        if (!resolved || resolved.tournamentIds.size === 0) return [];
+        const results: any[] = [];
+        for (const tid of resolved.tournamentIds) {
+            for (const team of ctx.db.TournamentTeam.tournament_id.filter(tid)) {
+                for (const member of ctx.db.TournamentTeamMember.team_id.filter(team.id)) {
+                    results.push(member);
+                }
+            }
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 18. My Tournament Matches (per-user view) — BracketMatch rows for all
+//     tournaments where the caller is the organizer or an assistant.
+//     Direct tournament_id btree filter. (TO-VIEW-03)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_tournament_matches', public: true },
+    t.array(BracketMatch.rowType),
+    (ctx) => {
+        const resolved = getMyTournamentIds(ctx);
+        if (!resolved || resolved.tournamentIds.size === 0) return [];
+        const results: any[] = [];
+        for (const tid of resolved.tournamentIds) {
+            for (const row of ctx.db.BracketMatch.tournament_id.filter(tid)) {
+                results.push(row);
+            }
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 19. My Tournament Match Results (per-user view) — MatchResultRecord rows for
+//     all tournaments where the caller is the organizer or an assistant.
+//     Navigates via BracketMatch.tournament_id -> MatchResultRecord.bracket_match_id
+//     (MatchResultRecord has no tournament_id column — D-07). (TO-VIEW-03)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_tournament_match_results', public: true },
+    t.array(MatchResultRecord.rowType),
+    (ctx) => {
+        const resolved = getMyTournamentIds(ctx);
+        if (!resolved || resolved.tournamentIds.size === 0) return [];
+        const results: any[] = [];
+        for (const tid of resolved.tournamentIds) {
+            for (const bm of ctx.db.BracketMatch.tournament_id.filter(tid)) {
+                for (const row of ctx.db.MatchResultRecord.bracket_match_id.filter(bm.id)) {
+                    results.push(row);
+                }
+            }
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 20. My Tournament Lobbies (per-user view) — Lobby rows for all tournaments
+//     where the caller is the organizer or an assistant.
+//     Uses direct Lobby.tournament_id btree index. (TO-VIEW-03)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_tournament_lobbies', public: true },
+    t.array(Lobby.rowType),
+    (ctx) => {
+        const resolved = getMyTournamentIds(ctx);
+        if (!resolved || resolved.tournamentIds.size === 0) return [];
+        const results: any[] = [];
+        for (const tid of resolved.tournamentIds) {
+            for (const row of ctx.db.Lobby.tournament_id.filter(tid)) {
+                results.push(row);
+            }
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 21. My Tournament Group Standings (per-user view) — GroupPhaseRecord rows for
+//     all tournaments where the caller is the organizer or an assistant.
+//     Direct tournament_id btree filter. (TO-VIEW-02)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_my_tournament_group_standings', public: true },
+    t.array(GroupPhaseRecord.rowType),
+    (ctx) => {
+        const resolved = getMyTournamentIds(ctx);
+        if (!resolved || resolved.tournamentIds.size === 0) return [];
+        const results: any[] = [];
+        for (const tid of resolved.tournamentIds) {
+            for (const row of ctx.db.GroupPhaseRecord.tournament_id.filter(tid)) {
+                results.push(row);
+            }
+        }
         return results;
     }
 );
