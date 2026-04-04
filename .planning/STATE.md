@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 10.4
-current_plan: 2
+current_plan: 3
 status: executing
-last_updated: "2026-04-04T13:08:00Z"
+last_updated: "2026-04-04T13:27:39.499Z"
 progress:
   total_phases: 16
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 47
-  completed_plans: 46
+  completed_plans: 47
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 10.4
-**Current plan:** 1
+**Current plan:** 3 (10.4 complete)
 **Status:** Executing Phase 10.4
 
 ## Decisions
@@ -137,6 +137,9 @@ See: .planning/PROJECT.md
 - [Phase 10.4]: select_match_account tournament path additive (up to maxAccountsPerPlayer), non-tournament path replace (always max 1) (D-07, D-11)
 - [Phase 10.4]: validateCharacterOwnership now only checks LobbyMemberAccount-selected accounts (D-14) — both tournament and non-tournament paths unified
 - [Phase 10.4]: Stand-in TPA snapshot in join_lobby conditional on bracketMatchId being truthy (guards against tournament lobbies not yet assigned to a bracket match)
+- [Phase 10.4]: view_my_roster_visibility anonymous override (D-18) placed INSIDE the else block for opponent visibility — after rosterVisibility determination, overriding all cases when isAnonymousPlayers=true
+- [Phase 10.4]: view_public_accounts uses iter() on HsrAccount — no isRosterPublic btree index, but ~300 rows is acceptable
+- [Phase 10.4]: view_tournament_registrant_accounts includes both enrolled and TO/assistant paths via getMyTournamentIds helper
 
 ### Quick Tasks Completed
 
@@ -196,3 +199,4 @@ See: .planning/PROJECT.md
 - 2026-04-04: Completed 10.1-06-PLAN.md — 15 test files updated for TournamentEnrolled/TournamentTeamMember/GroupPhaseRecord/winnerTeamSide/matchEndReason, module published --clear-database, bindings regenerated (7 new + 2 deleted + 10+ updated), 4 architecture docs updated, 72/72 unit tests pass, Phase 10.1 complete
 - 2026-04-04: Completed 10.3-01-PLAN.md — 8 TO-scoped views added to securityViews.ts (getMyTournamentIds helper + view_my_tournaments/enrolled/teams/team_members/matches/match_results/lobbies/group_standings), module published --clear-database, bindings regenerated, docs/views/architecture.md updated, 72/72 unit tests pass, Phase 10.3 complete
 - 2026-04-04: Completed 10.4-02-PLAN.md — LobbyMemberAccount wired into all lifecycle touchpoints (join/leave/GC cascade), deletion guards in delete_hsr_account and admin_delete_hsr_account, validateCharacterOwnership refactored to use LMA exclusively (D-14), start_draft D-08 account gate for Ranked/MMR-tournament lobbies, stand-in TPA snapshot on join (D-26)
+- 2026-04-04: Completed 10.4-03-PLAN.md — view_my_roster_visibility updated to filter by LobbyMemberAccount (D-15) + D-18 anon override, 3 new views (view_my_roster, view_public_accounts, view_tournament_registrant_accounts), 4 architecture docs + 4 contract docs updated, module published --clear-database, bindings regenerated (2 private table files deleted), 181/181 tests pass, Phase 10.4 complete

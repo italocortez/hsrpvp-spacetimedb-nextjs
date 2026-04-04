@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10: Disconnect Handling and Cost Parity** - Disconnect policies, rejoin logic, liveness checks, and lightcone cost fix (completed 2026-04-03)
 - [x] **Phase 10.1: Match Schema Rework** - Best-of-N series, team-centric model, winnerTeamSide, tournamentId/lobbyId removal (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.3: Tournament Organizer Views** - TO-scoped server-side views replacing full-table subscriptions (INSERTED) (completed 2026-04-04)
-- [ ] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED)
+- [x] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED) (completed 2026-04-04)
 - [ ] **Phase 11: Archetype Playstyle Stats** - PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag, same PK pattern as stat tables
 
 ## Phase Details
@@ -308,11 +308,11 @@ Plans:
   5. `TournamentEnrolled.hsrAccountId` column removed (redundant with TournamentPlayerAccount)
   6. For casual (non-tournament) lobbies, account selection uses the player's currently active account (existing behavior)
   7. Stand-ins select account on lobby join using the same `select_tournament_account` flow
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [x] 10.4-01-PLAN.md — Schema foundation: LobbyMemberAccount table, Tournament.maxAccountsPerPlayer, TournamentEnrolled.hsrAccountId removal, HsrAccount/HsrAccountCharacter privacy, select_match_account reducer
 - [x] 10.4-02-PLAN.md — Cascade wiring: join_lobby auto-create, leave_lobby cascade, hardDeleteLobby cascade, deletion guards, ownership validation refactor, start_draft gate
-- [ ] 10.4-03-PLAN.md — Views + docs: roster visibility update + anon fix, 3 new views, architecture + contract docs, publish --clear-database, generate bindings
+- [x] 10.4-03-PLAN.md — Views + docs: roster visibility update + anon fix, 3 new views, architecture + contract docs, publish --clear-database, generate bindings
 
 ### Phase 11: Archetype Playstyle Stats
 **Goal**: Track playstyle stats when 3+ picks in a draft share an archetype tag; auto-increment during finalization pipeline
@@ -350,6 +350,6 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10. Disconnect Handling and Cost Parity | 2/2 | Complete   | 2026-04-04 |
 | 10.1. Match Schema Rework | 6/6 | Complete    | 2026-04-04 |
 | 10.3. Tournament Organizer Views | 1/1 | Complete    | 2026-04-04 |
-| 10.4. Account Selection Per Match | 2/3 | In Progress|  |
+| 10.4. Account Selection Per Match | 3/3 | Complete   | 2026-04-04 |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
 
