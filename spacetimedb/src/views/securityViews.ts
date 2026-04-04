@@ -15,6 +15,7 @@ import { PlayerRelationship } from '../tables/playerRelationship';
 import { LobbyMember } from '../tables/lobbyMember';
 import { HsrAccount } from '../tables/hsrAccount';
 import { HsrAccountCharacter } from '../tables/hsrAccountCharacter';
+import { LobbyMemberAccount } from '../tables/lobbyMemberAccount';
 import { slotTeam } from '../helpers/lobbyHelpers';
 import { BracketMatch } from '../tables/bracketMatch';
 import { GroupPhaseRecord } from '../tables/groupPhaseRecord';
@@ -23,6 +24,7 @@ import { TournamentAssistant } from '../tables/tournamentAssistant';
 import { TournamentEnrolled } from '../tables/tournamentEnrolled';
 import { TournamentTeam } from '../tables/tournamentTeam';
 import { TournamentTeamMember } from '../tables/tournamentTeamMember';
+import { TournamentPlayerAccount } from '../tables/tournamentPlayerAccount';
 
 // ---------------------------------------------------------------------------
 // 1. Lobby Browser (anonymous view) — projected subset of lobby columns
@@ -373,16 +375,25 @@ spacetimedb.view(
                         canSeeRoster = false;
                         canSeeRating = false;
                     }
+
+                    // D-18: Anonymous mode override — force ClosedNoRating for opponents
+                    if (lobby.isAnonymousPlayers) {
+                        canSeeRoster = false;
+                        canSeeRating = false;
+                    }
                 }
 
                 if (!canSeeRoster && !canSeeRating) continue;
 
-                // Get member's HSR accounts
-                const memberAccounts = [...ctx.db.HsrAccount.user_id.filter(member.userId)];
+                // D-15: Filter by LobbyMemberAccount — only characters from selected account(s) shown
+                const selectedAccountRows = [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobby.id, member.userId])];
 
-                for (const account of memberAccounts) {
+                for (const lma of selectedAccountRows) {
+                    const account = ctx.db.HsrAccount.id.find(lma.hsrAccountId);
+                    if (!account) continue;
+
                     if (canSeeRoster) {
-                        // Return full character roster
+                        // D-16 OpenRoster: selected account(s) rating + characters
                         const characters = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(account.id)];
                         for (const char of characters) {
                             results.push({
@@ -395,7 +406,7 @@ spacetimedb.view(
                             });
                         }
                     } else if (canSeeRating) {
-                        // ClosedWithRating: no characters but include a sentinel row with rating
+                        // D-16 ClosedWithRating: selected account(s) rating only, no characters
                         results.push({
                             lobbyId: lobby.id,
                             memberUserId: member.userId,
@@ -405,6 +416,77 @@ spacetimedb.view(
                             accountRating: account.accountRating,
                         });
                     }
+                }
+            }
+        }
+
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 14. My Roster (per-user view) — returns caller's own HsrAccounts + characters.
+//     Replaces raw HsrAccount/HsrAccountCharacter subscriptions now that both
+//     tables are private (D-20). Flat rows (one per character); accounts with
+//     no characters emit a single row with characterName/eidolonLevel = undefined.
+// ---------------------------------------------------------------------------
+const MyRosterAccountRow = t.object('MyRosterAccountRow', {
+    accountId: t.u32(),
+    uid: t.string(),
+    region: t.string(),
+    displayLabel: t.string(),
+    isActive: t.bool(),
+    isRosterPublic: t.bool(),
+    isRatingPublic: t.bool(),
+    isDuplicateUid: t.bool(),
+    accountRating: t.u32(),
+    characterName: t.string().optional(),
+    eidolonLevel: t.u8().optional(),
+});
+
+spacetimedb.view(
+    { name: 'view_my_roster', public: true },
+    t.array(MyRosterAccountRow),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const myUserId = mapping.userId;
+
+        const accounts = [...ctx.db.HsrAccount.user_id.filter(myUserId)];
+        const results: any[] = [];
+
+        for (const account of accounts) {
+            const characters = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(account.id)];
+            if (characters.length === 0) {
+                // Account with no characters — still return account metadata
+                results.push({
+                    accountId: account.id,
+                    uid: account.uid,
+                    region: account.region,
+                    displayLabel: account.displayLabel,
+                    isActive: account.isActive,
+                    isRosterPublic: account.isRosterPublic,
+                    isRatingPublic: account.isRatingPublic,
+                    isDuplicateUid: account.isDuplicateUid,
+                    accountRating: account.accountRating,
+                    characterName: undefined,
+                    eidolonLevel: undefined,
+                });
+            } else {
+                for (const char of characters) {
+                    results.push({
+                        accountId: account.id,
+                        uid: account.uid,
+                        region: account.region,
+                        displayLabel: account.displayLabel,
+                        isActive: account.isActive,
+                        isRosterPublic: account.isRosterPublic,
+                        isRatingPublic: account.isRatingPublic,
+                        isDuplicateUid: account.isDuplicateUid,
+                        accountRating: account.accountRating,
+                        characterName: char.characterName,
+                        eidolonLevel: char.eidolonLevel,
+                    });
                 }
             }
         }
@@ -605,6 +687,131 @@ spacetimedb.view(
                 results.push(row);
             }
         }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 22. Tournament Registrant Accounts (per-user view) — returns locked accounts
+//     for tournaments the caller is enrolled in. Respects rosterVisibility per
+//     tournament. TO + assistants always see all registrant accounts.
+//     (D-22, Phase 10.4)
+// ---------------------------------------------------------------------------
+const TournamentRegistrantAccountRow = t.object('TournamentRegistrantAccountRow', {
+    tournamentId: t.u32(),
+    userId: t.u32(),
+    hsrAccountId: t.u32(),
+    displayLabel: t.string(),
+    accountRating: t.u32().optional(),
+    characterName: t.string().optional(),
+    eidolonLevel: t.u8().optional(),
+});
+
+spacetimedb.view(
+    { name: 'view_tournament_registrant_accounts', public: true },
+    t.array(TournamentRegistrantAccountRow),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const myUserId = mapping.userId;
+        const results: any[] = [];
+
+        // Collect tournaments: (a) caller is enrolled in, (b) caller is TO/assistant
+        const myTournamentIds = new Set<number>();
+        const toTournamentIds = new Set<number>();
+
+        // Path 1: Enrolled tournaments
+        for (const enrolled of ctx.db.TournamentEnrolled.user_id.filter(myUserId)) {
+            myTournamentIds.add(enrolled.tournamentId);
+        }
+
+        // Path 2: TO/assistant tournaments (always see all)
+        const resolved = getMyTournamentIds(ctx);
+        if (resolved) {
+            for (const tid of resolved.tournamentIds) {
+                toTournamentIds.add(tid);
+                myTournamentIds.add(tid);
+            }
+        }
+
+        for (const tournamentId of myTournamentIds) {
+            const tournament = ctx.db.Tournament.id.find(tournamentId);
+            if (!tournament) continue;
+
+            const isTOOrAssistant = toTournamentIds.has(tournamentId);
+            const vis = tournament.rosterVisibility.tag;
+
+            // For each enrolled user in this tournament, get their TPA entries
+            const enrolledUsers = [...ctx.db.TournamentEnrolled.tournament_id.filter(tournamentId)];
+
+            for (const enrolled of enrolledUsers) {
+                const isMe = enrolled.userId === myUserId;
+                const tpaForUser = [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, enrolled.userId])];
+
+                for (const tpa of tpaForUser) {
+                    const account = ctx.db.HsrAccount.id.find(tpa.hsrAccountId);
+                    if (!account) continue;
+
+                    let showRoster = false;
+                    let showRating = false;
+
+                    if (isTOOrAssistant || isMe) {
+                        showRoster = true;
+                        showRating = true;
+                    } else if (vis === 'OpenRoster') {
+                        showRoster = true;
+                        showRating = true;
+                    } else if (vis === 'ClosedWithRating') {
+                        showRoster = false;
+                        showRating = true;
+                    } else {
+                        // ClosedNoRating
+                        showRoster = false;
+                        showRating = false;
+                    }
+
+                    if (!showRoster && !showRating) continue;
+
+                    if (showRoster) {
+                        const characters = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(account.id)];
+                        if (characters.length === 0) {
+                            results.push({
+                                tournamentId,
+                                userId: enrolled.userId,
+                                hsrAccountId: account.id,
+                                displayLabel: account.displayLabel,
+                                accountRating: showRating ? account.accountRating : undefined,
+                                characterName: undefined,
+                                eidolonLevel: undefined,
+                            });
+                        } else {
+                            for (const char of characters) {
+                                results.push({
+                                    tournamentId,
+                                    userId: enrolled.userId,
+                                    hsrAccountId: account.id,
+                                    displayLabel: account.displayLabel,
+                                    accountRating: showRating ? account.accountRating : undefined,
+                                    characterName: char.characterName,
+                                    eidolonLevel: char.eidolonLevel,
+                                });
+                            }
+                        }
+                    } else if (showRating) {
+                        results.push({
+                            tournamentId,
+                            userId: enrolled.userId,
+                            hsrAccountId: account.id,
+                            displayLabel: account.displayLabel,
+                            accountRating: account.accountRating,
+                            characterName: undefined,
+                            eidolonLevel: undefined,
+                        });
+                    }
+                }
+            }
+        }
+
         return results;
     }
 );

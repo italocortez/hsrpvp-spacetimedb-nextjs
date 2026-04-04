@@ -8,6 +8,7 @@
 // 5. view_match_history              — visibility-filtered MatchSessionHistory (D-93)
 // 6. view_match_participant_history    — visibility-filtered MatchParticipantHistory (D-93)
 // 7. view_match_step_history           — visibility-filtered MatchSessionStepHistory (D-93)
+// 8. view_public_accounts        — public HsrAccount rows with characters (D-22, Phase 10.4)
 
 import spacetimedb from '../schema';
 import { t } from 'spacetimedb/server';
@@ -18,6 +19,8 @@ import { computeAnonymousLabel } from '../helpers/anonymousLabels';
 import { MatchSessionHistory } from '../tables/matchSessionHistory';
 import { MatchParticipantHistory } from '../tables/matchParticipantHistory';
 import { MatchSessionStepHistory } from '../tables/matchSessionStepHistory';
+import { HsrAccount } from '../tables/hsrAccount';
+import { HsrAccountCharacter } from '../tables/hsrAccountCharacter';
 
 // ---------------------------------------------------------------------------
 // 1. view_my_lobby_chat (per D-92)
@@ -342,6 +345,68 @@ spacetimedb.view(
         for (const matchId of visibleIds) {
             for (const row of ctx.db.MatchSessionStepHistory.by_match_history.filter(matchId)) {
                 results.push(row);
+            }
+        }
+
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 8. view_public_accounts — Anonymous view returning all HsrAccount rows where
+//    isRosterPublic=true. For profile browsing. Characters included, rating
+//    included if isRatingPublic=true. Replaces raw HsrAccount subscription (D-20,
+//    D-22). Flat rows (one per character); accounts with no characters emit a
+//    single row with characterName/eidolonLevel = undefined.
+// ---------------------------------------------------------------------------
+const PublicAccountRow = t.object('PublicAccountRow', {
+    accountId: t.u32(),
+    userId: t.u32(),
+    uid: t.string(),
+    region: t.string(),
+    displayLabel: t.string(),
+    accountRating: t.u32().optional(),
+    characterName: t.string().optional(),
+    eidolonLevel: t.u8().optional(),
+});
+
+spacetimedb.anonymousView(
+    { name: 'view_public_accounts', public: true },
+    t.array(PublicAccountRow),
+    (ctx) => {
+        const results: any[] = [];
+
+        // HsrAccount has no isRosterPublic index — iter() acceptable at ~300 rows
+        for (const account of ctx.db.HsrAccount.iter()) {
+            if (!account.isRosterPublic) continue;
+
+            const showRating = account.isRatingPublic;
+
+            const characters = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(account.id)];
+            if (characters.length === 0) {
+                results.push({
+                    accountId: account.id,
+                    userId: account.userId,
+                    uid: account.uid,
+                    region: account.region,
+                    displayLabel: account.displayLabel,
+                    accountRating: showRating ? account.accountRating : undefined,
+                    characterName: undefined,
+                    eidolonLevel: undefined,
+                });
+            } else {
+                for (const char of characters) {
+                    results.push({
+                        accountId: account.id,
+                        userId: account.userId,
+                        uid: account.uid,
+                        region: account.region,
+                        displayLabel: account.displayLabel,
+                        accountRating: showRating ? account.accountRating : undefined,
+                        characterName: char.characterName,
+                        eidolonLevel: char.eidolonLevel,
+                    });
+                }
             }
         }
 
