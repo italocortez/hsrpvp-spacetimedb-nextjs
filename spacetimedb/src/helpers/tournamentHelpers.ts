@@ -2,9 +2,14 @@ import { SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from './ensurePermissions';
 import { auditUpdate } from './auditColumns';
 import { deleteCalendarEventsForTournament } from './calendarCascade';
+import { hardDeleteLobby } from '../reducers/lobbyGc';
 
 // Forward-only stage order (Cancelled is handled separately as a terminal transition)
-const STAGE_ORDER = ['Draft', 'Registration', 'Seeding', 'InProgress', 'Completed'];
+// CheckIn is included between Registration and Seeding (D-35, D-37).
+// Note: CheckIn is optional — if tournament.checkInEnabled=false, the advance_tournament_stage
+// caller should pass 'Seeding' directly (skipping CheckIn). The stage machine still validates
+// forward-only, so going Registration->Seeding is valid if CheckIn has not been entered yet.
+const STAGE_ORDER = ['Draft', 'Registration', 'CheckIn', 'Seeding', 'InProgress', 'Completed'];
 
 /**
  * Validates a tournament stage transition.
@@ -27,8 +32,15 @@ export function validateStageTransition(currentTag: string, nextTag: string): vo
     if (nextIdx <= currentIdx) {
         throw new SenderError(`Cannot transition from ${currentTag} to ${nextTag} (forward-only).`);
     }
+    // D-37: Allow Registration -> Seeding (skipping CheckIn when checkInEnabled=false).
+    // Also allow Registration -> CheckIn (when checkInEnabled=true).
+    // All other skips are invalid.
     if (nextIdx > currentIdx + 1) {
-        throw new SenderError(`Cannot skip stages: must go from ${currentTag} to ${STAGE_ORDER[currentIdx + 1]}.`);
+        // Allow skipping CheckIn only: Registration -> Seeding
+        const isSkipCheckIn = currentTag === 'Registration' && nextTag === 'Seeding';
+        if (!isSkipCheckIn) {
+            throw new SenderError(`Cannot skip stages: must go from ${currentTag} to ${STAGE_ORDER[currentIdx + 1]}.`);
+        }
     }
 }
 
@@ -95,21 +107,85 @@ export function transferTournamentCaptain(ctx: any, teamId: number, leavingUserI
 }
 
 /**
+ * Auto-removes participants who did NOT check in when transitioning CheckIn -> Seeding.
+ * Per D-37: deletes TournamentEnrolled rows with status=Registered (not CheckedIn).
+ * Also handles captain transfer for removed captains, and deletes teams with no members left.
+ */
+export function removeUncheckedInParticipants(ctx: any, tournamentId: number, actingUserId: number): void {
+    const allEnrolled = [...ctx.db.TournamentEnrolled.tournament_id.filter(tournamentId)];
+
+    for (const e of allEnrolled) {
+        // Only remove Registered (not checked in) non-waitlisted participants
+        if (e.status.tag === 'Registered' && !e.isWaitlisted) {
+            // Find their TournamentTeamMember row to handle captain transfer
+            const ttm = [...ctx.db.TournamentTeamMember.by_tournament_and_user.filter([tournamentId, e.userId])][0];
+            if (ttm) {
+                // Transfer captain if this user is the team captain
+                const transferred = transferTournamentCaptain(ctx, ttm.teamId, e.userId, actingUserId);
+                if (!transferred) {
+                    // No other members — delete the team after removing this member
+                    ctx.db.TournamentTeamMember.delete(ttm);
+                    const team = ctx.db.TournamentTeam.id.find(ttm.teamId);
+                    if (team) {
+                        ctx.db.TournamentTeam.id.delete(team.id);
+                    }
+                } else {
+                    ctx.db.TournamentTeamMember.delete(ttm);
+                    // Check if team now has no members
+                    const remainingMembers = [...ctx.db.TournamentTeamMember.team_id.filter(ttm.teamId)];
+                    if (remainingMembers.length === 0) {
+                        const team = ctx.db.TournamentTeam.id.find(ttm.teamId);
+                        if (team) {
+                            ctx.db.TournamentTeam.id.delete(team.id);
+                        }
+                    }
+                }
+            }
+
+            // Remove TournamentPlayerAccount if exists
+            for (const tpa of [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, e.userId])]) {
+                ctx.db.TournamentPlayerAccount.delete(tpa);
+            }
+
+            // Delete enrollment row
+            ctx.db.TournamentEnrolled.by_tournament_and_user.delete([tournamentId, e.userId]);
+
+            console.log(`[CHECK_IN] User #${e.userId} auto-removed from tournament #${tournamentId} (did not check in)`);
+        }
+    }
+}
+
+/**
  * Cascade-deletes all tournament-scoped infrastructure rows on cancellation.
  * Preserves: TournamentEnrolled (audit trail), MatchResultRecord (player history).
  * Deletes: TournamentTeamRequest, TournamentTeamMember, TournamentTeam, TournamentAssistant,
- *          BracketMatch, GroupStanding, TournamentPlayerAccount.
+ *          BracketMatch, GroupPhaseRecord, TournamentPlayerAccount.
+ *          Also hard-deletes Shelved/BetweenGames lobbies linked to bracket matches (D-18).
  *
- * Order: requests → standings → calendar → bracket → player accounts → team members → teams → assistants
+ * Order: requests → linked lobbies (before bracket) → standings → calendar → bracket → player accounts → team members → teams → assistants
  * (child rows before parents to avoid referencing deleted data mid-transaction)
  */
 export function cascadeCleanupTournament(ctx: any, tournamentId: number): void {
     // 1. Team requests (via teams — no tournamentId on request table)
     cleanupTeamRequests(ctx, tournamentId);
 
-    // 2. Group standings
-    for (const standing of [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)]) {
-        ctx.db.GroupStanding.delete(standing);
+    // 1b. D-18: Hard-delete Shelved/BetweenGames lobbies linked to bracket matches.
+    // Must run BEFORE deleting bracket match rows (lobby references bracketMatchId).
+    // Uses Lobby.bracket_match_id btree index for efficient reverse lookup (NOT full table scan).
+    const bracketMatchesForLobbies = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
+    for (const bracketMatch of bracketMatchesForLobbies) {
+        const linkedLobbies = [...ctx.db.Lobby.bracket_match_id.filter(bracketMatch.id)];
+        for (const linkedLobby of linkedLobbies) {
+            if (linkedLobby.stage.tag === 'Shelved' || linkedLobby.stage.tag === 'BetweenGames') {
+                console.log(`[TOURNAMENT] Hard-deleting ${linkedLobby.stage.tag} lobby #${linkedLobby.id} linked to bracket match #${bracketMatch.id}`);
+                hardDeleteLobby(ctx, linkedLobby.id);
+            }
+        }
+    }
+
+    // 2. Group phase records (renamed from GroupStanding in Plan 01)
+    for (const record of [...ctx.db.GroupPhaseRecord.tournament_id.filter(tournamentId)]) {
+        ctx.db.GroupPhaseRecord.delete(record);
     }
 
     // 3. Calendar events linked to tournament bracket matches (D-21)
@@ -185,7 +261,7 @@ export function validateRegistrationToSeeding(ctx: any, tournamentId: number): v
 /**
  * Validates that the transition from Seeding -> InProgress is allowed.
  * Requires bracket rows to exist. All first-round matches (non-Losers) must have at least one participant.
- * Group-format tournaments must have GroupStanding rows.
+ * Group-format tournaments must have GroupPhaseRecord rows.
  */
 export function validateSeedingToInProgress(ctx: any, tournamentId: number): void {
     const tournament = ctx.db.Tournament.id.find(tournamentId);
@@ -214,12 +290,12 @@ export function validateSeedingToInProgress(ctx: any, tournamentId: number): voi
         }
     }
 
-    // For group-format tournaments, verify GroupStanding rows exist
+    // For group-format tournaments, verify GroupPhaseRecord rows exist
     const formatTag = tournament.format.tag as string;
     if (formatTag === 'GroupOnly' || formatTag === 'GroupIntoSingleElim' || formatTag === 'GroupIntoDoubleElim') {
-        const standings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
-        if (standings.length === 0) {
-            throw new SenderError('Group standings must be generated before advancing to InProgress.');
+        const records = [...ctx.db.GroupPhaseRecord.tournament_id.filter(tournamentId)];
+        if (records.length === 0) {
+            throw new SenderError('Group phase records must be generated before advancing to InProgress.');
         }
     }
 }

@@ -226,7 +226,7 @@ export const join_lobby = spacetimedb.reducer(
         // D-04, D-37, D-38, D-39, D-40: stage-specific join logic with extended reconnect
         const existingMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
         if (existingMember) {
-            const reconnectStages = ['Drafting', 'Equipping', 'Scoring', 'AwaitingResult'];
+            const reconnectStages = ['Drafting', 'Equipping', 'Scoring', 'BetweenGames', 'Shelved', 'AwaitingResult'];
             if (!reconnectStages.includes(lobby.stage.tag)) {
                 throw new SenderError('Cannot rejoin this lobby in its current stage.');
             }
@@ -363,7 +363,8 @@ export const leave_lobby = spacetimedb.reducer(
         }
 
         // D-29, D-30, D-31, D-32, D-33: Active match leave handling
-        const activeStages = ['Drafting', 'Equipping', 'Scoring'];
+        // D-10: BetweenGames treated as active (leaving between games triggers same logic)
+        const activeStages = ['Drafting', 'Equipping', 'Scoring', 'BetweenGames'];
         if (activeStages.includes(lobby.stage.tag)) {
             // D-29: Spectators/Coaches get clean deletion even during active stages
             if (slotIsSpectator(member.lobbySlot) || slotIsCoach(member.lobbySlot)) {
@@ -450,6 +451,20 @@ export const leave_lobby = spacetimedb.reducer(
         if (newCount === 0 && lobby.stage.tag === 'Waiting') {
             hardDeleteLobby(ctx, lobby.id);
             console.log(`[LOBBY] Lobby #${lobbyId} auto-closed after last member left`);
+            return;
+        }
+
+        // D-19: Shelved lobby exemption — do NOT auto-close even if all members leave.
+        // Players are expected to return. GC handles 72h TTL for casual Shelved lobbies.
+        if (newCount === 0 && lobby.stage.tag === 'Shelved') {
+            // Update count but do NOT delete
+            ctx.db.Lobby.id.update({
+                ...lobby,
+                currentPlayerCount: 0,
+                lastActivityAt: ctx.timestamp,
+                ...auditUpdate(ctx, lobby, user.id),
+            } as any);
+            console.log(`[LOBBY] Shelved lobby #${lobbyId} now empty — preserved for player return`);
             return;
         }
 

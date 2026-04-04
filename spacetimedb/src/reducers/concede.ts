@@ -116,10 +116,10 @@ export const concede_match = spacetimedb.reducer(
             throw new SenderError('Lobby not found.');
         }
 
-        // D-26, D-93: Only active stages
-        const activeStages = ['Drafting', 'Equipping', 'Scoring'];
+        // D-26, D-93: Only active stages (D-10: BetweenGames allows concede — surrenders entire series)
+        const activeStages = ['Drafting', 'Equipping', 'Scoring', 'BetweenGames'];
         if (!activeStages.includes(lobby.stage.tag)) {
-            throw new SenderError('Concede is only available during Drafting, Equipping, or Scoring.');
+            throw new SenderError('Concede is only available during Drafting, Equipping, Scoring, or BetweenGames.');
         }
 
         // D-81: 3rd party referee exclusive concede (checked BEFORE spectator/coach guards
@@ -189,10 +189,10 @@ export const claim_forfeit = spacetimedb.reducer(
             throw new SenderError('Lobby not found.');
         }
 
-        // Only active stages
-        const activeStages = ['Drafting', 'Equipping', 'Scoring'];
+        // Only active stages (D-10: BetweenGames included)
+        const activeStages = ['Drafting', 'Equipping', 'Scoring', 'BetweenGames'];
         if (!activeStages.includes(lobby.stage.tag)) {
-            throw new SenderError('Forfeit claim is only available during Drafting, Equipping, or Scoring.');
+            throw new SenderError('Forfeit claim is only available during Drafting, Equipping, Scoring, or BetweenGames.');
         }
 
         // D-81: 3rd party referee exclusive concede (before spectator/coach guards)
@@ -264,10 +264,10 @@ export const defer_match = spacetimedb.reducer(
             throw new SenderError('Lobby not found.');
         }
 
-        // Only active stages
-        const activeStages = ['Drafting', 'Equipping', 'Scoring'];
+        // Only active stages (D-10: BetweenGames included)
+        const activeStages = ['Drafting', 'Equipping', 'Scoring', 'BetweenGames'];
         if (!activeStages.includes(lobby.stage.tag)) {
-            throw new SenderError('Defer is only available during Drafting, Equipping, or Scoring.');
+            throw new SenderError('Defer is only available during Drafting, Equipping, Scoring, or BetweenGames.');
         }
 
         // D-81: 3rd party referee exclusive concede (before spectator/coach guards)

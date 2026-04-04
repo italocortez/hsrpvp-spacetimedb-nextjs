@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { Timestamp } from 'spacetimedb';
 import { ensureTournamentHost } from '../helpers/ensurePermissions';
-import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress, cleanupTeamRequests, cascadeCleanupTournament } from '../helpers/tournamentHelpers';
+import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress, cleanupTeamRequests, cascadeCleanupTournament, removeUncheckedInParticipants } from '../helpers/tournamentHelpers';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { revealTournamentHistory } from '../helpers/finalizationHelpers';
 
@@ -331,12 +331,42 @@ export const advance_tournament_stage = spacetimedb.reducer(
 
         validateStageTransition(tournament.stage.tag, nextStage);
 
+        // D-37: Registration -> CheckIn (only if checkInEnabled)
+        // If checkInEnabled=false, Registration->CheckIn transition is rejected by validateStageTransition
+        // (CheckIn is in STAGE_ORDER only when enabled — validation handled in tournamentHelpers)
+
         if (tournament.stage.tag === 'Registration' && nextStage === 'Seeding') {
             validateRegistrationToSeeding(ctx, tournamentId);
             cleanupTeamRequests(ctx, tournamentId);
         }
+
+        // D-37: CheckIn -> Seeding: auto-remove participants who did not check in
+        if (tournament.stage.tag === 'CheckIn' && nextStage === 'Seeding') {
+            removeUncheckedInParticipants(ctx, tournamentId, user.id);
+            cleanupTeamRequests(ctx, tournamentId);
+        }
+
         if (tournament.stage.tag === 'Seeding' && nextStage === 'InProgress') {
             validateSeedingToInProgress(ctx, tournamentId);
+        }
+
+        // D-39: Seeding -> InProgress: bulk set Active status on all eligible enrolled
+        if (tournament.stage.tag === 'Seeding' && nextStage === 'InProgress') {
+            const allEnrolled = [...ctx.db.TournamentEnrolled.tournament_id.filter(tournamentId)];
+            for (const e of allEnrolled) {
+                // Set Active for Registered or CheckedIn (non-withdrawn, non-DQ, non-waitlisted)
+                if (
+                    (e.status.tag === 'Registered' || e.status.tag === 'CheckedIn') &&
+                    !e.isWaitlisted
+                ) {
+                    ctx.db.TournamentEnrolled.by_tournament_and_user.delete([tournamentId, e.userId]);
+                    ctx.db.TournamentEnrolled.insert({
+                        ...e,
+                        status: { tag: 'Active', value: {} } as any,
+                        ...auditUpdate(ctx, e, user.id),
+                    } as any);
+                }
+            }
         }
 
         ctx.db.Tournament.id.update({
