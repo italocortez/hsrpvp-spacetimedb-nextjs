@@ -57,6 +57,8 @@ export const LobbyStage = t.enum('LobbyStage', {
     Drafting: t.unit(),
     Equipping: t.unit(),
     Scoring: t.unit(),
+    BetweenGames: t.unit(),   // Brief post-game transition (series not won yet); bestOf=1 skips this
+    Shelved: t.unit(),        // Long-term pause between games; casual=72h TTL, tournament persists until cancel
     AwaitingResult: t.unit(), // Match submitted, players freed — lobby alive for finalization
     Finished: t.unit(),       // Lobby closed/abandoned — GC cleans up after 30 min
 });
@@ -80,9 +82,8 @@ export const TeamSide = t.enum('TeamSide', {
     Red: t.unit(),
 });
 
-export const MatchOutcome = t.enum('MatchOutcome', {
-    BlueWins: t.unit(),
-    RedWins: t.unit(),
+export const MatchEndReason = t.enum('MatchEndReason', {
+    Completed: t.unit(), // Normal completion — winnerTeamSide indicates who won (or undefined for draw)
     Draw: t.unit(),
     Concede: t.unit(),
 });
@@ -114,6 +115,7 @@ export const ActionType = t.enum('ActionType', {
 export const TournamentStage = t.enum('TournamentStage', {
     Draft: t.unit(),
     Registration: t.unit(),
+    CheckIn: t.unit(),     // Optional check-in stage between Registration and Seeding (D-35)
     Seeding: t.unit(),
     InProgress: t.unit(),
     Completed: t.unit(),

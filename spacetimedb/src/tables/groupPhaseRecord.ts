@@ -1,6 +1,6 @@
 import { table, t } from 'spacetimedb/server';
 
-export const groupStandingColumns = {
+export const groupPhaseRecordColumns = {
     tournamentId: t.u32(),
     groupId: t.u32(),
     teamId: t.u32(),
@@ -14,12 +14,12 @@ export const groupStandingColumns = {
     lastModifiedDate: t.timestamp(),
 };
 
-export const GroupStanding = table({
-    name: 'group_standing',
+export const GroupPhaseRecord = table({
+    name: 'group_phase_record',
     public: true,
     primaryKey: ['tournamentId', 'groupId', 'teamId'],
     indexes: [
         { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
         { accessor: 'by_tournament_group_and_team', algorithm: 'btree', columns: ['tournamentId', 'groupId', 'teamId'] },
     ],
-}, groupStandingColumns);
+}, groupPhaseRecordColumns);

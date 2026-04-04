@@ -1,10 +1,9 @@
 import { table, t } from 'spacetimedb/server';
 import { ParticipantStatus } from '../types/enums';
 
-export const tournamentParticipantColumns = {
+export const tournamentEnrolledColumns = {
     tournamentId: t.u32(),
     userId: t.u32(),
-    teamGroupId: t.u32().optional(),
     status: ParticipantStatus,
     anonymousAlias: t.string().optional(),
     isWaitlisted: t.bool(),
@@ -17,8 +16,8 @@ export const tournamentParticipantColumns = {
     lastModifiedDate: t.timestamp(),
 };
 
-export const TournamentParticipant = table({
-    name: 'tournament_participant',
+export const TournamentEnrolled = table({
+    name: 'tournament_enrolled',
     public: true,
     primaryKey: ['tournamentId', 'userId'],
     indexes: [
@@ -26,4 +25,4 @@ export const TournamentParticipant = table({
         { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
         { accessor: 'by_tournament_and_user', algorithm: 'btree', columns: ['tournamentId', 'userId'] },
     ],
-}, tournamentParticipantColumns);
+}, tournamentEnrolledColumns);
