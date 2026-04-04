@@ -9,7 +9,6 @@ export const tournamentEnrolledColumns = {
     isWaitlisted: t.bool(),
     allowRandomTeamAssignment: t.bool(),
     approvedByToAt: t.timestamp().optional(),
-    hsrAccountId: t.u32().optional(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

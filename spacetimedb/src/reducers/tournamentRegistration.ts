@@ -63,11 +63,8 @@ export const register_for_tournament = spacetimedb.reducer(
         // Determine approval timestamp
         const approvedByToAt = tournament.requireApproval ? undefined : ctx.timestamp;
 
-        // Get active HSR account id if any
-        const activeAccount = [...ctx.db.HsrAccount.user_id.filter(user.id)].find((a: any) => a.isActive);
-        const hsrAccountId = activeAccount ? activeAccount.id : undefined;
-
         // Insert TournamentEnrolled row (enrollment only, per D-20)
+        // hsrAccountId removed (D-23): TournamentPlayerAccount is the source of truth for locked accounts
         ctx.db.TournamentEnrolled.insert({
             tournamentId,
             userId: user.id,
@@ -76,7 +73,6 @@ export const register_for_tournament = spacetimedb.reducer(
             isWaitlisted,
             allowRandomTeamAssignment: false,
             approvedByToAt,
-            hsrAccountId,
             ...auditInsert(ctx, user.id),
         } as any);
 

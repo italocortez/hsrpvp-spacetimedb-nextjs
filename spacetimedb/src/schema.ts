@@ -77,6 +77,7 @@ import { LobbyMember } from './tables/lobbyMember';
 import { LobbyBan } from './tables/lobbyBan';
 import { LobbyPreset } from './tables/lobbyPreset';
 import { LobbyPassword } from './tables/lobbyPassword';
+import { LobbyMemberAccount } from './tables/lobbyMemberAccount';
 import { LobbyCursorEvent } from './tables/lobbyCursorEvent';
 
 // Active Game
@@ -186,6 +187,7 @@ const spacetimedb = schema({
     LobbyBan,
     LobbyPreset,
     LobbyPassword,
+    LobbyMemberAccount,
     LobbyCursorEvent,
 
     // Active Game
