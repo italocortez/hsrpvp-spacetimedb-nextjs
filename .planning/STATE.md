@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 10.4
-current_plan: Not started
-status: planning
-last_updated: "2026-04-04T10:26:45.920Z"
+current_plan: 1
+status: executing
+last_updated: "2026-04-04T13:03:03.541Z"
 progress:
   total_phases: 16
   completed_phases: 14
-  total_plans: 44
-  completed_plans: 44
+  total_plans: 47
+  completed_plans: 45
 ---
 
 # Session State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 10.4
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current plan:** 1
+**Status:** Executing Phase 10.4
 
 ## Decisions
 
@@ -131,6 +131,10 @@ See: .planning/PROJECT.md
 - [Phase 10.1]: STAGE_ORDER includes CheckIn but Registration->Seeding skip allowed — tournament checkInEnabled flag controls which path callers use without blocking either
 - [Phase 10.3]: getMyTournamentIds returns { userId, tournamentIds } (not just Set) — preserves userId for views that might need it without a redundant UserIdentity lookup
 - [Phase 10.3]: view_my_tournament_lobbies uses direct Lobby.tournament_id btree index; view_my_tournament_match_results navigates via BracketMatch.tournament_id -> MatchResultRecord.bracket_match_id; view_my_tournament_team_members navigates via TournamentTeam.tournament_id -> TournamentTeamMember.team_id
+- [Phase 10.4]: LobbyMemberAccount non-public join table — opponents cannot see account selection via raw subscription (D-02)
+- [Phase 10.4]: HsrAccount and HsrAccountCharacter made private — raw subscriptions replaced by server-side views in Plans 03/04 (D-20)
+- [Phase 10.4]: TournamentEnrolled.hsrAccountId removed — TournamentPlayerAccount is sole source of truth for locked accounts (D-23)
+- [Phase 10.4]: select_match_account tournament path additive (up to maxAccountsPerPlayer), non-tournament path replace (always max 1) (D-07, D-11)
 
 ### Quick Tasks Completed
 
