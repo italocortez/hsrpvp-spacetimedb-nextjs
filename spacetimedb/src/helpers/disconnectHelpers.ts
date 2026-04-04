@@ -10,7 +10,7 @@ export function ensureMatchAlive(ctx: any, lobby: any): void {
         throw new SenderError('Match has ended.');
     }
     const existingResult = [...ctx.db.MatchResultRecord.lobby_id.filter(lobby.id)][0];
-    if (existingResult?.matchOutcome?.tag === 'Concede') {
+    if (existingResult?.matchEndReason?.tag === 'Concede') {
         throw new SenderError('Match has been conceded.');
     }
 }

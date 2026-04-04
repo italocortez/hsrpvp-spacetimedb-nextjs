@@ -61,51 +61,37 @@ export const admin_force_finalize = spacetimedb.reducer(
             throw new SenderError('This match has already been processed. Cannot force-finalize.');
         }
 
-        // Determine winnerUserId from winnerTeamId
+        // Determine winnerTeamSide from winnerTeamId
         // Convention: team1 = Blue, team2 = Red on BracketMatch
-        // For non-tournament matches, resolve from LobbyMembers directly
-        let winnerUserId: number | undefined;
+        // For non-tournament matches: 1 = Blue wins, 2 = Red wins (admin tool convention)
+        let winnerTeamSide: 'Blue' | 'Red' | undefined;
 
         if (lobby.isTournamentControlled && matchResult.bracketMatchId) {
             const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
             if (bracketMatch) {
-                const winnerTeamSide = bracketMatch.team1Id === winnerTeamId ? 'Blue' : 'Red';
-                // Find a player on the winning side
-                const members = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
-                const winnerMember = members.find((m: any) =>
-                    slotTeam(m.lobbySlot) === winnerTeamSide && !slotIsCoach(m.lobbySlot) && !slotIsSpectator(m.lobbySlot)
-                );
-                winnerUserId = winnerMember?.userId;
+                if (winnerTeamId === bracketMatch.team1Id) {
+                    winnerTeamSide = 'Blue';
+                } else if (winnerTeamId === bracketMatch.team2Id) {
+                    winnerTeamSide = 'Red';
+                }
             }
         } else {
             // Non-tournament: winnerTeamId is used as a team side indicator
             // 1 = Blue wins, 2 = Red wins (convention for admin tool)
-            const winnerTeamSide = winnerTeamId === 1 ? 'Blue' : 'Red';
-            const members = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
-            const winnerMember = members.find((m: any) =>
-                slotTeam(m.lobbySlot) === winnerTeamSide && !slotIsCoach(m.lobbySlot) && !slotIsSpectator(m.lobbySlot)
-            );
-            winnerUserId = winnerMember?.userId;
+            if (winnerTeamId === 1) winnerTeamSide = 'Blue';
+            else if (winnerTeamId === 2) winnerTeamSide = 'Red';
         }
 
-        // Determine matchOutcome from winner team side
-        let matchOutcome: any;
-        if (winnerUserId) {
-            const members = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
-            const winnerMember = members.find((m: any) => m.userId === winnerUserId);
-            const winnerSide = winnerMember ? slotTeam(winnerMember.lobbySlot) : null;
-            matchOutcome = winnerSide === 'Blue'
-                ? { tag: 'BlueWins', value: {} }
-                : { tag: 'RedWins', value: {} };
-        } else {
-            matchOutcome = { tag: 'Draw', value: {} };
-        }
+        // Determine matchEndReason: Draw when no winner, Completed when there is one
+        const matchEndReason: any = winnerTeamSide
+            ? { tag: 'Completed', value: {} }
+            : { tag: 'Draw', value: {} };
 
         // Update MatchResultRecord with winner and validated status
         ctx.db.MatchResultRecord.id.update({
             ...matchResult,
-            winnerUserId: winnerUserId,
-            matchOutcome: matchResult.matchOutcome ?? matchOutcome, // Keep concede outcome if already set
+            winnerTeamSide: winnerTeamSide ? { tag: winnerTeamSide, value: {} } as any : undefined,
+            matchEndReason: matchResult.matchEndReason ?? matchEndReason, // Keep concede outcome if already set
             status: { tag: 'Validated', value: {} },
             ...auditUpdate(ctx, matchResult, user.id),
         } as any);

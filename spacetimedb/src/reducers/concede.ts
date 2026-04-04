@@ -20,15 +20,7 @@ export function performConcede(
     // 1. Determine winner (opposite team)
     const winnerTeamSide = losingTeam === 'Blue' ? 'Red' : 'Blue';
 
-    // 2. Find winnerUserId from captain of winning team (or first non-coach player)
-    const members = [...ctx.db.LobbyMember.lobby_id.filter(lobby.id)];
-    const winnerMembers = members.filter((m: any) =>
-        slotTeam(m.lobbySlot) === winnerTeamSide && !slotIsCoach(m.lobbySlot) && !slotIsSpectator(m.lobbySlot)
-    );
-    const winnerCaptain = winnerMembers.find((m: any) => m.isCaptain) || winnerMembers[0];
-    const winnerUserId = winnerCaptain?.userId;
-
-    // 3. Build concedeSummary
+    // 2. Build concedeSummary
     const summary = disconnectedMembers && disconnectedMembers.length > 0
         ? buildConcedeSummary(ctx, lobby, disconnectedMembers, triggerUserId, concedeTrigger.tag)
         : `${losingTeam} team conceded. Trigger: ${concedeTrigger.tag} by userId:${triggerUserId}, stage: ${lobby.stage.tag}`;
@@ -40,17 +32,16 @@ export function performConcede(
         lobbyId: lobby.id,
         isTournamentControlled: lobby.isTournamentControlled,
         status: { tag: 'Validated', value: {} },
-        winnerUserId: winnerUserId,
+        winnerTeamSide: { tag: winnerTeamSide, value: {} } as any,
         mmrProcessedAt: undefined,
         refereeUserId: undefined,
         disputedByUserId: undefined,
         disputeReason: undefined,
-        tournamentId: lobby.tournamentId ?? undefined,
         blueConfirmed: true,
         redConfirmed: true,
         refereeFullControl: false,
         matchType: lobby.matchType,
-        matchOutcome: { tag: 'Concede', value: {} },
+        matchEndReason: { tag: 'Concede', value: {} },
         concedeTrigger: concedeTrigger,
         concedeSummary: summary,
         concedeAtStage: lobby.stage.tag,
@@ -320,17 +311,16 @@ export const defer_match = spacetimedb.reducer(
             lobbyId: lobby.id,
             isTournamentControlled: lobby.isTournamentControlled,
             status: { tag: 'Pending', value: {} },
-            winnerUserId: undefined,
+            winnerTeamSide: undefined,
             mmrProcessedAt: undefined,
             refereeUserId: undefined,
             disputedByUserId: undefined,
             disputeReason: undefined,
-            tournamentId: lobby.tournamentId ?? undefined,
             blueConfirmed: false,
             redConfirmed: false,
             refereeFullControl: false,
             matchType: lobby.matchType,
-            matchOutcome: undefined,  // Not yet determined
+            matchEndReason: undefined,  // Not yet determined
             concedeTrigger: undefined,
             concedeSummary: summary,
             concedeAtStage: lobby.stage.tag,
