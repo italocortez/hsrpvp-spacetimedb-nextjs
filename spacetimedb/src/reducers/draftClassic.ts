@@ -56,20 +56,40 @@ export const start_draft = spacetimedb.reducer(
             throw new SenderError('Red team must have at least one non-coach player.');
         }
 
-        // D-43b: If autoRandomPick=true, validate ALL Blue+Red players have characters
-        if (lobby.autoRandomPick) {
+        // D-08: Ranked/MMR-tournament gate — all players must have at least one LobbyMemberAccount row
+        const needsAccountEnforcement = lobby.matchType.tag === 'Ranked' ||
+            (lobby.isTournamentControlled && lobby.tournamentId &&
+             (() => { const t = ctx.db.Tournament.id.find(lobby.tournamentId); return t?.countTowardsMmr; })());
+
+        if (needsAccountEnforcement) {
             for (const member of playersOnly) {
-                const accounts = [...ctx.db.HsrAccount.user_id.filter(member.userId)];
-                const activeAccount = accounts.find((a: any) => a.isActive);
-                if (!activeAccount) {
+                const accountRows = [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, member.userId])];
+                if (accountRows.length === 0) {
                     throw new SenderError(
-                        `Player #${member.userId} has no active HSR account. autoRandomPick requires all players to have characters.`
+                        `Player #${member.userId} has no account selected for this match. All players must select an account before starting a ranked or MMR-counted match.`
                     );
                 }
-                const chars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(activeAccount.id)];
-                if (chars.length === 0) {
+            }
+        }
+
+        // D-43b: If autoRandomPick=true, validate ALL Blue+Red players have characters (D-12: check selected accounts)
+        if (lobby.autoRandomPick) {
+            for (const member of playersOnly) {
+                const selectedAccounts = [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, member.userId])];
+                if (selectedAccounts.length === 0) {
                     throw new SenderError(
-                        `Player #${member.userId} has no characters on their active HSR account. autoRandomPick requires all players to have characters.`
+                        `Player #${member.userId} has no account selected. autoRandomPick requires all players to have characters.`
+                    );
+                }
+                // D-12: Check union of characters across all selected accounts
+                let totalChars = 0;
+                for (const lma of selectedAccounts) {
+                    const chars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(lma.hsrAccountId)];
+                    totalChars += chars.length;
+                }
+                if (totalChars === 0) {
+                    throw new SenderError(
+                        `Player #${member.userId} has no characters on their selected account(s). autoRandomPick requires all players to have characters.`
                     );
                 }
             }
