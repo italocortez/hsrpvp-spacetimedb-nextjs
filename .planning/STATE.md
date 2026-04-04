@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 10.1
 current_plan: 1
 status: executing
-last_updated: "2026-04-04T02:28:29.803Z"
+last_updated: "2026-04-04T02:37:38.178Z"
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 43
-  completed_plans: 38
+  completed_plans: 39
 ---
 
 # Session State
@@ -122,6 +122,8 @@ See: .planning/PROJECT.md
 - [Phase 10]: performConcede shared by concede_match, claim_forfeit, and leave_lobby auto-concede
 - [Phase 10.1]: MatchSessionStepHistory PK is [matchHistoryId, gameNumber, sequence] — prevents PK collision between game 1 step 1 and game 2 step 1 (Claude discretion per plan)
 - [Phase 10.1]: TournamentTeamMember includes tournamentId + by_tournament_and_user index for direct per-tournament membership queries
+- [Phase 10.1]: submit_match_result param renamed winnerId; converts to winnerTeamSide via MatchResultParticipant.teamSide lookup
+- [Phase 10.1]: process_tournament_mmr uses two-step query: BracketMatch.tournament_id.filter then MatchResultRecord.bracket_match_id.filter (replaces direct MatchResultRecord.tournament_id index)
 
 ### Quick Tasks Completed
 
