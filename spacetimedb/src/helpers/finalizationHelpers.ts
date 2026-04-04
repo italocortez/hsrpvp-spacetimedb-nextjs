@@ -12,7 +12,7 @@ import { incrementGlobalCharacterStat } from './globalCharacterStatsIncrement';
 import { rebuildLeaderboard } from './leaderboardRebuild';
 import { advanceBracketMatch } from './bracketHelpers';
 import { checkAndAwardAchievements } from './achievementChecker';
-import { slotIsCoach, slotIsSpectator, slotTeam, slotToTeamSide } from './lobbyHelpers';
+import { slotIsCoach, slotIsSpectator, slotToTeamSide } from './lobbyHelpers';
 import { hardDeleteLobby } from '../reducers/lobbyGc';
 
 // ─── Internal: getOrCreateRating ─────────────────────────────────────────────
@@ -104,22 +104,19 @@ export function processMatchMmr(
         redEffective += calculateAccountModifier(redAvgAccount, blueAvgAccount, cv.maxAccountBonus);
     }
 
-    // 6. Determine actual result
+    // 6. Determine actual result (per D-30/D-33 — compare teamSide tags to winnerTeamSide)
     let blueActualResult: number;
     let redActualResult: number;
 
-    if (matchResult.winnerUserId === undefined) {
+    if (matchResult.winnerTeamSide === undefined) {
         blueActualResult = 0.5;
         redActualResult = 0.5;
+    } else if (matchResult.winnerTeamSide.tag === 'Blue') {
+        blueActualResult = 1;
+        redActualResult = 0;
     } else {
-        const winnerParticipant = participants.find((p: any) => p.userId === matchResult.winnerUserId);
-        if (winnerParticipant && winnerParticipant.teamSide.tag === 'Blue') {
-            blueActualResult = 1;
-            redActualResult = 0;
-        } else {
-            blueActualResult = 0;
-            redActualResult = 1;
-        }
+        blueActualResult = 0;
+        redActualResult = 1;
     }
 
     // 7. For each participant, calculate and apply rating change
@@ -215,24 +212,20 @@ export function runFinalization(
     const matchType = matchResult.matchType;
     const teamSize = lobby ? lobby.teamSize : 1;
 
-    // Determine match outcome
-    let matchOutcome: any;
-    if (matchResult.winnerUserId === undefined) {
-        matchOutcome = { tag: 'Draw', value: {} };
+    // Determine match end reason (per D-31/D-32/D-33):
+    // winnerTeamSide answers WHO won, matchEndReason answers HOW it ended
+    let matchEndReason: any;
+    if (matchResult.winnerTeamSide === undefined) {
+        matchEndReason = { tag: 'Draw', value: {} } as any;
     } else {
-        const winnerP = participants.find((p: any) => p.userId === matchResult.winnerUserId);
-        if (winnerP && winnerP.teamSide.tag === 'Blue') {
-            matchOutcome = { tag: 'BlueWins', value: {} };
-        } else {
-            matchOutcome = { tag: 'RedWins', value: {} };
-        }
+        matchEndReason = { tag: 'Completed', value: {} } as any;
     }
 
     // ── Concede Detection (D-74) ────────────────────────────────────────────
-    const isConcede = matchResult.matchOutcome?.tag === 'Concede';
+    const isConcede = matchResult.matchEndReason?.tag === 'Concede';
     if (isConcede) {
-        // Override matchOutcome to use what's stored on the record
-        matchOutcome = matchResult.matchOutcome;
+        // Override matchEndReason to use what's stored on the record
+        matchEndReason = matchResult.matchEndReason;
     }
 
     // For concede: determine tier and stage flags per finalization matrix (D-77, D-78, D-79)
@@ -317,7 +310,7 @@ export function runFinalization(
             aboveThresholdPenalty: 0,
             deathPenalty: 0,
         },
-        outcome: matchOutcome,
+        outcome: matchEndReason,
         // D-88: Budget analysis (after carryover: charBudget=0, lcBudget = original LC + leftover char)
         // totalSpent = characterBudget + lightconeBudget - remainingLcBudget (correct carryover math)
         teamBlueSpent: session && lobby ? (lobby.characterBudget + lobby.lightconeBudget - session.teamBlueLcBudget) : 0,
@@ -441,15 +434,11 @@ export function runFinalization(
         }
     }
 
-    // 13. Increment PlayerStat per participant
+    // 13. Increment PlayerStat per participant (per D-30: compare teamSide tags to winnerTeamSide)
     if (!isConcede || concedeFlags.doWinLoss) {
         for (const p of effectiveParticipants) {
-            let participantWon = false;
-            if (matchResult.winnerUserId !== undefined) {
-                const winnerParticipant = effectiveParticipants.find((wp: any) => wp.userId === matchResult.winnerUserId);
-                participantWon = winnerParticipant ? winnerParticipant.teamSide.tag === p.teamSide.tag : false;
-            }
-            const isDraw = matchResult.winnerUserId === undefined;
+            const isDraw = matchResult.winnerTeamSide === undefined;
+            const participantWon = !isDraw && matchResult.winnerTeamSide?.tag === p.teamSide.tag;
             incrementPlayerStat(ctx, p.userId, gameMode, draftMode, seasonId, matchType, teamSize, participantWon, isDraw, actingUserId);
         }
     }
@@ -470,37 +459,25 @@ export function runFinalization(
         }
     }
 
-    // 15. Increment PlayerRelationship per participant pair
+    // 15. Increment PlayerRelationship per participant pair (per D-30: compare teamSide tags)
     if (!isConcede || concedeFlags.doRelationships) {
         for (let i = 0; i < effectiveParticipants.length; i++) {
             for (let j = i + 1; j < effectiveParticipants.length; j++) {
                 const a = effectiveParticipants[i];
                 const b = effectiveParticipants[j];
                 const isAlly = a.teamSide.tag === b.teamSide.tag;
-                let aWon = false;
-                let bWon = false;
-                if (matchResult.winnerUserId !== undefined) {
-                    const winnerP = effectiveParticipants.find((wp: any) => wp.userId === matchResult.winnerUserId);
-                    aWon = winnerP ? winnerP.teamSide.tag === a.teamSide.tag : false;
-                    bWon = winnerP ? winnerP.teamSide.tag === b.teamSide.tag : false;
-                }
+                const isDraw = matchResult.winnerTeamSide === undefined;
+                const aWon = !isDraw && matchResult.winnerTeamSide?.tag === a.teamSide.tag;
+                const bWon = !isDraw && matchResult.winnerTeamSide?.tag === b.teamSide.tag;
                 incrementPlayerRelationship(ctx, a.userId, b.userId, gameMode, draftMode, seasonId, matchType, teamSize, isAlly, aWon, actingUserId);
                 incrementPlayerRelationship(ctx, b.userId, a.userId, gameMode, draftMode, seasonId, matchType, teamSize, isAlly, bWon, actingUserId);
             }
         }
     }
 
-    // 16. Increment character stats (per D-54)
+    // 16. Increment character stats (per D-54, D-30: compare teamSide tags to winnerTeamSide)
     if (!isConcede || concedeFlags.doCharStats) {
-        const participantTeamMap = new Map<number, string>();
-        for (const p of effectiveParticipants) {
-            participantTeamMap.set(p.userId, p.teamSide.tag);
-        }
-        let winnerTeamSideTag: string | undefined;
-        if (matchResult.winnerUserId !== undefined) {
-            const winnerP = effectiveParticipants.find((wp: any) => wp.userId === matchResult.winnerUserId);
-            winnerTeamSideTag = winnerP?.teamSide.tag;
-        }
+        let winnerTeamSideTag: string | undefined = matchResult.winnerTeamSide?.tag;
 
         for (const step of steps) {
             const actionTag = step.action.tag;
@@ -545,16 +522,22 @@ export function runFinalization(
         }
     }
 
-    // 17. Bracket advancement (D-80: NEVER auto-advance for concede)
+    // 17. Bracket advancement (D-80: NEVER auto-advance for concede; D-42: derive tournamentId from bracketMatch)
     if (!isConcede || concedeFlags.doBracketAdvance) {
-        if (matchResult.isTournamentControlled && matchResult.bracketMatchId !== undefined && matchResult.winnerUserId !== undefined) {
+        if (matchResult.isTournamentControlled && matchResult.bracketMatchId !== undefined && matchResult.winnerTeamSide !== undefined) {
             const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
             if (bracketMatch && bracketMatch.winnerTeamId === undefined) {
-                const winnerParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user
-                    .filter([matchResult.tournamentId!, matchResult.winnerUserId])][0];
-                if (winnerParticipant && winnerParticipant.teamGroupId) {
-                    advanceBracketMatch(ctx, matchResult.bracketMatchId, winnerParticipant.teamGroupId, actingUserId);
+                // D-42: derive tournamentId from bracketMatch (not from matchResult.tournamentId which was removed)
+                const tournamentId = bracketMatch.tournamentId;
+                // D-30: map winnerTeamSide directly to team1Id/team2Id — no participant lookup needed
+                const winnerTeamId = matchResult.winnerTeamSide.tag === 'Blue'
+                    ? bracketMatch.team1Id
+                    : bracketMatch.team2Id;
+                if (winnerTeamId !== undefined) {
+                    advanceBracketMatch(ctx, matchResult.bracketMatchId, winnerTeamId, actingUserId);
                 }
+                // tournamentId used for logging context only
+                console.log(`[MATCH] Bracket match #${matchResult.bracketMatchId} advanced for tournament #${tournamentId}`);
             }
         }
     }
@@ -579,19 +562,19 @@ export function runFinalization(
 // Completed or Cancelled per D-91.
 
 export function revealTournamentHistory(ctx: any, tournamentId: number): void {
-    // Find all MatchResultRecord rows for this tournament via index
-    const matchResults = [...ctx.db.MatchResultRecord.tournament_id.filter(tournamentId)];
+    // D-42: tournamentId removed from MatchResultRecord; derive via BracketMatch.tournamentId
+    // Find all bracket matches for this tournament, then find match results via bracket_match_id index
+    const bracketMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
 
-    // Build a set of lobby join codes that belong to this tournament.
-    // We look up each lobby by lobbyId. Finished lobbies may still be alive
-    // within the 30-min GC window; if already GC'd the reveal is a no-op for
-    // that match (history row's lobbyCode won't match any active lobby, but
-    // the MatchSessionHistory row still exists and can be found via lobbyCode).
+    // Build a set of lobby join codes from match results linked to these bracket matches
     const lobbyCodes = new Set<string>();
-    for (const mr of matchResults) {
-        const lobby = ctx.db.Lobby.id.find(mr.lobbyId);
-        if (lobby) {
-            lobbyCodes.add(lobby.joinCode);
+    for (const bracketMatch of bracketMatches) {
+        const matchResults = [...ctx.db.MatchResultRecord.bracket_match_id.filter(bracketMatch.id)];
+        for (const mr of matchResults) {
+            const lobby = ctx.db.Lobby.id.find(mr.lobbyId);
+            if (lobby) {
+                lobbyCodes.add(lobby.joinCode);
+            }
         }
     }
 
