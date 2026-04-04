@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: 10.1
 current_plan: 1
 status: executing
-last_updated: "2026-04-04T02:41:23.642Z"
+last_updated: "2026-04-04T02:52:15.982Z"
 progress:
   total_phases: 15
   completed_phases: 12
   total_plans: 43
-  completed_plans: 41
+  completed_plans: 42
 ---
 
 # Session State
@@ -127,6 +127,8 @@ See: .planning/PROJECT.md
 - [Phase 10.1]: register_for_tournament no longer takes teamGroupId arg — enrollment and team assignment fully decoupled; clients must call create_tournament_team/request_join_team after registering
 - [Phase 10.1]: override_match_result signature change: winnerId u32 replaced with winnerTeamSideTag string (Blue/Red/'' for draw) — breaking change for existing client calls
 - [Phase 10.1]: Helper functions renamed from updateGroupStandings/sortGroupStandings to updateGroupPhaseRecords/sortGroupPhaseRecords — plan verify required zero occurrences of GroupStanding string in all bracket files
+- [Phase 10.1]: hasSeriesAuthority helper checks host/TO/assistant/mod/admin plus referee-if-refereeControlsShelving — D-07 authority for all 3 series reducers
+- [Phase 10.1]: STAGE_ORDER includes CheckIn but Registration->Seeding skip allowed — tournament checkInEnabled flag controls which path callers use without blocking either
 
 ### Quick Tasks Completed
 
