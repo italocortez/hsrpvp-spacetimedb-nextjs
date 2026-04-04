@@ -2,12 +2,12 @@
  * Integration tests: Tournament team formation.
  *
  * Covers:
- * - Create team -> TournamentTeam row created, captain's teamGroupId set
+ * - Create team -> TournamentTeam row created, captain's TournamentTeamMember row set
  * - Request join -> TournamentTeamRequest row created
- * - Accept request -> request row deleted, joiner's teamGroupId set
- * - Reject request -> request row deleted, joiner's teamGroupId unchanged
- * - Leave team (non-captain) -> teamGroupId reset
- * - Disband team -> team deleted, all members' teamGroupId reset
+ * - Accept request -> request row deleted, joiner's TournamentTeamMember row set
+ * - Reject request -> request row deleted, joiner's TournamentTeamMember unchanged
+ * - Leave team (non-captain) -> TournamentTeamMember row removed
+ * - Disband team -> team deleted, all members' TournamentTeamMember rows removed
  * - Captain leave -> rejected
  */
 
@@ -24,8 +24,10 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
   const hostTournaments = () => [...host.conn.db.Tournament.iter()].filter(t => t.organizerId === host.userId);
   const teamsInTournament = (h: TestHarness, tid: number) =>
     [...h.conn.db.TournamentTeam.iter()].filter(t => t.tournamentId === tid);
-  const participantFor = (h: TestHarness, tid: number, userId: number) =>
-    [...h.conn.db.TournamentParticipant.iter()].find(p => p.tournamentId === tid && p.userId === userId);
+  const enrolledFor = (h: TestHarness, tid: number, userId: number) =>
+    [...h.conn.db.TournamentEnrolled.iter()].find(p => p.tournamentId === tid && p.userId === userId);
+  const teamMemberFor = (h: TestHarness, tid: number, userId: number) =>
+    [...h.conn.db.TournamentTeamMember.iter()].find(m => m.tournamentId === tid && m.userId === userId);
   const requestsForTeam = (h: TestHarness, teamId: number) =>
     [...h.conn.db.TournamentTeamRequest.iter()].filter(r => r.teamId === teamId);
 
@@ -111,11 +113,11 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     await host.sync();
 
     // Register all 3 users as participants
-    await host.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await host.call.registerForTournament({ tournamentId });
     await host.sync();
-    await player1.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await player1.call.registerForTournament({ tournamentId });
     await player1.sync();
-    await player2.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await player2.call.registerForTournament({ tournamentId });
     await player2.sync();
 
     await host.sync();
@@ -128,7 +130,7 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
   });
 
   // ── Create team ──
-  it('creates team -> TournamentTeam row, captain teamGroupId set', async () => {
+  it('creates team -> TournamentTeam row, captain TournamentTeamMember set', async () => {
     const teamsBefore = teamsInTournament(host, tournamentId).length;
 
     await host.call.createTournamentTeam({ tournamentId, teamName: 'Alpha Squad' });
@@ -141,11 +143,10 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     expect(team).toBeDefined();
     expect(team!.name).toBe('Alpha Squad');
 
-    // Captain's participant should have teamGroupId set
-    const captainParticipant = participantFor(host, tournamentId, host.userId);
-    expect(captainParticipant).toBeDefined();
-    expect(captainParticipant!.teamGroupId).toBeDefined();
-    expect(captainParticipant!.teamGroupId).not.toBeNull();
+    // Captain's TournamentTeamMember row should be set
+    const captainMember = teamMemberFor(host, tournamentId, host.userId);
+    expect(captainMember).toBeDefined();
+    expect(captainMember!.teamId).toBe(team!.id);
   });
 
   // ── Request join ──
@@ -164,7 +165,7 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
   });
 
   // ── Accept request ──
-  it('accept request -> request deleted, joiner teamGroupId set', async () => {
+  it('accept request -> request deleted, joiner TournamentTeamMember set', async () => {
     const team = teamsInTournament(host, tournamentId).find(t => t.captainUserId === host.userId);
     expect(team).toBeDefined();
     const teamId = team!.id;
@@ -178,15 +179,14 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     const p1Request = requests.find(r => r.userId === player1.userId);
     expect(p1Request).toBeUndefined();
 
-    // Player1's teamGroupId should be set
-    const p1Participant = participantFor(player1, tournamentId, player1.userId);
-    expect(p1Participant).toBeDefined();
-    expect(p1Participant!.teamGroupId).toBeDefined();
-    expect(p1Participant!.teamGroupId).not.toBeNull();
+    // Player1's TournamentTeamMember should be set
+    const p1Member = teamMemberFor(player1, tournamentId, player1.userId);
+    expect(p1Member).toBeDefined();
+    expect(p1Member!.teamId).toBe(teamId);
   });
 
   // ── Reject request ──
-  it('reject request -> request deleted, joiner teamGroupId unchanged', async () => {
+  it('reject request -> request deleted, joiner TournamentTeamMember unchanged', async () => {
     const team = teamsInTournament(host, tournamentId).find(t => t.captainUserId === host.userId);
     expect(team).toBeDefined();
     const teamId = team!.id;
@@ -196,9 +196,8 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     await player2.sync();
     await host.sync();
 
-    // Record player2's current teamGroupId
-    const p2Before = participantFor(host, tournamentId, player2.userId);
-    const teamGroupIdBefore = p2Before?.teamGroupId;
+    // Record player2's current TournamentTeamMember (none expected)
+    const memberBefore = teamMemberFor(host, tournamentId, player2.userId);
 
     // Captain rejects
     await host.call.rejectTeamRequest({ teamId, userId: player2.userId });
@@ -210,28 +209,27 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     const p2Request = requests.find(r => r.userId === player2.userId);
     expect(p2Request).toBeUndefined();
 
-    // Player2's teamGroupId should be unchanged (still null/undefined)
-    const p2After = participantFor(player2, tournamentId, player2.userId);
-    expect(p2After!.teamGroupId).toEqual(teamGroupIdBefore);
+    // Player2's TournamentTeamMember should be unchanged (still undefined)
+    const memberAfter = teamMemberFor(player2, tournamentId, player2.userId);
+    expect(memberAfter?.teamId).toEqual(memberBefore?.teamId);
   });
 
   // ── Leave team (non-captain) ──
-  it('leave team (non-captain) -> teamGroupId reset', async () => {
+  it('leave team (non-captain) -> TournamentTeamMember removed', async () => {
     const team = teamsInTournament(player1, tournamentId).find(t => t.captainUserId === host.userId);
     expect(team).toBeDefined();
     const teamId = team!.id;
 
-    // Player1 was accepted earlier, so they should have a teamGroupId
-    const p1Before = participantFor(player1, tournamentId, player1.userId);
-    expect(p1Before!.teamGroupId).toBeDefined();
+    // Player1 was accepted earlier, so they should have a TournamentTeamMember
+    const memberBefore = teamMemberFor(player1, tournamentId, player1.userId);
+    expect(memberBefore).toBeDefined();
 
     await player1.call.leaveTournamentTeam({ teamId });
     await player1.sync();
 
-    const p1After = participantFor(player1, tournamentId, player1.userId);
-    expect(p1After).toBeDefined();
-    // teamGroupId should be reset (null/undefined)
-    expect(p1After!.teamGroupId).toBeFalsy();
+    const memberAfter = teamMemberFor(player1, tournamentId, player1.userId);
+    // TournamentTeamMember should be removed
+    expect(memberAfter).toBeUndefined();
   });
 
   // ── Captain leave -> rejected ──
@@ -247,7 +245,7 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
   });
 
   // ── Disband team ──
-  it('disband team -> team deleted, members teamGroupId reset', async () => {
+  it('disband team -> team deleted, members TournamentTeamMember removed', async () => {
     // First, re-add player1 to the team so we have a member to check
     const team = teamsInTournament(host, tournamentId).find(t => t.captainUserId === host.userId);
     expect(team).toBeDefined();
@@ -261,9 +259,9 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     await host.sync();
     await player1.sync();
 
-    // Verify player1 has teamGroupId set
-    const p1Before = participantFor(player1, tournamentId, player1.userId);
-    expect(p1Before!.teamGroupId).toBeDefined();
+    // Verify player1 has TournamentTeamMember set
+    const memberBefore = teamMemberFor(player1, tournamentId, player1.userId);
+    expect(memberBefore).toBeDefined();
 
     // Disband
     await host.call.disbandTournamentTeam({ teamId });
@@ -274,19 +272,17 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     const teamAfter = teamsInTournament(host, tournamentId).find(t => t.id === teamId);
     expect(teamAfter).toBeUndefined();
 
-    // Captain's teamGroupId should be reset
-    const captainAfter = participantFor(host, tournamentId, host.userId);
-    expect(captainAfter).toBeDefined();
-    expect(captainAfter!.teamGroupId).toBeFalsy();
+    // Captain's TournamentTeamMember should be removed
+    const captainMemberAfter = teamMemberFor(host, tournamentId, host.userId);
+    expect(captainMemberAfter).toBeUndefined();
 
-    // Player1's teamGroupId should be reset
-    const p1After = participantFor(player1, tournamentId, player1.userId);
-    expect(p1After).toBeDefined();
-    expect(p1After!.teamGroupId).toBeFalsy();
+    // Player1's TournamentTeamMember should be removed
+    const p1MemberAfter = teamMemberFor(player1, tournamentId, player1.userId);
+    expect(p1MemberAfter).toBeUndefined();
   });
 
   // ── Captain withdrawal auto-disbands team ──
-  it('captain withdrawal auto-disbands team and resets members', async () => {
+  it('captain withdrawal auto-disbands team and removes members', async () => {
     // Create a fresh team (previous was disbanded)
     await host.call.createTournamentTeam({ tournamentId, teamName: 'AutoDisband Squad' });
     await host.sync();
@@ -303,8 +299,10 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     await host.sync();
     await player1.sync();
 
-    // Verify team and member exist
-    expect(participantFor(player1, tournamentId, player1.userId)!.teamGroupId).toBe(teamId);
+    // Verify team member exists
+    const memberBefore = teamMemberFor(player1, tournamentId, player1.userId);
+    expect(memberBefore).toBeDefined();
+    expect(memberBefore!.teamId).toBe(teamId);
 
     // Captain (host) withdraws from tournament
     await host.call.withdrawFromTournament({ tournamentId });
@@ -315,15 +313,14 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     const teamAfter = teamsInTournament(host, tournamentId).find(t => t.id === teamId);
     expect(teamAfter).toBeUndefined();
 
-    // Player1's teamGroupId should be reset
-    const p1After = participantFor(player1, tournamentId, player1.userId);
-    expect(p1After).toBeDefined();
-    expect(p1After!.teamGroupId).toBeFalsy();
+    // Player1's TournamentTeamMember should be removed
+    const p1MemberAfter = teamMemberFor(player1, tournamentId, player1.userId);
+    expect(p1MemberAfter).toBeUndefined();
 
-    // Host participant status should be Withdrawn
-    const hostParticipant = participantFor(host, tournamentId, host.userId);
-    expect(hostParticipant).toBeDefined();
-    expect(hostParticipant!.status.tag).toBe('Withdrawn');
+    // Host enrollment status should be Withdrawn
+    const hostEnrolled = enrolledFor(host, tournamentId, host.userId);
+    expect(hostEnrolled).toBeDefined();
+    expect(hostEnrolled!.status.tag).toBe('Withdrawn');
   });
 
   // ── Accept request cleans up other pending requests ──
@@ -364,9 +361,10 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
     const reqAfter = requestsForTeam(player2, teamB!.id).find(r => r.userId === player1.userId);
     expect(reqAfter).toBeUndefined();
 
-    // Player1 should be on Team B
-    const p1 = participantFor(player1, tournamentId, player1.userId);
-    expect(p1!.teamGroupId).toBe(teamB!.id);
+    // Player1 should be on Team B via TournamentTeamMember
+    const p1Member = teamMemberFor(player1, tournamentId, player1.userId);
+    expect(p1Member).toBeDefined();
+    expect(p1Member!.teamId).toBe(teamB!.id);
 
     // Verify no other pending requests from player1 in this tournament
     const allRequests = [...player1.conn.db.TournamentTeamRequest.iter()].filter(

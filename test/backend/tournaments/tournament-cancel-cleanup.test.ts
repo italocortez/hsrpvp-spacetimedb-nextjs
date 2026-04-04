@@ -3,7 +3,7 @@
  *
  * Covers:
  * - cancel_tournament from Registration → cascade deletes teams, assistants, player accounts
- * - cancel_tournament preserves TournamentParticipant rows (audit trail)
+ * - cancel_tournament preserves TournamentEnrolled rows (audit trail)
  * - cancel already-Cancelled → rejected (terminal state)
  * - cancel_tournament from InProgress → cascade deletes bracket matches, teams
  * - cancel Completed tournament → rejected (terminal state)
@@ -106,7 +106,7 @@ async function setupRegistrationTournament(
     await toUser.sync(1000);
 
     for (const p of players) {
-        await p.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+        await p.call.registerForTournament({ tournamentId });
         await p.sync(1000);
     }
     await toUser.sync(1000);
@@ -210,7 +210,7 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
             expect(assistantsAfter.length).toBe(0);
 
             // Participants preserved (audit trail)
-            const participants = [...toUser.conn.db.TournamentParticipant.iter()].filter(
+            const participants = [...toUser.conn.db.TournamentEnrolled.iter()].filter(
                 p => p.tournamentId === tournamentId
             );
             expect(participants.length).toBe(2);
@@ -266,7 +266,7 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
             expect(teamsAfter.length).toBe(0);
 
             // Participants preserved
-            const participants = [...toUser.conn.db.TournamentParticipant.iter()].filter(
+            const participants = [...toUser.conn.db.TournamentEnrolled.iter()].filter(
                 p => p.tournamentId === tournamentId
             );
             expect(participants.length).toBe(2);

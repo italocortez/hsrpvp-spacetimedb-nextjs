@@ -2,7 +2,7 @@
  * Integration tests for group-to-elimination bracket advancement.
  *
  * Covers:
- * - sortGroupStandings tiebreaker: head-to-head → points → seed
+ * - sortGroupPhaseRecords tiebreaker: head-to-head → points → seed
  * - advance_group_to_elimination: places top N teams per group into elimination slots
  * - Cross-seeded fold placement (group winners face group runners-up)
  * - Validation: wrong format, unresolved group matches, already populated slots
@@ -39,10 +39,10 @@ async function promoteUser(username: string, role: string): Promise<void> {
 }
 
 function getTeamId(h: TestHarness, tournamentId: number, userId: number): number {
-    const participant = [...h.conn.db.TournamentParticipant.iter()].find(
-        p => p.tournamentId === tournamentId && p.userId === userId
+    const member = [...h.conn.db.TournamentTeamMember.iter()].find(
+        m => m.tournamentId === tournamentId && m.userId === userId
     );
-    return participant?.teamGroupId ?? 0;
+    return member?.teamId ?? 0;
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -131,9 +131,9 @@ describe('Group-to-Elimination Advancement', () => {
             // Advance to InProgress (need 2+ players)
             await toUser.call.advanceTournamentStage({ tournamentId: nonHybridTournamentId, nextStage: 'Registration' });
             await toUser.sync(1000);
-            await p1.call.registerForTournament({ tournamentId: nonHybridTournamentId, teamGroupId: 0 });
+            await p1.call.registerForTournament({ tournamentId: nonHybridTournamentId });
             await p1.sync(1000);
-            await p2.call.registerForTournament({ tournamentId: nonHybridTournamentId, teamGroupId: 0 });
+            await p2.call.registerForTournament({ tournamentId: nonHybridTournamentId });
             await p2.sync(1000);
             await toUser.call.advanceTournamentStage({ tournamentId: nonHybridTournamentId, nextStage: 'Seeding' });
             await toUser.sync(1000);
@@ -203,7 +203,7 @@ describe('Group-to-Elimination Advancement', () => {
             await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Registration' });
             await toUser.sync(1000);
             for (const p of [p1, p2, p3, p4, p5, p6]) {
-                await p.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+                await p.call.registerForTournament({ tournamentId });
                 await p.sync(1000);
             }
             await toUser.sync(1500);
@@ -294,7 +294,7 @@ describe('Group-to-Elimination Advancement', () => {
         }, 30000);
 
         it('group standings reflect draws (all matches drawn)', () => {
-            const standings = [...toUser.conn.db.GroupStanding.iter()].filter(
+            const standings = [...toUser.conn.db.GroupPhaseRecord.iter()].filter(
                 gs => gs.tournamentId === tournamentId
             );
             // With all draws: each team in group of 3 has 2 matches, 2 draws, 2 points

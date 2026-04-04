@@ -98,7 +98,7 @@ async function setupRegistrationTournament(
     await toUser.sync(1000);
 
     for (const p of players) {
-        await p.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+        await p.call.registerForTournament({ tournamentId });
         await p.sync(1000);
     }
     await toUser.sync(1000);
@@ -368,7 +368,7 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
             // Submit match result → Submitted (Ranked)
             await toUser.call.submitMatchResult({
                 matchResultId: result.matchResultId,
-                winnerUserId: p1.userId,
+                winnerId: p1.userId,
             });
             await toUser.sync(1500);
 
@@ -376,7 +376,7 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
             await admin.call.overrideMatchResult({
                 matchResultId: result.matchResultId,
                 newStatusTag: 'Validated',
-                winnerId: p1.userId,
+                winnerTeamSideTag: 'Blue',
                 reason: 'Tournament MMR test validation',
             });
             await admin.sync(1000);

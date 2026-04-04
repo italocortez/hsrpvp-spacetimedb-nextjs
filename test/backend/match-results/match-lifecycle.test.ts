@@ -7,7 +7,7 @@
  * - dispute_match_result: status gate, single dispute, reason validation
  * - override_match_result: admin validates, Ranked screenshot gate
  * - finalize_match_result: history archive, ephemeral cleanup, lobby cascade-delete
- * - Draw outcome: winnerUserId=0, MatchSessionHistory.outcome = Draw
+ * - Draw outcome: winnerId=0, MatchSessionHistory.outcome = Draw
  *
  * Contract: docs/match-results/contract.md
  */
@@ -249,7 +249,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
         }, 120000);
 
         it('submit → auto-Validated + auto-finalized', async () => {
-            await host.call.submitMatchResult({ matchResultId, winnerUserId: blue.userId });
+            await host.call.submitMatchResult({ matchResultId, winnerId: blue.userId });
             await host.sync(2000);
             await blue.sync(2000);
             await red.sync(2000);
@@ -312,7 +312,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
 
         it('submit without authority rejected', async () => {
             const err = await expectReducerError(
-                outsider.call.submitMatchResult({ matchResultId, winnerUserId: blue.userId })
+                outsider.call.submitMatchResult({ matchResultId, winnerId: blue.userId })
             );
             expect(err).toMatch(/not a member|referee authority|not found/i);
         });
@@ -320,14 +320,14 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
         // ── Submit ───────────────────────────────────────────────────
 
         it('submit by referee → Submitted', async () => {
-            await host.call.submitMatchResult({ matchResultId, winnerUserId: blue.userId });
+            await host.call.submitMatchResult({ matchResultId, winnerId: blue.userId });
             await host.sync(1500);
             await blue.sync(1500);
 
             const mr = getMatchResultById(host, matchResultId);
             expect(mr).toBeDefined();
             expect(mr!.status.tag).toBe('Submitted');
-            expect(mr!.winnerUserId).toBe(blue.userId);
+            expect(mr!.winnerTeamSide?.tag).toBe('Blue');
             expect(mr!.refereeUserId).toBe(host.userId);
         }, 15000);
 
@@ -397,7 +397,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
                 admin.call.overrideMatchResult({
                     matchResultId,
                     newStatusTag: 'Pending',
-                    winnerId: blue.userId,
+                    winnerTeamSideTag: 'Blue',
                     reason: 'Test',
                 })
             );
@@ -408,7 +408,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
             await admin.call.overrideMatchResult({
                 matchResultId,
                 newStatusTag: 'Validated',
-                winnerId: blue.userId,
+                winnerTeamSideTag: 'Blue',
                 reason: 'Reviewed and confirmed',
             });
             await admin.sync(1000);
@@ -416,7 +416,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
 
             const mr = getMatchResultById(host, matchResultId);
             expect(mr!.status.tag).toBe('Validated');
-            expect(mr!.winnerUserId).toBe(blue.userId);
+            expect(mr!.winnerTeamSide?.tag).toBe('Blue');
             expect(mr!.disputeReason).toBe('Reviewed and confirmed');
         }, 15000);
 
@@ -466,7 +466,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
             matchResultId = result.matchResultId;
 
             // Submit to move to Submitted
-            await host.call.submitMatchResult({ matchResultId, winnerUserId: blue.userId });
+            await host.call.submitMatchResult({ matchResultId, winnerId: blue.userId });
             await host.sync(1500);
         }, 120000);
 
@@ -484,7 +484,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
                 admin.call.overrideMatchResult({
                     matchResultId,
                     newStatusTag: 'Validated',
-                    winnerId: blue.userId,
+                    winnerTeamSideTag: 'Blue',
                     reason: 'Attempting validation',
                 })
             );
@@ -495,7 +495,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
             await admin.call.overrideMatchResult({
                 matchResultId,
                 newStatusTag: 'Rejected',
-                winnerId: 0,
+                winnerTeamSideTag: '',
                 reason: 'No screenshots provided',
             });
             await admin.sync(1000);
@@ -525,8 +525,8 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
             matchResultId = result.matchResultId;
         }, 120000);
 
-        it('submit with winnerUserId=0 → auto-finalized', async () => {
-            await host.call.submitMatchResult({ matchResultId, winnerUserId: 0 });
+        it('submit with winnerId=0 → auto-finalized', async () => {
+            await host.call.submitMatchResult({ matchResultId, winnerId: 0 });
             await host.sync(2000);
             await blue.sync(2000);
 

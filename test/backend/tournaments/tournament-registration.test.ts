@@ -2,7 +2,7 @@
  * Integration tests: Tournament registration, waitlist, approval, and withdrawal.
  *
  * Covers:
- * - Register verified user -> TournamentParticipant row appears with isWaitlisted=false
+ * - Register verified user -> TournamentEnrolled row appears with isWaitlisted=false
  * - Reject duplicate registration
  * - Reject registration on Draft stage tournament
  * - Waitlist flow: maxParticipants=2, waitlistEnabled=true, requireApproval=true
@@ -122,10 +122,10 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
     });
 
     it('registers verified user -> participant row with isWaitlisted=false', async () => {
-      await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player1.call.registerForTournament({ tournamentId: tid });
       await player1.sync();
 
-      const participants = [...player1.conn.db.TournamentParticipant.iter()].filter(
+      const participants = [...player1.conn.db.TournamentEnrolled.iter()].filter(
         p => p.tournamentId === tid && p.userId === player1.userId
       );
       expect(participants.length).toBe(1);
@@ -135,7 +135,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
     it('rejects duplicate registration', async () => {
       const msg = await expectReducerError(
-        player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 })
+        player1.call.registerForTournament({ tournamentId: tid })
       );
       expect(msg.toLowerCase()).toMatch(/already|registered|duplicate/);
     });
@@ -175,7 +175,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
     expect(mine[mine.length - 1].stage.tag).toBe('Draft');
 
     const msg = await expectReducerError(
-      player1.call.registerForTournament({ tournamentId: draftTid, teamGroupId: 0 })
+      player1.call.registerForTournament({ tournamentId: draftTid })
     );
     expect(msg.toLowerCase()).toMatch(/registration|draft|stage/);
   });
@@ -221,19 +221,19 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
     it('first 2 registrants get isWaitlisted=false, 3rd gets isWaitlisted=true', async () => {
       // Register player1
-      await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player1.call.registerForTournament({ tournamentId: tid });
       await player1.sync();
 
       // Register player2
-      await player2.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player2.call.registerForTournament({ tournamentId: tid });
       await player2.sync();
 
       // Register player3 — should be waitlisted
-      await player3.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player3.call.registerForTournament({ tournamentId: tid });
       await player3.sync();
 
       await host.sync();
-      const allParticipants = [...host.conn.db.TournamentParticipant.iter()].filter(
+      const allParticipants = [...host.conn.db.TournamentEnrolled.iter()].filter(
         p => p.tournamentId === tid
       );
 
@@ -253,7 +253,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await host.call.approveParticipant({ tournamentId: tid, userId: player1.userId });
       await host.sync();
 
-      const p = [...host.conn.db.TournamentParticipant.iter()].find(
+      const p = [...host.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tid && p.userId === player1.userId
       );
       expect(p).toBeDefined();
@@ -271,7 +271,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await host.call.waitlistPromote({ tournamentId: tid, userId: player3.userId });
       await host.sync();
 
-      const p3 = [...host.conn.db.TournamentParticipant.iter()].find(
+      const p3 = [...host.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tid && p.userId === player3.userId
       );
       expect(p3).toBeDefined();
@@ -319,7 +319,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
       await host.sync();
 
-      await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player1.call.registerForTournament({ tournamentId: tid });
       await player1.sync();
     });
 
@@ -327,7 +327,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await player1.call.withdrawFromTournament({ tournamentId: tid });
       await player1.sync();
 
-      const p = [...player1.conn.db.TournamentParticipant.iter()].find(
+      const p = [...player1.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tid && p.userId === player1.userId
       );
       expect(p).toBeDefined();
@@ -342,14 +342,14 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
     });
   });
 
-  // ── Withdrawal cleanup: team requests and teamGroupId ──
+  // ── Withdrawal cleanup: team requests and TournamentTeamMember ──
   describe('withdrawal cleanup', () => {
     let tid: number;
 
     it('creates team tournament, registers players, forms team', async () => {
       await host.call.createTournament({
         name: 'Reg Test: Withdrawal Cleanup',
-        description: 'Tests request and teamGroupId cleanup on withdrawal',
+        description: 'Tests request and TournamentTeamMember cleanup on withdrawal',
         format: 'SingleElimination',
         teamSize: 3,
         defaultGameMode: 'MemoryOfChaos',
@@ -381,11 +381,11 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await host.sync();
 
       // Register host, player1, player2
-      await host.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await host.call.registerForTournament({ tournamentId: tid });
       await host.sync();
-      await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player1.call.registerForTournament({ tournamentId: tid });
       await player1.sync();
-      await player2.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player2.call.registerForTournament({ tournamentId: tid });
       await player2.sync();
 
       // Host creates a team
@@ -422,13 +422,13 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       expect(reqAfter).toBeUndefined();
 
       // Player2 status should be Withdrawn
-      const p2 = [...host.conn.db.TournamentParticipant.iter()].find(
+      const p2 = [...host.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tid && p.userId === player2.userId
       );
       expect(p2!.status.tag).toBe('Withdrawn');
     });
 
-    it('withdrawal clears teamGroupId for team member', async () => {
+    it('withdrawal removes TournamentTeamMember for team member', async () => {
       const team = [...host.conn.db.TournamentTeam.iter()].find(
         t => t.tournamentId === tid && t.captainUserId === host.userId
       );
@@ -442,22 +442,28 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await host.sync();
       await player1.sync();
 
-      // Verify player1 is on the team
-      const p1Before = [...player1.conn.db.TournamentParticipant.iter()].find(
-        p => p.tournamentId === tid && p.userId === player1.userId
+      // Verify player1 is on the team via TournamentTeamMember
+      const memberBefore = [...player1.conn.db.TournamentTeamMember.iter()].find(
+        m => m.tournamentId === tid && m.userId === player1.userId
       );
-      expect(p1Before!.teamGroupId).toBe(team!.id);
+      expect(memberBefore).toBeDefined();
+      expect(memberBefore!.teamId).toBe(team!.id);
 
       // Player1 withdraws (non-captain)
       await player1.call.withdrawFromTournament({ tournamentId: tid });
       await player1.sync();
 
-      // teamGroupId should be cleared
-      const p1After = [...player1.conn.db.TournamentParticipant.iter()].find(
+      // TournamentTeamMember row should be removed
+      const memberAfter = [...player1.conn.db.TournamentTeamMember.iter()].find(
+        m => m.tournamentId === tid && m.userId === player1.userId
+      );
+      expect(memberAfter).toBeUndefined();
+
+      // Enrollment status should be Withdrawn
+      const p1After = [...player1.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tid && p.userId === player1.userId
       );
       expect(p1After!.status.tag).toBe('Withdrawn');
-      expect(p1After!.teamGroupId).toBeFalsy();
     });
   });
 });

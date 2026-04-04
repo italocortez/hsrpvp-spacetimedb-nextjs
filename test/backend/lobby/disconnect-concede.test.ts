@@ -275,7 +275,7 @@ describe('Concede / Forfeit / Defer', () => {
                 const results = matchResults(host, lobbyId);
                 const deferResult = results.find(r => r.concedeSummary !== undefined && r.concedeSummary !== null);
                 expect(deferResult).toBeDefined();
-                expect(deferResult!.winnerUserId).toBeUndefined();
+                expect(deferResult!.winnerTeamSide).toBeUndefined();
             } finally {
                 await host.disconnect();
                 await blue.disconnect();

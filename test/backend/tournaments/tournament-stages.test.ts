@@ -131,14 +131,14 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
     await host.sync();
 
     // Register 2 players
-    await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await player1.call.registerForTournament({ tournamentId: tid });
     await player1.sync();
-    await player2.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await player2.call.registerForTournament({ tournamentId: tid });
     await player2.sync();
 
     // Verify participants exist
     await host.sync();
-    const participants = [...host.conn.db.TournamentParticipant.iter()].filter(
+    const participants = [...host.conn.db.TournamentEnrolled.iter()].filter(
       p => p.tournamentId === tid && !p.isWaitlisted && p.status.tag !== 'Withdrawn'
     );
     expect(participants.length).toBeGreaterThanOrEqual(2);
@@ -253,11 +253,11 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
     await host.sync();
 
     // Register all 3 users
-    await host.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await host.call.registerForTournament({ tournamentId: tid });
     await host.sync();
-    await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await player1.call.registerForTournament({ tournamentId: tid });
     await player1.sync();
-    await player2.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await player2.call.registerForTournament({ tournamentId: tid });
     await player2.sync();
 
     // Host creates a team
@@ -319,7 +319,7 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
     expect(tpaAfter.length).toBe(0);
 
     // Verify participants PRESERVED
-    const participants = [...host.conn.db.TournamentParticipant.iter()].filter(
+    const participants = [...host.conn.db.TournamentEnrolled.iter()].filter(
       p => p.tournamentId === tid
     );
     expect(participants.length).toBeGreaterThanOrEqual(3);

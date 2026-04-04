@@ -79,7 +79,7 @@ describe('ensureMatchAlive', () => {
 
     it('throws when Drafting but concede record exists', () => {
         const ctx = mockCtx({
-            matchResults: [{ lobbyId: 1, matchOutcome: { tag: 'Concede' } }],
+            matchResults: [{ lobbyId: 1, matchEndReason: { tag: 'Concede' } }],
         });
         const lobby = { id: 1, stage: { tag: 'Drafting' } };
         expect(() => ensureMatchAlive(ctx, lobby)).toThrow('Match has been conceded.');

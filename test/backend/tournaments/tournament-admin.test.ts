@@ -114,9 +114,9 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
     await admin.sync();
 
     // Register player1 and player2
-    await player1.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await player1.call.registerForTournament({ tournamentId });
     await player1.sync();
-    await player2.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await player2.call.registerForTournament({ tournamentId });
     await player2.sync();
 
     await admin.sync();
@@ -140,7 +140,7 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
       });
       await admin.sync();
 
-      const p = [...admin.conn.db.TournamentParticipant.iter()].find(
+      const p = [...admin.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tournamentId && p.userId === player1.userId
       );
       expect(p).toBeDefined();

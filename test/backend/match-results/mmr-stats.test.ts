@@ -198,15 +198,15 @@ async function promoteToRole(h: TestHarness, roleTag: string) {
 async function submitOverrideFinalize(
     host: TestHarness, admin: TestHarness,
     blue: TestHarness, red: TestHarness,
-    matchResultId: number, winnerUserId: number,
+    matchResultId: number, winnerUserId: number, winnerTeamSideTag: string,
 ) {
-    await host.call.submitMatchResult({ matchResultId, winnerUserId });
+    await host.call.submitMatchResult({ matchResultId, winnerId: winnerUserId });
     await host.sync(1500);
 
     await admin.call.overrideMatchResult({
         matchResultId,
         newStatusTag: 'Validated',
-        winnerId: winnerUserId,
+        winnerTeamSideTag,
         reason: 'MMR test validation',
     });
     await admin.sync(1000);
@@ -252,7 +252,7 @@ describe.skipIf(!hasServerToken())('MMR + Leaderboard + Stats', () => {
     describe('Ranked Match 1 — ELO + History + CharStats', () => {
         beforeAll(async () => {
             const result = await setupScoredMatch(host, blue, red);
-            await submitOverrideFinalize(host, admin, blue, red, result.matchResultId, blue.userId);
+            await submitOverrideFinalize(host, admin, blue, red, result.matchResultId, blue.userId, 'Blue');
         }, 180000);
 
         it('MmrRating rows created for both participants', () => {
@@ -401,7 +401,7 @@ describe.skipIf(!hasServerToken())('MMR + Leaderboard + Stats', () => {
         beforeAll(async () => {
             // Second Ranked match with same users (blue wins again)
             const result = await setupScoredMatch(host, blue, red);
-            await submitOverrideFinalize(host, admin, blue, red, result.matchResultId, blue.userId);
+            await submitOverrideFinalize(host, admin, blue, red, result.matchResultId, blue.userId, 'Blue');
         }, 180000);
 
         it('MmrRating.matchesPlayed = 2 after second match', () => {
@@ -623,7 +623,7 @@ describe.skipIf(!hasServerToken())('MMR + Leaderboard + Stats', () => {
             await banHost.sync(1000);
 
             // Submit → Casual auto-validates + auto-finalizes
-            await banHost.call.submitMatchResult({ matchResultId: mr.id, winnerUserId: banBlue.userId });
+            await banHost.call.submitMatchResult({ matchResultId: mr.id, winnerId: banBlue.userId });
             await banHost.sync(2500);
             await banBlue.sync(2500);
             await banRed.sync(2500);

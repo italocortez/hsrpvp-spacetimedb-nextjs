@@ -189,9 +189,9 @@ describe('Tournament Lobby & Stand-In', () => {
         await toUser.sync(1500);
 
         // Register player1 and player2
-        await player1.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+        await player1.call.registerForTournament({ tournamentId });
         await player1.sync(1500);
-        await player2.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+        await player2.call.registerForTournament({ tournamentId });
         await player2.sync(1500);
         await toUser.sync(1500);
 

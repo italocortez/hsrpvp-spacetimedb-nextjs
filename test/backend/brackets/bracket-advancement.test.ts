@@ -128,7 +128,7 @@ async function setupTournament(
 
     // Register all players
     for (const p of players) {
-        await p.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+        await p.call.registerForTournament({ tournamentId });
         await p.sync(1000);
     }
     await toUser.sync(1500);
@@ -156,12 +156,12 @@ async function setupTournament(
     return { tournamentId, bracketMatches };
 }
 
-/** Get the team ID for a player in a tournament */
+/** Get the team ID for a player in a tournament via TournamentTeamMember */
 function getTeamId(h: TestHarness, tournamentId: number, userId: number): number {
-    const participant = [...h.conn.db.TournamentParticipant.iter()].find(
-        p => p.tournamentId === tournamentId && p.userId === userId
+    const member = [...h.conn.db.TournamentTeamMember.iter()].find(
+        m => m.tournamentId === tournamentId && m.userId === userId
     );
-    return participant?.teamGroupId ?? 0;
+    return member?.teamId ?? 0;
 }
 
 /** Find bracket match by teams */
@@ -447,11 +447,11 @@ describe('Bracket Advancement', () => {
             });
             await toUser.sync(1500);
 
-            const participant = [...toUser.conn.db.TournamentParticipant.iter()].find(
+            const enrolled = [...toUser.conn.db.TournamentEnrolled.iter()].find(
                 p => p.tournamentId === tournamentId && p.userId === p4.userId
             );
-            expect(participant).toBeDefined();
-            expect(participant!.status.tag).toBe('Disqualified');
+            expect(enrolled).toBeDefined();
+            expect(enrolled!.status.tag).toBe('Disqualified');
         });
 
         it('DQ sets semi2 winnerTeamId to opponent team', async () => {
@@ -542,7 +542,7 @@ describe('Bracket Advancement', () => {
                 // Submit match result (Casual = auto-validate + auto-finalize)
                 await toUser.call.submitMatchResult({
                     matchResultId,
-                    winnerUserId: bluePlayer.userId,
+                    winnerId: bluePlayer.userId,
                 });
                 await toUser.sync(3000);
                 await bluePlayer.sync(2000);
@@ -673,7 +673,7 @@ describe('Bracket Advancement', () => {
             // Submit with winner — Ranked does NOT auto-finalize
             await toUser.call.submitMatchResult({
                 matchResultId,
-                winnerUserId: bluePlayer.userId,
+                winnerId: bluePlayer.userId,
             });
             await toUser.sync(2000);
 
@@ -758,8 +758,8 @@ describe('Bracket Advancement', () => {
             }
         });
 
-        it('GroupStanding rows initialized at zero', () => {
-            const standings = [...toUser.conn.db.GroupStanding.iter()].filter(
+        it('GroupPhaseRecord rows initialized at zero', () => {
+            const standings = [...toUser.conn.db.GroupPhaseRecord.iter()].filter(
                 gs => gs.tournamentId === tournamentId
             );
             expect(standings.length).toBe(4); // One per team
@@ -806,7 +806,7 @@ describe('Bracket Advancement', () => {
             await toUser.sync(1500);
 
             // Check standings updated
-            const standings = [...toUser.conn.db.GroupStanding.iter()].filter(
+            const standings = [...toUser.conn.db.GroupPhaseRecord.iter()].filter(
                 gs => gs.tournamentId === tournamentId
             );
 
@@ -825,7 +825,7 @@ describe('Bracket Advancement', () => {
         });
 
         it('non-participating teams have unchanged standings', () => {
-            const standings = [...toUser.conn.db.GroupStanding.iter()].filter(
+            const standings = [...toUser.conn.db.GroupPhaseRecord.iter()].filter(
                 gs => gs.tournamentId === tournamentId
             );
 
@@ -862,7 +862,7 @@ describe('Bracket Advancement', () => {
             const drawTeamB = unresolvedMatch!.team2Id!;
 
             // Get standings before
-            const standingsBefore = [...toUser.conn.db.GroupStanding.iter()].filter(
+            const standingsBefore = [...toUser.conn.db.GroupPhaseRecord.iter()].filter(
                 gs => gs.tournamentId === tournamentId
             );
             const aBefore = standingsBefore.find(s => s.teamId === drawTeamA)!;
@@ -873,7 +873,7 @@ describe('Bracket Advancement', () => {
             await toUser.sync(1500);
 
             // Both teams should get draws+1 and points+1 (Draw=1pt)
-            const standingsAfter = [...toUser.conn.db.GroupStanding.iter()].filter(
+            const standingsAfter = [...toUser.conn.db.GroupPhaseRecord.iter()].filter(
                 gs => gs.tournamentId === tournamentId
             );
 

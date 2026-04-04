@@ -240,7 +240,7 @@ describe.skipIf(!hasServerToken())('Achievement Auto-Award via Finalization', ()
         //    This triggers finalization step 16.5: checkAndAwardAchievements
         await host.call.submitMatchResult({
             matchResultId: mr!.id,
-            winnerUserId: blue.userId,
+            winnerId: blue.userId,
         });
         await host.sync(2500);
         await blue.sync(2500);

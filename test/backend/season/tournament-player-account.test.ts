@@ -130,7 +130,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     const accounts = userAccounts(playerWithAccounts, playerWithAccounts.userId);
     expect(accounts.length).toBe(2);
 
-    await playerWithAccounts.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await playerWithAccounts.call.registerForTournament({ tournamentId });
     await playerWithAccounts.sync(2000);
 
     const tpaRows = tpaForUser(playerWithAccounts, tournamentId, playerWithAccounts.userId);
@@ -168,7 +168,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     await scopePlayer.sync(1000);
 
     // Register in first tournament
-    await scopePlayer.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await scopePlayer.call.registerForTournament({ tournamentId });
     await scopePlayer.sync(2000);
 
     const tpaInFirst = tpaForUser(scopePlayer, tournamentId, scopePlayer.userId);
@@ -209,7 +209,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     await host.sync(1000);
 
     // Register in second tournament
-    await scopePlayer.call.registerForTournament({ tournamentId: secondTournamentId, teamGroupId: 0 });
+    await scopePlayer.call.registerForTournament({ tournamentId: secondTournamentId });
     await scopePlayer.sync(2000);
 
     // Verify first tournament TPA unchanged
@@ -236,16 +236,16 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     const accounts = userAccounts(playerWithoutAccounts, playerWithoutAccounts.userId);
     expect(accounts.length).toBe(0);
 
-    await playerWithoutAccounts.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await playerWithoutAccounts.call.registerForTournament({ tournamentId });
     await playerWithoutAccounts.sync(2000);
 
-    // Should have registered (TournamentParticipant exists) but no TPA rows
+    // Should have registered (TournamentEnrolled exists) but no TPA rows
     const tpa = tpaForUser(playerWithoutAccounts, tournamentId, playerWithoutAccounts.userId);
     expect(tpa.length).toBe(0);
 
-    // Verify the participant was actually created
-    const participants = [...playerWithoutAccounts.conn.db.TournamentParticipant.iter()]
+    // Verify the enrollment was actually created
+    const enrolled = [...playerWithoutAccounts.conn.db.TournamentEnrolled.iter()]
       .filter(p => p.tournamentId === tournamentId && p.userId === playerWithoutAccounts.userId);
-    expect(participants.length).toBe(1);
+    expect(enrolled.length).toBe(1);
   });
 });
