@@ -79,6 +79,22 @@ export const admin_delete_hsr_account = spacetimedb.reducer(
         const account = ctx.db.HsrAccount.id.find(hsrAccountId);
         if (!account) throw new SenderError('HSR account not found');
 
+        // D-24: Block deletion if account is currently selected in an active lobby
+        const activeLma = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (activeLma.length > 0) {
+            throw new SenderError('Cannot delete an account that is selected in an active lobby. Leave the lobby first.');
+        }
+
+        // D-24, D-25: Block if account is locked in an active tournament (admin blocked equally per D-25)
+        const tpaEntries = [...ctx.db.TournamentPlayerAccount.by_user.filter(account.userId)]
+            .filter((e: any) => e.hsrAccountId === hsrAccountId);
+        for (const tpa of tpaEntries) {
+            const tournament = ctx.db.Tournament.id.find(tpa.tournamentId);
+            if (tournament && tournament.stage.tag !== 'Completed' && tournament.stage.tag !== 'Cancelled') {
+                throw new SenderError('Cannot delete an account locked in an active tournament. Wait for the tournament to complete or be cancelled.');
+            }
+        }
+
         const uid = account.uid;
         const accountUserId = account.userId;
 

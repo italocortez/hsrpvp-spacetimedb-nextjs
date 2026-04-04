@@ -318,6 +318,57 @@ export const join_lobby = spacetimedb.reducer(
             ...auditInsert(ctx, user.id),
         } as any);
 
+        // D-04, D-09: Auto-create LobbyMemberAccount row with player's active account
+        {
+            const activeAcct = [...ctx.db.HsrAccount.user_id.filter(user.id)].find((a: any) => a.isActive);
+            if (activeAcct) {
+                if (lobby.isTournamentControlled && lobby.tournamentId) {
+                    // Tournament path: validate against TournamentPlayerAccount
+                    const tpaEntries = [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([lobby.tournamentId, user.id])];
+                    const lockedEntry = tpaEntries.find((e: any) => e.hsrAccountId === activeAcct.id);
+                    if (lockedEntry) {
+                        ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id } as any);
+                    } else if (tpaEntries.length > 0) {
+                        // D-04: Fallback to first locked account
+                        ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: tpaEntries[0].hsrAccountId } as any);
+                    }
+                    // If no TPA entries at all (stand-in not yet approved), skip — they'll select later
+                } else {
+                    // Non-tournament: use active account directly
+                    ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id } as any);
+                }
+            }
+
+            // D-26: If this is a stand-in joining a tournament lobby, snapshot their accounts into TPA
+            if (lobby.isTournamentControlled && lobby.tournamentId && lobby.bracketMatchId) {
+                const standIn = [...ctx.db.TournamentStandIn.by_match_and_user.filter([lobby.bracketMatchId, user.id])][0];
+                if (standIn) {
+                    // Check if they already have TPA entries for this tournament
+                    const existingTpa = [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([lobby.tournamentId, user.id])];
+                    if (existingTpa.length === 0) {
+                        // Snapshot active accounts into TPA (same locking as registration)
+                        const userAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
+                        for (const acct of userAccounts) {
+                            ctx.db.TournamentPlayerAccount.insert({
+                                tournamentId: lobby.tournamentId,
+                                userId: user.id,
+                                hsrAccountId: acct.id,
+                                ...auditInsert(ctx, user.id),
+                            } as any);
+                        }
+                        // Now create LobbyMemberAccount for their active account (first locked)
+                        if (activeAcct && userAccounts.length > 0) {
+                            // Active account was just locked, create/update LMA row
+                            const existingLma = [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, user.id])];
+                            if (existingLma.length === 0) {
+                                ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id } as any);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Increment currentPlayerCount
         ctx.db.Lobby.id.update({
             ...lobby,
@@ -368,6 +419,10 @@ export const leave_lobby = spacetimedb.reducer(
         if (activeStages.includes(lobby.stage.tag)) {
             // D-29: Spectators/Coaches get clean deletion even during active stages
             if (slotIsSpectator(member.lobbySlot) || slotIsCoach(member.lobbySlot)) {
+                // D-29: Delete LobbyMemberAccount rows for departing member
+                for (const lma of [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, user.id])]) {
+                    ctx.db.LobbyMemberAccount.delete(lma);
+                }
                 ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
                 ctx.db.Lobby.id.update({
                     ...lobby,
@@ -380,6 +435,10 @@ export const leave_lobby = spacetimedb.reducer(
             }
 
             // D-31: Players — set voluntarilyLeft=true, keep row for finalization
+            // D-29: Delete LobbyMemberAccount rows for departing player (ephemeral, no preservation)
+            for (const lma of [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, user.id])]) {
+                ctx.db.LobbyMemberAccount.delete(lma);
+            }
             ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
             ctx.db.LobbyMember.insert({
                 ...member,
@@ -442,6 +501,10 @@ export const leave_lobby = spacetimedb.reducer(
         }
 
         // Waiting/AwaitingResult/Finished: normal leave path
+        // D-29: Delete LobbyMemberAccount rows for departing member
+        for (const lma of [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, user.id])]) {
+            ctx.db.LobbyMemberAccount.delete(lma);
+        }
         // Remove from lobby
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
 

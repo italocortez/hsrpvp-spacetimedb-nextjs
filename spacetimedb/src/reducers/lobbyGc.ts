@@ -6,15 +6,16 @@ import { ScheduleAt } from 'spacetimedb';
 // ─── hardDeleteLobby ─────────────────────────────────────────────────────────
 // Shared cascade-delete helper: removes a lobby and all associated data.
 // Used by the GC reducer (abandoned lobbies) and exported for use in close_lobby.
-// Cascade order per D-19:
-//   1. ChatMessage (event: lobby_id index)
-//   2. LobbyMember (composite PK: lobbyId + userId)
-//   3. LobbyBan (composite PK: lobbyId + bannedUserId)
-//   4. LobbyPassword (unique PK: lobbyId)
-//   5. LobbyCursorEvent — event table, auto-deleted after broadcast (no manual cleanup)
-//   6. MatchSessionStep (lobby_id index)
-//   7. MatchSession (unique PK: lobbyId)
-//   8. Lobby row
+// Cascade order per D-19, D-28:
+//   1.  ChatMessage (event: lobby_id index)
+//   1.5 LobbyMemberAccount (lobby_id btree index) — D-28
+//   2.  LobbyMember (composite PK: lobbyId + userId)
+//   3.  LobbyBan (composite PK: lobbyId + bannedUserId)
+//   4.  LobbyPassword (unique PK: lobbyId)
+//   5.  LobbyCursorEvent — event table, auto-deleted after broadcast (no manual cleanup)
+//   6.  MatchSessionStep (lobby_id index)
+//   7.  MatchSession (unique PK: lobbyId)
+//   8.  Lobby row
 
 export function hardDeleteLobby(ctx: any, lobbyId: number): void {
     // 0a. Delete MatchResult* rows (MatchResultParticipant, MatchResultGame, MatchResultRecord)
@@ -32,6 +33,11 @@ export function hardDeleteLobby(ctx: any, lobbyId: number): void {
     // 1. Delete all ChatMessage rows
     for (const msg of [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)]) {
         ctx.db.ChatMessage.id.delete(msg.id);
+    }
+
+    // 1.5. Delete all LobbyMemberAccount rows (D-28)
+    for (const lma of [...ctx.db.LobbyMemberAccount.lobby_id.filter(lobbyId)]) {
+        ctx.db.LobbyMemberAccount.delete(lma);
     }
 
     // 2. Delete all LobbyMember rows
