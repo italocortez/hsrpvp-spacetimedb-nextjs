@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 10.4
-current_plan: 1
+current_plan: 2
 status: executing
-last_updated: "2026-04-04T13:03:03.541Z"
+last_updated: "2026-04-04T13:08:00Z"
 progress:
   total_phases: 16
   completed_phases: 14
   total_plans: 47
-  completed_plans: 45
+  completed_plans: 46
 ---
 
 # Session State
@@ -135,6 +135,8 @@ See: .planning/PROJECT.md
 - [Phase 10.4]: HsrAccount and HsrAccountCharacter made private — raw subscriptions replaced by server-side views in Plans 03/04 (D-20)
 - [Phase 10.4]: TournamentEnrolled.hsrAccountId removed — TournamentPlayerAccount is sole source of truth for locked accounts (D-23)
 - [Phase 10.4]: select_match_account tournament path additive (up to maxAccountsPerPlayer), non-tournament path replace (always max 1) (D-07, D-11)
+- [Phase 10.4]: validateCharacterOwnership now only checks LobbyMemberAccount-selected accounts (D-14) — both tournament and non-tournament paths unified
+- [Phase 10.4]: Stand-in TPA snapshot in join_lobby conditional on bracketMatchId being truthy (guards against tournament lobbies not yet assigned to a bracket match)
 
 ### Quick Tasks Completed
 
@@ -193,3 +195,4 @@ See: .planning/PROJECT.md
 - 2026-04-03: Completed 10-02-PLAN.md — 3 concede reducers (concede_match, claim_forfeit, defer_match), performConcede shared helper, concede finalization matrix (3-tier x 3-stage) in runFinalization, 3 admin reducers (admin_force_finalize, admin_void_match, admin_set_bracket_winner), leave_lobby auto-concede wired, published to maincloud, 124/124 tests pass, Phase 10 complete
 - 2026-04-04: Completed 10.1-06-PLAN.md — 15 test files updated for TournamentEnrolled/TournamentTeamMember/GroupPhaseRecord/winnerTeamSide/matchEndReason, module published --clear-database, bindings regenerated (7 new + 2 deleted + 10+ updated), 4 architecture docs updated, 72/72 unit tests pass, Phase 10.1 complete
 - 2026-04-04: Completed 10.3-01-PLAN.md — 8 TO-scoped views added to securityViews.ts (getMyTournamentIds helper + view_my_tournaments/enrolled/teams/team_members/matches/match_results/lobbies/group_standings), module published --clear-database, bindings regenerated, docs/views/architecture.md updated, 72/72 unit tests pass, Phase 10.3 complete
+- 2026-04-04: Completed 10.4-02-PLAN.md — LobbyMemberAccount wired into all lifecycle touchpoints (join/leave/GC cascade), deletion guards in delete_hsr_account and admin_delete_hsr_account, validateCharacterOwnership refactored to use LMA exclusively (D-14), start_draft D-08 account gate for Ranked/MMR-tournament lobbies, stand-in TPA snapshot on join (D-26)

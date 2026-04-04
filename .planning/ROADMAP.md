@@ -308,10 +308,10 @@ Plans:
   5. `TournamentEnrolled.hsrAccountId` column removed (redundant with TournamentPlayerAccount)
   6. For casual (non-tournament) lobbies, account selection uses the player's currently active account (existing behavior)
   7. Stand-ins select account on lobby join using the same `select_tournament_account` flow
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 Plans:
-- [ ] 10.4-01-PLAN.md — Schema foundation: LobbyMemberAccount table, Tournament.maxAccountsPerPlayer, TournamentEnrolled.hsrAccountId removal, HsrAccount/HsrAccountCharacter privacy, select_match_account reducer
-- [ ] 10.4-02-PLAN.md — Cascade wiring: join_lobby auto-create, leave_lobby cascade, hardDeleteLobby cascade, deletion guards, ownership validation refactor, start_draft gate
+- [x] 10.4-01-PLAN.md — Schema foundation: LobbyMemberAccount table, Tournament.maxAccountsPerPlayer, TournamentEnrolled.hsrAccountId removal, HsrAccount/HsrAccountCharacter privacy, select_match_account reducer
+- [x] 10.4-02-PLAN.md — Cascade wiring: join_lobby auto-create, leave_lobby cascade, hardDeleteLobby cascade, deletion guards, ownership validation refactor, start_draft gate
 - [ ] 10.4-03-PLAN.md — Views + docs: roster visibility update + anon fix, 3 new views, architecture + contract docs, publish --clear-database, generate bindings
 
 ### Phase 11: Archetype Playstyle Stats
@@ -350,6 +350,6 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10. Disconnect Handling and Cost Parity | 2/2 | Complete   | 2026-04-04 |
 | 10.1. Match Schema Rework | 6/6 | Complete    | 2026-04-04 |
 | 10.3. Tournament Organizer Views | 1/1 | Complete    | 2026-04-04 |
-| 10.4. Account Selection Per Match | 0/3 | Planning complete | - |
+| 10.4. Account Selection Per Match | 2/3 | In Progress|  |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
 
