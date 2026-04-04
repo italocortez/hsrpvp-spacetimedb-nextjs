@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 11
-current_plan: 1
-status: executing
-last_updated: "2026-04-04T03:15:00.000Z"
+current_phase: 10.2
+current_plan: Not started
+status: planning
+last_updated: "2026-04-04T03:21:51.879Z"
 progress:
   total_phases: 15
   completed_phases: 13
-  total_plans: 44
+  total_plans: 43
   completed_plans: 43
 ---
 
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 11
-**Current plan:** 1
-**Status:** Phase 10.1 complete — ready for Phase 11
+**Current phase:** 10.2
+**Current plan:** Not started
+**Status:** Ready to plan
 
 ## Decisions
 
@@ -149,6 +149,8 @@ See: .planning/PROJECT.md
 - Phase 06.1 inserted after Phase 06: Landing Page Migration (INSERTED)
 - Phase 10.1 inserted after Phase 10: Match schema rework — multi-draft (gameNumber on steps), team-centric model (TournamentEnrolled + TournamentTeamMember replacing TournamentParticipant), winnerTeamSide replacing winnerUserId (URGENT)
 - Phase 10.2 inserted after Phase 10.1: Remove tournamentId from MatchResultRecord — single source of truth, derive from bracketMatch.tournamentId (URGENT)
+- Phase 10.3 inserted after Phase 10.1: Tournament Organizer Views — TO-scoped server-side views (view_my_tournaments, view_tournament_dashboard, view_tournament_match_status) to reduce frontend bandwidth
+- Phase 10.4 inserted after Phase 10.3: Account Selection Per Match — multi-account per match, account switching between games, drop TournamentEnrolled.hsrAccountId
 
 ## Session Log
 

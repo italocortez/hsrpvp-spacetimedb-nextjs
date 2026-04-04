@@ -22,9 +22,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 06.1: Landing Page Migration** - Design tokens, NavBar, hero/features/contact sections from design reference (INSERTED) (completed 2026-03-22)
 - [x] **Phase 7: Achievements and Titles** - Achievement definitions, auto-award logic, manual award, and profile titles (completed 2026-03-28)
 - [x] **Phase 8: Calendar and Scheduling** - Recurring availability slots, calendar events, auto-sync, and TO scheduling (completed 2026-03-28)
-- [ ] **Phase 9: Mouse Tracking, Chat, and Lobby Browser** - Cursor broadcast, ephemeral chat, and lobby browsing filters
+- [x] **Phase 9: Mouse Tracking, Chat, and Lobby Browser** - Cursor broadcast, ephemeral chat, and lobby browsing filters (completed 2026-03-29)
 - [x] **Phase 10: Disconnect Handling and Cost Parity** - Disconnect policies, rejoin logic, liveness checks, and lightcone cost fix (completed 2026-04-03)
-- [x] **Phase 10.1: Match Schema Rework** - Best-of-N series, team-centric model, winnerTeamSide, merged Phase 10.2 scope (INSERTED) (completed 2026-04-04)
+- [x] **Phase 10.1: Match Schema Rework** - Best-of-N series, team-centric model, winnerTeamSide, tournamentId/lobbyId removal (INSERTED) (completed 2026-04-04)
+- [ ] **Phase 10.3: Tournament Organizer Views** - TO-scoped server-side views replacing full-table subscriptions (INSERTED)
+- [ ] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED)
 - [ ] **Phase 11: Archetype Playstyle Stats** - PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag, same PK pattern as stat tables
 
 ## Phase Details
@@ -228,7 +230,7 @@ Plans:
   3. Chat messages are written to an event table per lobby/match; messages are not persisted to a permanent table and are cleaned up in the same transaction as lobby close
   4. Chat message rows carry a flexible metadata field to support future rich content (emoji, formatting) without schema migration
   5. A lobby list table or view supports filtering by game mode, match status, and player count; lobby visibility (public, private, invite-only) is enforced at the subscription level
-**Plans:** 7/9 plans executed
+**Plans:** 9/9 plans complete
 Plans:
 - [x] 09-01-PLAN.md — Schema foundation: enum changes (LobbyStage +Equipping/Scoring, BanMode -Two, ActionType +3), struct updates (LobbyConfigSnapshot dual budgets, new payloads), table mods (Lobby, LobbyMember, MatchSession, history tables), 4 new tables (LobbyBan, LobbyPreset, TournamentStandIn, LobbyGcJob), publish --clear-database
 - [x] 09-02-PLAN.md — Lobby lifecycle: lobbyHelpers.ts + anonymousHelpers.ts shared validation, 6 reducers (create/join/leave/close/kick/ban), one-lobby-per-user, guest restrictions, cascade delete
@@ -258,7 +260,7 @@ Plans:
 
 ### Phase 10.1: Match Schema Rework — Multi-Draft, Team-Centric Model, winnerTeamSide (INSERTED)
 
-**Goal:** Six structural fixes before frontend: (A) rename GroupStanding -> GroupPhaseRecord, (B) best-of-N multi-draft with BetweenGames/Shelved stages and series management reducers, (C) replace TournamentParticipant with TournamentEnrolled + TournamentTeamMember with captain-transfer on DQ/withdrawal, (D) replace winnerUserId with winnerTeamSide + rename MatchOutcome -> MatchEndReason, (E) wire ParticipantStatus lifecycle (CheckedIn/Active/Eliminated), (F) remove tournamentId from MatchResultRecord and lobbyId from BracketMatch (merged from Phase 10.2)
+**Goal:** Six structural fixes before frontend: (A) rename GroupStanding -> GroupPhaseRecord, (B) best-of-N multi-draft with BetweenGames/Shelved stages and series management reducers, (C) replace TournamentParticipant with TournamentEnrolled + TournamentTeamMember with captain-transfer on DQ/withdrawal, (D) replace winnerUserId with winnerTeamSide + rename MatchOutcome -> MatchEndReason, (E) wire ParticipantStatus lifecycle (CheckedIn/Active/Eliminated), (F) remove tournamentId from MatchResultRecord and lobbyId from BracketMatch
 **Requirements**: D-01 through D-44 (44 decisions from discuss-phase)
 **Depends on:** Phase 10
 **Success Criteria** (what must be TRUE):
@@ -279,10 +281,36 @@ Plans:
 - [x] 10.1-05-PLAN.md — New features: series management reducers (advance/shelve/resume), GC Shelved/BetweenGames extensions, concede in BetweenGames, check-in reducer, tournament stage transitions (CheckIn, Active), bestOf wiring, post-draft series logic
 - [x] 10.1-06-PLAN.md — Tests (15 files, 122+ occurrences), architecture docs (4 files), publish --clear-database, generate bindings, full test suite green
 
-### Phase 10.2: Remove tournamentId from MatchResultRecord (MERGED into Phase 10.1)
+### Phase 10.3: Tournament Organizer Views (INSERTED)
 
-**Status:** Merged into Phase 10.1 as Scope F (D-42, D-43, D-44). No separate phase needed.
-**Plans:** N/A — covered by 10.1 Plans 01, 02, 04
+**Goal:** Server-side SpacetimeDB views scoped to tournament organizers — replacing 5+ full-table client subscriptions with targeted TO-scoped views to reduce bandwidth
+**Depends on:** Phase 10.1 (TournamentEnrolled/TournamentTeamMember model, bracket_match_id indexes)
+**Requirements**: TO-VIEW-01, TO-VIEW-02, TO-VIEW-03
+**Success Criteria** (what must be TRUE):
+  1. `view_my_tournaments` returns tournaments where caller is organizerId or tournament assistant
+  2. `view_tournament_dashboard` returns aggregated participant count, team count, bracket match status for a given tournament in one subscription
+  3. `view_tournament_match_status` returns bracket matches with their current lobby stage and result status in one row per match
+  4. All views use btree indexes (no iter() scans on large tables)
+**Plans:** 0 plans
+Plans:
+- [ ] TBD (run /gsd:plan-phase 10.3 to break down)
+
+### Phase 10.4: Account Selection Per Match (INSERTED)
+
+**Goal:** Players choose which enrolled HSR account(s) to use per match. Tournament setting controls whether 1 or multiple accounts are allowed per player per match (default: 1). Multi-account mode enables asymmetric formats like 1v2 where one player drafts from 2 accounts. Account selection happens at lobby join for tournament lobbies and is changeable between games in best-of-N series. Drop redundant `TournamentEnrolled.hsrAccountId`. Stand-ins select account on lobby join (same flow).
+**Depends on:** Phase 10.1 (TournamentEnrolled/TournamentTeamMember, TournamentPlayerAccount, series management)
+**Requirements**: ACCT-01, ACCT-02, ACCT-03, ACCT-04, ACCT-05
+**Success Criteria** (what must be TRUE):
+  1. `Tournament.maxAccountsPerPlayer` (u8, default 1) controls how many HSR accounts a player can activate per match
+  2. `LobbyMember.selectedAccountIds` tracks which account(s) a player has activated for this match — validated against `TournamentPlayerAccount` for tournament lobbies
+  3. `select_tournament_account` reducer lets a player choose/change account(s) during Waiting and BetweenGames stages, validated against enrolled accounts and the maxAccountsPerPlayer limit
+  4. `validateCharacterOwnership` checks only the player's selected account(s), not all locked accounts
+  5. `TournamentEnrolled.hsrAccountId` column removed (redundant with TournamentPlayerAccount)
+  6. For casual (non-tournament) lobbies, account selection uses the player's currently active account (existing behavior)
+  7. Stand-ins select account on lobby join using the same `select_tournament_account` flow
+**Plans:** 0 plans
+Plans:
+- [ ] TBD (run /gsd:plan-phase 10.4 to break down)
 
 ### Phase 11: Archetype Playstyle Stats
 **Goal**: Track playstyle stats when 3+ picks in a draft share an archetype tag; auto-increment during finalization pipeline
@@ -299,10 +327,10 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 11
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 11
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
-Note: Phase 10.2 merged into Phase 10.1 — execution order updated.
+Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 as Scope F.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -316,7 +344,10 @@ Note: Phase 10.2 merged into Phase 10.1 — execution order updated.
 | 06.1. Landing Page Migration | 2/2 | Complete    | 2026-03-22 |
 | 7. Achievements and Titles | 2/2 | Complete   | 2026-03-28 |
 | 8. Calendar and Scheduling | 2/2 | Complete   | 2026-03-28 |
-| 9. Mouse Tracking, Chat, and Lobby Browser | 7/9 | In Progress|  |
+| 9. Mouse Tracking, Chat, and Lobby Browser | 9/9 | Complete   | 2026-03-29 |
 | 10. Disconnect Handling and Cost Parity | 2/2 | Complete   | 2026-04-03 |
-| 10.1. Match Schema Rework (incl. 10.2) | 6/6 | Complete   | 2026-04-04 |
+| 10.1. Match Schema Rework | 6/6 | Complete    | 2026-04-04 |
+| 10.3. Tournament Organizer Views | 0/? | Not started | - |
+| 10.4. Account Selection Per Match | 0/? | Not started | - |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
+
