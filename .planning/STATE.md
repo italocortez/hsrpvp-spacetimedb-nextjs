@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 10.1
+current_phase: 11
 current_plan: 1
 status: executing
-last_updated: "2026-04-04T02:52:15.982Z"
+last_updated: "2026-04-04T03:15:00.000Z"
 progress:
   total_phases: 15
-  completed_phases: 12
-  total_plans: 43
-  completed_plans: 42
+  completed_phases: 13
+  total_plans: 44
+  completed_plans: 43
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 10.1
+**Current phase:** 11
 **Current plan:** 1
-**Status:** Executing Phase 10.1
+**Status:** Phase 10.1 complete — ready for Phase 11
 
 ## Decisions
 
@@ -183,3 +183,4 @@ See: .planning/PROJECT.md
 - 2026-03-29: Completed 09-03-PLAN.md — send_chat_message (D-12/D-13/D-14/D-18) + delete_chat_message (D-26), spectator cursor silencing (D-34), projected view_lobby_browser with LobbyBrowserRow (D-05/D-06/D-08), published to maincloud, bindings regenerated
 - 2026-03-29: Completed 09-06-PLAN.md — 7 draft reducers (start_draft, pick_character, ban_character, timer_expiry_classic, undo_last_step, pause_draft, resume_draft), draftSequences.ts helper with exact 0/4/6-ban Classic sequences, MOUS-03 coach guard enforced throughout, D-29/D-30/D-40/D-42/D-43/D-43b/D-60/D-61/D-62 all implemented, published to maincloud, bindings regenerated
 - 2026-04-03: Completed 10-02-PLAN.md — 3 concede reducers (concede_match, claim_forfeit, defer_match), performConcede shared helper, concede finalization matrix (3-tier x 3-stage) in runFinalization, 3 admin reducers (admin_force_finalize, admin_void_match, admin_set_bracket_winner), leave_lobby auto-concede wired, published to maincloud, 124/124 tests pass, Phase 10 complete
+- 2026-04-04: Completed 10.1-06-PLAN.md — 15 test files updated for TournamentEnrolled/TournamentTeamMember/GroupPhaseRecord/winnerTeamSide/matchEndReason, module published --clear-database, bindings regenerated (7 new + 2 deleted + 10+ updated), 4 architecture docs updated, 72/72 unit tests pass, Phase 10.1 complete

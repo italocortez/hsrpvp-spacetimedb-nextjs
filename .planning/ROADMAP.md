@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Calendar and Scheduling** - Recurring availability slots, calendar events, auto-sync, and TO scheduling (completed 2026-03-28)
 - [ ] **Phase 9: Mouse Tracking, Chat, and Lobby Browser** - Cursor broadcast, ephemeral chat, and lobby browsing filters
 - [x] **Phase 10: Disconnect Handling and Cost Parity** - Disconnect policies, rejoin logic, liveness checks, and lightcone cost fix (completed 2026-04-03)
-- [ ] **Phase 10.1: Match Schema Rework** - Best-of-N series, team-centric model, winnerTeamSide, merged Phase 10.2 scope (INSERTED)
+- [x] **Phase 10.1: Match Schema Rework** - Best-of-N series, team-centric model, winnerTeamSide, merged Phase 10.2 scope (INSERTED) (completed 2026-04-04)
 - [ ] **Phase 11: Archetype Playstyle Stats** - PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag, same PK pattern as stat tables
 
 ## Phase Details
@@ -269,7 +269,7 @@ Plans:
   5. check_in_tournament reducer works; advance to InProgress sets Active status; bracket loss sets Eliminated status
   6. tournamentId removed from MatchResultRecord (derived from bracketMatch); lobbyId removed from BracketMatch (navigate via Lobby.bracketMatchId)
   7. All tests pass, module published to maincloud, bindings generated, docs updated
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 10.1-01-PLAN.md — Schema foundation: enum changes (MatchEndReason, LobbyStage +BetweenGames/Shelved, TournamentStage +CheckIn), table renames (GroupPhaseRecord), new tables (TournamentEnrolled, TournamentTeamMember), column changes (winnerTeamSide, matchEndReason, bestOf, series tracking, gameNumber), column removals (tournamentId from MatchResultRecord, lobbyId from BracketMatch), schema.ts registration
@@ -277,7 +277,7 @@ Plans:
 - [x] 10.1-03-PLAN.md — Tournament rewiring: TournamentEnrolled + TournamentTeamMember across registration, teams, admin, helpers, lobby, calendar, deletion (14 source files), captain-transfer helper, DQ lobby-aware handling
 - [x] 10.1-04-PLAN.md — Match reducer migration: concede, admin tools, submit, draft, finalization MMR — winnerTeamSide, matchEndReason, tournamentId removal, series column initialization, process_tournament_mmr query rewrite
 - [x] 10.1-05-PLAN.md — New features: series management reducers (advance/shelve/resume), GC Shelved/BetweenGames extensions, concede in BetweenGames, check-in reducer, tournament stage transitions (CheckIn, Active), bestOf wiring, post-draft series logic
-- [ ] 10.1-06-PLAN.md — Tests (15 files, 122+ occurrences), architecture docs (4 files), publish --clear-database, generate bindings, full test suite green
+- [x] 10.1-06-PLAN.md — Tests (15 files, 122+ occurrences), architecture docs (4 files), publish --clear-database, generate bindings, full test suite green
 
 ### Phase 10.2: Remove tournamentId from MatchResultRecord (MERGED into Phase 10.1)
 
@@ -318,5 +318,5 @@ Note: Phase 10.2 merged into Phase 10.1 — execution order updated.
 | 8. Calendar and Scheduling | 2/2 | Complete   | 2026-03-28 |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 7/9 | In Progress|  |
 | 10. Disconnect Handling and Cost Parity | 2/2 | Complete   | 2026-04-03 |
-| 10.1. Match Schema Rework (incl. 10.2) | 5/6 | In Progress|  |
+| 10.1. Match Schema Rework (incl. 10.2) | 6/6 | Complete   | 2026-04-04 |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
