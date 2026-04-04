@@ -2,8 +2,8 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { auditUpdate } from '../helpers/auditColumns';
-import { placeParticipantInNextMatch, updateGroupStandings, sortGroupStandings } from '../helpers/bracketHelpers';
+import { auditUpdate, auditInsert } from '../helpers/auditColumns';
+import { placeParticipantInNextMatch, updateGroupPhaseRecords, sortGroupPhaseRecords } from '../helpers/bracketHelpers';
 import { deleteCalendarEventForBracketMatch } from '../helpers/calendarCascade';
 import { foldSeeding } from '../helpers/bracketGeneration';
 
@@ -40,14 +40,14 @@ function removeParticipantFromMatch(ctx: any, matchId: number, teamId: number, u
     ctx.db.BracketMatch.id.update(updatedMatch as any);
 }
 
-// ─── Internal helper: reverseGroupStandings ───────────────────────────────────
-// Reverses GroupStanding changes for a group match (used during rollback).
+// ─── Internal helper: reverseGroupPhaseRecords ───────────────────────────────────
+// Reverses GroupPhaseRecord changes for a group match (used during rollback).
 
-function reverseGroupStandings(ctx: any, bracketMatch: any, userId: number): void {
+function reverseGroupPhaseRecords(ctx: any, bracketMatch: any, userId: number): void {
     const groupId = bracketMatch.groupId;
     const tournamentId = bracketMatch.tournamentId;
 
-    const tournamentStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
+    const tournamentStandings = [...ctx.db.GroupPhaseRecord.tournament_id.filter(tournamentId)];
     const standing1 = tournamentStandings
         .find((row: any) => row.groupId === groupId && row.teamId === bracketMatch.team1Id);
     const standing2 = tournamentStandings
@@ -101,16 +101,54 @@ function reverseGroupStandings(ctx: any, bracketMatch: any, userId: number): voi
     }
 
     // Delete + insert pattern for composite PK tables
-    ctx.db.GroupStanding.delete(standing1);
-    ctx.db.GroupStanding.insert(updated1 as any);
+    ctx.db.GroupPhaseRecord.delete(standing1);
+    ctx.db.GroupPhaseRecord.insert(updated1 as any);
 
-    ctx.db.GroupStanding.delete(standing2);
-    ctx.db.GroupStanding.insert(updated2 as any);
+    ctx.db.GroupPhaseRecord.delete(standing2);
+    ctx.db.GroupPhaseRecord.insert(updated2 as any);
+}
+
+// ─── Internal helper: setEliminatedStatus ─────────────────────────────────────
+// Sets Eliminated status on a loser's TournamentEnrolled rows (per D-40).
+// Single elim: any loss = Eliminated.
+// Double elim: only eliminated when losing in Losers bracket with no nextLoserMatchId.
+
+function setEliminatedStatus(ctx: any, loserTeamId: number, bracketMatch: any, userId: number): void {
+    const isSingleElim = bracketMatch.bracketSide.tag === 'Winners' || bracketMatch.bracketSide.tag === 'ThirdPlace';
+    const isLosersAndFinal = bracketMatch.bracketSide.tag === 'Losers' && !bracketMatch.nextLoserMatchId;
+    const isGrandFinals = bracketMatch.bracketSide.tag === 'GrandFinals';
+
+    // Only eliminate in these cases:
+    // - Single elim: any loss in Winners or ThirdPlace bracket
+    // - Double elim: loss in Losers bracket with no nextLoserMatchId (2nd loss, truly out)
+    // - Grand Finals loser is not eliminated (runner-up)
+    const shouldEliminate = isSingleElim || isLosersAndFinal;
+    if (!shouldEliminate) return;
+
+    // Get the tournament ID from the bracket match
+    const tournamentId = bracketMatch.tournamentId;
+
+    // Find all team members for the losing team and set their status to Eliminated
+    const teamMembers = [...ctx.db.TournamentTeamMember.team_id.filter(loserTeamId)];
+    for (const member of teamMembers) {
+        // Only update members enrolled in this tournament
+        const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user
+            .filter([tournamentId, member.userId])][0];
+        if (!enrolled) continue;
+
+        // Delete + re-insert pattern for composite PK
+        ctx.db.TournamentEnrolled.delete(enrolled);
+        ctx.db.TournamentEnrolled.insert({
+            ...enrolled,
+            status: { tag: 'Eliminated', value: {} } as any,
+            ...auditInsert(ctx, userId),
+        } as any);
+    }
 }
 
 // ─── advance_bracket_match ────────────────────────────────────────────────────
 // Places winner in nextWinnerMatchId slot. Routes loser to nextLoserMatchId (double elim).
-// Updates GroupStanding for group matches.
+// Updates GroupPhaseRecord for group matches.
 // Permission: Tournament Access (TO/assistant/mod/admin).
 
 export const advance_bracket_match = spacetimedb.reducer(
@@ -153,9 +191,19 @@ export const advance_bracket_match = spacetimedb.reducer(
             }
         }
 
+        // Set Eliminated status on loser if applicable (D-40)
+        if (!isGroupMatch && bracketMatch.winnerTeamId !== undefined) {
+            const loserId = bracketMatch.team1Id === bracketMatch.winnerTeamId
+                ? bracketMatch.team2Id
+                : bracketMatch.team1Id;
+            if (loserId !== undefined) {
+                setEliminatedStatus(ctx, loserId, bracketMatch, user.id);
+            }
+        }
+
         // Update group standings if this is a group match (handles wins, losses, AND draws)
         if (isGroupMatch && bracketMatch.team1Id && bracketMatch.team2Id) {
-            updateGroupStandings(ctx, bracketMatch, user.id);
+            updateGroupPhaseRecords(ctx, bracketMatch, user.id);
 
             // Mark group draw as resolved (resultStatus → Validated) so TO knows it's processed
             if (bracketMatch.winnerTeamId === undefined && bracketMatch.resultStatus.tag !== 'Validated') {
@@ -172,9 +220,9 @@ export const advance_bracket_match = spacetimedb.reducer(
 );
 
 // ─── submit_and_advance_bracket ───────────────────────────────────────────────
-// Wrapper reducer for tournament bracket matches. Maps winnerUserId (userId) to teamId
-// and auto-advances in one transaction. Frontend calls this for tournament matches
-// instead of submit_match_result directly.
+// Wrapper reducer for tournament bracket matches. Maps winnerTeamSide (Blue/Red) to
+// team1Id/team2Id and auto-advances in one transaction. Frontend calls this for
+// tournament matches instead of submit_match_result directly.
 // Permission: Authenticated user (referee/TO authority validated inline).
 
 export const submit_and_advance_bracket = spacetimedb.reducer(
@@ -195,16 +243,18 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
             throw new SenderError('Not a bracket match -- use submit_match_result for non-tournament matches.');
         }
 
-        // Verify it has winnerUserId set (userId)
-        if (matchResult.winnerUserId === undefined) {
+        // Verify it has winnerTeamSide set
+        if (matchResult.winnerTeamSide === undefined) {
             throw new SenderError('No winner on match result. Submit scores first.');
         }
 
-        // Find the tournament — matchResult.tournamentId is required for bracket matches
-        if (matchResult.tournamentId === undefined) {
-            throw new SenderError('Match result is not linked to a tournament.');
-        }
-        const tournament = ctx.db.Tournament.id.find(matchResult.tournamentId);
+        // Find the BracketMatch (required to derive tournamentId per D-42)
+        const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
+        if (!bracketMatch) throw new SenderError('Bracket match not found.');
+
+        // Derive tournamentId from bracketMatch (D-42: tournamentId removed from MatchResultRecord)
+        const tournamentId = bracketMatch.tournamentId;
+        const tournament = ctx.db.Tournament.id.find(tournamentId);
         if (!tournament) {
             throw new SenderError('Tournament not found.');
         }
@@ -214,17 +264,15 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
             throw new SenderError('Bracket advancement is only allowed during InProgress stage.');
         }
 
-        // Map winnerUserId (userId) to teamId via TournamentParticipant
-        const winnerParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([matchResult.tournamentId, matchResult.winnerUserId])][0];
-        if (!winnerParticipant || !winnerParticipant.teamGroupId) {
-            throw new SenderError('Winner participant or team not found in tournament.');
+        // D-30: Map winnerTeamSide directly to team1Id/team2Id — no TournamentTeamMember lookup needed
+        const winnerTeamId = matchResult.winnerTeamSide.tag === 'Blue'
+            ? bracketMatch.team1Id
+            : bracketMatch.team2Id;
+        if (winnerTeamId === undefined) {
+            throw new SenderError('Winner team slot is empty on bracket match.');
         }
-        const winnerTeamId = winnerParticipant.teamGroupId;
 
-        // Find the BracketMatch and set winnerTeamId
-        const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
-        if (!bracketMatch) throw new SenderError('Bracket match not found.');
-
+        // Set winnerTeamId on BracketMatch
         ctx.db.BracketMatch.id.update({
             ...bracketMatch,
             winnerTeamId: winnerTeamId,
@@ -235,6 +283,17 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
         // Re-read the updated bracketMatch for downstream logic
         const updatedBracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
         if (!updatedBracketMatch) throw new SenderError('Bracket match not found after update.');
+
+        // Set Eliminated status on loser (D-40)
+        const isGroupMatch = updatedBracketMatch.bracketSide.tag === 'Group';
+        if (!isGroupMatch) {
+            const loserId = updatedBracketMatch.team1Id === winnerTeamId
+                ? updatedBracketMatch.team2Id
+                : updatedBracketMatch.team1Id;
+            if (loserId !== undefined) {
+                setEliminatedStatus(ctx, loserId, updatedBracketMatch, user.id);
+            }
+        }
 
         // If autoAdvanceBracket is true, run advancement inline
         if (tournament.autoAdvanceBracket) {
@@ -254,10 +313,10 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
             }
 
             // Update group standings if group match
-            if (updatedBracketMatch.bracketSide.tag === 'Group' &&
+            if (isGroupMatch &&
                 updatedBracketMatch.team1Id &&
                 updatedBracketMatch.team2Id) {
-                updateGroupStandings(ctx, updatedBracketMatch, user.id);
+                updateGroupPhaseRecords(ctx, updatedBracketMatch, user.id);
             }
         }
 
@@ -296,8 +355,8 @@ export const rollback_bracket_match = spacetimedb.reducer(
         deleteCalendarEventForBracketMatch(ctx, bracketMatchId);
 
         // Check if MMR has been processed for any match result linked to this bracket match
-        const matchResults = [...ctx.db.MatchResultRecord.tournament_id.filter(bracketMatch.tournamentId)]
-            .filter((mr: any) => mr.bracketMatchId === bracketMatch.id);
+        // D-42: use bracket_match_id index (tournament_id removed from MatchResultRecord)
+        const matchResults = [...ctx.db.MatchResultRecord.bracket_match_id.filter(bracketMatchId)];
         for (const mr of matchResults) {
             if (mr.mmrProcessedAt) {
                 throw new SenderError('Cannot rollback: MMR has already been processed for this match. MMR reversal is deferred to Phase 5.');
@@ -323,7 +382,7 @@ export const rollback_bracket_match = spacetimedb.reducer(
 
         // Reverse group standings if group match
         if (bracketMatch.bracketSide.tag === 'Group' && bracketMatch.team1Id && bracketMatch.team2Id) {
-            reverseGroupStandings(ctx, bracketMatch, user.id);
+            reverseGroupPhaseRecords(ctx, bracketMatch, user.id);
         }
 
         // Re-read bracketMatch in case it was updated by removeParticipantFromMatch above
@@ -390,8 +449,8 @@ export const advance_group_to_elimination = spacetimedb.reducer(
             throw new SenderError('Elimination bracket already has teams placed. Rollback first if re-advancing.');
         }
 
-        // Load group standings and sort each group
-        const allStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
+        // Load group phase records and sort each group
+        const allStandings = [...ctx.db.GroupPhaseRecord.tournament_id.filter(tournamentId)];
         const groupIds = [...new Set(allStandings.map(s => s.groupId))].sort((a, b) => a - b);
 
         // Collect advancing teams: cross-seed across groups
@@ -402,7 +461,7 @@ export const advance_group_to_elimination = spacetimedb.reducer(
 
         for (const groupId of groupIds) {
             const groupStandings = allStandings.filter(s => s.groupId === groupId);
-            const sorted = sortGroupStandings(ctx, groupStandings, tournamentId);
+            const sorted = sortGroupPhaseRecords(ctx, groupStandings, tournamentId);
             groupRankings.set(groupId, sorted);
 
             // Validate enough teams in group

@@ -108,9 +108,9 @@ function insertBracketMatches(
 }
 
 /**
- * Creates GroupStanding rows for all teams assigned to each group.
+ * Creates GroupPhaseRecord rows for all teams assigned to each group.
  */
-function insertGroupStandings(
+function insertGroupPhaseRecords(
     ctx: any,
     tournamentId: number,
     userId: number,
@@ -118,7 +118,7 @@ function insertGroupStandings(
 ): void {
     for (const [groupId, teamIds] of groupAssignments) {
         for (const teamId of teamIds) {
-            ctx.db.GroupStanding.insert({
+            ctx.db.GroupPhaseRecord.insert({
                 tournamentId,
                 groupId,
                 teamId: teamId,
@@ -149,27 +149,20 @@ export const generate_bracket = spacetimedb.reducer(
             ctx.db.BracketMatch.id.delete(match.id);
         }
 
-        // Delete all existing GroupStanding rows for this tournament
-        for (const gs of [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)]) {
-            (ctx.db.GroupStanding as any).primaryKey.delete({
-                tournamentId: gs.tournamentId,
-                groupId: gs.groupId,
-                teamId: gs.teamId,
+        // Delete all existing GroupPhaseRecord rows for this tournament
+        for (const gpr of [...ctx.db.GroupPhaseRecord.tournament_id.filter(tournamentId)]) {
+            (ctx.db.GroupPhaseRecord as any).primaryKey.delete({
+                tournamentId: gpr.tournamentId,
+                groupId: gpr.groupId,
+                teamId: gpr.teamId,
             });
         }
 
-        // Get all active teams for this tournament (teams with at least one active participant)
-        const allParticipants = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)]
-            .filter((p: any) =>
-                p.status.tag !== 'Withdrawn' &&
-                p.status.tag !== 'Disqualified' &&
-                !p.isWaitlisted
-            );
-
+        // Get all active teams for this tournament (teams with at least one TournamentTeamMember)
         const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)]
             .filter((team: any) => {
-                // Only include teams that have at least one active participant
-                const members = allParticipants.filter((p: any) => p.teamGroupId === team.id);
+                // Only include teams that have at least one member
+                const members = [...ctx.db.TournamentTeamMember.team_id.filter(team.id)];
                 return members.length > 0;
             })
             .sort((a: any, b: any) => {
@@ -215,7 +208,7 @@ export const generate_bracket = spacetimedb.reducer(
                 tournament.groupAssignmentMode.tag,
             );
             insertBracketMatches(ctx, tournament, user.id, matches);
-            insertGroupStandings(ctx, tournamentId, user.id, groupAssignments);
+            insertGroupPhaseRecords(ctx, tournamentId, user.id, groupAssignments);
             descriptorCount = matches.length;
 
         } else if (formatTag === 'GroupIntoSingleElim') {
@@ -231,7 +224,7 @@ export const generate_bracket = spacetimedb.reducer(
             );
             insertBracketMatches(ctx, tournament, user.id, groupMatches);
             insertBracketMatches(ctx, tournament, user.id, elimMatches);
-            insertGroupStandings(ctx, tournamentId, user.id, groupAssignments);
+            insertGroupPhaseRecords(ctx, tournamentId, user.id, groupAssignments);
             descriptorCount = groupMatches.length + elimMatches.length;
 
         } else if (formatTag === 'GroupIntoDoubleElim') {
@@ -247,7 +240,7 @@ export const generate_bracket = spacetimedb.reducer(
             );
             insertBracketMatches(ctx, tournament, user.id, groupMatches);
             insertBracketMatches(ctx, tournament, user.id, elimMatches);
-            insertGroupStandings(ctx, tournamentId, user.id, groupAssignments);
+            insertGroupPhaseRecords(ctx, tournamentId, user.id, groupAssignments);
             descriptorCount = groupMatches.length + elimMatches.length;
 
         } else {
@@ -275,17 +268,10 @@ export const seed_bracket = spacetimedb.reducer(
             throw new SenderError('Invalid seeding mode. Must be "mmr" or "random".');
         }
 
-        // Get all active teams (teams with at least one active participant)
-        const allParticipants = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)]
-            .filter((p: any) =>
-                p.status.tag !== 'Withdrawn' &&
-                p.status.tag !== 'Disqualified' &&
-                !p.isWaitlisted
-            );
-
+        // Get all active teams (teams with at least one TournamentTeamMember)
         const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)]
             .filter((team: any) => {
-                const members = allParticipants.filter((p: any) => p.teamGroupId === team.id);
+                const members = [...ctx.db.TournamentTeamMember.team_id.filter(team.id)];
                 return members.length > 0;
             });
 

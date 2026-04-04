@@ -38,14 +38,14 @@ export function placeParticipantInNextMatch(ctx: any, nextMatchId: number, teamI
 }
 
 /**
- * Updates GroupStanding rows for both participants after a group match resolves.
+ * Updates GroupPhaseRecord rows for both participants after a group match resolves.
  * Win=2, Draw=1, Loss=0.
  */
-export function updateGroupStandings(ctx: any, bracketMatch: any, userId: number): void {
+export function updateGroupPhaseRecords(ctx: any, bracketMatch: any, userId: number): void {
     const groupId = bracketMatch.groupId;
     const tournamentId = bracketMatch.tournamentId;
 
-    const tournamentStandings = [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)];
+    const tournamentStandings = [...ctx.db.GroupPhaseRecord.tournament_id.filter(tournamentId)];
     const standing1 = tournamentStandings
         .find((row: any) => row.groupId === groupId && row.teamId === bracketMatch.team1Id);
     const standing2 = tournamentStandings
@@ -99,22 +99,22 @@ export function updateGroupStandings(ctx: any, bracketMatch: any, userId: number
     }
 
     // Delete + insert pattern for composite PK tables
-    ctx.db.GroupStanding.delete(standing1);
-    ctx.db.GroupStanding.insert(updated1 as any);
+    ctx.db.GroupPhaseRecord.delete(standing1);
+    ctx.db.GroupPhaseRecord.insert(updated1 as any);
 
-    ctx.db.GroupStanding.delete(standing2);
-    ctx.db.GroupStanding.insert(updated2 as any);
+    ctx.db.GroupPhaseRecord.delete(standing2);
+    ctx.db.GroupPhaseRecord.insert(updated2 as any);
 }
 
 /**
- * Sorts GroupStanding rows for a single group using tiebreaker rules:
+ * Sorts GroupPhaseRecord rows for a single group using tiebreaker rules:
  * 1. Head-to-head result (did A beat B in their direct match?)
  * 2. Total points (higher = better)
  * 3. Seed number (lower = better)
  *
  * Returns standings sorted best-first (index 0 = group winner).
  */
-export function sortGroupStandings(
+export function sortGroupPhaseRecords(
     ctx: any,
     standings: any[],
     tournamentId: number,
@@ -210,11 +210,11 @@ export function advanceBracketMatch(ctx: any, bracketMatchId: number, winnerTeam
             }
         }
 
-        // Update group standings if group match with both teams
+        // Update group phase records if group match with both teams
         if (updatedBracketMatch.bracketSide.tag === 'Group' &&
             updatedBracketMatch.team1Id &&
             updatedBracketMatch.team2Id) {
-            updateGroupStandings(ctx, updatedBracketMatch, userId);
+            updateGroupPhaseRecords(ctx, updatedBracketMatch, userId);
         }
     }
 }
