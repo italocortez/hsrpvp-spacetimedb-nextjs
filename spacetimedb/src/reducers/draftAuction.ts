@@ -178,6 +178,7 @@ export const nominate_character = spacetimedb.reducer(
         ctx.db.MatchSessionStep.insert({
             id: 0,
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: nextSeq,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -305,6 +306,7 @@ export const place_bid = spacetimedb.reducer(
         ctx.db.MatchSessionStep.insert({
             id: 0,
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: nextSeq,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -433,6 +435,7 @@ export const pass_bid = spacetimedb.reducer(
         ctx.db.MatchSessionStep.insert({
             id: 0,
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: nextSeq,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -617,6 +620,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
             ctx.db.MatchSessionStep.insert({
                 id: 0,
                 lobbyId,
+                gameNumber: session.currentGameNumber,
                 sequence: nextSeq,
                 actorUserId: 0, // System actor
                 anonymousLabel: undefined,
@@ -679,6 +683,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
             ctx.db.MatchSessionStep.insert({
                 id: 0,
                 lobbyId,
+                gameNumber: session.currentGameNumber,
                 sequence: nextSeq,
                 actorUserId: 0, // System actor
                 anonymousLabel: undefined,

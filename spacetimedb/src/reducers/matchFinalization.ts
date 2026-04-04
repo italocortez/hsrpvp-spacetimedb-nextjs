@@ -35,12 +35,17 @@ export const finalize_match_result = spacetimedb.reducer(
         if (!hasAuthority && matchResult.refereeUserId === user.id) {
             hasAuthority = true;
         }
-        if (!hasAuthority && matchResult.isTournamentControlled && matchResult.tournamentId !== undefined) {
-            try {
-                ensureTournamentAccess(ctx, matchResult.tournamentId);
-                hasAuthority = true;
-            } catch (_e) {
-                // Not authorized via tournament access
+        // Derive tournamentId from bracketMatch since tournamentId was removed from MatchResultRecord (D-42)
+        if (!hasAuthority && matchResult.isTournamentControlled && matchResult.bracketMatchId !== undefined) {
+            const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
+            const derivedTournamentId = bracketMatch?.tournamentId;
+            if (derivedTournamentId) {
+                try {
+                    ensureTournamentAccess(ctx, derivedTournamentId);
+                    hasAuthority = true;
+                } catch (_e) {
+                    // Not authorized via tournament access
+                }
             }
         }
         if (!hasAuthority) {
@@ -76,7 +81,12 @@ export const process_tournament_mmr = spacetimedb.reducer(
         }
 
         // 4. Find all Validated, unprocessed MatchResultRecords for this tournament
-        const matchResults = [...ctx.db.MatchResultRecord.tournament_id.filter(tournamentId)]
+        // New query path (D-42): tournament_id removed from MatchResultRecord;
+        // derive via BracketMatch.tournament_id -> MatchResultRecord.bracket_match_id
+        const bracketMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
+        const matchResults = bracketMatches
+            .map((bm: any) => [...ctx.db.MatchResultRecord.bracket_match_id.filter(bm.id)][0])
+            .filter(Boolean)
             .filter((mr: any) => mr.status.tag === 'Validated' && mr.mmrProcessedAt === undefined);
 
         // 5. If no matches found, log and return

@@ -135,6 +135,10 @@ export const start_draft = spacetimedb.reducer(
             teamRedLcBudget: lobby.lightconeBudget,
             pausesUsedBlue: 0,
             pausesUsedRed: 0,
+            currentGameNumber: 1,
+            gamesWonBlue: 0,
+            gamesWonRed: 0,
+            seriesBestOf: lobby.bestOf || 1,
             ...auditInsert(ctx, user.id),
         } as any);
 
@@ -157,16 +161,16 @@ export const start_draft = spacetimedb.reducer(
             lobbyId,
             isTournamentControlled: lobby.isTournamentControlled,
             status: { tag: 'Pending', value: {} } as any,
-            winnerUserId: undefined,
+            winnerTeamSide: undefined,
             mmrProcessedAt: undefined,
             refereeUserId,
             disputedByUserId: undefined,
             disputeReason: undefined,
-            tournamentId: lobby.tournamentId ?? undefined,
             blueConfirmed: false,
             redConfirmed: false,
             refereeFullControl,
             matchType: lobby.matchType,
+            matchEndReason: undefined,
             ...auditInsert(ctx, user.id),
         } as any);
 
@@ -332,6 +336,7 @@ export const pick_character = spacetimedb.reducer(
         ctx.db.MatchSessionStep.insert({
             id: 0,
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: session.turnIndex,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -501,6 +506,7 @@ export const ban_character = spacetimedb.reducer(
         ctx.db.MatchSessionStep.insert({
             id: 0,
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: session.turnIndex,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -666,6 +672,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
             ctx.db.MatchSessionStep.insert({
                 id: 0,
                 lobbyId,
+                gameNumber: session.currentGameNumber,
                 sequence: session.turnIndex,
                 actorUserId: 0,  // System actor
                 anonymousLabel: undefined,
@@ -716,6 +723,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
             ctx.db.MatchSessionStep.insert({
                 id: 0,
                 lobbyId,
+                gameNumber: session.currentGameNumber,
                 sequence: session.turnIndex,
                 actorUserId: 0,  // System actor
                 anonymousLabel: undefined,
