@@ -760,6 +760,13 @@ export const LobbyMember = __t.object("LobbyMember", {
 });
 export type LobbyMember = __Infer<typeof LobbyMember>;
 
+export const LobbyMemberAccount = __t.object("LobbyMemberAccount", {
+  lobbyId: __t.u32(),
+  userId: __t.u32(),
+  hsrAccountId: __t.u32(),
+});
+export type LobbyMemberAccount = __Infer<typeof LobbyMemberAccount>;
+
 export const LobbyPassword = __t.object("LobbyPassword", {
   lobbyId: __t.u32(),
   passwordHash: __t.string(),
@@ -1428,6 +1435,7 @@ export const Tournament = __t.object("Tournament", {
   seasonId: __t.option(__t.u32()),
   countTowardsMmr: __t.bool(),
   defaultBestOf: __t.u8(),
+  maxAccountsPerPlayer: __t.u8(),
   groupSize: __t.u8(),
   has3RdPlaceMatch: __t.bool(),
   autoAdvanceBracket: __t.bool(),
@@ -1470,7 +1478,6 @@ export const TournamentEnrolled = __t.object("TournamentEnrolled", {
   isWaitlisted: __t.bool(),
   allowRandomTeamAssignment: __t.bool(),
   approvedByToAt: __t.option(__t.timestamp()),
-  hsrAccountId: __t.option(__t.u32()),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),

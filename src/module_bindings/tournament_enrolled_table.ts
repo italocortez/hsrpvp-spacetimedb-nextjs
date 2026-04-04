@@ -24,7 +24,6 @@ export default __t.row({
   isWaitlisted: __t.bool().name("is_waitlisted"),
   allowRandomTeamAssignment: __t.bool().name("allow_random_team_assignment"),
   approvedByToAt: __t.option(__t.timestamp()).name("approved_by_to_at"),
-  hsrAccountId: __t.option(__t.u32()).name("hsr_account_id"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

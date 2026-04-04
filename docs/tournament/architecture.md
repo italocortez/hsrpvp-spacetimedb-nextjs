@@ -8,8 +8,9 @@ Architecture documentation for the tournament system feature domain.
 
 ```
 Tournament (PK: id autoInc)
+│   └── maxAccountsPerPlayer (u8, default 1) — controls how many HSR accounts a player can activate per match (D-10, D-33, Phase 10.4)
 ├── TournamentEnrolled (PK: [tournamentId, userId])   [Phase 10.1 — split from TournamentParticipant]
-│   └── hsrAccountId? → HsrAccount.id
+│   (hsrAccountId removed — TournamentPlayerAccount is sole source of truth for locked accounts, D-23, Phase 10.4)
 ├── TournamentTeamMember (PK: [teamId, userId])       [Phase 10.1 — split from TournamentParticipant]
 │   ├── tournamentId → Tournament.id (+ by_tournament_and_user btree index)
 │   └── teamId → TournamentTeam.id
@@ -135,6 +136,8 @@ Deletion order: requests → calendar events → shelved lobbies → standings �
 | `shelve_series` | seriesManagement.ts | Host/TO/Assistant/Mod/Admin; Referee if refereeControlsShelving=true | Shelve a lobby between games (sets stage to Shelved) (D-07) |
 | `resume_series` | seriesManagement.ts | Host/TO/Assistant/Mod/Admin; Referee if refereeControlsShelving=true | Resume a shelved lobby (transitions from Shelved back to active) (D-07) |
 | `server_set_mmr` | server.ts | Server identity | Upsert MmrRating row for a user (test/admin utility) |
+| `select_match_account` | accountSelection.ts | Authenticated lobby member | Select HSR account(s) for use in a lobby match. Tournament path validates against TPA and `maxAccountsPerPlayer` limit (additive). Non-tournament path is replace-based (always max 1). Stage guard: Waiting + BetweenGames only. (D-05, D-07, D-11, Phase 10.4) |
+| `deselect_match_account` | accountSelection.ts | Authenticated lobby member | Remove an account selection for tournament multi-account scenarios. Non-tournament lobbies always have exactly one account (deselect not applicable). (Phase 10.4) |
 
 ### TO/Assistant/Mod+ Access
 
@@ -204,7 +207,8 @@ Tournament teams (`TournamentTeam`) are ephemeral and scoped per tournament. The
 `TournamentParticipant` was split into two tables to decouple enrollment from team assignment:
 
 **TournamentEnrolled** (PK: [tournamentId, userId]):
-- Registration record: status, isWaitlisted, approvedByToAt, anonymousAlias, allowRandomTeamAssignment, hsrAccountId, audit cols
+- Registration record: status, isWaitlisted, approvedByToAt, anonymousAlias, allowRandomTeamAssignment, audit cols
+- No `hsrAccountId` column — removed in Phase 10.4 (D-23). `TournamentPlayerAccount` is the sole source of truth for locked accounts.
 - No team reference — enrollment and team assignment are fully decoupled
 
 **TournamentTeamMember** (PK: [teamId, userId]):
@@ -295,8 +299,30 @@ Junction table that locks which HSR accounts a player will use in a tournament. 
 | hsrAccountId | u32 | FK to HsrAccount.id |
 
 PK: [tournamentId, userId, hsrAccountId]
+Indexes: `by_tournament_and_user` (tournamentId, userId), `by_user` (userId)
 
-During tournament matches, pick validation checks against registered accounts (TournamentPlayerAccount), not whatever account is currently active. This prevents mid-tournament account switching for competitive integrity.
+During tournament matches, `LobbyMemberAccount` rows (which reference TPA-validated accounts) determine which characters a player can pick. `TournamentPlayerAccount` is the source of truth for which accounts are locked to a tournament — but actual per-match selection is controlled by `LobbyMemberAccount` (Phase 10.4, D-14, D-15).
+
+**Stand-in TPA creation (D-26, Phase 10.4):** When an approved stand-in joins a tournament lobby via `join_lobby`, their active account(s) are snapshotted into `TournamentPlayerAccount` at join time — same locking as regular registration, just deferred.
+
+## LobbyMemberAccount (Phase 10.4 — D-01)
+
+Per-match account selection join table. Tracks which HSR account(s) each lobby member is using for this match. Non-public (D-02) — opponents cannot see account selection via raw subscription.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| lobbyId | u32 | FK to Lobby.id (composite PK) |
+| userId | u32 | FK to User.id (composite PK) |
+| hsrAccountId | u32 | FK to HsrAccount.id (composite PK) |
+
+PK: [lobbyId, userId, hsrAccountId]
+Indexes: `lobby_id` (lobbyId), `by_lobby_and_user` (lobbyId, userId), `by_account` (hsrAccountId)
+
+No audit columns — ephemeral join table. Created at `join_lobby`, deleted at `leave_lobby` and via `hardDeleteLobby` cascade.
+
+**Tournament path (additive, D-07):** Players may have multiple LMA rows per lobby (up to `tournament.maxAccountsPerPlayer`). `select_match_account` validates the account against TPA entries before inserting.
+
+**Non-tournament path (replace, D-07):** Always exactly one LMA row per player. `select_match_account` deletes existing and inserts new — no `maxAccountsPerPlayer` column on Lobby needed.
 
 ### requireOwnership Inheritance (Phase 6 — D-19)
 

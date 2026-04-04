@@ -142,7 +142,7 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 
 ### view_my_roster_visibility
 
-**Purpose:** Roster data filtered by each lobby's rosterVisibility setting. Enforces D-10 through D-16.
+**Purpose:** Roster data filtered by each lobby's rosterVisibility setting. Enforces D-10 through D-16 and D-18 (anonymous mode). (Updated Phase 10.4: D-15 selected-account filtering, D-18 anonymous override)
 
 **Type:** `view` -- requires authentication.
 
@@ -154,10 +154,70 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 3. For each member in that lobby, apply visibility rules:
    - **Referee (D-14):** sees all rosters and ratings regardless of setting
    - **Self + own team:** always see full roster and rating
-   - **OpenRoster (D-11):** all rosters visible to all participants
-   - **ClosedWithRating (D-12):** opponent roster hidden, opponent `accountRating` visible via sentinel row (characterName='', eidolonLevel=0)
-   - **ClosedNoRating (D-13):** opponent roster AND rating hidden (no rows returned for opponent)
+   - **Opponent visibility (D-11, D-12, D-13):**
+     - OpenRoster: all rosters visible
+     - ClosedWithRating: opponent roster hidden, `accountRating` visible via sentinel row
+     - ClosedNoRating: opponent roster AND rating hidden
+   - **D-18 anonymous override:** if `lobby.isAnonymousPlayers=true` AND caller is not referee AND not self AND not own team: force `ClosedNoRating` regardless of `rosterVisibility` setting
    - **Spectators (D-16):** follow opponent rules (not referee rules)
+4. **D-15 selected-account filtering:** Character data fetched from `LobbyMemberAccount.by_lobby_and_user` rows only — not all accounts owned by the player. Only characters from selected account(s) returned.
+
+**Note on D-18 anonymous mode fix:** Closes the security gap where `OpenRoster` lobbies with `isAnonymousPlayers=true` would expose opponent roster/rating data. The `LobbyMemberAccount` table being non-public (D-02) closes the account-ID leak; D-18 closes the character/rating leak via this view.
+
+### view_my_roster (Phase 10.4)
+
+**Purpose:** Caller's own HsrAccounts + characters. Replaces raw `HsrAccount` and `HsrAccountCharacter` subscriptions (D-20, D-22).
+
+**Type:** `view` -- requires authentication.
+
+**Row type:** `MyRosterAccountRow` (custom struct: accountId, uid, region, displayLabel, isActive, isRosterPublic, isRatingPublic, isDuplicateUid, accountRating, characterName?, eidolonLevel?).
+
+**Flow:**
+1. Resolve `ctx.sender` -> `userId`
+2. Filter `HsrAccount.user_id` for caller's accounts
+3. For each account, filter `HsrAccountCharacter.hsr_account_id`
+4. Return flat rows (one per character). Accounts with no characters emit one row with characterName/eidolonLevel=undefined.
+
+**Returns:** Empty if caller has no UserIdentity mapping.
+
+### view_public_accounts (Phase 10.4)
+
+**Purpose:** Public HSR accounts for profile browsing. Replaces raw `HsrAccount` subscription for public data (D-20, D-22).
+
+**Type:** `anonymousView` -- no authentication required.
+
+**Row type:** `PublicAccountRow` (custom struct: accountId, userId, uid, region, displayLabel, accountRating?, characterName?, eidolonLevel?).
+
+**Flow:**
+1. Iterate all `HsrAccount` rows via `iter()`
+2. Filter: include only where `isRosterPublic=true`
+3. For each account: include rating only if `isRatingPublic=true`
+4. For each account: return flat rows with characters. Accounts with no characters emit one row with characterName/eidolonLevel=undefined.
+
+**Returns:** Empty array if no public accounts exist.
+
+### view_tournament_registrant_accounts (Phase 10.4)
+
+**Purpose:** Locked accounts for tournaments the caller is enrolled in or organizes. Respects tournament's rosterVisibility. (D-22)
+
+**Type:** `view` -- requires authentication.
+
+**Row type:** `TournamentRegistrantAccountRow` (custom struct: tournamentId, userId, hsrAccountId, displayLabel, accountRating?, characterName?, eidolonLevel?).
+
+**Flow:**
+1. Resolve `ctx.sender` -> `userId`
+2. Collect enrolled tournament IDs via `TournamentEnrolled.user_id`
+3. Collect TO/assistant tournament IDs via `getMyTournamentIds` helper
+4. For each tournament, get enrolled users via `TournamentEnrolled.tournament_id`
+5. For each enrolled user, get TPA entries via `TournamentPlayerAccount.by_tournament_and_user`
+6. For each TPA entry, determine visibility:
+   - TO/assistant OR self: showRoster=true, showRating=true
+   - Other registrant + OpenRoster: showRoster=true, showRating=true
+   - Other registrant + ClosedWithRating: showRoster=false, showRating=true
+   - Other registrant + ClosedNoRating: skip (no row returned)
+7. Return flat rows with characters (if showRoster=true). Rating included if showRating=true.
+
+**Returns:** Empty if caller has no UserIdentity mapping.
 
 ### view_my_lobby_chat
 
@@ -465,6 +525,10 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 | `computeAnonymousLabel()` | LobbyMember.lobby_id index, slotTeam/slotIsCoach helpers | Label generation | Reads |
 | `buildVisibleMatchIds()` | MatchParticipantHistory.by_user, MatchSessionHistory.game_mode | Shared visibility gate | Reads |
 | `revealTournamentHistory` | Sets `isPubliclyVisible=true` on MatchSessionHistory | Tournament completion | Writes (external) |
+| `view_my_roster` | HsrAccount.user_id + HsrAccountCharacter.hsr_account_id | Private table access | Reads |
+| `view_public_accounts` | HsrAccount.iter() + HsrAccountCharacter.hsr_account_id | Public roster access | Reads |
+| `view_tournament_registrant_accounts` | TournamentEnrolled.user_id, TournamentPlayerAccount.by_tournament_and_user, getMyTournamentIds | Locked account access | Reads |
+| `view_my_roster_visibility` | LobbyMemberAccount.by_lobby_and_user (Phase 10.4) | Selected-account filtering | Reads |
 
 ## Phase History
 
@@ -475,6 +539,10 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 | Roster visibility rules (D-10 through D-16) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Lobby browser excludes Finished lobbies (D-08) | Phase 5 execution | 2026-03-20 |
 | Anonymous enforcement views (D-92): view_my_lobby_chat, view_my_lobby_members, view_my_match_steps, view_my_match_participants | Phase 9 execution | 2026-03-29 |
+| HsrAccount and HsrAccountCharacter made private — view_my_roster + view_public_accounts replace raw subscriptions (D-20, D-22) | Phase 10.4 execution | 2026-04-04 |
+| view_my_roster_visibility filtered by LobbyMemberAccount (D-15) — only selected account characters returned | Phase 10.4 execution | 2026-04-04 |
+| view_my_roster_visibility D-18 anonymous override: isAnonymousPlayers forces ClosedNoRating for opponents | Phase 10.4 execution | 2026-04-04 |
+| view_tournament_registrant_accounts new view: locked TPA accounts per tournament rosterVisibility | Phase 10.4 execution | 2026-04-04 |
 | shouldAnonymize() helper: same-team real, spectator anonymized, referee real (D-69/D-70/D-71) | Phase 9 execution | 2026-03-29 |
 | computeAnonymousLabel(): deterministic team-side + join-order labels | Phase 9 execution | 2026-03-29 |
 | Pre-stored anonymousLabel on ChatMessage and MatchSessionStep rows (consistency over recomputation) | Phase 9 execution | 2026-03-29 |

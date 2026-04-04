@@ -189,8 +189,6 @@ import CostSetRow from "./cost_set_table";
 import EloConfigTableRow from "./elo_config_table_table";
 import GlobalCharacterStatRow from "./global_character_stat_table";
 import GroupPhaseRecordRow from "./group_phase_record_table";
-import HsrAccountRow from "./hsr_account_table";
-import HsrAccountCharacterRow from "./hsr_account_character_table";
 import HsrAccountLightconeRow from "./hsr_account_lightcone_table";
 import HsrCharacterRow from "./hsr_character_table";
 import HsrCharacterArchetypeRow from "./hsr_character_archetype_table";
@@ -419,37 +417,6 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, GroupPhaseRecordRow),
-  HsrAccount: __table({
-    name: 'hsr_account',
-    indexes: [
-      { accessor: 'id', name: 'hsr_account_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'uid', name: 'hsr_account_uid_idx_btree', algorithm: 'btree', columns: [
-        'uid',
-      ] },
-      { accessor: 'user_id', name: 'hsr_account_user_id_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-      ] },
-    ],
-    constraints: [
-      { name: 'hsr_account_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, HsrAccountRow),
-  HsrAccountCharacter: __table({
-    name: 'hsr_account_character',
-    indexes: [
-      { accessor: 'by_account_and_character', name: 'hsr_account_character_hsr_account_id_character_name_idx_btree', algorithm: 'btree', columns: [
-        'hsrAccountId',
-        'characterName',
-      ] },
-      { accessor: 'hsr_account_id', name: 'hsr_account_character_hsr_account_id_idx_btree', algorithm: 'btree', columns: [
-        'hsrAccountId',
-      ] },
-    ],
-    constraints: [
-    ],
-  }, HsrAccountCharacterRow),
   HsrAccountLightcone: __table({
     name: 'hsr_account_lightcone',
     indexes: [

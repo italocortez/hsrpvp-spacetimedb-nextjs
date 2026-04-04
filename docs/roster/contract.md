@@ -280,9 +280,24 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 **Then:** Succeeds without error, A remains active
 
 ### Delete with Cascade
-**Given:** Account with characters
+**Given:** Account with characters (not used in any lobby or active tournament)
 **When:** `delete_hsr_account(account.id)`
 **Then:** Account deleted, all HsrAccountCharacter rows for that account deleted, no orphans
+
+### Delete Blocked by Active Lobby Usage
+**Given:** Account is selected in an active lobby (`LobbyMemberAccount` row exists)
+**When:** `delete_hsr_account(account.id)`
+**Then:** Throws error — cannot delete an account while it is in active use in a lobby. User must leave the lobby first. (D-24, Phase 10.4 execution)
+
+### Delete Blocked by Active Tournament
+**Given:** Account is locked in a tournament (TournamentPlayerAccount row exists) and the tournament is not Completed or Cancelled
+**When:** `delete_hsr_account(account.id)`
+**Then:** Throws error — cannot delete an account while it is locked in an active tournament. Withdraw from the tournament first. (D-24, Phase 10.4 execution)
+
+### Admin Delete Blocked by Same Guards
+**Given:** Account selected in lobby or locked in active tournament
+**When:** `admin_delete_hsr_account(account.id)` called by admin
+**Then:** Same deletion guard applies — throws same error. Admins must remove lobby/tournament references before deleting. (D-25, Phase 10.4 execution)
 
 ### Batch Upsert — Insert
 **Given:** Account with no characters
@@ -370,9 +385,12 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 | HsrAccount.userId | User.id | FK (application-enforced) | Reads |
 | HsrAccountCharacter.characterName | HsrCharacter.name | Validated on write | Reads |
 | HsrCharacterArchetype.archetypeId | Archetype.id | FK (application-enforced) | Reads |
-| HsrAccount.id | TournamentEnrolled.hsrAccountId | Phase 3 | Read by tournaments |
+| HsrAccount.id | LobbyMemberAccount.hsrAccountId | Phase 10.4 deletion guard | Reads |
+| HsrAccount.id | TournamentPlayerAccount.hsrAccountId | Phase 10.4 deletion guard | Reads |
 | HsrCharacterCost.costSetId | CostSet.id | Phase 3 default=0 | Read by cost system |
 | run_user_deletion | HsrAccount + HsrAccountCharacter | Cascade delete | Writes |
+| view_my_roster | HsrAccount.user_id + HsrAccountCharacter.hsr_account_id | Private table view | Reads |
+| view_public_accounts | HsrAccount.iter() + HsrAccountCharacter.hsr_account_id | Public roster view | Reads |
 
 ## Phase History
 
@@ -387,8 +405,12 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 | UID validation: 9 digits, region 6/7/8/9 | Phase 1 schema | 2026-03-16 |
 | recalcDuplicateUid bidirectional flag sync on create and delete | Phase 9 execution | 2026-03-29 |
 | User soft-deletion cascade documented (performUserDeletion) | Phase 9 execution | 2026-03-29 |
+| delete_hsr_account blocked by LobbyMemberAccount rows (active lobby) | Phase 10.4 execution | 2026-04-04 |
+| delete_hsr_account blocked by TournamentPlayerAccount rows for non-terminal tournaments | Phase 10.4 execution | 2026-04-04 |
+| admin_delete_hsr_account has identical deletion guards (D-25) | Phase 10.4 execution | 2026-04-04 |
+| HsrAccount and HsrAccountCharacter made private — view_my_roster and view_public_accounts replace raw subscriptions (D-20) | Phase 10.4 execution | 2026-04-04 |
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-04*
 *Feature owner: Phase 2*

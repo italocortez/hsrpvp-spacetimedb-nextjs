@@ -77,6 +77,27 @@
 **Given:** Player with 2 HSR accounts registers for tournament in Registration stage
 **When:** `register_for_tournament(tournamentId)`
 **Then:** TournamentEnrolled row created AND TournamentPlayerAccount rows created for ALL user HSR accounts (not just active). Accounts locked to this tournament for pick validation during matches. (D-21)
+Note: TournamentEnrolled row does NOT contain hsrAccountId — that column was removed in Phase 10.4 (D-23). TournamentPlayerAccount is the sole source of truth for locked accounts.
+
+### Account Selection in Tournament Lobby (Phase 10.4)
+**Given:** Player enrolled in tournament with 2 locked accounts (TPA rows), in Waiting stage tournament lobby
+**When:** `select_match_account(lobbyId, hsrAccountId)` called with a locked account
+**Then:** LobbyMemberAccount row created for [lobbyId, userId, hsrAccountId]. If maxAccountsPerPlayer=1 (default), replaces existing selection. If maxAccountsPerPlayer=2+, row added additively. (D-05, D-07, D-11, Phase 10.4 execution)
+
+### Account Selection Exceeds maxAccountsPerPlayer
+**Given:** Tournament with maxAccountsPerPlayer=1, player already has 1 LobbyMemberAccount row
+**When:** `select_match_account(lobbyId, anotherHsrAccountId)`
+**Then:** Throws error — player has reached the maximum number of accounts for this tournament. (D-11, Phase 10.4 execution)
+
+### Account Selection Non-Tournament (Replace Behavior)
+**Given:** Non-tournament lobby, player with account A selected (LobbyMemberAccount row for account A)
+**When:** `select_match_account(lobbyId, accountB.id)` called with a different owned account
+**Then:** LobbyMemberAccount row for account A deleted, new row for account B inserted. Always max 1 account in non-tournament lobbies. (D-07, Phase 10.4 execution)
+
+### Stand-In Account Snapshot at Lobby Join (Phase 10.4)
+**Given:** Approved stand-in (TournamentStandIn row exists for bracketMatchId + userId), no TPA entries yet for this tournament
+**When:** Stand-in calls `join_lobby` for a tournament lobby linked to that bracketMatchId
+**Then:** All stand-in's HSR accounts snapshotted into TournamentPlayerAccount. LobbyMemberAccount row auto-created with their active account. (D-26, Phase 10.4 execution)
 
 ### Withdrawal Cleans Up Account Locks
 **Given:** Player registered for tournament with locked accounts
@@ -231,7 +252,9 @@
 | This Feature | Connects To | Direction |
 |-------------|------------|-----------|
 | Tournament.costSetId | CostSet.id | Reads |
-| TournamentEnrolled.hsrAccountId | HsrAccount.id | Reads |
+| Tournament.maxAccountsPerPlayer | select_match_account limit | Reads (Phase 10.4) |
+| TournamentPlayerAccount | HsrAccount.id | Reads/Writes |
+| LobbyMemberAccount | TournamentPlayerAccount (validation) | Reads (Phase 10.4) |
 | TournamentTeamMember.teamId | TournamentTeam.id | Reads/Writes |
 | BracketMatch.tournamentId | Tournament.id | Phase 4 writes |
 | MatchResultRecord.tournamentId | Tournament.id | Phase 3 writes |
@@ -286,7 +309,12 @@
 | CheckIn stage transitions: Registration→CheckIn (when enabled), CheckIn→Seeding (auto-remove unchecked-in), Registration→Seeding (skip when disabled) | Phase 10.1 execution | 2026-04-03 |
 | ParticipantStatus lifecycle: Registered→CheckedIn→Active→Eliminated | Phase 10.1 execution | 2026-04-03 |
 | Series management: advance_to_next_game, shelve_series, resume_series | Phase 10.1 execution | 2026-04-03 |
+| TournamentEnrolled.hsrAccountId removed — TournamentPlayerAccount is sole source of truth for locked accounts (D-23) | Phase 10.4 execution | 2026-04-04 |
+| Tournament.maxAccountsPerPlayer column added (u8, default 1) — controls per-match account selection limit (D-10, D-33) | Phase 10.4 execution | 2026-04-04 |
+| select_match_account: tournament path additive (up to maxAccountsPerPlayer), non-tournament path replace (always 1) | Phase 10.4 execution | 2026-04-04 |
+| Stand-in TPA snapshot conditional on bracketMatchId being truthy | Phase 10.4 execution | 2026-04-04 |
+| view_tournament_registrant_accounts new view: locked accounts per tournament respecting rosterVisibility | Phase 10.4 execution | 2026-04-04 |
 
 ---
 
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-04*

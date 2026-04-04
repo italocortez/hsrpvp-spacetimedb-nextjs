@@ -161,9 +161,39 @@ Enforces roster visibility rules per D-10 through D-16:
 - **ClosedNoRating:** opponent roster AND rating hidden (D-13)
 - **Spectators:** follow opponent rules (D-16)
 
+**Phase 10.4 changes (D-15, D-18):**
+- Character data now filtered by `LobbyMemberAccount.by_lobby_and_user` — only characters from selected account(s) are shown, not all accounts of the player
+- Anonymous mode override: when `lobby.isAnonymousPlayers=true`, forces `ClosedNoRating` for opponents regardless of `rosterVisibility` setting (D-18). Own team + referee still see full data.
+
 ---
 
-### 14. `view_my_lobby_chat` (per-user anonymous enforcement view)
+### 14. `view_my_roster` (per-user view) — Phase 10.4
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(MyRosterAccountRow)`
+
+Custom struct: `{ accountId, uid, region, displayLabel, isActive, isRosterPublic, isRatingPublic, isDuplicateUid, accountRating, characterName?, eidolonLevel? }`
+
+Replaces raw `HsrAccount` + `HsrAccountCharacter` subscriptions now that both tables are private (D-20). Returns caller's own accounts with characters inlined as flat rows. Accounts with no characters emit one row with `characterName`/`eidolonLevel` = undefined. (D-22)
+
+---
+
+### 15. `view_public_accounts` (anonymous view) — Phase 10.4
+
+**File:** `spacetimedb/src/views/anonymousViews.ts`
+**Type:** `anonymousView` — accessible without authentication
+**Row type:** `t.array(PublicAccountRow)`
+
+Custom struct: `{ accountId, userId, uid, region, displayLabel, accountRating?, characterName?, eidolonLevel? }`
+
+Returns all `HsrAccount` rows where `isRosterPublic=true`. Replaces raw `HsrAccount` subscription for profile browsing. Characters included. Rating included only when `isRatingPublic=true`. Flat rows — accounts with no characters emit one row with `characterName`/`eidolonLevel` = undefined.
+
+**Implementation:** Uses `iter()` on HsrAccount — no `isRosterPublic` index, but acceptable at ~300 rows. (D-22)
+
+---
+
+### `view_my_lobby_chat` (per-user anonymous enforcement view)
 
 **File:** `spacetimedb/src/views/anonymousViews.ts`
 **Type:** `view` — requires authentication
@@ -350,6 +380,27 @@ Returns `GroupPhaseRecord` rows for all tournaments where the caller is the orga
 
 ---
 
+### 29. `view_tournament_registrant_accounts` (per-user view) — Phase 10.4
+
+**File:** `spacetimedb/src/views/securityViews.ts`
+**Type:** `view` — requires authentication
+**Row type:** `t.array(TournamentRegistrantAccountRow)`
+
+Custom struct: `{ tournamentId, userId, hsrAccountId, displayLabel, accountRating?, characterName?, eidolonLevel? }`
+
+Returns locked accounts (`TournamentPlayerAccount` rows) for tournaments the caller is enrolled in or organizes/assists. Replaces raw `TournamentPlayerAccount` subscription for client access. Respects `tournament.rosterVisibility` for non-TO participants. TO + assistants always see all. (D-22)
+
+**Visibility rules:**
+- **TO or assistant:** `showRoster=true`, `showRating=true` (full data)
+- **Self:** `showRoster=true`, `showRating=true`
+- **Other registrant, OpenRoster:** full data
+- **Other registrant, ClosedWithRating:** no roster, rating only
+- **Other registrant, ClosedNoRating:** no rows returned for this participant
+
+**Implementation:** Uses `getMyTournamentIds` helper for TO path, `TournamentEnrolled.user_id` for enrolled path, `TournamentPlayerAccount.by_tournament_and_user` for per-user account lookup.
+
+---
+
 ## Anonymous Enforcement Pattern (D-92)
 
 All anonymous views follow the same pattern:
@@ -385,6 +436,10 @@ conn.subscriptionBuilder().subscribe([
     'SELECT * FROM view_my_character_stats',
     'SELECT * FROM view_my_relationships',
     'SELECT * FROM view_my_roster_visibility',
+    // Phase 10.4 roster views (HsrAccount + HsrAccountCharacter now private — use these instead)
+    'SELECT * FROM view_my_roster',
+    'SELECT * FROM view_public_accounts',
+    'SELECT * FROM view_tournament_registrant_accounts',
     // Phase 9 anonymous enforcement views
     'SELECT * FROM view_my_lobby_chat',
     'SELECT * FROM view_my_lobby_members',
@@ -417,3 +472,5 @@ conn.subscriptionBuilder().subscribe([
 - `anonymousView` type used for views accessible without authentication (lobby browser, user directory)
 - `view` type used for views requiring caller identity resolution via `ctx.sender`
 - `getMyTournamentIds` shared helper extracts two-path TO resolution (organizer + assistant) into a file-local function, matching the `buildVisibleMatchIds` DRY pattern in anonymousViews.ts. All 8 TO views reuse it. Views are bandwidth optimizations, not security gates — all tournament tables remain public.
+- `HsrAccount` and `HsrAccountCharacter` are now private (Phase 10.4, D-20) — raw subscriptions replaced by `view_my_roster`, `view_public_accounts`, and `view_tournament_registrant_accounts`. Roster visibility view now filtered by `LobbyMemberAccount` (selected accounts only, D-15).
+- `view_my_roster_visibility` D-18 anonymous override: `isAnonymousPlayers=true` forces `ClosedNoRating` for opponents regardless of lobby `rosterVisibility` setting. Security gap closed — OpenRoster lobbies with anonymous mode no longer leak account data.

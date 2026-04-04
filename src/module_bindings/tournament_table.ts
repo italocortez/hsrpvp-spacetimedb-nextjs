@@ -57,6 +57,7 @@ export default __t.row({
   seasonId: __t.option(__t.u32()).name("season_id"),
   countTowardsMmr: __t.bool().name("count_towards_mmr"),
   defaultBestOf: __t.u8().name("default_best_of"),
+  maxAccountsPerPlayer: __t.u8().name("max_accounts_per_player"),
   groupSize: __t.u8().name("group_size"),
   has3RdPlaceMatch: __t.bool().name("has_3_rd_place_match"),
   autoAdvanceBracket: __t.bool().name("auto_advance_bracket"),

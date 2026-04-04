@@ -10,11 +10,11 @@ Archetype tagging enables frontend diversity scoring.
 
 ```
 User (id)
-  └── HsrAccount (userId → User.id)
+  └── HsrAccount (userId → User.id)  [PRIVATE — D-20, Phase 10.4]
         ├── isActive (default preference, per-lobby selection overrides)
         ├── isRosterPublic, isRatingPublic (visibility toggles)
         ├── isDuplicateUid (auto-recalculated when accounts share a UID)
-        └── HsrAccountCharacter (hsrAccountId → HsrAccount.id)
+        └── HsrAccountCharacter (hsrAccountId → HsrAccount.id)  [PRIVATE — D-20, Phase 10.4]
               ├── characterName → HsrCharacter.name (validated on write)
               └── eidolonLevel (u8, 0-6)
 
@@ -53,10 +53,12 @@ HsrCharacterCost, HsrLightconeCost, HsrSynergyCost
 
 ### delete_hsr_account(hsrAccountId)
 1. ensureVerifiedUser → ownership check
-2. Cascade: delete all HsrAccountCharacter rows for this account
-3. Delete HsrAccount
-4. If was active: auto-activate oldest remaining (sort by createdDate ascending)
-5. recalcDuplicateUid for the deleted UID
+2. **Deletion guard (D-24, Phase 10.4):** throws if account has any `LobbyMemberAccount` rows (active lobby usage)
+3. **Deletion guard (D-24, Phase 10.4):** throws if account has `TournamentPlayerAccount` rows for non-terminal tournaments (not Completed/Cancelled)
+4. Cascade: delete all HsrAccountCharacter rows for this account
+5. Delete HsrAccount
+6. If was active: auto-activate oldest remaining (sort by createdDate ascending)
+7. recalcDuplicateUid for the deleted UID
 
 ### batch_upsert_characters(hsrAccountId, charactersJson)
 1. ensureVerifiedUser → ownership check
@@ -77,6 +79,18 @@ HsrCharacterCost, HsrLightconeCost, HsrSynergyCost
 2. Validate source !== target
 3. Copy mode: upsert source chars into target (overwrite eidolon level if exists)
 4. Move mode: same as copy, then delete all source chars
+
+## Table Privacy (Phase 10.4 — D-20)
+
+`HsrAccount` and `HsrAccountCharacter` are **private tables** (no `public: true`). Clients cannot subscribe to these tables directly. Server-side code (reducers, helpers, views) can still read them.
+
+Client access is via server-side views:
+- `view_my_roster` — authenticated, caller's own accounts + characters (for self roster management)
+- `view_public_accounts` — anonymous view, accounts where `isRosterPublic=true` (for profile browsing)
+- `view_tournament_registrant_accounts` — authenticated, locked accounts for enrolled tournaments
+- `view_my_roster_visibility` — authenticated, opponent/ally roster data per lobby visibility rules
+
+`spacetime generate` still produces TypeScript type definitions for private tables. Use `--include-private` flag for admin tooling if needed.
 
 ## Visibility Rules
 
@@ -105,7 +119,7 @@ All admin_* reducers mirror user reducers but:
 
 - admin_create_hsr_account(targetUserId, uid, displayLabel)
 - admin_update_hsr_account(hsrAccountId, displayLabel, isRosterPublic, isRatingPublic)
-- admin_delete_hsr_account(hsrAccountId)
+- admin_delete_hsr_account(hsrAccountId) — **Same deletion guard as user variant (D-25, Phase 10.4):** blocked if `LobbyMemberAccount` rows or active tournament `TournamentPlayerAccount` rows exist. Admins must remove lobby/tournament references before deleting.
 - admin_batch_upsert_characters(hsrAccountId, charactersJson)
 - admin_batch_remove_characters(hsrAccountId, characterNamesJson)
 

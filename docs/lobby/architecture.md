@@ -21,6 +21,10 @@ Lobby (PK: id autoInc)
 │  Series: bestOf, refereeControlsShelving
 │  Lifecycle: stage (LobbyStage), lastActivityAt
 │
+├── LobbyMemberAccount (PK: [lobbyId, userId, hsrAccountId] — NON-PUBLIC, Phase 10.4)
+│     lobbyId, userId, hsrAccountId
+│     No audit columns — ephemeral, created at join, deleted at leave/close
+│
 ├── LobbyMember (PK: [lobbyId, userId])
 │     isOnline, lobbySlot, isReferee, isConfirmed, isCaptain
 │     voluntarilyLeft, disconnectedAt?, disconnectPoolRemainingMs
@@ -246,20 +250,26 @@ Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-clea
   - `voluntarilyLeft=true` blocks reconnect (D-38)
 - Password check for private lobbies (D-02)
 - Joined as `lobbySlot=Spectator` (D-27)
+- **LobbyMemberAccount auto-created (D-04, D-09, Phase 10.4):** After inserting LobbyMember, creates a `LobbyMemberAccount` row:
+  - Non-tournament: uses player's active HsrAccount
+  - Tournament: validates active account against TPA; falls back to first locked account if active isn't locked; skips if no TPA entries (stand-in not yet approved)
+  - Stand-in (D-26): if `TournamentStandIn` row exists for this user + bracketMatchId and no TPA entries yet, snapshots all user accounts into TPA then creates LMA row
 - `currentPlayerCount` incremented
 - System chat message: "{name} joined the lobby."
 
 ### Leave (`leave_lobby`)
 - **Waiting/AwaitingResult/Finished:** Normal leave — removes LobbyMember row, decrements count
 - **Active stages (Drafting/Equipping/Scoring):** Sets `voluntarilyLeft=true`, `isOnline=false` (row kept for finalization archival, D-31). Transfers captain/referee/host flags permanently (D-34/D-35/D-36). If last player on team: auto-concede via `performConcede` (D-31), UNLESS `refereeExclusiveConcede` + 3rd party referee present (D-82)
+- **LobbyMemberAccount cleanup (D-29, Phase 10.4):** In all exit paths, `LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, userId])` rows are deleted immediately. Account selection is ephemeral — no preservation needed after leave.
 - If lobby empties in Waiting: auto-close (`hardDeleteLobby`)
 - System chat message: "{name} left the lobby/match."
 
 ### Close (`close_lobby`)
 - Permission: host, admin, moderator (D-21)
 - Stage: Waiting or Finished only (D-20)
-- Cascade delete via `_hardDeleteLobby` (D-19):
+- Cascade delete via `_hardDeleteLobby` (D-19, extended in Phase 10.4 D-28):
   1. All ChatMessage rows
+  1.5. All LobbyMemberAccount rows for this lobby (D-28, Phase 10.4)
   2. All LobbyMember rows
   3. All LobbyBan rows
   4. LobbyPassword (if exists)

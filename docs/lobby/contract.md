@@ -885,6 +885,26 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 **When:** Host calls `update_lobby_settings(lobbyId=10, teamSize=1, gameMode=ApocalypticShadow, draftMode=Auction, standardTurnSeconds=90, teamBlueAlias="Alpha", refereeCanUndo=false)`
 **Then:** Locked fields unchanged: teamSize=3, gameMode=MemoryOfChaos, matchType=Ranked, isAnonymousPlayers=true, isAnonymousSpectators=false, rosterVisibility=ClosedWithRating, costSetId=2, disconnectPolicy=TimerThenForfeit, allowMirrorPicks=false. Free fields updated: draftMode=Auction, standardTurnSeconds=90, teamBlueAlias="Alpha", refereeCanUndo=false. All members' isConfirmed reset to false.
 
+### LobbyMemberAccount Auto-Created at Join (Phase 10.4)
+**Given:** User with active HsrAccount, joins a non-tournament Waiting lobby
+**When:** `join_lobby(lobbyId, ...)`
+**Then:** LobbyMember row inserted AND LobbyMemberAccount row created for [lobbyId, userId, activeAccount.id]. (D-04, D-09, Phase 10.4 execution)
+
+### LobbyMemberAccount Tournament Path at Join (Phase 10.4)
+**Given:** User enrolled in tournament with 2 locked accounts (TPA rows), active account is account A (which is locked), joins tournament lobby
+**When:** `join_lobby(lobbyId, ...)`
+**Then:** LobbyMember row inserted AND LobbyMemberAccount row created using account A (active + locked). (D-04, Phase 10.4 execution)
+
+### LobbyMemberAccount Cascade Delete at Leave (Phase 10.4)
+**Given:** Player has LobbyMemberAccount row in a Waiting lobby
+**When:** `leave_lobby(lobbyId)`
+**Then:** LobbyMember row deleted AND LobbyMemberAccount.by_lobby_and_user rows for this user deleted. No orphaned LMA rows. (D-29, Phase 10.4 execution)
+
+### LobbyMemberAccount Cascade Delete via hardDeleteLobby (Phase 10.4)
+**Given:** Lobby with 2 members, each with LobbyMemberAccount rows
+**When:** `close_lobby(lobbyId)` or lobby GC triggers `hardDeleteLobby`
+**Then:** All LobbyMemberAccount rows for this lobbyId deleted before LobbyMember rows. No orphaned LMA rows. (D-28, Phase 10.4 execution)
+
 ## Edge Cases
 
 | Case | Expected Behavior | Notes |
@@ -974,8 +994,12 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | concede_match/claim_forfeit/defer_match reducers added with 3rd party referee exclusive control (D-26, D-61-63, D-81) | Phase 10 execution | 2026-04-03 |
 | lobby_gc extended for active stages: ALL members offline + 30min -> hard delete (D-47) | Phase 10 execution | 2026-04-03 |
 | ensureMatchAlive guard in all draft/equip/score reducers (D-12) | Phase 10 execution | 2026-04-03 |
+| LobbyMemberAccount auto-created at join_lobby for all lobby types — non-tournament uses active account, tournament validates against TPA (D-04, D-09) | Phase 10.4 execution | 2026-04-04 |
+| LobbyMemberAccount cascade-deleted in all leave_lobby exit paths (Waiting normal, active voluntarilyLeft, AwaitingResult normal) (D-29) | Phase 10.4 execution | 2026-04-04 |
+| hardDeleteLobby cascade extended with step 1.5: delete all LobbyMemberAccount rows for lobby before LobbyMember deletion (D-28) | Phase 10.4 execution | 2026-04-04 |
+| Stand-in TPA snapshot at join_lobby: if TournamentStandIn row exists and no TPA entries yet, snapshot all accounts into TPA then create LMA (D-26) | Phase 10.4 execution | 2026-04-04 |
 
 ---
 
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-04*
 *Feature owner: Phase 10*
