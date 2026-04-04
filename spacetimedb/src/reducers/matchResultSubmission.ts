@@ -235,10 +235,13 @@ export const dispute_match_result = spacetimedb.reducer(
             throw new SenderError('A match result can only be disputed after it has been submitted.');
         }
 
-        // D-12: Liveness guard — block dispute after concede
+        // Block dispute after concede (but NOT after AwaitingResult — disputes happen there)
         const disputeLobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
         if (disputeLobby) {
-            ensureMatchAlive(ctx, disputeLobby);
+            const existingResult = [...ctx.db.MatchResultRecord.lobby_id.filter(disputeLobby.id)][0];
+            if (existingResult?.matchEndReason?.tag === 'Concede') {
+                throw new SenderError('Match has been conceded.');
+            }
         }
 
         // Validate caller is a match participant via MatchResultParticipant
