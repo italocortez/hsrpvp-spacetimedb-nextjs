@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 10
-current_plan: 2
+current_phase: 10.1
+current_plan: 1
 status: executing
-last_updated: "2026-04-03T06:30:39.000Z"
+last_updated: "2026-04-04T02:28:29.803Z"
 progress:
   total_phases: 15
-  completed_phases: 11
-  total_plans: 38
-  completed_plans: 37
+  completed_phases: 12
+  total_plans: 43
+  completed_plans: 38
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 10
-**Current plan:** 2
-**Status:** Executing Phase 10
+**Current phase:** 10.1
+**Current plan:** 1
+**Status:** Executing Phase 10.1
 
 ## Decisions
 
@@ -120,6 +120,8 @@ See: .planning/PROJECT.md
 - [Phase 10]: Achievement check ALWAYS skipped for concede (D-76); bracket advance NEVER auto-triggers for concede (D-80)
 - [Phase 10]: admin_force_finalize/admin_void_match/admin_set_bracket_winner for AwaitingResult resolution
 - [Phase 10]: performConcede shared by concede_match, claim_forfeit, and leave_lobby auto-concede
+- [Phase 10.1]: MatchSessionStepHistory PK is [matchHistoryId, gameNumber, sequence] — prevents PK collision between game 1 step 1 and game 2 step 1 (Claude discretion per plan)
+- [Phase 10.1]: TournamentTeamMember includes tournamentId + by_tournament_and_user index for direct per-tournament membership queries
 
 ### Quick Tasks Completed
 

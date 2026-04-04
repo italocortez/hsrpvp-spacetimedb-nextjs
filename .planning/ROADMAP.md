@@ -24,6 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Calendar and Scheduling** - Recurring availability slots, calendar events, auto-sync, and TO scheduling (completed 2026-03-28)
 - [ ] **Phase 9: Mouse Tracking, Chat, and Lobby Browser** - Cursor broadcast, ephemeral chat, and lobby browsing filters
 - [x] **Phase 10: Disconnect Handling and Cost Parity** - Disconnect policies, rejoin logic, liveness checks, and lightcone cost fix (completed 2026-04-03)
+- [ ] **Phase 10.1: Match Schema Rework** - Best-of-N series, team-centric model, winnerTeamSide, merged Phase 10.2 scope (INSERTED)
 - [ ] **Phase 11: Archetype Playstyle Stats** - PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag, same PK pattern as stat tables
 
 ## Phase Details
@@ -257,68 +258,31 @@ Plans:
 
 ### Phase 10.1: Match Schema Rework — Multi-Draft, Team-Centric Model, winnerTeamSide (INSERTED)
 
-**Goal:** Three structural fixes before frontend: (A) support multiple drafts per best-of series, (B) replace dual-purpose TournamentParticipant with clean TournamentEnrolled + TournamentTeamMember model, (C) replace winnerUserId with winnerTeamSide on MatchResultRecord
-**Requirements**: TBD
+**Goal:** Six structural fixes before frontend: (A) rename GroupStanding -> GroupPhaseRecord, (B) best-of-N multi-draft with BetweenGames/Shelved stages and series management reducers, (C) replace TournamentParticipant with TournamentEnrolled + TournamentTeamMember with captain-transfer on DQ/withdrawal, (D) replace winnerUserId with winnerTeamSide + rename MatchOutcome -> MatchEndReason, (E) wire ParticipantStatus lifecycle (CheckedIn/Active/Eliminated), (F) remove tournamentId from MatchResultRecord and lobbyId from BracketMatch (merged from Phase 10.2)
+**Requirements**: D-01 through D-44 (44 decisions from discuss-phase)
 **Depends on:** Phase 10
-
-**Scope:**
-
-  **A. Table renames (do first — cascades through all other changes):**
-  0. Rename `GroupStanding` → `GroupPhaseMatch` — parallels `BracketMatch` naming convention. Rename table, file, all reducer/helper references, indexes, architecture docs
-
-  **B. Best-of-N multi-draft:**
-  1. Add `gameNumber` to `match_session_step` and `match_session_step_history` — partition draft steps per game in a best-of series
-  2. Design the "next game" transition: what triggers game 2 draft? New reducer? Stage transition? How does match_session reset (turnIndex, draftSequence, budgets) while preserving game 1 step history?
-  3. Update finalization to archive steps partitioned by gameNumber
-
-  **C. Team-centric tournament model:**
-  4. Rename `TournamentParticipant` → `TournamentEnrolled` — single purpose: "who signed up" (status, waitlist, approval, hsrAccountId). Drop `teamGroupId` column
-  5. Create `TournamentTeamMember` (teamId, userId) PK — explicit user-to-team join table, replaces the teamGroupId column
-  6. Update registration flow: register → insert TournamentEnrolled; solo auto-creates team + inserts TournamentTeamMember
-  7. Update team join/leave: join = insert TournamentTeamMember; leave = delete TournamentTeamMember (enrolled row stays)
-  8. Update all `teamGroupId` consumers (~15 reducer/helper sites): bracket generation, seeding, team CRUD, withdrawal cascade, calendar invites
-  9. Eliminate all `teamGroupId !== undefined && teamGroupId !== 0` guards (6+ occurrences)
-
-  **D. winnerTeamSide cleanup:**
-  10. Replace `winnerUserId: u32` with `winnerTeamSide: TeamSide` on `MatchResultRecord`
-  11. Update all reducers/helpers that read winnerUserId (finalizationHelpers, bracketAdvancement, tournamentAdmin, matchResultSubmission, statsIncrement)
-  12. Bracket advancement: winnerTeamSide → determine which bracket slot (team1Id or team2Id) was Blue/Red in the lobby → advance that team. No participant lookup needed.
-
-  **E. ParticipantStatus lifecycle (deferred from Phase 10):**
-  13. Wire CheckedIn status — add `check_in_tournament` reducer (Tournament.checkInEnabled exists but no reducer)
-  14. Wire Active status — set when tournament advances to InProgress stage
-  15. Wire Eliminated status — set when player loses final bracket match (no loser bracket path)
-
-**Research needed (resolve during /gsd:plan-phase):**
-  - TournamentStandIn: stand-ins are NOT enrolled — verify they still work without TournamentParticipant
-  - TournamentPlayerAccount: has (tournamentId, userId) — should it reference TournamentEnrolled or TournamentTeamMember? Or both?
-  - Withdrawal cascade: captain withdraws → team disbands → TournamentTeamMembers deleted → enrolled rows stay. Do orphaned enrolled users sit in limbo or get auto-assigned to new solo teams?
-  - DQ flow: currently sets participant status to Disqualified — moves to TournamentEnrolled, but should DQ also delete TournamentTeamMember rows?
-  - How does lobby know Blue team = team1Id or team2Id? Is this already stored on LobbyMember or derived from bracket match slot assignment?
-  - MMR processing: currently reads TournamentParticipant to get user list per tournament — needs new query path through TournamentEnrolled or TournamentTeamMember
-  - ParticipantStatus: which variants survive the rename? CheckedIn/Active/Eliminated are being wired — confirm they map cleanly to TournamentEnrolled
-
-**Plans:** 0 plans
+**Success Criteria** (what must be TRUE):
+  1. GroupPhaseRecord table exists (renamed from GroupStanding), all references updated
+  2. Best-of-N series works: Lobby.bestOf, MatchSession tracks currentGameNumber/gamesWon, advance_to_next_game/shelve_series/resume_series reducers functional, GC skips Shelved lobbies
+  3. TournamentEnrolled + TournamentTeamMember replace TournamentParticipant; captain-transfer on DQ/withdrawal; DQ during active/shelved lobby handled
+  4. MatchResultRecord uses winnerTeamSide (TeamSide?) and matchEndReason (MatchEndReason: Completed/Draw/Concede); winnerUserId and MatchOutcome eliminated
+  5. check_in_tournament reducer works; advance to InProgress sets Active status; bracket loss sets Eliminated status
+  6. tournamentId removed from MatchResultRecord (derived from bracketMatch); lobbyId removed from BracketMatch (navigate via Lobby.bracketMatchId)
+  7. All tests pass, module published to maincloud, bindings generated, docs updated
+**Plans:** 1/6 plans executed
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 10.1 to break down)
+- [x] 10.1-01-PLAN.md — Schema foundation: enum changes (MatchEndReason, LobbyStage +BetweenGames/Shelved, TournamentStage +CheckIn), table renames (GroupPhaseRecord), new tables (TournamentEnrolled, TournamentTeamMember), column changes (winnerTeamSide, matchEndReason, bestOf, series tracking, gameNumber), column removals (tournamentId from MatchResultRecord, lobbyId from BracketMatch), schema.ts registration
+- [ ] 10.1-02-PLAN.md — Finalization pipeline + bracket system migration: winnerTeamSide in 6+ pipeline steps, matchEndReason, tournamentId derivation, GroupPhaseRecord rename, TournamentTeamMember, Eliminated status wiring
+- [ ] 10.1-03-PLAN.md — Tournament rewiring: TournamentEnrolled + TournamentTeamMember across registration, teams, admin, helpers, lobby, calendar, deletion (14 source files), captain-transfer helper, DQ lobby-aware handling
+- [ ] 10.1-04-PLAN.md — Match reducer migration: concede, admin tools, submit, draft, finalization MMR — winnerTeamSide, matchEndReason, tournamentId removal, series column initialization, process_tournament_mmr query rewrite
+- [ ] 10.1-05-PLAN.md — New features: series management reducers (advance/shelve/resume), GC Shelved/BetweenGames extensions, concede in BetweenGames, check-in reducer, tournament stage transitions (CheckIn, Active), bestOf wiring, post-draft series logic
+- [ ] 10.1-06-PLAN.md — Tests (15 files, 122+ occurrences), architecture docs (4 files), publish --clear-database, generate bindings, full test suite green
 
-### Phase 10.2: Remove tournamentId from MatchResultRecord (INSERTED)
+### Phase 10.2: Remove tournamentId from MatchResultRecord (MERGED into Phase 10.1)
 
-**Goal:** Single source of truth — derive tournamentId from bracketMatch.tournamentId instead of storing it redundantly on MatchResultRecord
-**Requirements**: TBD
-**Depends on:** Phase 10.1
-**Scope:**
-  1. Drop `tournamentId` column and btree index from `MatchResultRecord` — derive from `bracketMatch.tournamentId`
-  2. Drop `lobbyId` column and btree index from `BracketMatch` — nothing reads it; relationship navigated via `lobby.bracketMatchId`
-  3. Update all consumers to read `bracketMatch.tournamentId` instead: bracketAdvancement, matchResultSubmission, matchFinalization, tournamentAdmin, finalizationHelpers
-  4. Rework `process_tournament_mmr` query strategy (currently filters match results by tournamentId index — needs to go through bracket_matches instead)
-  5. Update draftClassic.ts match result creation (currently sets tournamentId on insert)
-  6. Remove lobbyId write in `create_tournament_lobby` (currently sets both sides of the bidirectional link)
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 10.2 to break down)
+**Status:** Merged into Phase 10.1 as Scope F (D-42, D-43, D-44). No separate phase needed.
+**Plans:** N/A — covered by 10.1 Plans 01, 02, 04
 
 ### Phase 11: Archetype Playstyle Stats
 **Goal**: Track playstyle stats when 3+ picks in a draft share an archetype tag; auto-increment during finalization pipeline
@@ -335,9 +299,10 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.2 -> 11
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 11
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
+Note: Phase 10.2 merged into Phase 10.1 — execution order updated.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -353,6 +318,5 @@ Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized 
 | 8. Calendar and Scheduling | 2/2 | Complete   | 2026-03-28 |
 | 9. Mouse Tracking, Chat, and Lobby Browser | 7/9 | In Progress|  |
 | 10. Disconnect Handling and Cost Parity | 2/2 | Complete   | 2026-04-03 |
-| 10.1. Best-of-N Multi-Draft & Match Result Cleanup | 0/? | Not started | - |
-| 10.2. Remove tournamentId from MatchResultRecord | 0/? | Not started | - |
+| 10.1. Match Schema Rework (incl. 10.2) | 1/6 | In Progress|  |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
