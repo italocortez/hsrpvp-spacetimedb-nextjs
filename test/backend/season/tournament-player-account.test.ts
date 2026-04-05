@@ -13,6 +13,7 @@ import {
   createVerifiedTestHarness,
   hasServerToken,
   expectReducerError,
+  queryPrivateTable,
   type TestHarness,
 } from '../../shared/connection';
 
@@ -66,8 +67,15 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     [...h.conn.db.TournamentPlayerAccount.iter()]
       .filter(t => t.tournamentId === tId && t.userId === userId);
 
-  const userAccounts = (h: TestHarness, userId: number) =>
-    [...h.conn.db.HsrAccount.iter()].filter(a => a.userId === userId);
+  const userAccounts = async (_h: TestHarness, userId: number) => {
+    const rows = await queryPrivateTable(`SELECT * FROM hsr_account WHERE user_id = ${userId}`);
+    return rows.map(r => ({
+      id: Number(r.id),
+      userId: Number(r.user_id),
+      uid: r.uid.replace(/"/g, ''),
+      hsrAccountId: Number(r.id),
+    }));
+  };
 
   beforeAll(async () => {
     host = await createVerifiedTestHarness();
@@ -127,7 +135,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
   // ─── Test 1: Registration locks ALL HSR accounts ──────────────────────────
 
   it('registration creates TPA rows for ALL user HSR accounts', async () => {
-    const accounts = userAccounts(playerWithAccounts, playerWithAccounts.userId);
+    const accounts = await userAccounts(playerWithAccounts, playerWithAccounts.userId);
     expect(accounts.length).toBe(2);
 
     await playerWithAccounts.call.registerForTournament({ tournamentId });
@@ -233,7 +241,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
   // ─── Test 4: User without HSR accounts can still register ─────────────────
 
   it('user without HSR accounts registers with 0 TPA rows', async () => {
-    const accounts = userAccounts(playerWithoutAccounts, playerWithoutAccounts.userId);
+    const accounts = await userAccounts(playerWithoutAccounts, playerWithoutAccounts.userId);
     expect(accounts.length).toBe(0);
 
     await playerWithoutAccounts.call.registerForTournament({ tournamentId });
