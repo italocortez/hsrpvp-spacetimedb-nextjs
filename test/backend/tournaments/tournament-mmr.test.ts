@@ -20,147 +20,20 @@ import {
     createVerifiedTestHarness,
     hasServerToken,
     expectReducerError,
-    queryPrivateTable,
     type TestHarness,
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
+import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
+import { getUsername } from '../../shared/helpers/users';
+import {
+    setupRegistrationTournament,
+    advanceToInProgress,
+} from '../../shared/helpers/tournaments';
+import { completeTournamentDraft } from '../../shared/helpers/drafts';
+import { ensureEloConfig } from '../../shared/helpers/seed';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function getUsername(h: TestHarness): string {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    return user?.username ?? '';
-}
-
-/** Ensure a test player has an HSR account (needed for D-08 LMA gate on Ranked/MMR lobbies) */
-async function ensureHsrAccount(h: TestHarness): Promise<void> {
-    const rows = await queryPrivateTable(
-        `SELECT * FROM hsr_account WHERE user_id = ${h.userId}`
-    );
-    if (rows.length > 0) return; // already has an account
-    const uid = `8${String(h.userId).padStart(7, '0')}1`;
-    await h.call.createHsrAccount({ uid, displayLabel: `Test ${h.userId}` });
-    await h.sync(1500);
-}
-
-function createTournamentArgs(overrides: Record<string, unknown> = {}) {
-    return {
-        name: `MMR Test ${Date.now()}`,
-        description: 'Integration test tournament',
-        format: 'SingleElimination',
-        teamSize: 1,
-        defaultGameMode: 'MemoryOfChaos',
-        maxParticipants: 8,
-        rosterVisibility: 'OpenRoster',
-        isAnonymousDefault: false,
-        disconnectPolicy: 'Deferred',
-        costSetId: 0,
-        defaultBestOf: 1,
-        groupSize: 4,
-        has3RdPlaceMatch: false,
-        autoAdvanceBracket: true,
-        countTowardsMmr: false,
-        winnerAdvantage: 0,
-        requireVerified: false,
-        requireRoster: false,
-        minimumMmr: 0,
-        requireApproval: false,
-        waitlistEnabled: false,
-        scheduledStartAt: '',
-        registrationDeadline: '',
-        ...overrides,
-    };
-}
-
-/** Create tournament → Registration → register players → return tournamentId */
-async function setupRegistrationTournament(
-    toUser: TestHarness,
-    players: TestHarness[],
-    overrides: Record<string, unknown> = {},
-): Promise<number> {
-    await toUser.call.createTournament(createTournamentArgs(overrides));
-    await toUser.sync(1500);
-
-    const tournaments = [...toUser.conn.db.Tournament.iter()].filter(
-        t => t.organizerId === toUser.userId
-    );
-    const tournamentId = tournaments[tournaments.length - 1].id;
-
-    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Registration' });
-    await toUser.sync(1000);
-
-    for (const p of players) {
-        await p.call.registerForTournament({ tournamentId });
-        await p.sync(1000);
-    }
-    await toUser.sync(1000);
-
-    return tournamentId;
-}
-
-/** Advance from Registration through to InProgress with bracket */
-async function advanceToInProgress(
-    toUser: TestHarness,
-    tournamentId: number,
-): Promise<void> {
-    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Seeding' });
-    await toUser.sync(1500);
-
-    await toUser.call.seedBracket({ tournamentId, mode: 'random' });
-    await toUser.sync(1500);
-
-    await toUser.call.generateBracket({ tournamentId });
-    await toUser.sync(1500);
-
-    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'InProgress' });
-    await toUser.sync(1500);
-}
-
-/**
- * Complete a Classic + Four ban draft (20 steps: 4 bans + 16 picks).
- * Tournament lobbies default to banMode=Four.
- * Sequence from draftSequences.ts.
- */
-async function completeTournamentDraft(blue: TestHarness, red: TestHarness, lobbyId: number) {
-    const banChars = ['clara', 'dan_heng', 'feixiao', 'fugue'];
-    const blueChars = ['acheron', 'aglaea', 'anaxa', 'archer', 'argenti', 'arlan', 'asta', 'aventurine'];
-    const redChars = ['bailu', 'blackswan', 'blade', 'boothill', 'bronya', 'castorice', 'cerydra', 'cipher'];
-    let blueIdx = 0;
-    let redIdx = 0;
-
-    // Ban phase 1: Blue, Red
-    await blue.call.banCharacter({ lobbyId, characterName: banChars[0] });
-    await blue.sync(300);
-    await red.call.banCharacter({ lobbyId, characterName: banChars[1] });
-    await red.sync(300);
-
-    // Picks: Blue, Red, Red, Blue
-    await blue.call.pickCharacter({ lobbyId, characterName: blueChars[blueIdx++], eidolon: 0 });
-    await blue.sync(300);
-    await red.call.pickCharacter({ lobbyId, characterName: redChars[redIdx++], eidolon: 0 });
-    await red.sync(300);
-    await red.call.pickCharacter({ lobbyId, characterName: redChars[redIdx++], eidolon: 0 });
-    await red.sync(300);
-    await blue.call.pickCharacter({ lobbyId, characterName: blueChars[blueIdx++], eidolon: 0 });
-    await blue.sync(300);
-
-    // Ban phase 2: Red, Blue
-    await red.call.banCharacter({ lobbyId, characterName: banChars[2] });
-    await red.sync(300);
-    await blue.call.banCharacter({ lobbyId, characterName: banChars[3] });
-    await blue.sync(300);
-
-    // Remaining 12 picks: Red, Blue, Blue, Red, Red, Blue, Blue, Red, Red, Blue, Blue, Red
-    const pickOrder = ['red', 'blue', 'blue', 'red', 'red', 'blue', 'blue', 'red', 'red', 'blue', 'blue', 'red'] as const;
-    for (const team of pickOrder) {
-        const h = team === 'blue' ? blue : red;
-        const charName = team === 'blue' ? blueChars[blueIdx++] : redChars[redIdx++];
-        await h.call.pickCharacter({ lobbyId, characterName: charName, eidolon: 0 });
-        await h.sync(300);
-    }
-    await blue.sync(1500);
-    await red.sync(1500);
-}
 
 /**
  * Full tournament match lifecycle: create lobby → join → draft → score → confirm.
@@ -281,12 +154,7 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
         await ensureHsrAccount(p2);
 
         // Ensure EloConfig exists (may already be seeded from previous runs)
-        try {
-            await admin.call.adminSeedEloConfig({});
-            await admin.sync(500);
-        } catch (_) {
-            // Already seeded — fine
-        }
+        await ensureEloConfig(admin);
     }, 60000);
 
     afterAll(async () => {

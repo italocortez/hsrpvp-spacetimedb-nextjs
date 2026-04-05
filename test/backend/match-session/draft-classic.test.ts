@@ -22,6 +22,7 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { startDraftAndSync } from '../../shared/helpers/drafts';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -92,12 +93,6 @@ async function setupDraftLobby(
 }
 
 /** Start draft and sync all harnesses */
-async function startDraftAndSync(host: TestHarness, blue: TestHarness, red: TestHarness, lobbyId: number) {
-    await host.call.startDraft({ lobbyId });
-    await host.sync(1500);
-    await blue.sync(1500);
-    await red.sync(1500);
-}
 
 /** Cleanup: all members leave a lobby (best-effort, no-throw) */
 /**

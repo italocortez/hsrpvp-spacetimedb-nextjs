@@ -22,6 +22,7 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { completeDraft as sharedCompleteDraft, startDraftAndSync } from '../../shared/helpers/drafts';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -68,53 +69,15 @@ async function setupDraftLobby(
     return lobby.id;
 }
 
-/** Start draft and sync all harnesses */
-async function startDraftAndSync(host: TestHarness, blue: TestHarness, red: TestHarness, lobbyId: number) {
-    await host.call.startDraft({ lobbyId });
-    await host.sync(1500);
-    await blue.sync(1500);
-    await red.sync(1500);
-}
-
 /**
- * Complete a Classic BanMode=None draft (16 picks, snake order).
- *
- * BanMode=None snake order (from draftSequences.ts):
- *   B R R B  R B B R  R B B R  R B B R
- *
- * allowMirrorPicks=true so all characters can repeat freely.
- * Minimal sync per pick (300ms) to keep total time under ~30s across 16 calls.
- * Full sync after the loop to pick up the auto-transition to Equipping.
+ * Mirror-pick variant of completeDraft: both teams pick from the same 8-char
+ * list (allowMirrorPicks=true — characters repeat freely across teams).
+ * Delegates pick-by-turn logic to the shared helper via blueChars/redChars overrides.
  */
-async function completeDraft(blue: TestHarness, red: TestHarness, lobbyId: number) {
-    // Ordered team turns for BanMode=None Classic (all Pick, 16 steps)
-    const order = [
-        'blue', 'red',  'red',  'blue',
-        'red',  'blue', 'blue', 'red',
-        'red',  'blue', 'blue', 'red',
-        'red',  'blue', 'blue', 'red',
-    ] as const;
-
-    // Characters to cycle through (allowMirrorPicks=true — same char allowed by both teams)
+const completeDraft = (blue: TestHarness, red: TestHarness, lobbyId: number) => {
     const chars = ['acheron', 'aglaea', 'anaxa', 'archer', 'argenti', 'arlan', 'acheron', 'aglaea'];
-    let blueIdx = 0;
-    let redIdx = 0;
-
-    for (const team of order) {
-        const h = team === 'blue' ? blue : red;
-        const idx = team === 'blue' ? blueIdx++ : redIdx++;
-        await h.call.pickCharacter({
-            lobbyId,
-            characterName: chars[idx % chars.length],
-            eidolon: 0,
-        });
-        await h.sync(300);
-    }
-
-    // Wait for the auto-transition to Equipping to propagate
-    await blue.sync(1500);
-    await red.sync(1500);
-}
+    return sharedCompleteDraft(blue, red, lobbyId, { blueChars: chars, redChars: chars });
+};
 
 /**
  * Cleanup: all members (including host) leave a lobby (best-effort, no-throw).

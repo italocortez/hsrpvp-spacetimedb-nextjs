@@ -15,50 +15,11 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
 
 describe.skipIf(!hasServerToken())('Cost Set Lifecycle', () => {
   let h: TestHarness;
   let costSetId: number;
-
-  /** Helper to promote a harness user to a role via server connection */
-  async function promoteToRole(harness: TestHarness, roleTag: string) {
-    const user = [...harness.conn.db.User.iter()].find(u => u.id === harness.userId);
-    if (!user) throw new Error(`User ${harness.userId} not found in cache`);
-    const username = user.username;
-
-    const { DbConnection } = await import('@/src/module_bindings');
-    const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN || '';
-    const uri = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-    const db = process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1';
-
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
-      DbConnection.builder()
-        .withUri(uri)
-        .withDatabaseName(db)
-        .withToken(serverToken)
-        .onConnect(async (serverConn) => {
-          try {
-            await serverConn.reducers.serverSetRole({ username, roleTag });
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            setTimeout(resolve, 500);
-          } catch (err) {
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            reject(err);
-          }
-        })
-        .onConnectError((_ctx: any, err: any) => {
-          clearTimeout(timeout);
-          reject(new Error(`Server connection failed: ${err}`));
-        })
-        .onDisconnect(() => {})
-        .build();
-    });
-
-    await harness.sync(1000);
-  }
 
   const myCostSets = () => [...h.conn.db.CostSet.iter()].filter(c => c.creatorId === h.userId);
 

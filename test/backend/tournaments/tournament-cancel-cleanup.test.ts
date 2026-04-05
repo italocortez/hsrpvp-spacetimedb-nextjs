@@ -26,91 +26,29 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
+import { getUsername } from '../../shared/helpers/users';
+import {
+    createTournamentArgs as sharedCreateTournamentArgs,
+    setupRegistrationTournament as sharedSetupRegistrationTournament,
+    advanceToInProgress,
+} from '../../shared/helpers/tournaments';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function getUsername(h: TestHarness): string {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    return user?.username ?? '';
-}
 
 /** BigInt micros timestamp string offset from now */
 function tsStr(offsetMs: number): string {
     return (BigInt(Date.now() + offsetMs) * 1000n).toString();
 }
 
-function createTournamentArgs(overrides: Record<string, unknown> = {}) {
-    return {
-        name: `Cancel Test ${Date.now()}`,
-        description: 'Integration test tournament',
-        format: 'SingleElimination',
-        teamSize: 1,
-        defaultGameMode: 'MemoryOfChaos',
-        maxParticipants: 8,
-        rosterVisibility: 'OpenRoster',
-        isAnonymousDefault: false,
-        disconnectPolicy: 'Deferred',
-        costSetId: 0,
-        defaultBestOf: 1,
-        groupSize: 4,
-        has3RdPlaceMatch: false,
-        autoAdvanceBracket: true,
-        countTowardsMmr: false,
-        winnerAdvantage: 0,
-        requireVerified: false,
-        requireRoster: false,
-        minimumMmr: 0,
-        requireApproval: false,
-        waitlistEnabled: false,
-        scheduledStartAt: '',
-        registrationDeadline: '',
-        ...overrides,
-    };
-}
+const createTournamentArgs = (overrides: Record<string, unknown> = {}) =>
+    sharedCreateTournamentArgs({ name: `Cancel Test ${Date.now()}`, ...overrides });
 
-/** Create tournament, advance to Registration, register players, return tournamentId */
-async function setupRegistrationTournament(
+const setupRegistrationTournament = (
     toUser: TestHarness,
     players: TestHarness[],
     overrides: Record<string, unknown> = {},
-): Promise<number> {
-    await toUser.call.createTournament(createTournamentArgs(overrides));
-    await toUser.sync(1500);
-
-    const tournaments = [...toUser.conn.db.Tournament.iter()].filter(
-        t => t.organizerId === toUser.userId
-    );
-    const tournamentId = tournaments[tournaments.length - 1].id;
-
-    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Registration' });
-    await toUser.sync(1000);
-
-    for (const p of players) {
-        await p.call.registerForTournament({ tournamentId });
-        await p.sync(1000);
-    }
-    await toUser.sync(1000);
-
-    return tournamentId;
-}
-
-/** Advance a tournament from Registration all the way to InProgress (with bracket) */
-async function advanceToInProgress(
-    toUser: TestHarness,
-    tournamentId: number,
-): Promise<void> {
-    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Seeding' });
-    await toUser.sync(1500);
-
-    await toUser.call.seedBracket({ tournamentId, mode: 'random' });
-    await toUser.sync(1500);
-
-    await toUser.call.generateBracket({ tournamentId });
-    await toUser.sync(1500);
-
-    await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'InProgress' });
-    await toUser.sync(1500);
-}
+): Promise<number> =>
+    sharedSetupRegistrationTournament(toUser, players, { name: `Cancel Test ${Date.now()}`, ...overrides });
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 

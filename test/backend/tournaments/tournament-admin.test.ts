@@ -16,6 +16,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
 
 describe.skipIf(!hasServerToken())('Tournament Admin', () => {
   let admin: TestHarness;
@@ -29,45 +30,6 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
   const adminTournaments = () => [...admin.conn.db.Tournament.iter()].filter(t => t.organizerId === admin.userId);
 
   /** Helper to promote a harness user to a role via server connection */
-  async function promoteToRole(h: TestHarness, roleTag: string) {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    if (!user) throw new Error(`User ${h.userId} not found in cache`);
-    const username = user.username;
-
-    const { DbConnection } = await import('@/src/module_bindings');
-    const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN || '';
-    const uri = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-    const db = process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1';
-
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
-      DbConnection.builder()
-        .withUri(uri)
-        .withDatabaseName(db)
-        .withToken(serverToken)
-        .onConnect(async (serverConn) => {
-          try {
-            await serverConn.reducers.serverSetRole({ username, roleTag });
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            setTimeout(resolve, 500);
-          } catch (err) {
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            reject(err);
-          }
-        })
-        .onConnectError((_ctx: any, err: any) => {
-          clearTimeout(timeout);
-          reject(new Error(`Server connection failed: ${err}`));
-        })
-        .onDisconnect(() => {})
-        .build();
-    });
-
-    await h.sync(1000);
-  }
-
   beforeAll(async () => {
     admin = await createVerifiedTestHarness();
     target = await createVerifiedTestHarness();

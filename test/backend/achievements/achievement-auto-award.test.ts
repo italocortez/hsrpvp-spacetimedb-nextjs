@@ -15,38 +15,12 @@ import {
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { getUsername } from '../../shared/helpers/users';
+import { completeDraft } from '../../shared/helpers/drafts';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function getUsername(h: TestHarness): string {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    return user?.username ?? '';
-}
-
 /** Complete a Classic draft with no bans (16 picks: Blue, Red alternating) */
-async function completeDraft(blue: TestHarness, red: TestHarness, lobbyId: number) {
-    const blueChars = ['acheron', 'aglaea', 'anaxa', 'archer', 'argenti', 'arlan', 'asta', 'aventurine'];
-    const redChars = ['bailu', 'blackswan', 'blade', 'boothill', 'bronya', 'castorice', 'cerydra', 'cipher'];
-    let blueIdx = 0;
-    let redIdx = 0;
-
-    // 16 picks: snake order per draftSequences.ts banMode=None
-    const pickOrder = [
-        'blue', 'red', 'red', 'blue',
-        'red', 'blue', 'blue', 'red',
-        'red', 'blue', 'blue', 'red',
-        'red', 'blue', 'blue', 'red',
-    ] as const;
-
-    for (const team of pickOrder) {
-        const h = team === 'blue' ? blue : red;
-        const charName = team === 'blue' ? blueChars[blueIdx++] : redChars[redIdx++];
-        await h.call.pickCharacter({ lobbyId, characterName: charName, eidolon: 0 });
-        await h.sync(300);
-    }
-    await blue.sync(1000);
-    await red.sync(1000);
-}
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 

@@ -16,26 +16,16 @@ import {
     createVerifiedTestHarness,
     hasServerToken,
     expectReducerError,
-    queryPrivateTable,
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs as sharedDefaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
+import { completeDraft, advanceToScoring } from '../../shared/helpers/drafts';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) =>
     sharedDefaultLobbyArgs({ matchType: { tag: 'Ranked' as const, value: {} }, ...overrides });
-
-/** Ensure a test player has an HSR account (needed for D-08 LMA gate on Ranked/MMR lobbies) */
-async function ensureHsrAccount(h: TestHarness): Promise<void> {
-    const rows = await queryPrivateTable(
-        `SELECT * FROM hsr_account WHERE user_id = ${h.userId}`
-    );
-    if (rows.length > 0) return; // already has an account
-    const uid = `8${String(h.userId).padStart(7, '0')}1`;
-    await h.call.createHsrAccount({ uid, displayLabel: `Test ${h.userId}` });
-    await h.sync(1500);
-}
 
 async function setupDraftLobby(
     host: TestHarness, blue: TestHarness, red: TestHarness,
@@ -63,41 +53,6 @@ async function setupDraftLobby(
     await host.sync();
 
     return lobby.id;
-}
-
-async function completeDraft(blue: TestHarness, red: TestHarness, lobbyId: number) {
-    const order = [
-        'blue', 'red',  'red',  'blue',
-        'red',  'blue', 'blue', 'red',
-        'red',  'blue', 'blue', 'red',
-        'red',  'blue', 'blue', 'red',
-    ] as const;
-    // 16 unique characters — required for Ranked (D-42: allowMirrorPicks forced false)
-    const blueChars = ['acheron', 'aglaea', 'anaxa', 'archer', 'argenti', 'arlan', 'asta', 'aventurine'];
-    const redChars = ['bailu', 'blackswan', 'blade', 'boothill', 'bronya', 'castorice', 'cerydra', 'cipher'];
-    let blueIdx = 0;
-    let redIdx = 0;
-    for (const team of order) {
-        const h = team === 'blue' ? blue : red;
-        const charName = team === 'blue' ? blueChars[blueIdx++] : redChars[redIdx++];
-        await h.call.pickCharacter({ lobbyId, characterName: charName, eidolon: 0 });
-        await h.sync(300);
-    }
-    await blue.sync(1500);
-    await red.sync(1500);
-}
-
-/** Advance lobby to Scoring: Drafting → Equipping → Scoring */
-async function advanceToScoring(host: TestHarness, blue: TestHarness, red: TestHarness, lobbyId: number) {
-    // Equipping stage — confirm lineups and advance
-    await blue.call.confirmLineup({ lobbyId });
-    await blue.sync();
-    await red.call.confirmLineup({ lobbyId });
-    await red.sync();
-    await host.call.advanceStage({ lobbyId });
-    await host.sync(1500);
-    await blue.sync(1500);
-    await red.sync(1500);
 }
 
 function getMatchResult(h: TestHarness, lobbyId: number) {

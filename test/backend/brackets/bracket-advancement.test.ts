@@ -22,24 +22,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
     createVerifiedTestHarness,
     expectReducerError,
-    queryPrivateTable,
     type TestHarness,
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
+import { completeTournamentDraft } from '../../shared/helpers/drafts';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Ensure a test player has an HSR account (needed for D-08 LMA gate on Ranked/MMR lobbies) */
-async function ensureHsrAccount(h: TestHarness): Promise<void> {
-    const rows = await queryPrivateTable(
-        `SELECT * FROM hsr_account WHERE user_id = ${h.userId}`
-    );
-    if (rows.length > 0) return; // already has an account
-    const uid = `8${String(h.userId).padStart(7, '0')}1`;
-    await h.call.createHsrAccount({ uid, displayLabel: `Test ${h.userId}` });
-    await h.sync(1500);
-}
 
 /** Create a tournament and advance it to InProgress with bracket generated */
 async function setupTournament(
@@ -165,48 +155,6 @@ function findFinalMatch(h: TestHarness, tournamentId: number) {
  *   Ban: Red, Blue
  *   Pick: Red, Blue, Blue, Red, Red, Blue, Blue, Red, Red, Blue, Blue, Red
  */
-async function completeTournamentDraft(blue: TestHarness, red: TestHarness, lobbyId: number) {
-    // 4 bans (unique chars not in pick list)
-    const banChars = ['clara', 'dan_heng', 'feixiao', 'fugue'];
-    // Ban sequence: Blue, Red, Red, Blue (second ban phase interleaved with picks)
-    await blue.call.banCharacter({ lobbyId, characterName: banChars[0] });
-    await blue.sync(300);
-    await red.call.banCharacter({ lobbyId, characterName: banChars[1] });
-    await red.sync(300);
-
-    // First 4 picks: Blue, Red, Red, Blue
-    const blueChars = ['acheron', 'aglaea', 'anaxa', 'archer', 'argenti', 'arlan', 'asta', 'aventurine'];
-    const redChars = ['bailu', 'blackswan', 'blade', 'boothill', 'bronya', 'castorice', 'cerydra', 'cipher'];
-    let blueIdx = 0;
-    let redIdx = 0;
-
-    // Picks: Blue, Red, Red, Blue
-    await blue.call.pickCharacter({ lobbyId, characterName: blueChars[blueIdx++], eidolon: 0 });
-    await blue.sync(300);
-    await red.call.pickCharacter({ lobbyId, characterName: redChars[redIdx++], eidolon: 0 });
-    await red.sync(300);
-    await red.call.pickCharacter({ lobbyId, characterName: redChars[redIdx++], eidolon: 0 });
-    await red.sync(300);
-    await blue.call.pickCharacter({ lobbyId, characterName: blueChars[blueIdx++], eidolon: 0 });
-    await blue.sync(300);
-
-    // Second ban phase: Red, Blue
-    await red.call.banCharacter({ lobbyId, characterName: banChars[2] });
-    await red.sync(300);
-    await blue.call.banCharacter({ lobbyId, characterName: banChars[3] });
-    await blue.sync(300);
-
-    // Remaining 12 picks: Red, Blue, Blue, Red, Red, Blue, Blue, Red, Red, Blue, Blue, Red
-    const pickOrder = ['red', 'blue', 'blue', 'red', 'red', 'blue', 'blue', 'red', 'red', 'blue', 'blue', 'red'] as const;
-    for (const team of pickOrder) {
-        const h = team === 'blue' ? blue : red;
-        const charName = team === 'blue' ? blueChars[blueIdx++] : redChars[redIdx++];
-        await h.call.pickCharacter({ lobbyId, characterName: charName, eidolon: 0 });
-        await h.sync(300);
-    }
-    await blue.sync(1500);
-    await red.sync(1500);
-}
 
 /** Setup lobby lifecycle: create tournament lobby → join → set slots → confirm → start draft → complete draft → score → confirm */
 async function setupTournamentMatch(

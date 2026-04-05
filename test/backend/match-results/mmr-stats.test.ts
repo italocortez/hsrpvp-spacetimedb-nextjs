@@ -27,19 +27,12 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs as sharedDefaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
+import { completeDraft, advanceToScoring } from '../../shared/helpers/drafts';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
+import { ensureEloConfig } from '../../shared/helpers/seed';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Ensure a test player has an HSR account (needed for D-08 LMA gate on Ranked/MMR lobbies) */
-async function ensureHsrAccount(h: TestHarness): Promise<void> {
-    const rows = await queryPrivateTable(
-        `SELECT * FROM hsr_account WHERE user_id = ${h.userId}`
-    );
-    if (rows.length > 0) return; // already has an account
-    const uid = `8${String(h.userId).padStart(7, '0')}1`;
-    await h.call.createHsrAccount({ uid, displayLabel: `Test ${h.userId}` });
-    await h.sync(1500);
-}
 
 const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) =>
     sharedDefaultLobbyArgs({ matchType: { tag: 'Ranked' as const, value: {} }, ...overrides });
@@ -76,37 +69,6 @@ async function setupDraftLobby(
     return lobby.id;
 }
 
-async function completeDraft(blue: TestHarness, red: TestHarness, lobbyId: number) {
-    const order = [
-        'blue', 'red',  'red',  'blue',
-        'red',  'blue', 'blue', 'red',
-        'red',  'blue', 'blue', 'red',
-        'red',  'blue', 'blue', 'red',
-    ] as const;
-    const blueChars = ['acheron', 'aglaea', 'anaxa', 'archer', 'argenti', 'arlan', 'asta', 'aventurine'];
-    const redChars = ['bailu', 'blackswan', 'blade', 'boothill', 'bronya', 'castorice', 'cerydra', 'cipher'];
-    let blueIdx = 0;
-    let redIdx = 0;
-    for (const team of order) {
-        const h = team === 'blue' ? blue : red;
-        const charName = team === 'blue' ? blueChars[blueIdx++] : redChars[redIdx++];
-        await h.call.pickCharacter({ lobbyId, characterName: charName, eidolon: 0 });
-        await h.sync(300);
-    }
-    await blue.sync(1500);
-    await red.sync(1500);
-}
-
-async function advanceToScoring(host: TestHarness, blue: TestHarness, red: TestHarness, lobbyId: number) {
-    await blue.call.confirmLineup({ lobbyId });
-    await blue.sync();
-    await red.call.confirmLineup({ lobbyId });
-    await red.sync();
-    await host.call.advanceStage({ lobbyId });
-    await host.sync(1500);
-    await blue.sync(1500);
-    await red.sync(1500);
-}
 
 /** Full setup: create lobby -> draft -> Scoring -> record scores -> confirm both sides */
 async function setupScoredMatch(
@@ -147,44 +109,6 @@ async function setupScoredMatch(
 }
 
 /** Promote a test user to a role via server connection */
-async function promoteToRole(h: TestHarness, roleTag: string) {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    if (!user) throw new Error(`User ${h.userId} not found in cache`);
-    const username = user.username;
-
-    const { DbConnection } = await import('@/src/module_bindings');
-    const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN || '';
-    const uri = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-    const db = process.env.SPACETIMEDB_DB || process.env.SPACETIMEDB_DB_NAME || 'hsrpvp-spacetimedb-nextjs-test1';
-
-    await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
-        DbConnection.builder()
-            .withUri(uri)
-            .withDatabaseName(db)
-            .withToken(serverToken)
-            .onConnect(async (serverConn) => {
-                try {
-                    await serverConn.reducers.serverSetRole({ username, roleTag });
-                    clearTimeout(timeout);
-                    serverConn.disconnect();
-                    setTimeout(resolve, 500);
-                } catch (err) {
-                    clearTimeout(timeout);
-                    serverConn.disconnect();
-                    reject(err);
-                }
-            })
-            .onConnectError((_ctx: any, err: any) => {
-                clearTimeout(timeout);
-                reject(new Error(`Server connection failed: ${err}`));
-            })
-            .onDisconnect(() => {})
-            .build();
-    });
-
-    await h.sync(1000);
-}
 
 /** Submit + override to Validated + finalize a Ranked match */
 async function submitOverrideFinalize(
@@ -232,8 +156,7 @@ describe.skipIf(!hasServerToken())('MMR + Leaderboard + Stats', () => {
         await promoteToRole(admin, 'Admin');
 
         // Seed ELO config (required for finalization in Ranked matches)
-        try { await admin.call.adminSeedEloConfig({}); } catch { /* already exists */ }
-        await admin.sync(500);
+        await ensureEloConfig(admin);
     }, 60000);
 
     afterAll(async () => {

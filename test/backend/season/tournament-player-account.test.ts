@@ -16,52 +16,13 @@ import {
   queryPrivateTable,
   type TestHarness,
 } from '../../shared/connection';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
 
 describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
   let host: TestHarness;
   let playerWithAccounts: TestHarness;
   let playerWithoutAccounts: TestHarness;
   let tournamentId: number;
-
-  /** Helper to promote a harness user to a role via server connection */
-  async function promoteToRole(h: TestHarness, roleTag: string) {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    if (!user) throw new Error(`User ${h.userId} not found in cache`);
-    const username = user.username;
-
-    const { DbConnection } = await import('@/src/module_bindings');
-    const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN || '';
-    const uri = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-    const db = process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1';
-
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
-      DbConnection.builder()
-        .withUri(uri)
-        .withDatabaseName(db)
-        .withToken(serverToken)
-        .onConnect(async (serverConn) => {
-          try {
-            await serverConn.reducers.serverSetRole({ username, roleTag });
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            setTimeout(resolve, 500);
-          } catch (err) {
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            reject(err);
-          }
-        })
-        .onConnectError((_ctx: any, err: any) => {
-          clearTimeout(timeout);
-          reject(new Error(`Server connection failed: ${err}`));
-        })
-        .onDisconnect(() => {})
-        .build();
-    });
-
-    await h.sync(1000);
-  }
 
   const tpaForUser = (h: TestHarness, tId: number, userId: number) =>
     [...h.conn.db.TournamentPlayerAccount.iter()]
