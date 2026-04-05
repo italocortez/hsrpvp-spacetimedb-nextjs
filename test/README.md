@@ -58,3 +58,23 @@ None. Just run `npm test`.
 2. Add `*.test.ts` files organized by reducer group
 3. Connect via `createTestHarness()` from `test/shared/connection.ts`
 4. Use `test/shared/fixtures.ts` for shared test data constants
+
+## Suite Runtime
+
+Measured baseline for regression detection. Update this entry when the suite composition materially changes (new files, new fixtures, major refactors).
+
+| Run | Date | Wall-Clock Time | File Count | Notes |
+|-----|------|-----------------|------------|-------|
+| Pre-stabilization (Phase 10.5 baseline) | 2026-04-05 | 54m39s | 41 integration files (486 tests) + 11 unit files (187 tests) | Captured on fresh `--delete-data=always` + bootstrap + seed — 0 failures, all 673/673 pass |
+
+**Commands:**
+- Full suite: `npm run test:all`
+- Integration only: `npm run test:integration`
+- Single file: `npx vitest run --config test/vitest.integration.config.ts <path>`
+
+**Reset sequence** (when test DB gets corrupted):
+1. `spacetime publish --module-path spacetimedb --server maincloud --delete-data=always --yes hsrpvp-spacetimedb-nextjs-test1`
+2. `spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb`
+3. `npx tsx test/shared/bootstrap.ts`
+4. `npx tsx test/shared/seed-data.ts`
+5. `npm run test:all`
