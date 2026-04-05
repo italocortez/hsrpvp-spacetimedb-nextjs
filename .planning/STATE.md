@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 10.5
-current_plan: 2
+current_plan: 3
 status: executing
-last_updated: "2026-04-05T16:10:19.060Z"
+last_updated: "2026-04-05T17:05:00.000Z"
 progress:
   total_phases: 17
   completed_phases: 15
   total_plans: 52
-  completed_plans: 48
+  completed_plans: 49
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 10.5
-**Current plan:** 2
+**Current plan:** 3
 **Status:** Executing Phase 10.5
 
 ## Decisions
@@ -144,6 +144,9 @@ See: .planning/PROJECT.md
 - [Phase 10.5]: CLI syntax migrated: spacetime publish uses --delete-data=always --yes <db-name> (new required positional arg)
 - [Phase 10.5]: Fresh-DB baseline fully green (41/41 integration files, 673/673 total) — Phase 10.4 exit failures confirmed pollution-driven per research hypothesis
 - [Phase 10.5]: Plan 04 bisect re-scoped: induce pollution via repeated test:all runs, then bisect to earliest polluter (not find existing failures)
+- [Phase 10.5]: defaultLobbyArgs union-superset includes bestOf + refereeControlsShelving (Phase 10.4); defaultSettingsArgs includes refereeExclusiveConcede (Phase 10); createTournamentArgs includes maxAccountsPerPlayer (Phase 10.4) — resolved 100 pre-existing typecheck errors
+- [Phase 10.5]: cleanupLobby canonical (host, members[], lobbyId) with host-close semantic; 3 draft-session files kept leave-only variadic renamed to leaveAll (distinct semantic, not drift)
+- [Phase 10.5]: Arrow-fn wrappers (const name = (args) => sharedHelper({...overrides})) used for per-file override variants — satisfies 'zero function defaultX' grep criterion while preserving per-file defaults
 
 ### Quick Tasks Completed
 
@@ -208,3 +211,4 @@ See: .planning/PROJECT.md
 - 2026-04-04: Phase 10.4 complete — LobbyMemberAccount table, select/deselect_match_account reducers, lifecycle wiring, deletion guards, ownership refactor, start_draft gate, 3 new views, index.ts export gap fixed post-verification, re-published to maincloud, 181/181 tests pass
 - 2026-04-05: Phase 10.5 context gathered (discuss mode) — 12 decisions locked (failure-driven bisect audit, per-domain helper subdir, strict afterAll cleanup, self-contained seeding, fix-only scope, test/README.md runtime baseline, phase AUDIT.md report, per-file atomic commits, static-data-only global seed, clear-database reset, minimum-data principle, server identity singleton)
 - 2026-04-05: Completed 10.5-01-PLAN.md — fresh-DB baseline captured (54m39s wall-clock, 3277.33s vitest Duration), 673/673 tests pass (41/41 integration + 11/11 unit files), 10.5-AUDIT.md created with 6 required sections + 41-file Per-File Matrix, test/README.md Suite Runtime section added, Phase 10.4 cross-file failures confirmed pollution-driven per research hypothesis
+- 2026-04-05: Completed 10.5-02-PLAN.md — 8 shared helper files created (test/shared/helpers/), 70+ inline helper copies collapsed across 34 test files, 1991 LOC removed (706 added = -1285 net), 100 pre-existing typecheck errors resolved (169→69) via union-superset defaults, 5 atomic task commits, runtime verified via lobby-lifecycle/anonymous-labels/post-draft/disconnect-gc (64/64 tests pass) + 187/187 unit tests
