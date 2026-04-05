@@ -22,7 +22,7 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
-import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { defaultLobbyArgs, cleanupLobby } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -48,6 +48,7 @@ describe('Lobby Lifecycle', () => {
     let joiner: TestHarness;
     let bystander: TestHarness;
     let guest: TestHarness;
+    const openedLobbyIds: number[] = [];
 
     beforeAll(async () => {
         host = await createVerifiedTestHarness();
@@ -62,6 +63,11 @@ describe('Lobby Lifecycle', () => {
     }, 30000);
 
     afterAll(async () => {
+        // D-03: strict cleanup per resource opened (safety net — tests mostly
+        // close lobbies inline; cleanupLobby swallows already-closed errors)
+        for (const lobbyId of openedLobbyIds) {
+            await cleanupLobby(host, [joiner, bystander, guest], lobbyId).catch(() => {});
+        }
         await host?.disconnect();
         await joiner?.disconnect();
         await bystander?.disconnect();
@@ -79,6 +85,7 @@ describe('Lobby Lifecycle', () => {
             expect(lobbies.length).toBeGreaterThanOrEqual(1);
 
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
             expect(lobby.stage.tag).toBe('Waiting');
             expect(lobby.currentPlayerCount).toBe(1);
             expect(lobby.hostUserId).toBe(host.userId);
@@ -105,6 +112,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             const err = await expectReducerError(
                 host.call.createLobby(defaultLobbyArgs())
@@ -124,6 +132,7 @@ describe('Lobby Lifecycle', () => {
             expect(lobbies.length).toBeGreaterThanOrEqual(1);
 
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
             // Guest's rosterVisibility must be forced to ClosedNoRating
             expect(lobby.rosterVisibility.tag).toBe('ClosedNoRating');
 
@@ -145,6 +154,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
             expect(lobby.allowMirrorPicks).toBe(false);
 
             // Cleanup
@@ -161,6 +171,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
             expect(lobby.isPublic).toBe(false);
 
             // Cleanup
@@ -174,6 +185,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
             expect(typeof lobby.joinCode).toBe('string');
             expect(lobby.joinCode.length).toBe(6);
 
@@ -192,6 +204,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
             const countBefore = lobby.currentPlayerCount;
 
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
@@ -218,6 +231,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await joiner.call.joinLobby({ lobbyId: 0, joinCode: lobby.joinCode, password: '' });
             await joiner.sync();
@@ -239,6 +253,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: 'secret' });
             await joiner.sync();
@@ -260,6 +275,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             const err = await expectReducerError(
                 joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: 'wrong' })
@@ -277,6 +293,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             // Joiner joins, then gets banned
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
@@ -316,11 +333,13 @@ describe('Lobby Lifecycle', () => {
             await host.sync(1500);
             const hostLobbies = myLobbies(host);
             const lobby1 = hostLobbies[hostLobbies.length - 1];
+            openedLobbyIds.push(lobby1.id);
 
             await bystander.call.createLobby(defaultLobbyArgs());
             await bystander.sync(1500);
             const bystanderLobbies = myLobbies(bystander);
             const lobby2 = bystanderLobbies[bystanderLobbies.length - 1];
+            openedLobbyIds.push(lobby2.id);
 
             // Joiner joins lobby1
             await joiner.call.joinLobby({ lobbyId: lobby1.id, joinCode: '', password: '' });
@@ -351,6 +370,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await joiner.sync();
@@ -379,6 +399,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
             const lobbyId = lobby.id;
 
             // Host leaves — only member, lobby should auto-close
@@ -399,6 +420,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
             const lobbyId = lobby.id;
 
             await joiner.call.joinLobby({ lobbyId, joinCode: '', password: '' });
@@ -422,6 +444,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await joiner.sync();
@@ -452,6 +475,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await joiner.sync();
@@ -480,6 +504,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             const err = await expectReducerError(
                 host.call.kickMember({ lobbyId: lobby.id, targetUserId: host.userId })
@@ -498,6 +523,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await joiner.sync();
@@ -538,6 +564,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await joiner.sync();
@@ -564,6 +591,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             // joiner is NOT in the lobby — ban them preemptively
             await host.call.banMember({ lobbyId: lobby.id, targetUserId: joiner.userId });
@@ -587,6 +615,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             // Joiner joins, gets banned
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
@@ -614,6 +643,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             const err = await expectReducerError(
                 host.call.banMember({ lobbyId: lobby.id, targetUserId: host.userId })
@@ -632,6 +662,7 @@ describe('Lobby Lifecycle', () => {
 
             const lobbies = myLobbies(host);
             const lobby = lobbies[lobbies.length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await joiner.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await joiner.sync();
