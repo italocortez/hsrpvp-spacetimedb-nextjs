@@ -66,6 +66,7 @@ Measured baseline for regression detection. Update this entry when the suite com
 | Run | Date | Wall-Clock Time | File Count | Notes |
 |-----|------|-----------------|------------|-------|
 | Pre-stabilization (Phase 10.5 baseline) | 2026-04-05 | 54m39s | 41 integration files (486 tests) + 11 unit files (187 tests) | Captured on fresh `--delete-data=always` + bootstrap + seed — 0 failures, all 673/673 pass |
+| Post-stabilization (Phase 10.5 final) | 2026-04-05 | 54m38s | 41 integration files (486 tests) + 11 unit files (187 tests) | 0 failures, 0 skipped — baseline after audit + cleanup refactor (helpers extracted + afterAll contract + pollution bisect) |
 
 **Commands:**
 - Full suite: `npm run test:all`
