@@ -350,6 +350,6 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10. Disconnect Handling and Cost Parity | 2/2 | Complete   | 2026-04-04 |
 | 10.1. Match Schema Rework | 6/6 | Complete    | 2026-04-04 |
 | 10.3. Tournament Organizer Views | 1/1 | Complete    | 2026-04-04 |
-| 10.4. Account Selection Per Match | 3/3 | Complete   | 2026-04-04 |
+| 10.4. Account Selection Per Match | 3/3 | Complete    | 2026-04-04 |
 | 11. Archetype Playstyle Stats | 0/? | Not started | - |
 
