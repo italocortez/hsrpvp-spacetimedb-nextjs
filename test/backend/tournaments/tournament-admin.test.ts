@@ -17,6 +17,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
 import { promoteToRole } from '../../shared/helpers/promoteUser';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 describe.skipIf(!hasServerToken())('Tournament Admin', () => {
   let admin: TestHarness;
@@ -26,6 +27,7 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
   let nonMod: TestHarness;
 
   let tournamentId: number;
+  const openedTournamentIds: number[] = [];
 
   const adminTournaments = () => [...admin.conn.db.Tournament.iter()].filter(t => t.organizerId === admin.userId);
 
@@ -70,6 +72,7 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
 
     const mine = adminTournaments();
     tournamentId = mine[mine.length - 1].id;
+    openedTournamentIds.push(tournamentId);
 
     // Advance to Registration
     await admin.call.advanceTournamentStage({ tournamentId, nextStage: 'Registration' });
@@ -85,6 +88,10 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
   }, 30000);
 
   afterAll(async () => {
+    // D-03: strict cleanup per resource opened
+    for (const tid of openedTournamentIds) {
+      await cleanupTournament(admin, tid);
+    }
     await admin?.disconnect();
     await target?.disconnect();
     await player1?.disconnect();
