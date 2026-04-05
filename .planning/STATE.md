@@ -4,13 +4,13 @@ milestone: v0.5
 milestone_name: milestone
 current_phase: 10.5
 current_plan: 5
-status: executing
-last_updated: "2026-04-05T19:57:27.685Z"
+status: phase-complete
+last_updated: "2026-04-05T21:10:00.000Z"
 progress:
   total_phases: 17
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 52
-  completed_plans: 51
+  completed_plans: 52
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 10.5
-**Current plan:** 5
-**Status:** Executing Phase 10.5
+**Current phase:** 10.5 (COMPLETE)
+**Current plan:** 5 of 5 (all plans closed)
+**Status:** Phase 10.5 complete — test suite stabilization green (673/673 PASS, 54m38s baseline locked)
 
 ## Decisions
 
@@ -152,6 +152,7 @@ See: .planning/PROJECT.md
 - [Phase 10.5-03]: AwaitingResult lobbies (Ranked MMR path) need admin_void_match BEFORE closeLobby per Pitfall 3; tournament-mmr + bracket-advancement afterAll use dual-attempt fallback pattern
 - [Phase 10.5]: Plan 04 Exit Condition triggered — zero failures on 2nd test:all against populated DB; Tasks 2-3 auto-skipped (Plans 02+03 mechanically eliminated all pollution vectors)
 - [Phase 10.5]: Plan 04 validated pollution-resistance: 673/673 PASS on populated DB after 1 hour; calendar_event + achievement STABLE at 0 across 2 consecutive runs; tournament/lobby grow linearly-per-run (audit-retained per D-21)
+- [Phase 10.5]: Plan 05 Phase finalization: Lessons Learned + SC verification closed Phase 10.5 with all 6 SCs verified; 22 total commits across 5 plans; zero runtime regression from stabilization refactor (54m39s → 54m38s)
 
 ### Quick Tasks Completed
 

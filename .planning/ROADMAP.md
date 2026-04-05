@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10.1: Match Schema Rework** - Best-of-N series, team-centric model, winnerTeamSide, tournamentId/lobbyId removal (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.3: Tournament Organizer Views** - TO-scoped server-side views replacing full-table subscriptions (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED) (completed 2026-04-04)
-- [ ] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED)
+- [x] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED) (completed 2026-04-05)
 - [ ] **Phase 11: Archetype Playstyle Stats** - PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag, same PK pattern as stat tables
 
 ## Phase Details
@@ -327,13 +327,13 @@ Plans:
   4. Integration test harness helpers (`ensureHsrAccount`, `promoteUser`, etc.) are extracted to `test/shared/` so they don't drift across duplicate copies in individual test files
   5. Full suite runtime is documented with a baseline — regression detection in future phases
   6. Test failure reports distinguish "file passes in isolation but fails in suite" from "file fails in isolation" — cross-file bugs get fixed at suite level, not per-file
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 Plans:
 - [x] 10.5-01-PLAN.md — Capture baseline failure inventory + AUDIT.md seed + test/README runtime entry
 - [x] 10.5-02-PLAN.md — Extract ~70 inline test helpers to test/shared/helpers/ (8 domain files)
 - [x] 10.5-03-PLAN.md — Add strict afterAll cleanup to 13 RED-category test files (D-03)
 - [x] 10.5-04-PLAN.md — Bisect cross-file failures + fix root causes (D-01) until test:all is green
-- [ ] 10.5-05-PLAN.md — Finalize AUDIT.md lessons learned + post-fix runtime baseline
+- [x] 10.5-05-PLAN.md — Finalize AUDIT.md lessons learned + post-fix runtime baseline
 
 ### Phase 11: Archetype Playstyle Stats
 **Goal**: Track playstyle stats when 3+ picks in a draft share an archetype tag; auto-increment during finalization pipeline
