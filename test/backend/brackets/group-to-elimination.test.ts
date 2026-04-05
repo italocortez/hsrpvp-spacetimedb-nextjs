@@ -17,6 +17,7 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ describe('Group-to-Elimination Advancement', () => {
     let p4: TestHarness;
     let p5: TestHarness;
     let p6: TestHarness;
+    const openedTournamentIds: number[] = [];
 
     beforeAll(async () => {
         toUser = await createVerifiedTestHarness();
@@ -60,6 +62,11 @@ describe('Group-to-Elimination Advancement', () => {
     }, 60000);
 
     afterAll(async () => {
+        // D-03: strict cleanup per resource opened.
+        // cancelTournament cascades bracket_match + teams per Pitfall 2
+        for (const tid of openedTournamentIds) {
+            await cleanupTournament(toUser, tid);
+        }
         await toUser?.disconnect();
         await p1?.disconnect();
         await p2?.disconnect();
@@ -109,6 +116,7 @@ describe('Group-to-Elimination Advancement', () => {
                 t => t.organizerId === toUser.userId
             );
             nonHybridTournamentId = tournaments[tournaments.length - 1].id;
+            openedTournamentIds.push(nonHybridTournamentId);
 
             // Advance to InProgress (need 2+ players)
             await toUser.call.advanceTournamentStage({ tournamentId: nonHybridTournamentId, nextStage: 'Registration' });
@@ -180,6 +188,7 @@ describe('Group-to-Elimination Advancement', () => {
                 t => t.organizerId === toUser.userId && t.format.tag === 'GroupIntoSingleElim'
             );
             tournamentId = tournaments[tournaments.length - 1].id;
+            openedTournamentIds.push(tournamentId);
 
             // Register 6 players
             await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Registration' });
