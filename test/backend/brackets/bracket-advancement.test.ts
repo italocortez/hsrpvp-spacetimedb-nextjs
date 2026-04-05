@@ -28,6 +28,7 @@ import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
 import { completeTournamentDraft } from '../../shared/helpers/drafts';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -251,6 +252,8 @@ describe('Bracket Advancement', () => {
     let p2: TestHarness;
     let p3: TestHarness;
     let p4: TestHarness;
+    const openedTournamentIds: number[] = [];
+    const openedLobbyIds: number[] = [];
 
     beforeAll(async () => {
         toUser = await createVerifiedTestHarness();
@@ -276,6 +279,23 @@ describe('Bracket Advancement', () => {
     }, 60000);
 
     afterAll(async () => {
+        // D-03: strict cleanup per resource opened.
+        // Lobbies may be in AwaitingResult for Ranked flows (Tournament B) — try
+        // admin_void_match first (Pitfall 3), then close_lobby as fallback.
+        for (const lobbyId of openedLobbyIds) {
+            try {
+                await admin.call.adminVoidMatch({ lobbyId });
+                await admin.sync(500);
+            } catch (_) { /* not in AwaitingResult */ }
+            try {
+                await toUser.call.closeLobby({ lobbyId });
+                await toUser.sync(500);
+            } catch (_) { /* already closed */ }
+        }
+        // Cancel tournaments — cascade deletes bracket_match, teams, TPA per Pitfall 2
+        for (const tid of openedTournamentIds) {
+            await cleanupTournament(toUser, tid);
+        }
         await toUser?.disconnect();
         await admin?.disconnect();
         await p1?.disconnect();
@@ -305,6 +325,7 @@ describe('Bracket Advancement', () => {
                 countTowardsMmr: false, // Casual → auto-finalize
             });
             tournamentId = result.tournamentId;
+            openedTournamentIds.push(tournamentId);
 
             await p1.sync(1000);
             await p2.sync(1000);
@@ -462,6 +483,7 @@ describe('Bracket Advancement', () => {
                 );
                 lobbyId = result.lobbyId;
                 matchResultId = result.matchResultId;
+                openedLobbyIds.push(lobbyId);
             }, 120000);
 
             it('submit → Casual auto-finalize triggers step 17', async () => {
@@ -558,6 +580,7 @@ describe('Bracket Advancement', () => {
                 countTowardsMmr: true, // Ranked → does NOT auto-finalize
             });
             tournamentId = result.tournamentId;
+            openedTournamentIds.push(tournamentId);
 
             await p1.sync(1000);
             await p2.sync(1000);
@@ -592,9 +615,10 @@ describe('Bracket Advancement', () => {
         }, 90000);
 
         it('full match → submit (Ranked stays Submitted)', async () => {
-            const { matchResultId } = await setupTournamentMatch(
+            const { matchResultId, lobbyId } = await setupTournamentMatch(
                 toUser, bluePlayer, redPlayer, semi1Id
             );
+            openedLobbyIds.push(lobbyId);
 
             // Submit with winner — Ranked does NOT auto-finalize
             await toUser.call.submitMatchResult({
@@ -662,6 +686,7 @@ describe('Bracket Advancement', () => {
                 groupSize: 4, // One group of 4 → 6 round-robin matches
             });
             tournamentId = result.tournamentId;
+            openedTournamentIds.push(tournamentId);
 
             await p1.sync(1000);
             await p2.sync(1000);
