@@ -16,27 +16,9 @@ import {
     expectReducerError,
     type TestHarness,
 } from '../../shared/connection';
-import { DbConnection } from '../../../src/module_bindings';
+import { promoteUser } from '../../shared/helpers/promoteUser';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-async function promoteUser(username: string, role: string): Promise<void> {
-    const host = process.env.SPACETIMEDB_URI ?? 'wss://maincloud.spacetimedb.com';
-    const token = process.env.SPACETIMEDB_SERVER_TOKEN!;
-    return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Promote timeout')), 10000);
-        DbConnection.builder()
-            .withUri(host)
-            .withDatabaseName(process.env.SPACETIMEDB_DB ?? 'hsrpvp-spacetimedb-nextjs-test1')
-            .withToken(token)
-            .onConnect((conn) => {
-                conn.reducers.serverSetRole({ username, roleTag: role });
-                setTimeout(() => { clearTimeout(timeout); resolve(); }, 1000);
-            })
-            .onConnectError((_ctx, err) => { clearTimeout(timeout); reject(err); })
-            .build();
-    });
-}
 
 function getTeamId(h: TestHarness, tournamentId: number, userId: number): number {
     const member = [...h.conn.db.TournamentTeamMember.iter()].find(

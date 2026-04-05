@@ -21,9 +21,7 @@ import {
     expectReducerError,
     type TestHarness,
 } from '../../shared/connection';
-import { DbConnection } from '../../../src/module_bindings';
-
-const DB = process.env.SPACETIMEDB_DB ?? 'hsrpvp-spacetimedb-nextjs-test1';
+import { promoteUser } from '../../shared/helpers/promoteUser';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -81,25 +79,6 @@ function lobbyMembers(h: TestHarness, lobbyId: number) {
 /** Get bans for a lobby */
 function lobbyBans(h: TestHarness, lobbyId: number) {
     return [...h.conn.db.LobbyBan.iter()].filter(b => b.lobbyId === lobbyId);
-}
-
-/** Promote user via server connection */
-async function promoteUser(username: string, role: string): Promise<void> {
-    const host = process.env.SPACETIMEDB_URI ?? 'wss://maincloud.spacetimedb.com';
-    const token = process.env.SPACETIMEDB_SERVER_TOKEN!;
-    return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Promote timeout')), 10000);
-        DbConnection.builder()
-            .withUri(host)
-            .withDatabaseName(DB)
-            .withToken(token)
-            .onConnect((conn) => {
-                conn.reducers.serverSetRole({ username, roleTag: role });
-                setTimeout(() => { clearTimeout(timeout); resolve(); }, 1000);
-            })
-            .onConnectError((_ctx, err) => { clearTimeout(timeout); reject(err); })
-            .build();
-    });
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────

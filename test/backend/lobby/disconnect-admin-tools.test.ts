@@ -18,9 +18,7 @@ import {
     expectReducerError,
     type TestHarness,
 } from '../../shared/connection';
-import { DbConnection } from '../../../src/module_bindings';
-
-const DB = process.env.SPACETIMEDB_DB ?? 'hsrpvp-spacetimedb-nextjs-test1';
+import { promoteToAdmin } from '../../shared/helpers/promoteUser';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,24 +73,6 @@ function defaultSettingsArgs(lobbyId: number, overrides: Record<string, unknown>
         teamBlueAlias: 'Blue', teamRedAlias: 'Red',
         ...overrides,
     };
-}
-
-async function promoteToAdmin(username: string): Promise<void> {
-    const host = process.env.SPACETIMEDB_URI ?? 'wss://maincloud.spacetimedb.com';
-    const token = process.env.SPACETIMEDB_SERVER_TOKEN!;
-    return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Promote timeout')), 10000);
-        DbConnection.builder()
-            .withUri(host)
-            .withDatabaseName(DB)
-            .withToken(token)
-            .onConnect((conn) => {
-                conn.reducers.serverSetRole({ username, roleTag: 'Admin' });
-                setTimeout(() => { clearTimeout(timeout); resolve(); }, 1000);
-            })
-            .onConnectError((_ctx, err) => { clearTimeout(timeout); reject(err); })
-            .build();
-    });
 }
 
 /** Create deferred match in AwaitingResult state */

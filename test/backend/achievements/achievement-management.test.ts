@@ -15,31 +15,11 @@ import {
     expectReducerError,
     type TestHarness,
 } from '../../shared/connection';
-import { DbConnection } from '../../../src/module_bindings';
-
-const DB = process.env.SPACETIMEDB_DB ?? 'hsrpvp-spacetimedb-nextjs-test1';
+import { promoteUser } from '../../shared/helpers/promoteUser';
 
 // Unique suffix per test run to avoid name conflicts from leftover data
 const RUN = Math.random().toString(36).slice(2, 8);
 const N = (base: string) => `${base}_${RUN}`;
-
-// Helper: promote user via server connection
-async function promoteUser(username: string, role: string): Promise<void> {
-    const host = process.env.SPACETIMEDB_HOST ?? process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ?? 'wss://maincloud.spacetimedb.com';
-    const token = process.env.SPACETIMEDB_SERVER_TOKEN!;
-    return new Promise((resolve, reject) => {
-        DbConnection.builder()
-            .withUri(host)
-            .withDatabaseName(DB)
-            .withToken(token)
-            .onConnect((conn) => {
-                conn.reducers.serverSetRole({ username, roleTag: role });
-                setTimeout(() => resolve(), 1000);
-            })
-            .onConnectError((_ctx, err) => reject(err))
-            .build();
-    });
-}
 
 describe('Achievement Management', () => {
     let admin: TestHarness;
