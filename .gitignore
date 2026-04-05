@@ -45,6 +45,7 @@ next-env.d.ts
 .mcp.json
 excalidraw.log
 .claude/gsd-local-patches/
+.claude/worktrees/
 notes
 notes/
 
