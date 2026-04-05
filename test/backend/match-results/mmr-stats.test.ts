@@ -29,6 +29,17 @@ import {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** Ensure a test player has an HSR account (needed for D-08 LMA gate on Ranked/MMR lobbies) */
+async function ensureHsrAccount(h: TestHarness): Promise<void> {
+    const rows = await queryPrivateTable(
+        `SELECT * FROM hsr_account WHERE user_id = ${h.userId}`
+    );
+    if (rows.length > 0) return; // already has an account
+    const uid = `8${String(h.userId).padStart(7, '0')}1`;
+    await h.call.createHsrAccount({ uid, displayLabel: `Test ${h.userId}` });
+    await h.sync(1500);
+}
+
 function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
     return {
         joinCode: '', presetId: 0, teamSize: 1,
@@ -64,6 +75,10 @@ async function setupDraftLobby(
     await host.sync(1500);
     const lobbies = [...host.conn.db.Lobby.iter()].filter(l => l.hostUserId === host.userId);
     const lobby = lobbies[lobbies.length - 1];
+
+    // Ensure players have HSR accounts (D-08 gate: start_draft requires LMA for Ranked/MMR)
+    await ensureHsrAccount(blue);
+    await ensureHsrAccount(red);
 
     await blue.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
     await blue.sync();
@@ -238,6 +253,10 @@ describe.skipIf(!hasServerToken())('MMR + Leaderboard + Stats', () => {
         await admin.sync();
 
         await promoteToRole(admin, 'Admin');
+
+        // Seed ELO config (required for finalization in Ranked matches)
+        try { await admin.call.adminSeedEloConfig({}); } catch { /* already exists */ }
+        await admin.sync(500);
     }, 60000);
 
     afterAll(async () => {

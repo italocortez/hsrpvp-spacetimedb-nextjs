@@ -16,6 +16,7 @@ import {
     createVerifiedTestHarness,
     hasServerToken,
     expectReducerError,
+    queryPrivateTable,
     type TestHarness,
 } from '../../shared/connection';
 
@@ -46,6 +47,17 @@ function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         teamBlueAlias: 'Blue', teamRedAlias: 'Red',
         ...overrides,
     };
+}
+
+/** Ensure a test player has an HSR account (needed for D-08 LMA gate on Ranked/MMR lobbies) */
+async function ensureHsrAccount(h: TestHarness): Promise<void> {
+    const rows = await queryPrivateTable(
+        `SELECT * FROM hsr_account WHERE user_id = ${h.userId}`
+    );
+    if (rows.length > 0) return; // already has an account
+    const uid = `8${String(h.userId).padStart(7, '0')}1`;
+    await h.call.createHsrAccount({ uid, displayLabel: `Test ${h.userId}` });
+    await h.sync(1500);
 }
 
 async function setupDraftLobby(
@@ -138,6 +150,11 @@ describe.skipIf(!hasServerToken())('Score Entry + Confirmation', () => {
         await blue.sync();
         await red.sync();
         await outsider.sync();
+
+        // Ensure HSR accounts for Ranked lobby (D-08 LMA gate)
+        await ensureHsrAccount(host);
+        await ensureHsrAccount(blue);
+        await ensureHsrAccount(red);
 
         // Ranked lobby → draft → Equipping → Scoring
         lobbyId = await setupDraftLobby(host, blue, red);
@@ -336,6 +353,11 @@ describe.skipIf(!hasServerToken())('Score Entry + Confirmation', () => {
             await refHost.sync();
             await refBlue.sync();
             await refRed.sync();
+
+            // Ensure HSR accounts for Ranked lobby (D-08 LMA gate)
+            await ensureHsrAccount(refHost);
+            await ensureHsrAccount(refBlue);
+            await ensureHsrAccount(refRed);
 
             refLobbyId = await setupDraftLobby(refHost, refBlue, refRed);
             await refHost.call.startDraft({ lobbyId: refLobbyId });

@@ -20,6 +20,7 @@ import {
     createVerifiedTestHarness,
     hasServerToken,
     expectReducerError,
+    queryPrivateTable,
     type TestHarness,
 } from '../../shared/connection';
 import { DbConnection } from '../../../src/module_bindings';
@@ -49,6 +50,17 @@ async function promoteUser(username: string, role: string): Promise<void> {
 function getUsername(h: TestHarness): string {
     const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
     return user?.username ?? '';
+}
+
+/** Ensure a test player has an HSR account (needed for D-08 LMA gate on Ranked/MMR lobbies) */
+async function ensureHsrAccount(h: TestHarness): Promise<void> {
+    const rows = await queryPrivateTable(
+        `SELECT * FROM hsr_account WHERE user_id = ${h.userId}`
+    );
+    if (rows.length > 0) return; // already has an account
+    const uid = `8${String(h.userId).padStart(7, '0')}1`;
+    await h.call.createHsrAccount({ uid, displayLabel: `Test ${h.userId}` });
+    await h.sync(1500);
 }
 
 function createTournamentArgs(overrides: Record<string, unknown> = {}) {
@@ -282,6 +294,11 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
         await promoteUser(getUsername(toUser), 'TournamentHost');
         await admin.sync(1500);
         await toUser.sync(1500);
+
+        // Ensure HSR accounts for tournament MMR lobbies (D-08 LMA gate)
+        await ensureHsrAccount(toUser);
+        await ensureHsrAccount(p1);
+        await ensureHsrAccount(p2);
 
         // Ensure EloConfig exists (may already be seeded from previous runs)
         try {
