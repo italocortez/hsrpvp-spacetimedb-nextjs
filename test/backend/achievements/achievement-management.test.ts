@@ -26,6 +26,7 @@ describe('Achievement Management', () => {
     let mod: TestHarness;
     let user: TestHarness;
     let guest: TestHarness;
+    const createdAchievementIds: number[] = [];
 
     beforeAll(async () => {
         admin = await createVerifiedTestHarness();
@@ -46,6 +47,13 @@ describe('Achievement Management', () => {
     }, 30000);
 
     afterAll(async () => {
+        // D-03: strict cleanup per resource opened
+        for (const id of createdAchievementIds) {
+            try {
+                await admin.call.deleteAchievement({ achievementId: id });
+                await admin.sync(300);
+            } catch (_) { /* already deleted or cascade test */ }
+        }
         await admin?.disconnect();
         await mod?.disconnect();
         await user?.disconnect();
@@ -67,6 +75,7 @@ describe('Achievement Management', () => {
 
             const row = [...admin.conn.db.Achievement.iter()].find(a => a.name === N('Test Create Admin'));
             expect(row).toBeDefined();
+            createdAchievementIds.push(row!.id);
             expect(row!.description).toBe('Created by admin');
             expect(row!.rarity.tag).toBe('Rare');
             expect(row!.isManualOnly).toBe(false);
@@ -84,6 +93,7 @@ describe('Achievement Management', () => {
 
             const row = [...mod.conn.db.Achievement.iter()].find(a => a.name === N('Test Create Mod'));
             expect(row).toBeDefined();
+            createdAchievementIds.push(row!.id);
             expect(row!.isManualOnly).toBe(true);
             expect(row!.maxAwards).toBe(5);
         });
@@ -149,6 +159,7 @@ describe('Achievement Management', () => {
             await admin.sync();
             const row = [...admin.conn.db.Achievement.iter()].find(a => a.name === N('Test Update Target'));
             achievementId = row!.id;
+            createdAchievementIds.push(achievementId);
         });
 
         it('updates name and rarity', async () => {
@@ -193,6 +204,7 @@ describe('Achievement Management', () => {
             await admin.sync();
             const row = [...admin.conn.db.Achievement.iter()].find(a => a.name === N('Test Criteria Target'));
             achievementId = row!.id;
+            createdAchievementIds.push(achievementId);
         });
 
         it('adds criteria row with correct FK', async () => {
@@ -260,6 +272,7 @@ describe('Achievement Management', () => {
             await admin.sync();
             const row = [...admin.conn.db.Achievement.iter()].find(a => a.name === N('Test Award Target'));
             achievementId = row!.id;
+            createdAchievementIds.push(achievementId);
         });
 
         it('creates UserAchievement row', async () => {
@@ -308,6 +321,7 @@ describe('Achievement Management', () => {
             await admin.sync();
             const row = [...admin.conn.db.Achievement.iter()].find(a => a.name === N('Test Lock Target'));
             achievementId = row!.id;
+            createdAchievementIds.push(achievementId);
 
             // Add criteria then award to trigger lock
             await admin.call.addAchievementCriteria({
@@ -370,6 +384,7 @@ describe('Achievement Management', () => {
             await admin.sync();
             const row = [...admin.conn.db.Achievement.iter()].find(a => a.name === N('Test Capped'));
             cappedId = row!.id;
+            createdAchievementIds.push(cappedId);
 
             // Award to user (fills the cap)
             await admin.call.manualAwardAchievement({
@@ -474,6 +489,7 @@ describe('Achievement Management', () => {
             await admin.sync();
             const row = [...admin.conn.db.Achievement.iter()].find(a => a.name === N('Test Cascade Delete'));
             cascadeId = row!.id;
+            createdAchievementIds.push(cascadeId);
 
             // Add criteria
             await admin.call.addAchievementCriteria({
