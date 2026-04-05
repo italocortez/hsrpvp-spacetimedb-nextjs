@@ -28,6 +28,7 @@ import { getUsername } from '../../shared/helpers/users';
 import {
     setupRegistrationTournament,
     advanceToInProgress,
+    cleanupTournament,
 } from '../../shared/helpers/tournaments';
 import { completeTournamentDraft } from '../../shared/helpers/drafts';
 import { ensureEloConfig } from '../../shared/helpers/seed';
@@ -130,6 +131,8 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
     let toUser: TestHarness;
     let p1: TestHarness;
     let p2: TestHarness;
+    const openedTournamentIds: number[] = [];
+    const openedLobbyIds: number[] = [];
 
     beforeAll(async () => {
         admin = await createVerifiedTestHarness();
@@ -158,6 +161,23 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
     }, 60000);
 
     afterAll(async () => {
+        // D-03: strict cleanup per resource opened.
+        // Lobbies may be in AwaitingResult (Ranked match validation) — try
+        // admin_void_match first (Pitfall 3), then close_lobby as fallback.
+        for (const lobbyId of openedLobbyIds) {
+            try {
+                await admin.call.adminVoidMatch({ lobbyId });
+                await admin.sync(500);
+            } catch (_) { /* not in AwaitingResult */ }
+            try {
+                await toUser.call.closeLobby({ lobbyId });
+                await toUser.sync(500);
+            } catch (_) { /* already closed */ }
+        }
+        // Cancel any surviving tournaments (swallows terminal-state errors)
+        for (const tid of openedTournamentIds) {
+            await cleanupTournament(toUser, tid);
+        }
         await admin?.disconnect();
         await toUser?.disconnect();
         await p1?.disconnect();
@@ -176,6 +196,7 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
                 name: `MMR InProg ${Date.now()}`,
                 countTowardsMmr: true,
             });
+            openedTournamentIds.push(inProgressTournamentId);
             await advanceToInProgress(toUser, inProgressTournamentId);
 
             // Tournament B: Completed but countTowardsMmr=false — for MMR gate test
@@ -183,6 +204,7 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
                 name: `MMR Casual ${Date.now()}`,
                 countTowardsMmr: false,
             });
+            openedTournamentIds.push(casualTournamentId);
             await advanceToInProgress(toUser, casualTournamentId);
             await toUser.call.advanceTournamentStage({
                 tournamentId: casualTournamentId, nextStage: 'Completed',
@@ -217,6 +239,7 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
                 name: `MMR Batch ${Date.now()}`,
                 countTowardsMmr: true,
             });
+            openedTournamentIds.push(tournamentId);
             await advanceToInProgress(toUser, tournamentId);
 
             // Find the bracket match for p1 vs p2
@@ -229,6 +252,7 @@ describe.skipIf(!hasServerToken())('Tournament MMR — process_tournament_mmr', 
             // Play the full match lifecycle
             const result = await setupTournamentMatch(toUser, p1, p2, bracketMatch.id);
             matchResultId = result.matchResultId;
+            openedLobbyIds.push(result.lobbyId);
 
             // Submit match result → Submitted (Ranked)
             await toUser.call.submitMatchResult({
