@@ -15,12 +15,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
 import { promoteToRole } from '../../shared/helpers/promoteUser';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 describe.skipIf(!hasServerToken())('Tournament Registration', () => {
   let host: TestHarness;
   let player1: TestHarness;
   let player2: TestHarness;
   let player3: TestHarness;
+  const openedTournamentIds: number[] = [];
 
   const hostTournaments = () => [...host.conn.db.Tournament.iter()].filter(t => t.organizerId === host.userId);
 
@@ -35,6 +37,10 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
   }, 30000);
 
   afterAll(async () => {
+    // D-03: strict cleanup per resource opened
+    for (const tid of openedTournamentIds) {
+      await cleanupTournament(host, tid);
+    }
     await host?.disconnect();
     await player1?.disconnect();
     await player2?.disconnect();
@@ -75,6 +81,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
       const mine = hostTournaments();
       tid = mine[mine.length - 1].id;
+      openedTournamentIds.push(tid);
 
       await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
       await host.sync();
@@ -134,6 +141,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
     const mine = hostTournaments();
     const draftTid = mine[mine.length - 1].id;
+    openedTournamentIds.push(draftTid);
     expect(mine[mine.length - 1].stage.tag).toBe('Draft');
 
     const msg = await expectReducerError(
@@ -176,6 +184,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
       const mine = hostTournaments();
       tid = mine[mine.length - 1].id;
+      openedTournamentIds.push(tid);
 
       await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
       await host.sync();
@@ -277,6 +286,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
       const mine = hostTournaments();
       tid = mine[mine.length - 1].id;
+      openedTournamentIds.push(tid);
 
       await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
       await host.sync();
@@ -338,6 +348,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
       const mine = hostTournaments();
       tid = mine[mine.length - 1].id;
+      openedTournamentIds.push(tid);
 
       await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
       await host.sync();
