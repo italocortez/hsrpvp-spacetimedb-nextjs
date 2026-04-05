@@ -21,50 +21,9 @@ import {
     sleep,
     type TestHarness,
 } from '../../shared/connection';
-import { DbConnection } from '../../../src/module_bindings';
+import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
-    return {
-        joinCode: '',
-        presetId: 0,
-        teamSize: 1,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'None' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Casual' as const, value: {} },
-        isPublic: true,
-        password: '',
-        standardTurnSeconds: 60,
-        reserveBankSeconds: 120,
-        characterBudget: 100,
-        lightconeBudget: 50,
-        minimumBidRaise: 0.5,
-        rosterDiffAdvantage: 0,
-        rosterThreshold: 0,
-        underThresholdAdvantage: 0,
-        aboveThresholdPenalty: 0,
-        deathPenalty: 0,
-        isAnonymousPlayers: false,
-        isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false,
-        costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 0,
-        allowMirrorPicks: true,
-        autoRandomPick: false,
-        refereeCanUndo: true,
-        refereeCanPause: true,
-        refereeCanSetCaptain: true,
-        refereeCanKick: true,
-        allowPlayerPause: true,
-        teamBlueAlias: 'Blue',
-        teamRedAlias: 'Red',
-        ...overrides,
-    };
-}
 
 /** Get lobbies created by this user */
 function myLobbies(h: TestHarness) {
@@ -141,7 +100,12 @@ async function startDraftAndSync(host: TestHarness, blue: TestHarness, red: Test
 }
 
 /** Cleanup: all members leave a lobby (best-effort, no-throw) */
-async function cleanupLobby(lobbyId: number, ...harnesses: TestHarness[]) {
+/**
+ * Leave-all cleanup: every harness (including host) calls leaveLobby.
+ * Leave-only semantic relies on empty-lobby auto-close; differs from shared
+ * cleanupLobby (host closes after members leave).
+ */
+async function leaveAll(lobbyId: number, ...harnesses: TestHarness[]) {
     for (const h of harnesses) {
         try {
             await h.call.leaveLobby({ lobbyId });
@@ -209,7 +173,7 @@ describe('Classic Draft', () => {
             expect(redParticipant!.teamSide.tag).toBe('Red');
 
             // Cleanup: members leave (lobby in Drafting, closeLobby blocked)
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
         }, 30000);
 
         it('auto-assigns captains when none set', async () => {
@@ -225,7 +189,7 @@ describe('Classic Draft', () => {
             expect(redMember).toBeDefined();
             expect(redMember!.isCaptain).toBe(true);
 
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
         }, 30000);
 
         it('rejects if players not confirmed', async () => {
@@ -257,7 +221,7 @@ describe('Classic Draft', () => {
             expect(err).toContain('All Blue and Red players must be confirmed before starting.');
 
             // Cleanup
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
         }, 30000);
 
         it('rejects if no Blue team player', async () => {
@@ -281,7 +245,7 @@ describe('Classic Draft', () => {
             );
             expect(err).toContain('Blue team must have at least one non-coach player.');
 
-            await cleanupLobby(lobbyId, red, host);
+            await leaveAll(lobbyId, red, host);
         }, 30000);
     });
 
@@ -307,7 +271,7 @@ describe('Classic Draft', () => {
         }, 45000);
 
         afterAll(async () => {
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
             await host?.disconnect();
             await blue?.disconnect();
             await red?.disconnect();
@@ -370,7 +334,7 @@ describe('Classic Draft', () => {
             );
             expect(err).toContain('Character already picked.');
 
-            await cleanupLobby(lid, b2, r2, h2);
+            await leaveAll(lid, b2, r2, h2);
             await h2.disconnect(); await b2.disconnect(); await r2.disconnect();
         }, 45000);
 
@@ -404,7 +368,7 @@ describe('Classic Draft', () => {
             );
             expect(err).toContain('Character is banned and cannot be picked.');
 
-            await cleanupLobby(lid, b3, r3, h3);
+            await leaveAll(lid, b3, r3, h3);
             await h3.disconnect(); await b3.disconnect(); await r3.disconnect();
         }, 60000);
     });
@@ -431,7 +395,7 @@ describe('Classic Draft', () => {
         }, 45000);
 
         afterAll(async () => {
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
             await host?.disconnect();
             await blue?.disconnect();
             await red?.disconnect();
@@ -493,7 +457,7 @@ describe('Classic Draft', () => {
         }, 45000);
 
         afterAll(async () => {
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
             await host?.disconnect();
             await blue?.disconnect();
             await red?.disconnect();
@@ -561,7 +525,7 @@ describe('Classic Draft', () => {
         }, 45000);
 
         afterAll(async () => {
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
             await host?.disconnect();
             await blue?.disconnect();
             await red?.disconnect();
@@ -647,7 +611,7 @@ describe('Classic Draft', () => {
         }, 45000);
 
         afterAll(async () => {
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
             await host?.disconnect();
             await blue?.disconnect();
             await red?.disconnect();
@@ -696,7 +660,7 @@ describe('Classic Draft', () => {
             );
             expect(err).toContain('Player pausing is not allowed in this lobby.');
 
-            await cleanupLobby(lid, b4, r4, h4);
+            await leaveAll(lid, b4, r4, h4);
             await h4.disconnect(); await b4.disconnect(); await r4.disconnect();
         }, 45000);
     });
@@ -754,7 +718,7 @@ describe('Classic Draft', () => {
             );
             expect(err).toContain('Coaches cannot perform draft actions.');
 
-            await cleanupLobby(lobbyId, bluePlayer, blueCoach, redPlayer, host);
+            await leaveAll(lobbyId, bluePlayer, blueCoach, redPlayer, host);
             await host.disconnect();
             await bluePlayer.disconnect();
             await blueCoach.disconnect();

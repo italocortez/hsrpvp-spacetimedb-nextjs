@@ -14,39 +14,13 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
+import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function getUsername(h: TestHarness): string {
     const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
     return user?.username ?? '';
-}
-
-function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
-    return {
-        joinCode: '', presetId: 0, teamSize: 1,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'None' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Casual' as const, value: {} },
-        isPublic: true, password: '',
-        standardTurnSeconds: 60, reserveBankSeconds: 120,
-        characterBudget: 100, lightconeBudget: 50,
-        minimumBidRaise: 0.5, rosterDiffAdvantage: 0,
-        rosterThreshold: 0, underThresholdAdvantage: 0,
-        aboveThresholdPenalty: 0, deathPenalty: 0,
-        isAnonymousPlayers: false, isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false, costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 0,
-        allowMirrorPicks: true, autoRandomPick: false,
-        refereeCanUndo: true, refereeCanPause: true,
-        refereeCanSetCaptain: true, refereeCanKick: true,
-        allowPlayerPause: true,
-        teamBlueAlias: 'Blue', teamRedAlias: 'Red',
-        ...overrides,
-    };
 }
 
 /** Complete a Classic draft with no bans (16 picks: Blue, Red alternating) */

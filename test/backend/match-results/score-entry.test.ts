@@ -19,35 +19,12 @@ import {
     queryPrivateTable,
     type TestHarness,
 } from '../../shared/connection';
+import { defaultLobbyArgs as sharedDefaultLobbyArgs } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
-    return {
-        joinCode: '', presetId: 0, teamSize: 1,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'None' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Ranked' as const, value: {} },
-        isPublic: true, password: '',
-        standardTurnSeconds: 60, reserveBankSeconds: 120,
-        characterBudget: 100, lightconeBudget: 50,
-        minimumBidRaise: 0.5, rosterDiffAdvantage: 0,
-        rosterThreshold: 0, underThresholdAdvantage: 0,
-        aboveThresholdPenalty: 0, deathPenalty: 0,
-        isAnonymousPlayers: false, isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false, costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 0,
-        allowMirrorPicks: true, autoRandomPick: false,
-        refereeCanUndo: true, refereeCanPause: true,
-        refereeCanSetCaptain: true, refereeCanKick: true,
-        allowPlayerPause: true,
-        teamBlueAlias: 'Blue', teamRedAlias: 'Red',
-        ...overrides,
-    };
-}
+const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) =>
+    sharedDefaultLobbyArgs({ matchType: { tag: 'Ranked' as const, value: {} }, ...overrides });
 
 /** Ensure a test player has an HSR account (needed for D-08 LMA gate on Ranked/MMR lobbies) */
 async function ensureHsrAccount(h: TestHarness): Promise<void> {

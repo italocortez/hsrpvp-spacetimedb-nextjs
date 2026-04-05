@@ -22,61 +22,18 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { promoteToAdmin } from '../../shared/helpers/promoteUser';
+import { defaultLobbyArgs as sharedDefaultLobbyArgs, defaultSettingsArgs } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
-    return {
-        joinCode: '', presetId: 0, teamSize: 3,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'Six' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Casual' as const, value: {} },
-        isPublic: true, password: '',
-        standardTurnSeconds: 60, reserveBankSeconds: 120,
-        characterBudget: 500, lightconeBudget: 300, minimumBidRaise: 20,
-        rosterDiffAdvantage: 0, rosterThreshold: 0,
-        underThresholdAdvantage: 0, aboveThresholdPenalty: 0, deathPenalty: 0,
-        isAnonymousPlayers: false, isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false, costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 60,
-        allowMirrorPicks: false, autoRandomPick: false,
-        refereeCanUndo: true, refereeCanPause: true,
-        refereeCanSetCaptain: true, refereeCanKick: true,
-        allowPlayerPause: true,
-        teamBlueAlias: 'Blue', teamRedAlias: 'Red',
-        ...overrides,
-    };
-}
-
-function defaultSettingsArgs(lobbyId: number, overrides: Record<string, unknown> = {}) {
-    return {
-        lobbyId, teamSize: 3,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'Six' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Casual' as const, value: {} },
-        isPublic: true, password: '',
-        standardTurnSeconds: 60, reserveBankSeconds: 120,
-        characterBudget: 500, lightconeBudget: 300, minimumBidRaise: 20,
-        rosterDiffAdvantage: 0, rosterThreshold: 0,
-        underThresholdAdvantage: 0, aboveThresholdPenalty: 0, deathPenalty: 0,
-        isAnonymousPlayers: false, isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false, costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 60,
-        allowMirrorPicks: false, autoRandomPick: false,
-        refereeCanUndo: true, refereeCanPause: true,
-        refereeCanSetCaptain: true, refereeCanKick: true,
-        allowPlayerPause: true,
-        refereeExclusiveConcede: false,
-        teamBlueAlias: 'Blue', teamRedAlias: 'Red',
-        ...overrides,
-    };
-}
+const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) => sharedDefaultLobbyArgs({
+    teamSize: 3,
+    banMode: { tag: 'Six' as const, value: {} },
+    characterBudget: 500, lightconeBudget: 300, minimumBidRaise: 20,
+    disconnectForfeitSeconds: 60,
+    allowMirrorPicks: false,
+    ...overrides,
+});
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 

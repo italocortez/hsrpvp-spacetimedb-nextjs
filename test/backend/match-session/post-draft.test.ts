@@ -21,49 +21,9 @@ import {
     expectReducerError,
     type TestHarness,
 } from '../../shared/connection';
+import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
-    return {
-        joinCode: '',
-        presetId: 0,
-        teamSize: 1,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'None' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Casual' as const, value: {} },
-        isPublic: true,
-        password: '',
-        standardTurnSeconds: 60,
-        reserveBankSeconds: 120,
-        characterBudget: 100,
-        lightconeBudget: 50,
-        minimumBidRaise: 0.5,
-        rosterDiffAdvantage: 0,
-        rosterThreshold: 0,
-        underThresholdAdvantage: 0,
-        aboveThresholdPenalty: 0,
-        deathPenalty: 0,
-        isAnonymousPlayers: false,
-        isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false,
-        costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 0,
-        allowMirrorPicks: true,
-        autoRandomPick: false,
-        refereeCanUndo: true,
-        refereeCanPause: true,
-        refereeCanSetCaptain: true,
-        refereeCanKick: true,
-        allowPlayerPause: true,
-        teamBlueAlias: 'Blue',
-        teamRedAlias: 'Red',
-        ...overrides,
-    };
-}
 
 /** Get MatchSession for a lobby */
 function getSession(h: TestHarness, lobbyId: number) {
@@ -156,8 +116,12 @@ async function completeDraft(blue: TestHarness, red: TestHarness, lobbyId: numbe
     await red.sync(1500);
 }
 
-/** Cleanup: all members leave a lobby (best-effort, no-throw) */
-async function cleanupLobby(lobbyId: number, ...harnesses: TestHarness[]) {
+/**
+ * Cleanup: all members (including host) leave a lobby (best-effort, no-throw).
+ * Differs from shared cleanupLobby (host calls closeLobby) — leave-only semantic
+ * matches post-draft stage where lobbies auto-close on empty.
+ */
+async function leaveAll(lobbyId: number, ...harnesses: TestHarness[]) {
     for (const h of harnesses) {
         try {
             await h.call.leaveLobby({ lobbyId });
@@ -206,7 +170,7 @@ describe('Post-Draft (Equipping + Scoring)', () => {
     }, 120000);
 
     afterAll(async () => {
-        await cleanupLobby(lobbyId, blue, red, host);
+        await leaveAll(lobbyId, blue, red, host);
         await host?.disconnect();
         await blue?.disconnect();
         await red?.disconnect();
@@ -500,7 +464,7 @@ describe('Post-Draft (Equipping + Scoring)', () => {
         }, 30000);
 
         afterAll(async () => {
-            await cleanupLobby(iLobbyId, iBlue, iRed, iHost);
+            await leaveAll(iLobbyId, iBlue, iRed, iHost);
             await iHost?.disconnect();
             await iBlue?.disconnect();
             await iRed?.disconnect();
@@ -611,7 +575,7 @@ describe('Post-Draft (Equipping + Scoring)', () => {
         }, 120000);
 
         afterAll(async () => {
-            await cleanupLobby(cLobbyId, cPlayer, cCoach, cRed, cHost);
+            await leaveAll(cLobbyId, cPlayer, cCoach, cRed, cHost);
             await cHost?.disconnect();
             await cPlayer?.disconnect();
             await cCoach?.disconnect();

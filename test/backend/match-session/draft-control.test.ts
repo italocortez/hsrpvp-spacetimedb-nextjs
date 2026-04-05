@@ -20,49 +20,9 @@ import {
     expectReducerError,
     type TestHarness,
 } from '../../shared/connection';
+import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
-    return {
-        joinCode: '',
-        presetId: 0,
-        teamSize: 1,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'None' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Casual' as const, value: {} },
-        isPublic: true,
-        password: '',
-        standardTurnSeconds: 60,
-        reserveBankSeconds: 120,
-        characterBudget: 100,
-        lightconeBudget: 50,
-        minimumBidRaise: 0.5,
-        rosterDiffAdvantage: 0,
-        rosterThreshold: 0,
-        underThresholdAdvantage: 0,
-        aboveThresholdPenalty: 0,
-        deathPenalty: 0,
-        isAnonymousPlayers: false,
-        isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false,
-        costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 0,
-        allowMirrorPicks: true,
-        autoRandomPick: false,
-        refereeCanUndo: true,
-        refereeCanPause: true,
-        refereeCanSetCaptain: true,
-        refereeCanKick: true,
-        allowPlayerPause: true,
-        teamBlueAlias: 'Blue',
-        teamRedAlias: 'Red',
-        ...overrides,
-    };
-}
 
 /** Get the most recently created lobby by this host */
 function latestLobby(h: TestHarness) {
@@ -121,7 +81,12 @@ async function startDraftAndSync(host: TestHarness, blue: TestHarness, red: Test
 }
 
 /** Cleanup: all members leave a lobby (best-effort, no-throw) */
-async function cleanupLobby(lobbyId: number, ...harnesses: TestHarness[]) {
+/**
+ * Leave-all cleanup: every harness (including host) calls leaveLobby.
+ * Leave-only semantic relies on empty-lobby auto-close; differs from shared
+ * cleanupLobby (host closes after members leave).
+ */
+async function leaveAll(lobbyId: number, ...harnesses: TestHarness[]) {
     for (const h of harnesses) {
         try {
             await h.call.leaveLobby({ lobbyId });
@@ -212,7 +177,7 @@ describe('Draft Controls', () => {
             );
             expect(err).toContain('Coaches cannot perform draft actions.');
 
-            await cleanupLobby(lobbyId, bluePlayer, blueCoach, redPlayer, host);
+            await leaveAll(lobbyId, bluePlayer, blueCoach, redPlayer, host);
         }, 60000);
 
         it('coach cannot ban character', async () => {
@@ -264,7 +229,7 @@ describe('Draft Controls', () => {
             );
             expect(err).toContain('Coaches cannot perform draft actions.');
 
-            await cleanupLobby(lobbyId, bluePlayer, blueCoach, redPlayer, host);
+            await leaveAll(lobbyId, bluePlayer, blueCoach, redPlayer, host);
         }, 60000);
     });
 
@@ -358,7 +323,7 @@ describe('Draft Controls', () => {
             );
             expect(err).toContain('Only the team captain can pick characters.');
 
-            await cleanupLobby(lobbyId, blue1, blue2, red, host);
+            await leaveAll(lobbyId, blue1, blue2, red, host);
         }, 60000);
 
         it('only captain can ban — non-captain blue player blocked', async () => {
@@ -418,7 +383,7 @@ describe('Draft Controls', () => {
             );
             expect(err).toContain('Only the team captain can ban characters.');
 
-            await cleanupLobby(lobbyId, blue1, blue2, red, host);
+            await leaveAll(lobbyId, blue1, blue2, red, host);
         }, 60000);
     });
 
@@ -469,7 +434,7 @@ describe('Draft Controls', () => {
             const undoStep = steps.find(s => s.action.tag === 'Undo');
             expect(undoStep).toBeDefined();
 
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
         }, 60000);
 
         it('undo blocked when refereeCanUndo=false', async () => {
@@ -494,7 +459,7 @@ describe('Draft Controls', () => {
             const sessionAfter = getSession(host, lobbyId);
             expect(sessionAfter!.turnIndex).toBe(1);
 
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
         }, 60000);
     });
 
@@ -572,7 +537,7 @@ describe('Draft Controls', () => {
             expect(session!.timerState.isPaused).toBe(false);
             expect(session!.pausesUsedBlue).toBe(3);
 
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
         }, 60000);
 
         it('referee has unlimited pauses', async () => {
@@ -602,7 +567,7 @@ describe('Draft Controls', () => {
             expect(sessionFinal!.pausesUsedBlue).toBe(0);
             expect(sessionFinal!.pausesUsedRed).toBe(0);
 
-            await cleanupLobby(lobbyId, blue, red, host);
+            await leaveAll(lobbyId, blue, red, host);
         }, 60000);
     });
 });
