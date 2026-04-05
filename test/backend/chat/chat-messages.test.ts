@@ -20,7 +20,7 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
-import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { defaultLobbyArgs, cleanupLobby } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -47,6 +47,7 @@ describe('Chat Messages', () => {
     let memberA: TestHarness;
     let memberB: TestHarness;
     let outsider: TestHarness;
+    const openedLobbyIds: number[] = [];
 
     beforeAll(async () => {
         host = await createVerifiedTestHarness();
@@ -61,6 +62,11 @@ describe('Chat Messages', () => {
     }, 30000);
 
     afterAll(async () => {
+        // D-03: strict cleanup per resource opened (safety net — tests already
+        // close most lobbies inline; cleanupLobby swallows already-closed errors)
+        for (const lobbyId of openedLobbyIds) {
+            await cleanupLobby(host, [memberA, memberB], lobbyId).catch(() => {});
+        }
         await host?.disconnect();
         await memberA?.disconnect();
         await memberB?.disconnect();
@@ -74,6 +80,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -103,6 +110,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -141,6 +149,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -171,6 +180,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -191,6 +201,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -211,6 +222,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -235,6 +247,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -255,6 +268,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -279,6 +293,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -303,6 +318,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             // outsider is not in the lobby
             const err = await expectReducerError(
@@ -323,6 +339,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -352,6 +369,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -391,6 +409,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -427,6 +446,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -474,6 +494,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             const sysBefore = systemMessages(host, lobby.id).length;
 
@@ -500,6 +521,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -524,6 +546,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -548,6 +571,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberB.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberB.sync();
@@ -576,6 +600,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs({ isAnonymousPlayers: true }));
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -615,6 +640,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs({ isAnonymousPlayers: false, isAnonymousSpectators: false }));
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
@@ -645,6 +671,7 @@ describe('Chat Messages', () => {
             await host.call.createLobby(defaultLobbyArgs());
             await host.sync(1500);
             const lobby = myLobbies(host)[myLobbies(host).length - 1];
+            openedLobbyIds.push(lobby.id);
 
             await memberA.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await memberA.sync();
