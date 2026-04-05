@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 11
-current_plan: Not started
-status: planning
-last_updated: "2026-04-04T13:37:38.854Z"
+current_phase: 10.5
+current_plan: 2
+status: executing
+last_updated: "2026-04-05T16:10:19.060Z"
 progress:
   total_phases: 17
   completed_phases: 15
-  total_plans: 47
-  completed_plans: 47
+  total_plans: 52
+  completed_plans: 48
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 11
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current phase:** 10.5
+**Current plan:** 2
+**Status:** Executing Phase 10.5
 
 ## Decisions
 
@@ -141,6 +141,9 @@ See: .planning/PROJECT.md
 - [Phase 10.4]: view_public_accounts uses iter() on HsrAccount — no isRosterPublic btree index, but ~300 rows is acceptable
 - [Phase 10.4]: view_tournament_registrant_accounts includes both enrolled and TO/assistant paths via getMyTournamentIds helper
 - [Phase 10.4]: accountSelection.ts export added to index.ts post-verification — SpacetimeDB bundler requires explicit exports (not auto-discovery)
+- [Phase 10.5]: CLI syntax migrated: spacetime publish uses --delete-data=always --yes <db-name> (new required positional arg)
+- [Phase 10.5]: Fresh-DB baseline fully green (41/41 integration files, 673/673 total) — Phase 10.4 exit failures confirmed pollution-driven per research hypothesis
+- [Phase 10.5]: Plan 04 bisect re-scoped: induce pollution via repeated test:all runs, then bisect to earliest polluter (not find existing failures)
 
 ### Quick Tasks Completed
 
@@ -203,3 +206,5 @@ See: .planning/PROJECT.md
 - 2026-04-04: Completed 10.4-02-PLAN.md — LobbyMemberAccount wired into all lifecycle touchpoints (join/leave/GC cascade), deletion guards in delete_hsr_account and admin_delete_hsr_account, validateCharacterOwnership refactored to use LMA exclusively (D-14), start_draft D-08 account gate for Ranked/MMR-tournament lobbies, stand-in TPA snapshot on join (D-26)
 - 2026-04-04: Completed 10.4-03-PLAN.md — view_my_roster_visibility updated to filter by LobbyMemberAccount (D-15) + D-18 anon override, 3 new views (view_my_roster, view_public_accounts, view_tournament_registrant_accounts), 4 architecture docs + 4 contract docs updated, module published --clear-database, bindings regenerated (2 private table files deleted), 181/181 tests pass
 - 2026-04-04: Phase 10.4 complete — LobbyMemberAccount table, select/deselect_match_account reducers, lifecycle wiring, deletion guards, ownership refactor, start_draft gate, 3 new views, index.ts export gap fixed post-verification, re-published to maincloud, 181/181 tests pass
+- 2026-04-05: Phase 10.5 context gathered (discuss mode) — 12 decisions locked (failure-driven bisect audit, per-domain helper subdir, strict afterAll cleanup, self-contained seeding, fix-only scope, test/README.md runtime baseline, phase AUDIT.md report, per-file atomic commits, static-data-only global seed, clear-database reset, minimum-data principle, server identity singleton)
+- 2026-04-05: Completed 10.5-01-PLAN.md — fresh-DB baseline captured (54m39s wall-clock, 3277.33s vitest Duration), 673/673 tests pass (41/41 integration + 11/11 unit files), 10.5-AUDIT.md created with 6 required sections + 41-file Per-File Matrix, test/README.md Suite Runtime section added, Phase 10.4 cross-file failures confirmed pollution-driven per research hypothesis
