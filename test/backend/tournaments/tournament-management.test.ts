@@ -7,10 +7,12 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 describe.skipIf(!hasServerToken())('Tournament Management', () => {
   let h: TestHarness;
   let tournamentId: number;
+  const openedTournamentIds: number[] = [];
 
   const myTournaments = () => [...h.conn.db.Tournament.iter()].filter(t => t.organizerId === h.userId);
 
@@ -72,9 +74,14 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
 
     const mine = myTournaments();
     tournamentId = mine[mine.length - 1].id;
+    openedTournamentIds.push(tournamentId);
   }, 30000);
 
   afterAll(async () => {
+    // D-03: strict cleanup per resource opened
+    for (const tid of openedTournamentIds) {
+      await cleanupTournament(h, tid);
+    }
     await h?.disconnect();
   });
 
@@ -181,6 +188,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
 
     const cancelTarget = myTournaments().find(t => t.name === 'Cancel For Update Test');
     expect(cancelTarget).toBeDefined();
+    openedTournamentIds.push(cancelTarget!.id);
 
     await h.call.cancelTournament({ tournamentId: cancelTarget!.id });
     await h.sync();
