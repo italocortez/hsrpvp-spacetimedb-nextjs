@@ -30,4 +30,5 @@ export default {
   waitlistEnabled: __t.bool(),
   scheduledStartAt: __t.string(),
   registrationDeadline: __t.string(),
+  maxAccountsPerPlayer: __t.u8(),
 };

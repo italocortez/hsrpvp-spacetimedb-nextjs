@@ -46,6 +46,7 @@ export { equip_lightcone, arrange_lineup, confirm_lineup, advance_stage } from '
 export { concede_match, claim_forfeit, defer_match } from './reducers/concede';
 export { advance_to_next_game, shelve_series, resume_series } from './reducers/seriesManagement';
 export { admin_force_finalize, admin_void_match, admin_set_bracket_winner } from './reducers/adminMatchTools';
+export { select_match_account, deselect_match_account } from './reducers/accountSelection';
 
 spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);

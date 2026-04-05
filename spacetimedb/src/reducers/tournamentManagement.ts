@@ -47,6 +47,7 @@ export const create_tournament = spacetimedb.reducer(
         waitlistEnabled: t.bool(),
         scheduledStartAt: t.string(),
         registrationDeadline: t.string(),
+        maxAccountsPerPlayer: t.u8(),
     },
     (ctx, {
         name,
@@ -72,6 +73,7 @@ export const create_tournament = spacetimedb.reducer(
         waitlistEnabled,
         scheduledStartAt,
         registrationDeadline,
+        maxAccountsPerPlayer,
     }) => {
         const user = ensureTournamentHost(ctx);
 
@@ -104,6 +106,11 @@ export const create_tournament = spacetimedb.reducer(
         // Validate groupSize
         if (groupSize < 3) {
             throw new SenderError('groupSize must be at least 3.');
+        }
+
+        // Validate maxAccountsPerPlayer (0 = default 1)
+        if (maxAccountsPerPlayer > 10) {
+            throw new SenderError('maxAccountsPerPlayer must be 0-10.');
         }
 
         // Validate enum tags
@@ -173,6 +180,7 @@ export const create_tournament = spacetimedb.reducer(
             minimumMmr: minimumMmr > 0 ? minimumMmr : undefined,
             requireApproval,
             waitlistEnabled,
+            maxAccountsPerPlayer: maxAccountsPerPlayer > 0 ? maxAccountsPerPlayer : 1,
             scheduledStartAt: parsedScheduledStartAt !== undefined ? new Timestamp(parsedScheduledStartAt) : undefined,
             registrationDeadline: parsedRegistrationDeadline !== undefined ? new Timestamp(parsedRegistrationDeadline) : undefined,
             ...auditInsert(ctx, user.id),
@@ -205,6 +213,7 @@ export const update_tournament = spacetimedb.reducer(
         waitlistEnabled: t.bool(),
         scheduledStartAt: t.string(),
         registrationDeadline: t.string(),
+        maxAccountsPerPlayer: t.u8(),
     },
     (ctx, {
         tournamentId,
@@ -226,6 +235,7 @@ export const update_tournament = spacetimedb.reducer(
         waitlistEnabled,
         scheduledStartAt,
         registrationDeadline,
+        maxAccountsPerPlayer,
     }) => {
         const { user, tournament } = ensureTournamentAccess(ctx, tournamentId);
 
@@ -258,6 +268,11 @@ export const update_tournament = spacetimedb.reducer(
         // Validate groupSize
         if (groupSize < 3) {
             throw new SenderError('groupSize must be at least 3.');
+        }
+
+        // Validate maxAccountsPerPlayer (0 = default 1)
+        if (maxAccountsPerPlayer > 10) {
+            throw new SenderError('maxAccountsPerPlayer must be 0-10.');
         }
 
         // Validate enum tags
@@ -310,6 +325,7 @@ export const update_tournament = spacetimedb.reducer(
             minimumMmr: minimumMmr > 0 ? minimumMmr : undefined,
             requireApproval,
             waitlistEnabled,
+            maxAccountsPerPlayer: maxAccountsPerPlayer > 0 ? maxAccountsPerPlayer : 1,
             scheduledStartAt: parsedScheduledStartAt !== undefined ? new Timestamp(parsedScheduledStartAt) : undefined,
             registrationDeadline: parsedRegistrationDeadline !== undefined ? new Timestamp(parsedRegistrationDeadline) : undefined,
             ...auditUpdate(ctx, tournament, user.id),
