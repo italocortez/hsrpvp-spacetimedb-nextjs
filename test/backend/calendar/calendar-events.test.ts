@@ -68,6 +68,7 @@ describe('Calendar Events & Invites', () => {
 
     // Track event IDs for use across tests
     let mainEventId: number;
+    const createdCalendarEventIds: number[] = [];
 
     beforeAll(async () => {
         organizer = await createVerifiedTestHarness();
@@ -84,6 +85,13 @@ describe('Calendar Events & Invites', () => {
     }, 30000);
 
     afterAll(async () => {
+        // D-03: strict cleanup per resource opened
+        for (const id of createdCalendarEventIds) {
+            try {
+                await organizer.call.deleteCalendarEvent({ eventId: id });
+                await organizer.sync(300);
+            } catch (_) { /* already deleted */ }
+        }
         await organizer?.disconnect();
         await inviteeA?.disconnect();
         await inviteeB?.disconnect();
@@ -108,6 +116,7 @@ describe('Calendar Events & Invites', () => {
         const event = events[events.length - 1];
         expect(event.title).toBe('Team Practice');
         mainEventId = event.id;
+        createdCalendarEventIds.push(mainEventId);
 
         // Check invites created with Pending status
         const invites = eventInvites(organizer, mainEventId);
@@ -128,6 +137,7 @@ describe('Calendar Events & Invites', () => {
         const events = myEvents(organizer);
         const event = events.find(e => e.title === 'Personal Time');
         expect(event).toBeDefined();
+        createdCalendarEventIds.push(event!.id);
 
         const invites = eventInvites(organizer, event!.id);
         expect(invites.length).toBe(0);
@@ -154,6 +164,7 @@ describe('Calendar Events & Invites', () => {
         await organizer.call.createCalendarEvent(eventArgs({ title: 'Invite Test' }));
         await organizer.sync(1500);
         const event = myEvents(organizer).find(e => e.title === 'Invite Test')!;
+        createdCalendarEventIds.push(event.id);
 
         await organizer.call.inviteToEvent({
             eventId: event.id,
@@ -215,6 +226,7 @@ describe('Calendar Events & Invites', () => {
         }));
         await organizer.sync(1500);
         const event = myEvents(organizer).find(e => e.title === 'Cap Test')!;
+        createdCalendarEventIds.push(event.id);
         expect(eventInvites(organizer, event.id).length).toBe(9);
 
         // 10th invite via invite_to_event should fail
@@ -315,6 +327,7 @@ describe('Calendar Events & Invites', () => {
         await organizer.sync(1500);
 
         const event = myEvents(organizer).find(e => e.title === 'Cascade Delete Test')!;
+        createdCalendarEventIds.push(event.id);
         expect(eventInvites(organizer, event.id).length).toBe(2);
 
         await organizer.call.deleteCalendarEvent({ eventId: event.id });
