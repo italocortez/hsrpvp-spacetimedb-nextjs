@@ -27,6 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10.1: Match Schema Rework** - Best-of-N series, team-centric model, winnerTeamSide, tournamentId/lobbyId removal (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.3: Tournament Organizer Views** - TO-scoped server-side views replacing full-table subscriptions (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED) (completed 2026-04-04)
+- [ ] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED)
 - [ ] **Phase 11: Archetype Playstyle Stats** - PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag, same PK pattern as stat tables
 
 ## Phase Details
@@ -313,6 +314,22 @@ Plans:
 - [x] 10.4-01-PLAN.md — Schema foundation: LobbyMemberAccount table, Tournament.maxAccountsPerPlayer, TournamentEnrolled.hsrAccountId removal, HsrAccount/HsrAccountCharacter privacy, select_match_account reducer
 - [x] 10.4-02-PLAN.md — Cascade wiring: join_lobby auto-create, leave_lobby cascade, hardDeleteLobby cascade, deletion guards, ownership validation refactor, start_draft gate
 - [x] 10.4-03-PLAN.md — Views + docs: roster visibility update + anon fix, 3 new views, architecture + contract docs, publish --clear-database, generate bindings
+
+### Phase 10.5: Test Suite Stabilization (INSERTED)
+
+**Goal:** Audit and stabilize the integration test suite so the full suite (`npm run test:all`) runs green end-to-end. Phase 10.4 exposed multiple cross-file interference issues (DB state pollution, missing cleanup, sequential dependencies) that don't appear when tests run in isolation. Address them systematically rather than patching each failure as it arises.
+**Depends on:** Phase 10.4 (all schema + test migration in place)
+**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04
+**Success Criteria** (what must be TRUE):
+  1. `npm run test:all` passes with 0 failures and 0 cross-file interference skips on a fresh `--clear-database` + bootstrap
+  2. Every test file that creates lobbies/tournaments cleans them up in `afterAll` (close_lobby, cancel_tournament, disconnect harnesses) — no stale rows left for the next file
+  3. Test files with sequential dependencies on shared DB state (e.g. ELO config seeding in mmr-stats) are either self-contained (seed their own dependencies) or explicitly documented in test-ordering docs
+  4. Integration test harness helpers (`ensureHsrAccount`, `promoteUser`, etc.) are extracted to `test/shared/` so they don't drift across duplicate copies in individual test files
+  5. Full suite runtime is documented with a baseline — regression detection in future phases
+  6. Test failure reports distinguish "file passes in isolation but fails in suite" from "file fails in isolation" — cross-file bugs get fixed at suite level, not per-file
+**Plans:** 0 plans
+Plans:
+- [ ] TBD (run /gsd:plan-phase 10.5 to break down)
 
 ### Phase 11: Archetype Playstyle Stats
 **Goal**: Track playstyle stats when 3+ picks in a draft share an archetype tag; auto-increment during finalization pipeline

@@ -7,7 +7,7 @@ current_plan: Not started
 status: planning
 last_updated: "2026-04-04T13:37:38.854Z"
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 15
   total_plans: 47
   completed_plans: 47
@@ -163,6 +163,7 @@ See: .planning/PROJECT.md
 - Phase 10.2 inserted after Phase 10.1: Remove tournamentId from MatchResultRecord — single source of truth, derive from bracketMatch.tournamentId (URGENT)
 - Phase 10.3 inserted after Phase 10.1: Tournament Organizer Views — TO-scoped server-side views (view_my_tournaments, view_tournament_dashboard, view_tournament_match_status) to reduce frontend bandwidth
 - Phase 10.4 inserted after Phase 10.3: Account Selection Per Match — multi-account per match, account switching between games, drop TournamentEnrolled.hsrAccountId
+- Phase 10.5 inserted after Phase 10.4: Test Suite Stabilization — audit cross-file failures, test isolation, cleanup hygiene exposed after 10.4 schema changes
 
 ## Session Log
 
