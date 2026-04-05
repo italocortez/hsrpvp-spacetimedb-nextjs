@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 10.5
-current_plan: 3
+current_plan: 4
 status: executing
-last_updated: "2026-04-05T17:05:00.000Z"
+last_updated: "2026-04-05T18:49:14.839Z"
 progress:
   total_phases: 17
   completed_phases: 15
   total_plans: 52
-  completed_plans: 49
+  completed_plans: 50
 ---
 
 # Session State
@@ -147,6 +147,9 @@ See: .planning/PROJECT.md
 - [Phase 10.5]: defaultLobbyArgs union-superset includes bestOf + refereeControlsShelving (Phase 10.4); defaultSettingsArgs includes refereeExclusiveConcede (Phase 10); createTournamentArgs includes maxAccountsPerPlayer (Phase 10.4) — resolved 100 pre-existing typecheck errors
 - [Phase 10.5]: cleanupLobby canonical (host, members[], lobbyId) with host-close semantic; 3 draft-session files kept leave-only variadic renamed to leaveAll (distinct semantic, not drift)
 - [Phase 10.5]: Arrow-fn wrappers (const name = (args) => sharedHelper({...overrides})) used for per-file override variants — satisfies 'zero function defaultX' grep criterion while preserving per-file defaults
+- [Phase 10.5-03]: 13 RED-classified test files gained strict afterAll cleanup per D-03; tracked-resource arrays wired to cleanupTournament/cleanupLobby/deleteCalendarEvent/deleteAchievement safety nets
+- [Phase 10.5-03]: Tournament rows PERSIST after cancelTournament (audit trail per D-21); cleanup contract's goal is transitioning dynamic resources to terminal states (Cancelled) not zero row count
+- [Phase 10.5-03]: AwaitingResult lobbies (Ranked MMR path) need admin_void_match BEFORE closeLobby per Pitfall 3; tournament-mmr + bracket-advancement afterAll use dual-attempt fallback pattern
 
 ### Quick Tasks Completed
 
@@ -212,3 +215,4 @@ See: .planning/PROJECT.md
 - 2026-04-05: Phase 10.5 context gathered (discuss mode) — 12 decisions locked (failure-driven bisect audit, per-domain helper subdir, strict afterAll cleanup, self-contained seeding, fix-only scope, test/README.md runtime baseline, phase AUDIT.md report, per-file atomic commits, static-data-only global seed, clear-database reset, minimum-data principle, server identity singleton)
 - 2026-04-05: Completed 10.5-01-PLAN.md — fresh-DB baseline captured (54m39s wall-clock, 3277.33s vitest Duration), 673/673 tests pass (41/41 integration + 11/11 unit files), 10.5-AUDIT.md created with 6 required sections + 41-file Per-File Matrix, test/README.md Suite Runtime section added, Phase 10.4 cross-file failures confirmed pollution-driven per research hypothesis
 - 2026-04-05: Completed 10.5-02-PLAN.md — 8 shared helper files created (test/shared/helpers/), 70+ inline helper copies collapsed across 34 test files, 1991 LOC removed (706 added = -1285 net), 100 pre-existing typecheck errors resolved (169→69) via union-superset defaults, 5 atomic task commits, runtime verified via lobby-lifecycle/anonymous-labels/post-draft/disconnect-gc (64/64 tests pass) + 187/187 unit tests
+- 2026-04-05: Completed 10.5-03-PLAN.md — 13 RED-classified test files gained strict afterAll cleanup per D-03 (tournament-mmr/registration/teams/stages/admin/management/cancel-cleanup, bracket-advancement, group-to-elimination, calendar-events, achievement-management, chat-messages, lobby-lifecycle); admin_void_match fallback for AwaitingResult lobbies wired in tournament-mmr + bracket-advancement per Pitfall 3; 13 atomic task commits + 1 AUDIT.md metrics commit; full suite 673/673 pass on fresh DB (55min); cleanup effectiveness: calendar_event 4→0 (100%), achievement 10→0 (100%), bracket_match 46→5 (89%), tournament/lobby partial (audit-retained rows persist by design)
