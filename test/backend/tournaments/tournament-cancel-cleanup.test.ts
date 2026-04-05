@@ -31,6 +31,7 @@ import {
     createTournamentArgs as sharedCreateTournamentArgs,
     setupRegistrationTournament as sharedSetupRegistrationTournament,
     advanceToInProgress,
+    cleanupTournament,
 } from '../../shared/helpers/tournaments';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
     let p1: TestHarness;
     let p2: TestHarness;
     let assistant: TestHarness;
+    const openedTournamentIds: number[] = [];
 
     beforeAll(async () => {
         toUser = await createVerifiedTestHarness();
@@ -72,6 +74,11 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
     }, 60000);
 
     afterAll(async () => {
+        // D-03: strict cleanup per resource opened (safety net — tests already
+        // cancel most tournaments as part of scenarios; swallow terminal errors)
+        for (const tid of openedTournamentIds) {
+            await cleanupTournament(toUser, tid);
+        }
         await toUser?.disconnect();
         await p1?.disconnect();
         await p2?.disconnect();
@@ -85,6 +92,7 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
 
         beforeAll(async () => {
             tournamentId = await setupRegistrationTournament(toUser, [p1, p2]);
+            openedTournamentIds.push(tournamentId);
 
             // Assign an assistant so cascade has something to delete
             await toUser.call.assignTournamentAssistant({
@@ -157,6 +165,7 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
             tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
                 name: `Cancel InProg ${Date.now()}`,
             });
+            openedTournamentIds.push(tournamentId);
             await advanceToInProgress(toUser, tournamentId);
         }, 45000);
 
@@ -206,6 +215,7 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
             tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
                 name: `Cancel Comp ${Date.now()}`,
             });
+            openedTournamentIds.push(tournamentId);
             await advanceToInProgress(toUser, tournamentId);
 
             // Fast-track to Completed (no match validation required)
@@ -233,6 +243,7 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
             tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
                 name: `Cancel Calendar ${Date.now()}`,
             });
+            openedTournamentIds.push(tournamentId);
             await advanceToInProgress(toUser, tournamentId);
 
             // Find a bracket match
@@ -301,6 +312,7 @@ describe.skipIf(!hasServerToken())('Tournament Cancel & Cleanup', () => {
                 t => t.organizerId === toUser.userId
             );
             tournamentId = tournaments[tournaments.length - 1].id;
+            openedTournamentIds.push(tournamentId);
         }, 15000);
 
         it('reassigning assistant updates permissions (upsert)', async () => {
