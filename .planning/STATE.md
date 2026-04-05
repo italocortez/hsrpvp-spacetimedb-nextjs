@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
 current_phase: 10.5
-current_plan: 4
+current_plan: 5
 status: executing
-last_updated: "2026-04-05T18:49:14.839Z"
+last_updated: "2026-04-05T19:57:27.685Z"
 progress:
   total_phases: 17
   completed_phases: 15
   total_plans: 52
-  completed_plans: 50
+  completed_plans: 51
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v0.5 milestone
 **Current phase:** 10.5
-**Current plan:** 3
+**Current plan:** 5
 **Status:** Executing Phase 10.5
 
 ## Decisions
@@ -150,6 +150,8 @@ See: .planning/PROJECT.md
 - [Phase 10.5-03]: 13 RED-classified test files gained strict afterAll cleanup per D-03; tracked-resource arrays wired to cleanupTournament/cleanupLobby/deleteCalendarEvent/deleteAchievement safety nets
 - [Phase 10.5-03]: Tournament rows PERSIST after cancelTournament (audit trail per D-21); cleanup contract's goal is transitioning dynamic resources to terminal states (Cancelled) not zero row count
 - [Phase 10.5-03]: AwaitingResult lobbies (Ranked MMR path) need admin_void_match BEFORE closeLobby per Pitfall 3; tournament-mmr + bracket-advancement afterAll use dual-attempt fallback pattern
+- [Phase 10.5]: Plan 04 Exit Condition triggered — zero failures on 2nd test:all against populated DB; Tasks 2-3 auto-skipped (Plans 02+03 mechanically eliminated all pollution vectors)
+- [Phase 10.5]: Plan 04 validated pollution-resistance: 673/673 PASS on populated DB after 1 hour; calendar_event + achievement STABLE at 0 across 2 consecutive runs; tournament/lobby grow linearly-per-run (audit-retained per D-21)
 
 ### Quick Tasks Completed
 
@@ -216,3 +218,4 @@ See: .planning/PROJECT.md
 - 2026-04-05: Completed 10.5-01-PLAN.md — fresh-DB baseline captured (54m39s wall-clock, 3277.33s vitest Duration), 673/673 tests pass (41/41 integration + 11/11 unit files), 10.5-AUDIT.md created with 6 required sections + 41-file Per-File Matrix, test/README.md Suite Runtime section added, Phase 10.4 cross-file failures confirmed pollution-driven per research hypothesis
 - 2026-04-05: Completed 10.5-02-PLAN.md — 8 shared helper files created (test/shared/helpers/), 70+ inline helper copies collapsed across 34 test files, 1991 LOC removed (706 added = -1285 net), 100 pre-existing typecheck errors resolved (169→69) via union-superset defaults, 5 atomic task commits, runtime verified via lobby-lifecycle/anonymous-labels/post-draft/disconnect-gc (64/64 tests pass) + 187/187 unit tests
 - 2026-04-05: Completed 10.5-03-PLAN.md — 13 RED-classified test files gained strict afterAll cleanup per D-03 (tournament-mmr/registration/teams/stages/admin/management/cancel-cleanup, bracket-advancement, group-to-elimination, calendar-events, achievement-management, chat-messages, lobby-lifecycle); admin_void_match fallback for AwaitingResult lobbies wired in tournament-mmr + bracket-advancement per Pitfall 3; 13 atomic task commits + 1 AUDIT.md metrics commit; full suite 673/673 pass on fresh DB (55min); cleanup effectiveness: calendar_event 4→0 (100%), achievement 10→0 (100%), bracket_match 46→5 (89%), tournament/lobby partial (audit-retained rows persist by design)
+- 2026-04-05: Completed 10.5-04-PLAN.md — 2nd test:all against populated post-Plan-03 DB yielded 673/673 PASS (41/41 integration + 11/11 unit, 3314.33s + 917ms); Plan 04 exit condition triggered (zero failures → Tasks 2-3 auto-skipped); File↔Polluter Matrix empty-by-result; calendar_event + achievement STABLE at 0 across 2 consecutive runs; tournament/lobby linear-per-run growth confirms audit-retained semantic working; TEST-01 + TEST-03 requirements completed

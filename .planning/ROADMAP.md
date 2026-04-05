@@ -327,12 +327,12 @@ Plans:
   4. Integration test harness helpers (`ensureHsrAccount`, `promoteUser`, etc.) are extracted to `test/shared/` so they don't drift across duplicate copies in individual test files
   5. Full suite runtime is documented with a baseline — regression detection in future phases
   6. Test failure reports distinguish "file passes in isolation but fails in suite" from "file fails in isolation" — cross-file bugs get fixed at suite level, not per-file
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 Plans:
 - [x] 10.5-01-PLAN.md — Capture baseline failure inventory + AUDIT.md seed + test/README runtime entry
 - [x] 10.5-02-PLAN.md — Extract ~70 inline test helpers to test/shared/helpers/ (8 domain files)
 - [x] 10.5-03-PLAN.md — Add strict afterAll cleanup to 13 RED-category test files (D-03)
-- [ ] 10.5-04-PLAN.md — Bisect cross-file failures + fix root causes (D-01) until test:all is green
+- [x] 10.5-04-PLAN.md — Bisect cross-file failures + fix root causes (D-01) until test:all is green
 - [ ] 10.5-05-PLAN.md — Finalize AUDIT.md lessons learned + post-fix runtime baseline
 
 ### Phase 11: Archetype Playstyle Stats
