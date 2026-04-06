@@ -12,6 +12,7 @@ export { delete_guest_account, update_display_name, update_username, update_avat
 export { register_server, server_link_discord, server_set_role, server_delete_user, server_set_mmr } from './reducers/server';
 export { admin_delete_row, admin_bulk_upsert, admin_update_user } from './reducers/admin';
 export { admin_update_elo_config, admin_seed_elo_config } from './reducers/eloAdmin';
+export { admin_seed_rating_config, admin_update_rating_config, admin_recalculate_all_ratings } from './reducers/ratingAdmin';
 export { run_user_deletion } from './reducers/userDeletion';
 export { create_hsr_account, update_hsr_account, set_active_hsr_account, delete_hsr_account, batch_upsert_characters, batch_remove_characters, migrate_roster } from './reducers/roster';
 export { admin_create_hsr_account, admin_update_hsr_account, admin_delete_hsr_account, admin_batch_upsert_characters, admin_batch_remove_characters, admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetypes, admin_remove_character_archetypes } from './reducers/rosterAdmin';
