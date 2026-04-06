@@ -241,8 +241,65 @@ When the user asks you to write tests:
 2. Optionally read the architecture doc (`docs/{feature}/architecture.md`) for table/reducer context
 3. Import `createTestHarness` / `createVerifiedTestHarness` from `test/shared/connection.ts`
 4. Use `test/shared/fixtures.ts` for data factories
-5. Each test validates a behavior from the spec's Acceptance Scenarios section
-6. Place test files in `test/backend/{feature}/`
+5. **Use shared helpers from `test/shared/helpers/`** — never inline helpers that already exist there
+6. Each test validates a behavior from the spec's Acceptance Scenarios section
+7. Place test files in `test/backend/{feature}/`
+
+### Shared Helpers (`test/shared/helpers/`)
+
+Always import from these instead of writing inline copies. Phase 10.5 extracted these to eliminate 70+ duplicated helpers that caused typecheck drift and maintenance burden.
+
+| Helper | File | What it provides |
+|--------|------|-----------------|
+| `promoteUser`, `promoteToRole` | `promoteUser.ts` | Promote a user to a role via server connection |
+| `defaultLobbyArgs` | `lobbies.ts` | Union-superset defaults for `create_lobby` (includes all required fields) |
+| `defaultSettingsArgs` | `lobbies.ts` | Union-superset defaults for `update_lobby_settings` |
+| `cleanupLobby` | `lobbies.ts` | Leave all members + close lobby (swallows errors) |
+| `gameScoreArgs` | `scores.ts` | Defaults for `record_game_scores` with all optional fields as `undefined` |
+| `createTournamentArgs` | `tournaments.ts` | Union-superset defaults for `create_tournament` (includes `maxAccountsPerPlayer`) |
+| `setupRegistrationTournament` | `tournaments.ts` | Create tournament → Registration → register players |
+| `advanceToInProgress` | `tournaments.ts` | Registration → Seeding → seed → generate → InProgress |
+| `cleanupTournament` | `tournaments.ts` | Cancel tournament (swallows errors) |
+| `completeDraft`, `advanceToScoring` | `drafts.ts` | Run a full draft sequence to completion |
+| `ensureHsrAccount` | `hsrAccounts.ts` | Idempotent HSR account creation per user |
+| `ensureEloConfig` | `seed.ts` | Idempotent Elo config seeding |
+| `getUsername` | `users.ts` | Get username from harness user ID |
+| `myLobbies`, `lobbyMembers` | `queries.ts` | Common query shortcuts |
+
+When a new reducer adds a required field (like Phase 10.4 added `maxAccountsPerPlayer`), update the shared helper — all callers inherit the fix.
+
+### afterAll Cleanup Contract
+
+**Every test file that creates lobbies, tournaments, achievements, or calendar events MUST clean up in `afterAll`.** This prevents cross-file state pollution when `npm run test:all` runs files sequentially on the same DB.
+
+Pattern:
+```typescript
+const createdLobbyIds: number[] = [];
+const createdTournamentIds: number[] = [];
+
+// In tests — track every created resource
+createdLobbyIds.push(lobbyId);
+
+// afterAll — unconditional cleanup
+afterAll(async () => {
+    for (const id of createdTournamentIds) {
+        await cleanupTournament(toUser, id);
+    }
+    for (const id of createdLobbyIds) {
+        await cleanupLobby(host, members, id);
+    }
+});
+```
+
+**Why:** Phase 10.4 exposed that tests pass in isolation but fail in suite due to leftover rows from earlier files (orphaned lobbies, tournaments, achievements). Phase 10.5 added this contract to all 13 affected files and verified the full suite runs green on both fresh and populated DBs.
+
+### TypeScript Correctness for Reducer Args
+
+When writing reducer calls in tests, match the generated bindings exactly:
+
+1. **Unit enums** — `{ tag: 'BluePlayer' }`, NOT `{ tag: 'BluePlayer', value: {} }`. The SDK tolerates the extra property at runtime but TypeScript flags it.
+2. **Optional fields** — pass `undefined` for optional reducer params you don't need (e.g. `teamBlueScore: undefined`). Don't omit them — the generated type requires all keys.
+3. **All required fields** — include every field the reducer expects. When new fields are added to reducers, update the shared helpers first, then callers inherit.
 
 ### Environment
 
@@ -469,9 +526,13 @@ This creates a paper trail independent of the UAT.md file. When a UAT spans mult
 
 ```
 test/
-├── shared/           # connection.ts harness, fixtures.ts, mocks/
-├── data/             # GITIGNORED — raw game data JSONs
-├── data-templates/   # COMMITTED — shows expected JSON structure
-├── backend/{feature}/ # Feature tests (.test.ts files)
-└── frontend/         # Future (v1.0)
+├── shared/
+│   ├── connection.ts   # Test harness (createTestHarness, createVerifiedTestHarness)
+│   ├── fixtures.ts     # Data factories
+│   ├── helpers/        # Shared reducer arg helpers (Phase 10.5) — see Writing Tests
+│   └── mocks/
+├── data/               # GITIGNORED — raw game data JSONs
+├── data-templates/     # COMMITTED — shows expected JSON structure
+├── backend/{feature}/  # Feature tests (.test.ts files)
+└── frontend/           # Future (v1.0)
 ```
