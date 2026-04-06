@@ -44,7 +44,13 @@ const chars = rawChars.map((c: any) => ({
   element: cap(c.element),
   role: cap(c.role),
   imageUrl: c.imageUrl || '',
+  versionReleased: c.version_released ?? 0,
+  treatAsVersion: c.treat_as_version ?? 0,
 }));
+
+// Extract unique archetype names from JSON (D-35)
+const archetypeNames = [...new Set(rawChars.flatMap((c: any) => c.archetype || []))].sort() as string[];
+const archetypes = archetypeNames.map((name: string) => ({ name, description: '' }));
 
 const charCosts: any[] = [];
 for (const c of rawChars) {
@@ -103,6 +109,7 @@ const tables: [string, string, any[]][] = [
   ['HsrLightcone', 'lightcones', lightcones],
   ['HsrCharacterCost', 'character costs', charCosts],
   ['HsrLightconeCost', 'lightcone costs', lcCosts],
+  ['Archetype', 'archetypes', archetypes],
 ];
 
 console.log(`Seeding ${db}:`);
@@ -123,9 +130,48 @@ DbConnection.builder()
         await new Promise(r => setTimeout(r, 1500));
       }
     }
-    console.log('Seed complete.');
-    conn.disconnect();
-    process.exit(0);
+
+    // Archetype junction seeding (D-07): subscribe to resolve name→id
+    const assignments = rawChars
+      .filter((c: any) => c.archetype && c.archetype.length > 0)
+      .map((c: any) => ({ characterName: c.name, archetypeNames: c.archetype as string[] }));
+
+    if (assignments.length > 0) {
+      console.log(`  Waiting 3s for Archetype IDs to settle...`);
+      await new Promise(r => setTimeout(r, 3000));
+
+      // Subscribe to Archetype table to get IDs
+      conn.subscriptionBuilder()
+        .onApplied(async () => {
+          const archetypeMap = new Map<string, number>();
+          for (const row of conn.db.Archetype.iter()) {
+            archetypeMap.set(row.name, row.id);
+          }
+          console.log(`  Resolved ${archetypeMap.size} archetype IDs, seeding junctions...`);
+
+          for (const { characterName, archetypeNames } of assignments) {
+            const ids = archetypeNames
+              .map((n: string) => archetypeMap.get(n))
+              .filter((id: number | undefined): id is number => id !== undefined);
+            if (ids.length > 0) {
+              conn.reducers.adminAssignCharacterArchetypes({
+                characterName,
+                archetypeIdsJson: JSON.stringify(ids),
+              });
+              await new Promise(r => setTimeout(r, 100));
+            }
+          }
+          console.log(`  Archetype assignments complete (${assignments.length} characters).`);
+          console.log('Seed complete.');
+          conn.disconnect();
+          process.exit(0);
+        })
+        .subscribe('SELECT * FROM archetype');
+    } else {
+      console.log('Seed complete.');
+      conn.disconnect();
+      process.exit(0);
+    }
   })
   .onConnectError((_ctx: any, err: any) => {
     console.error('Connection failed:', err);

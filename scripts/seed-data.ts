@@ -69,6 +69,9 @@ type RawCharacter = {
     role: string;
     imageUrl?: string;
     cost?: Record<string, Record<string, number>>;
+    archetype?: string[];        // NEW: archetype names from JSON
+    version_released?: number;   // NEW: game patch the character was released in
+    treat_as_version?: number;   // NEW: optional admin override for age weight
 };
 
 type RawLightcone = {
@@ -99,7 +102,27 @@ function normalizeCharacters(raw: RawCharacter[]): object[] {
         element: toPascalCase(c.element),
         role: toPascalCase(c.role),
         imageUrl: c.imageUrl ?? '',
+        versionReleased: c.version_released ?? 0,
+        treatAsVersion: c.treat_as_version ?? 0,
     }));
+}
+
+/** Extract unique archetype names from characters_table.json */
+function extractArchetypeNames(raw: RawCharacter[]): string[] {
+    const names = new Set<string>();
+    for (const c of raw) {
+        if (c.archetype) {
+            for (const a of c.archetype) names.add(a);
+        }
+    }
+    return [...names].sort();
+}
+
+/** Build character-to-archetype assignment map from JSON */
+function extractArchetypeAssignments(raw: RawCharacter[]): Array<{ characterName: string; archetypeNames: string[] }> {
+    return raw
+        .filter(c => c.archetype && c.archetype.length > 0)
+        .map(c => ({ characterName: c.name, archetypeNames: c.archetype! }));
 }
 
 /** Extract HsrCharacterCost rows from characters_table.json */
@@ -215,12 +238,15 @@ function buildSeedPayloads(): Array<{ tableName: string; rows: object[] }> {
     const lightcones = loadJson<RawLightcone>(resolve(dataDir, 'lightcones_table.json'));
     const pairings = loadJson<RawPairing>(resolve(dataDir, 'pairing_table.json'));
 
+    const archetypeNames = extractArchetypeNames(characters);
+
     return [
         { tableName: 'HsrCharacter', rows: normalizeCharacters(characters) },
         { tableName: 'HsrLightcone', rows: normalizeLightcones(lightcones) },
         { tableName: 'HsrCharacterCost', rows: normalizeCharacterCosts(characters) },
         { tableName: 'HsrLightconeCost', rows: normalizeLightconeCosts(lightcones) },
         { tableName: 'HsrSynergyCost', rows: normalizePairings(pairings) },
+        { tableName: 'Archetype', rows: archetypeNames.map(name => ({ name, description: '' })) },
     ].filter(p => p.rows.length > 0);
 }
 
@@ -278,10 +304,44 @@ export async function seedAll(serverToken: string): Promise<void> {
                     return;
                 }
 
+                // Archetype junction seeding (D-07): subscribe to Archetype table to resolve name→id
+                const characters = loadJson<RawCharacter>(resolve(process.cwd(), 'test/data/characters_table.json'));
+                const assignments = extractArchetypeAssignments(characters);
+
+                if (assignments.length > 0) {
+                    console.log(`[seed] Waiting for Archetype table subscription to resolve IDs...`);
+                    connection.subscriptionBuilder()
+                        .onApplied(() => {
+                            // Build name→id map from subscribed Archetype rows
+                            const archetypeMap = new Map<string, number>();
+                            for (const row of connection.db.Archetype.iter()) {
+                                archetypeMap.set(row.name, row.id);
+                            }
+                            console.log(`[seed] Resolved ${archetypeMap.size} archetype IDs`);
+
+                            // Seed junction rows
+                            (async () => {
+                                for (const { characterName, archetypeNames } of assignments) {
+                                    const ids = archetypeNames
+                                        .map(n => archetypeMap.get(n))
+                                        .filter((id): id is number => id !== undefined);
+                                    if (ids.length > 0) {
+                                        await connection.reducers.adminAssignCharacterArchetypes({
+                                            characterName,
+                                            archetypeIdsJson: JSON.stringify(ids),
+                                        });
+                                    }
+                                }
+                                console.log(`[seed] Archetype assignments seeded for ${assignments.length} characters.`);
+                            })();
+                        })
+                        .subscribe('SELECT * FROM archetype');
+                }
+
                 setTimeout(() => {
                     connection.disconnect();
                     resolve();
-                }, 1000);
+                }, assignments.length > 0 ? 8000 : 1000);
             })
             .onConnectError((_ctx, err) => {
                 clearTimeout(timeout);
