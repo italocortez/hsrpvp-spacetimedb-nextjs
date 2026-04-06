@@ -10,6 +10,7 @@
  *   3. Appends SPACETIMEDB_SERVER_TOKEN to .env.local
  *   4. Calls seedAll() to upsert HsrCharacter, HsrLightcone, costs, and synergies
  *   5. Seeds 3 starter achievements (MMR Elite, Veteran, Solar First Tournament Winner)
+ *   6. Seeds config tables (EloConfig, AccountRatingConfig) with defaults
  *
  * After completion, restart your Next.js dev server to pick up the new token.
  */
@@ -174,7 +175,7 @@ else if (host.startsWith('http://')) host = host.replace('http://', 'ws://');
 const dbName = spacetimeConfig.database;
 
 console.log(`[bootstrap] Connecting to ${host} / ${dbName} ...`);
-console.log('[bootstrap] Step 1/4: registering server identity');
+console.log('[bootstrap] Step 1/5: registering server identity');
 
 const _conn = DbConnection.builder()
     .withUri(host)
@@ -193,7 +194,7 @@ const _conn = DbConnection.builder()
         }
 
         // Step 2: Write token to .env.local
-        console.log('[bootstrap] Step 2/4: writing token to .env.local');
+        console.log('[bootstrap] Step 2/5: writing token to .env.local');
         writeTokenToEnvLocal(token);
         // Also set in current process env so seedAll() can use the right host/db
         process.env.SPACETIMEDB_SERVER_TOKEN = token;
@@ -202,7 +203,7 @@ const _conn = DbConnection.builder()
         await new Promise(res => setTimeout(res, 1000));
 
         // Step 3: Seed all game data tables
-        console.log('\n[bootstrap] Step 3/4: seeding game data tables');
+        console.log('\n[bootstrap] Step 3/5: seeding game data tables');
         try {
             await seedAll(token);
         } catch (err) {
@@ -212,8 +213,23 @@ const _conn = DbConnection.builder()
         }
 
         // Step 4: Seed starter achievements (D-27)
-        console.log('\n[bootstrap] Step 4/4: seeding starter achievements');
+        console.log('\n[bootstrap] Step 4/5: seeding starter achievements');
         await seedAchievements(connection);
+
+        // Step 5: Seed config tables (EloConfig, AccountRatingConfig)
+        console.log('\n[bootstrap] Step 5/5: seeding config tables');
+        try {
+            await connection.reducers.adminSeedEloConfig({});
+            console.log('[bootstrap] EloConfig seeded with defaults');
+        } catch (err: any) {
+            console.log('[bootstrap] EloConfig:', err.message || 'already exists');
+        }
+        try {
+            await connection.reducers.adminSeedRatingConfig({});
+            console.log('[bootstrap] AccountRatingConfig seeded with defaults');
+        } catch (err: any) {
+            console.log('[bootstrap] AccountRatingConfig:', err.message || 'already exists');
+        }
 
         console.log('\n[bootstrap] Bootstrap complete!');
         console.log('Restart your Next.js dev server to pick up the new SPACETIMEDB_SERVER_TOKEN.');
