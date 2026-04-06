@@ -523,6 +523,11 @@ export const LobbyPassword = table({
 
 Reducers can still read/write private tables — only client subscriptions are blocked.
 
+**Bindings for private tables:** `spacetime generate` always includes type definitions for private tables (so views can reference them in return types). It does NOT generate subscription/query code for private tables by default. To include subscription code (for admin tools or testing), add `--include-private`:
+```bash
+spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb --include-private
+```
+
 ## Admin proxy reducer pattern
 
 For features where users have self-service reducers, create a parallel set of `admin_*` reducers that mirror the user operations but act on behalf of any user. The pattern:
