@@ -1,5 +1,5 @@
 ---
-name: deploy
+name: vercel-deploy
 description: Deploy applications to Vercel. Use when the user says "deploy", "deploy to Vercel", "push to production", "deploy my app", or "go live".
 ---
 
