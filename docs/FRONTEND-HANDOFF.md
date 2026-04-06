@@ -34,6 +34,7 @@ Each feature has two docs. Architecture = tables, reducers, data flow. Contract 
 | Feature | Architecture | Contract | Phase |
 |---------|-------------|----------|-------|
 | Auth | [docs/auth/architecture.md](auth/architecture.md) | [docs/auth/contract.md](auth/contract.md) | 1 |
+| Admin | [docs/admin/architecture.md](admin/architecture.md) | [docs/admin/contract.md](admin/contract.md) | 1 |
 | Roster | [docs/roster/architecture.md](roster/architecture.md) | [docs/roster/contract.md](roster/contract.md) | 2 |
 | Archetypes | [docs/archetypes/architecture.md](archetypes/architecture.md) | [docs/archetypes/contract.md](archetypes/contract.md) | 2 |
 | Tournament | [docs/tournament/architecture.md](tournament/architecture.md) | [docs/tournament/contract.md](tournament/contract.md) | 3 |
