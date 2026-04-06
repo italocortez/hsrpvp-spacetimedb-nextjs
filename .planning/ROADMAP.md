@@ -344,11 +344,12 @@ Plans:
   2. Archetype data (12 archetypes, 66 character assignments) is seeded into Archetype + HsrCharacterArchetype tables via seed scripts
   3. AccountRatingConfig single-row table exists with all formula constants (weights, compression, role exponents, scale) as f64, admin-editable at runtime
   4. `computeAccountRating` implements the matrix formula: `round((vertical * verticalWeight + horizontal * horizontalWeight) * scale)` with sqrt base curve, role-dependent age decay, within-version compression, and dynamic archetype threshold
-  5. `calculateAccountModifier` in ELO reads `scale` from AccountRatingConfig instead of hardcoded divisor
+  5. ELO integration unchanged -- `calculateAccountModifier` uses `/1000` divisor which matches AccountRatingConfig `scale=1000` default; no ELO code changes needed (per D-28)
   6. `admin_recalculate_all_ratings` reducer recomputes all accounts on demand
-**Plans:** [To be planned]
+**Plans:** 2 plans
 Plans:
-- [ ] 11-01-PLAN.md — [To be planned]
+- [ ] 11-01-PLAN.md — Schema additions (HsrCharacter columns + AccountRatingConfig table), TDD rewrite of computeAccountRating/computeMaxPossible with unit tests
+- [ ] 11-02-PLAN.md — Admin reducers (seed/update/recalculate config), admin_bulk_upsert HsrCharacter update + auto-trigger, seed script updates for archetype seeding
 
 ## Progress
 
@@ -375,5 +376,5 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.1. Match Schema Rework | 6/6 | Complete    | 2026-04-04 |
 | 10.3. Tournament Organizer Views | 1/1 | Complete    | 2026-04-04 |
 | 10.4. Account Selection Per Match | 3/3 | Complete    | 2026-04-04 |
-| 11. Archetype Playstyle Stats | 0/? | Not started | - |
+| 11. Account Rating Matrix | 0/2 | Planning complete | - |
 
