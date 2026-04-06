@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10.3: Tournament Organizer Views** - TO-scoped server-side views replacing full-table subscriptions (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED) (completed 2026-04-05)
-- [ ] **Phase 11: Account Rating Matrix** - Replace TEMPORARY accountRating with matrix-based formula: vertical (eidolons + age decay) + horizontal (archetype coverage), runtime-configurable
+- [x] **Phase 11: Account Rating Matrix** - Replace TEMPORARY accountRating with matrix-based formula: vertical (eidolons + age decay) + horizontal (archetype coverage), runtime-configurable (completed 2026-04-06)
 
 ## Phase Details
 
@@ -346,10 +346,10 @@ Plans:
   4. `computeAccountRating` implements the matrix formula: `round((vertical * verticalWeight + horizontal * horizontalWeight) * scale)` with sqrt base curve, role-dependent age decay, within-version compression, and dynamic archetype threshold
   5. ELO integration unchanged -- `calculateAccountModifier` uses `/1000` divisor which matches AccountRatingConfig `scale=1000` default; no ELO code changes needed (per D-28)
   6. `admin_recalculate_all_ratings` reducer recomputes all accounts on demand
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 11-01-PLAN.md — Schema additions (HsrCharacter columns + AccountRatingConfig table), TDD rewrite of computeAccountRating/computeMaxPossible with unit tests
-- [ ] 11-02-PLAN.md — Admin reducers (seed/update/recalculate config), admin_bulk_upsert HsrCharacter update + auto-trigger, seed script updates for archetype seeding
+- [x] 11-01-PLAN.md — Schema additions (HsrCharacter columns + AccountRatingConfig table), TDD rewrite of computeAccountRating/computeMaxPossible with unit tests
+- [x] 11-02-PLAN.md — Admin reducers (seed/update/recalculate config), admin_bulk_upsert HsrCharacter update + auto-trigger, seed script updates for archetype seeding
 
 ## Progress
 
@@ -376,5 +376,5 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.1. Match Schema Rework | 6/6 | Complete    | 2026-04-04 |
 | 10.3. Tournament Organizer Views | 1/1 | Complete    | 2026-04-04 |
 | 10.4. Account Selection Per Match | 3/3 | Complete    | 2026-04-04 |
-| 11. Account Rating Matrix | 0/2 | Planning complete | - |
+| 11. Account Rating Matrix | 2/2 | Complete   | 2026-04-06 |
 

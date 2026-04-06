@@ -10,6 +10,24 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AccountRatingConfig = __t.object("AccountRatingConfig", {
+  id: __t.u32(),
+  verticalWeight: __t.f64(),
+  horizontalWeight: __t.f64(),
+  compression: __t.f64(),
+  roleExponentDps: __t.f64(),
+  roleExponentSupport: __t.f64(),
+  roleExponentSustain: __t.f64(),
+  archetypeThreshold: __t.f64(),
+  scale: __t.f64(),
+  maxPossible: __t.f64(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type AccountRatingConfig = __Infer<typeof AccountRatingConfig>;
+
 export const Achievement = __t.object("Achievement", {
   id: __t.u32(),
   name: __t.string(),
@@ -509,6 +527,8 @@ export const HsrCharacter = __t.object("HsrCharacter", {
     return CharRole;
   },
   imageUrl: __t.string(),
+  versionReleased: __t.f64(),
+  treatAsVersion: __t.f64(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),

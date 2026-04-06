@@ -276,7 +276,7 @@ export async function seedAll(serverToken: string): Promise<void> {
 
     console.log(`[seed] Connecting to ${host} / ${dbName} ...`);
 
-    return new Promise((resolve, reject) => {
+    return new Promise((done, reject) => {
         const timeout = setTimeout(() => reject(new Error('[seed] Connection timeout (30s)')), 30000);
 
         DbConnection.builder()
@@ -311,16 +311,16 @@ export async function seedAll(serverToken: string): Promise<void> {
                 if (assignments.length > 0) {
                     console.log(`[seed] Waiting for Archetype table subscription to resolve IDs...`);
                     connection.subscriptionBuilder()
-                        .onApplied(() => {
-                            // Build name→id map from subscribed Archetype rows
-                            const archetypeMap = new Map<string, number>();
-                            for (const row of connection.db.Archetype.iter()) {
-                                archetypeMap.set(row.name, row.id);
-                            }
-                            console.log(`[seed] Resolved ${archetypeMap.size} archetype IDs`);
+                        .onApplied(async () => {
+                            try {
+                                // Build name→id map from subscribed Archetype rows
+                                const archetypeMap = new Map<string, number>();
+                                for (const row of connection.db.Archetype.iter()) {
+                                    archetypeMap.set(row.name, row.id);
+                                }
+                                console.log(`[seed] Resolved ${archetypeMap.size} archetype IDs`);
 
-                            // Seed junction rows
-                            (async () => {
+                                // Seed junction rows
                                 for (const { characterName, archetypeNames } of assignments) {
                                     const ids = archetypeNames
                                         .map(n => archetypeMap.get(n))
@@ -333,15 +333,20 @@ export async function seedAll(serverToken: string): Promise<void> {
                                     }
                                 }
                                 console.log(`[seed] Archetype assignments seeded for ${assignments.length} characters.`);
-                            })();
+                            } catch (err) {
+                                console.error('[seed] Junction seeding failed:', err);
+                            } finally {
+                                connection.disconnect();
+                                done();
+                            }
                         })
                         .subscribe('SELECT * FROM archetype');
+                } else {
+                    setTimeout(() => {
+                        connection.disconnect();
+                        done();
+                    }, 1000);
                 }
-
-                setTimeout(() => {
-                    connection.disconnect();
-                    resolve();
-                }, assignments.length > 0 ? 8000 : 1000);
             })
             .onConnectError((_ctx, err) => {
                 clearTimeout(timeout);

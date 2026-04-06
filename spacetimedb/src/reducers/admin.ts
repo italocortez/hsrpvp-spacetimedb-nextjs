@@ -439,11 +439,10 @@ export const admin_bulk_upsert = spacetimedb.reducer(
             case 'Archetype': {
                 for (const r of rows) {
                     const existing = ctx.db.Archetype.name.find(r.name);
-                    const row = { id: 0, name: r.name, description: r.description };
                     if (existing) {
-                        ctx.db.Archetype.id.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
+                        ctx.db.Archetype.id.update({ ...existing, name: r.name, description: r.description, ...auditUpdate(ctx, existing, admin.id) } as any);
                     } else {
-                        ctx.db.Archetype.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
+                        ctx.db.Archetype.insert({ id: 0, name: r.name, description: r.description, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
                 break;

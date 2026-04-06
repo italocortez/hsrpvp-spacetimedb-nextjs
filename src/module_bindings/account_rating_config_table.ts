@@ -9,30 +9,18 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  Path,
-  Element,
-  CharRole,
-} from "./types";
-
 
 export default __t.row({
-  name: __t.string().primaryKey(),
-  displayName: __t.string().name("display_name"),
-  aliases: __t.array(__t.string()),
-  rarity: __t.u8(),
-  get path() {
-    return Path;
-  },
-  get element() {
-    return Element;
-  },
-  get role() {
-    return CharRole;
-  },
-  imageUrl: __t.string().name("image_url"),
-  versionReleased: __t.f64().name("version_released"),
-  treatAsVersion: __t.f64().name("treat_as_version"),
+  id: __t.u32().primaryKey(),
+  verticalWeight: __t.f64().name("vertical_weight"),
+  horizontalWeight: __t.f64().name("horizontal_weight"),
+  compression: __t.f64(),
+  roleExponentDps: __t.f64().name("role_exponent_dps"),
+  roleExponentSupport: __t.f64().name("role_exponent_support"),
+  roleExponentSustain: __t.f64().name("role_exponent_sustain"),
+  archetypeThreshold: __t.f64().name("archetype_threshold"),
+  scale: __t.f64(),
+  maxPossible: __t.f64().name("max_possible"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

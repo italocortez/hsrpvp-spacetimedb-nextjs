@@ -45,11 +45,14 @@ import AdminDeleteArchetypeReducer from "./admin_delete_archetype_reducer";
 import AdminDeleteHsrAccountReducer from "./admin_delete_hsr_account_reducer";
 import AdminDeleteRowReducer from "./admin_delete_row_reducer";
 import AdminForceFinalizeReducer from "./admin_force_finalize_reducer";
+import AdminRecalculateAllRatingsReducer from "./admin_recalculate_all_ratings_reducer";
 import AdminRemoveCharacterArchetypesReducer from "./admin_remove_character_archetypes_reducer";
 import AdminSeedEloConfigReducer from "./admin_seed_elo_config_reducer";
+import AdminSeedRatingConfigReducer from "./admin_seed_rating_config_reducer";
 import AdminSetBracketWinnerReducer from "./admin_set_bracket_winner_reducer";
 import AdminUpdateEloConfigReducer from "./admin_update_elo_config_reducer";
 import AdminUpdateHsrAccountReducer from "./admin_update_hsr_account_reducer";
+import AdminUpdateRatingConfigReducer from "./admin_update_rating_config_reducer";
 import AdminUpdateUserReducer from "./admin_update_user_reducer";
 import AdminUpsertArchetypeReducer from "./admin_upsert_archetype_reducer";
 import AdminVoidMatchReducer from "./admin_void_match_reducer";
@@ -179,6 +182,7 @@ import WithdrawFromTournamentReducer from "./withdraw_from_tournament_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import AccountRatingConfigRow from "./account_rating_config_table";
 import AchievementRow from "./achievement_table";
 import AchievementCriteriaRow from "./achievement_criteria_table";
 import ArchetypeRow from "./archetype_table";
@@ -233,6 +237,17 @@ import UserIdentityRow from "./user_identity_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  AccountRatingConfig: __table({
+    name: 'account_rating_config',
+    indexes: [
+      { accessor: 'id', name: 'account_rating_config_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'account_rating_config_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AccountRatingConfigRow),
   Achievement: __table({
     name: 'achievement',
     indexes: [
@@ -1015,11 +1030,14 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_delete_hsr_account", AdminDeleteHsrAccountReducer),
   __reducerSchema("admin_delete_row", AdminDeleteRowReducer),
   __reducerSchema("admin_force_finalize", AdminForceFinalizeReducer),
+  __reducerSchema("admin_recalculate_all_ratings", AdminRecalculateAllRatingsReducer),
   __reducerSchema("admin_remove_character_archetypes", AdminRemoveCharacterArchetypesReducer),
   __reducerSchema("admin_seed_elo_config", AdminSeedEloConfigReducer),
+  __reducerSchema("admin_seed_rating_config", AdminSeedRatingConfigReducer),
   __reducerSchema("admin_set_bracket_winner", AdminSetBracketWinnerReducer),
   __reducerSchema("admin_update_elo_config", AdminUpdateEloConfigReducer),
   __reducerSchema("admin_update_hsr_account", AdminUpdateHsrAccountReducer),
+  __reducerSchema("admin_update_rating_config", AdminUpdateRatingConfigReducer),
   __reducerSchema("admin_update_user", AdminUpdateUserReducer),
   __reducerSchema("admin_upsert_archetype", AdminUpsertArchetypeReducer),
   __reducerSchema("admin_void_match", AdminVoidMatchReducer),

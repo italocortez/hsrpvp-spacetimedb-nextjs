@@ -132,5 +132,38 @@ Three human verification items are required to validate the live database behavi
 
 ---
 
+### Post-Execution Bug Fixes (2026-04-06, after verification)
+
+Two bugs were found and fixed during the publish/seed cycle, AFTER the automated verification ran. These are NOT reflected in the executor SUMMARY.md files.
+
+#### Fix 1: Archetype upsert PANIC on re-seed (`admin.ts`)
+
+**File:** `spacetimedb/src/reducers/admin.ts` — Archetype case in `admin_bulk_upsert`
+**Bug:** The update path spread `{ ...existing, ...row }` where `row = { id: 0, ... }` overwrote `existing.id` with `0`. SpacetimeDB's `.id.update()` then tried to update PK=0 (doesn't exist), causing a PANIC: "Value with given unique identifier already exists."
+**Fix:** Removed `id: 0` from the shared `row` object. Insert path uses `id: 0` (autoInc), update path uses `existing.id` (preserves real PK).
+**Impact:** Only affects re-seeding (second `admin_bulk_upsert` call for Archetype table). First seed on a clean DB works fine.
+
+#### Fix 2: Promise `resolve` shadows `path.resolve` in seed-data.ts
+
+**File:** `scripts/seed-data.ts` — `seedAll()` function
+**Bug:** The `new Promise((resolve, reject) => { ... })` parameter `resolve` shadowed the `import { resolve } from 'path'`. Inside the `onConnect` callback, `resolve(process.cwd(), 'test/data/characters_table.json')` called the Promise resolve (returning `undefined`) instead of `path.resolve`. `loadJson(undefined)` printed "Data file not found: undefined" and returned `[]`, so `assignments.length === 0` and junction seeding was silently skipped.
+**Fix:** Renamed Promise parameter from `resolve` to `done`. Also restructured the junction seeding to await completion before disconnecting (the old async IIFE inside `onApplied` raced with a fixed 8-second timeout).
+**Impact:** Junction rows (HsrCharacterArchetype) were never seeded before this fix. Now correctly seeds 110 junction rows across 66 characters and 12 archetypes.
+
+#### Fix 3: tsconfig.json warning (`spacetimedb/tsconfig.json`)
+
+**File:** `spacetimedb/tsconfig.json`
+**Bug:** Missing explicit `rootDir` caused VS Code TS warning about common source directory.
+**Fix:** Added `"rootDir": "./src"` to match the `include` pattern.
+
+#### Verify-work notes
+
+- REQUIREMENTS.md was updated to reflect redefined ARCH-01/ARCH-02 scope and mark them complete (the verification flagged this as a documentation gap — now resolved).
+- The 3 human verification items in `11-HUMAN-UAT.md` remain pending. Item 2 (archetype junction seeding) is now known-good after Fix 2 — 12 archetypes + 110 junction rows confirmed via `spacetime sql`.
+- Item 1 (admin_seed_rating_config) and Item 3 (admin_recalculate_all_ratings) still need live DB testing.
+
+---
+
 _Verified: 2026-04-06T13:36:00Z_
 _Verifier: Claude (gsd-verifier)_
+_Post-execution fixes: 2026-04-06T20:40:00Z_

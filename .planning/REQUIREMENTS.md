@@ -139,10 +139,10 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 
 - [x] **COST-01**: HsrLightconeCost gains gameMode composite key (parity with HsrCharacterCost)
 
-### Archetype Playstyle Stats
+### Account Rating Matrix (redefined from "Archetype Playstyle Stats")
 
-- [ ] **ARCH-01**: PlayerArchetypeStat table tracks playstyle stats when 3+ picks in a draft share an archetype tag
-- [ ] **ARCH-02**: Auto-increment archetype stats during finalization pipeline (same PK pattern as PlayerStat: seasonId, matchType, teamSize)
+- [x] **ARCH-01** _(redefined Phase 11)_: Matrix-based accountRating formula with vertical (eidolon depth + age decay) and horizontal (archetype coverage) dimensions, normalized by maxPossible. Replaces temporary `5 * (1 + eidolonLevel)` formula. AccountRatingConfig single-row config table with runtime-tunable weights.
+- [x] **ARCH-02** _(redefined Phase 11)_: Admin reducers for rating config (seed/update/recalculate). Auto-trigger maxPossible recomputation and all-ratings recalculation on HsrCharacter pool changes via admin_bulk_upsert.
 
 ## v1 Requirements (Frontend Milestone — Future)
 
@@ -265,8 +265,8 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | DISC-03 | Phase 10 | Complete |
 | DISC-04 | Phase 10 | Complete |
 | COST-01 | Phase 10 | Complete |
-| ARCH-01 | Phase 11 | Pending |
-| ARCH-02 | Phase 11 | Pending |
+| ARCH-01 | Phase 11 | Complete (redefined) |
+| ARCH-02 | Phase 11 | Complete (redefined) |
 
 **Coverage:**
 - v0.5 requirements: 86 total
