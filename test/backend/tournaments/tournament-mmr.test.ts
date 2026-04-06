@@ -32,6 +32,7 @@ import {
 } from '../../shared/helpers/tournaments';
 import { completeTournamentDraft } from '../../shared/helpers/drafts';
 import { ensureEloConfig } from '../../shared/helpers/seed';
+import { gameScoreArgs } from '../../shared/helpers/scores';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ async function setupTournamentMatch(
     if (!mr) throw new Error(`MatchResultRecord not found for lobby #${lobbyId}`);
 
     // Record scores WITH screenshots (required for Ranked override → Validated)
-    await toUser.call.recordGameScores({
+    await toUser.call.recordGameScores(gameScoreArgs({
         matchResultId: mr.id,
         gameNumber: 1,
         winnerTeamSide: 'Blue',
@@ -111,7 +112,7 @@ async function setupTournamentMatch(
         teamRedCyclesUsed: 10,
         teamBlueScreenshotUrl: 'https://i.imgur.com/test-blue.png',
         teamRedScreenshotUrl: 'https://i.imgur.com/test-red.png',
-    });
+    }));
     await toUser.sync(1000);
 
     // Confirm both sides

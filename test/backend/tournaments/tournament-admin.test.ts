@@ -67,6 +67,7 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await admin.sync();
 

@@ -28,7 +28,7 @@ import { defaultLobbyArgs as sharedDefaultLobbyArgs, defaultSettingsArgs } from 
 
 const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) => sharedDefaultLobbyArgs({
     teamSize: 3,
-    banMode: { tag: 'Six' as const, value: {} },
+    banMode: { tag: 'Six' as const },
     characterBudget: 500, lightconeBudget: 300, minimumBidRaise: 20,
     disconnectForfeitSeconds: 60,
     allowMirrorPicks: false,
@@ -60,9 +60,9 @@ describe('Disconnect GC & Cascade', () => {
             await blue.sync(500);
             await red.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await red.sync(500);
-            await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const, value: {} } });
+            await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const } });
             await blue.sync(500);
-            await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const, value: {} } });
+            await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const } });
             await red.sync(500);
             await blue.call.confirmReady({ lobbyId: lobby.id });
             await red.call.confirmReady({ lobbyId: lobby.id });
@@ -116,9 +116,9 @@ describe('Disconnect GC & Cascade', () => {
             await blue.sync(500);
             await red.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await red.sync(500);
-            await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const, value: {} } });
+            await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const } });
             await blue.sync(500);
-            await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const, value: {} } });
+            await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const } });
             await red.sync(500);
             await blue.call.confirmReady({ lobbyId: lobby.id });
             await red.call.confirmReady({ lobbyId: lobby.id });

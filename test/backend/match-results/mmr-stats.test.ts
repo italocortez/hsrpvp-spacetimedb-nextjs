@@ -31,6 +31,7 @@ import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
 import { completeDraft, advanceToScoring } from '../../shared/helpers/drafts';
 import { promoteToRole } from '../../shared/helpers/promoteUser';
 import { ensureEloConfig } from '../../shared/helpers/seed';
+import { gameScoreArgs } from '../../shared/helpers/scores';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ async function setupScoredMatch(
     const mr = [...host.conn.db.MatchResultRecord.iter()].find(r => r.lobbyId === lobbyId)!;
 
     // Referee records scores with screenshots (required for Ranked validation)
-    await host.call.recordGameScores({
+    await host.call.recordGameScores(gameScoreArgs({
         matchResultId: mr.id,
         gameNumber: 1,
         winnerTeamSide: 'Blue',
@@ -95,7 +96,7 @@ async function setupScoredMatch(
         teamRedCyclesUsed: 10,
         teamBlueScreenshotUrl: 'https://i.imgur.com/blue1.png',
         teamRedScreenshotUrl: 'https://i.imgur.com/red1.png',
-    });
+    }));
     await host.sync(1000);
 
     // Confirm both sides
@@ -527,13 +528,13 @@ describe.skipIf(!hasServerToken())('MMR + Leaderboard + Stats', () => {
 
             // Record scores + confirm + submit (Casual auto-finalizes)
             const mr = [...banHost.conn.db.MatchResultRecord.iter()].find(r => r.lobbyId === lobbyId)!;
-            await banHost.call.recordGameScores({
+            await banHost.call.recordGameScores(gameScoreArgs({
                 matchResultId: mr.id,
                 gameNumber: 1,
                 winnerTeamSide: 'Blue',
                 teamBlueCyclesUsed: 6,
                 teamRedCyclesUsed: 10,
-            });
+            }));
             await banHost.sync(1000);
             await banBlue.call.confirmMatchScores({ matchResultId: mr.id });
             await banBlue.sync(500);

@@ -24,6 +24,7 @@ import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
 import { completeDraft, advanceToScoring } from '../../shared/helpers/drafts';
 import { promoteToRole } from '../../shared/helpers/promoteUser';
 import { ensureEloConfig } from '../../shared/helpers/seed';
+import { gameScoreArgs } from '../../shared/helpers/scores';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ async function setupScoredMatch(
     const mr = [...host.conn.db.MatchResultRecord.iter()].find(r => r.lobbyId === lobbyId)!;
 
     // Referee records scores (both sides)
-    await host.call.recordGameScores({
+    await host.call.recordGameScores(gameScoreArgs({
         matchResultId: mr.id,
         gameNumber: 1,
         winnerTeamSide: 'Blue',
@@ -84,7 +85,7 @@ async function setupScoredMatch(
             teamBlueScreenshotUrl: 'https://i.imgur.com/blue1.png',
             teamRedScreenshotUrl: 'https://i.imgur.com/red1.png',
         } : {}),
-    });
+    }));
     await host.sync(1000);
 
     // Confirm both sides
@@ -256,12 +257,12 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
 
         it('record scores on non-Pending match rejected', async () => {
             const err = await expectReducerError(
-                blue.call.recordGameScores({
+                blue.call.recordGameScores(gameScoreArgs({
                     matchResultId,
                     gameNumber: 2,
                     winnerTeamSide: 'Blue',
                     teamBlueCyclesUsed: 5,
-                })
+                }))
             );
             expect(err).toContain('Scores can only be recorded when the match is in Pending status.');
         });

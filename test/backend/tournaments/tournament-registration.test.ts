@@ -76,6 +76,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         waitlistEnabled: false,
         scheduledStartAt: '',
         registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
       });
       await host.sync();
 
@@ -136,6 +137,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync();
 
@@ -179,6 +181,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         waitlistEnabled: true,
         scheduledStartAt: '',
         registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
       });
       await host.sync();
 
@@ -281,6 +284,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         waitlistEnabled: false,
         scheduledStartAt: '',
         registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
       });
       await host.sync();
 
@@ -343,6 +347,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         waitlistEnabled: false,
         scheduledStartAt: '',
         registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
       });
       await host.sync();
 

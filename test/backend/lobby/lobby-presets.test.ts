@@ -54,6 +54,7 @@ function presetArgs(name: string, overrides: Record<string, unknown> = {}) {
         refereeCanSetCaptain: true,
         refereeCanKick: true,
         allowPlayerPause: true,
+        refereeExclusiveConcede: false,
         ...overrides,
     };
 }

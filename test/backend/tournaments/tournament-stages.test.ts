@@ -51,6 +51,7 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync();
 
@@ -211,6 +212,7 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync();
 

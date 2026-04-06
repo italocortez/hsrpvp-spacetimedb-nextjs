@@ -25,16 +25,16 @@ import { defaultLobbyArgs as sharedDefaultLobbyArgs, defaultSettingsArgs as shar
 
 const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) => sharedDefaultLobbyArgs({
     teamSize: 3,
-    banMode: { tag: 'Six' as const, value: {} },
+    banMode: { tag: 'Six' as const },
     characterBudget: 500, lightconeBudget: 300, minimumBidRaise: 20,
-    disconnectPolicy: { tag: 'Standard' as const, value: {} },
+    disconnectPolicy: { tag: 'Standard' as const },
     disconnectForfeitSeconds: 60,
     allowMirrorPicks: false,
     ...overrides,
 });
 
 const defaultSettingsArgs = (lobbyId: number, overrides: Record<string, unknown> = {}) =>
-    sharedDefaultSettingsArgs(lobbyId, { disconnectPolicy: { tag: 'Standard' as const, value: {} }, ...overrides });
+    sharedDefaultSettingsArgs(lobbyId, { disconnectPolicy: { tag: 'Standard' as const }, ...overrides });
 
 /** Setup a lobby in Drafting with 2 Blue + 1 Red + host(spectator) */
 async function setup2v1Drafting(
@@ -58,11 +58,11 @@ async function setup2v1Drafting(
     await red.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
     await red.sync(500);
 
-    await blue1.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue1.userId, lobbySlot: { tag: 'BluePlayer' as const, value: {} } });
+    await blue1.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue1.userId, lobbySlot: { tag: 'BluePlayer' as const } });
     await blue1.sync(500);
-    await blue2.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue2.userId, lobbySlot: { tag: 'BluePlayer' as const, value: {} } });
+    await blue2.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue2.userId, lobbySlot: { tag: 'BluePlayer' as const } });
     await blue2.sync(500);
-    await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const, value: {} } });
+    await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const } });
     await red.sync(500);
 
     await blue1.call.confirmReady({ lobbyId: lobby.id });
@@ -200,9 +200,9 @@ describe('leave_lobby during active match', () => {
             await spectator.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
             await spectator.sync(500);
 
-            await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const, value: {} } });
+            await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const } });
             await blue.sync(500);
-            await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const, value: {} } });
+            await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const } });
             await red.sync(500);
             // spectator stays on Spectator slot (default)
 

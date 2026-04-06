@@ -19,50 +19,9 @@ import {
     expectReducerError,
     type TestHarness,
 } from '../../shared/connection';
-import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { defaultLobbyArgs, defaultSettingsArgs } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** update_lobby_settings args (same as create minus joinCode/presetId, plus lobbyId) */
-function settingsArgs(lobbyId: number, overrides: Record<string, unknown> = {}) {
-    return {
-        lobbyId,
-        teamSize: 1,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'None' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Casual' as const, value: {} },
-        standardTurnSeconds: 60,
-        reserveBankSeconds: 120,
-        characterBudget: 100,
-        lightconeBudget: 50,
-        minimumBidRaise: 0.5,
-        rosterDiffAdvantage: 0,
-        rosterThreshold: 0,
-        underThresholdAdvantage: 0,
-        aboveThresholdPenalty: 0,
-        deathPenalty: 0,
-        isAnonymousPlayers: false,
-        isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false,
-        costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 0,
-        allowMirrorPicks: true,
-        autoRandomPick: false,
-        refereeCanUndo: true,
-        refereeCanPause: true,
-        refereeCanSetCaptain: true,
-        refereeCanKick: true,
-        allowPlayerPause: true,
-        teamBlueAlias: 'Blue',
-        teamRedAlias: 'Red',
-        isPublic: true,
-        password: '',
-        ...overrides,
-    };
-}
 
 function myLobbies(h: TestHarness) {
     return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
@@ -114,7 +73,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             const lobby = lobbies[lobbies.length - 1];
 
             await host.call.updateLobbySettings(
-                settingsArgs(lobby.id, { draftMode: { tag: 'Auction' as const, value: {} }, standardTurnSeconds: 90 })
+                defaultSettingsArgs(lobby.id, { draftMode: { tag: 'Auction' as const, value: {} }, standardTurnSeconds: 90 })
             );
             await host.sync();
 
@@ -149,7 +108,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             expect(memberBefore!.isConfirmed).toBe(true);
 
             // Host updates settings
-            await host.call.updateLobbySettings(settingsArgs(lobby.id, { standardTurnSeconds: 90 }));
+            await host.call.updateLobbySettings(defaultSettingsArgs(lobby.id, { standardTurnSeconds: 90 }));
             await host.sync();
             await member1.sync();
 
@@ -176,7 +135,7 @@ describe('Lobby Settings, Slots & Ready', () => {
             await host.sync();
 
             const err = await expectReducerError(
-                member1.call.updateLobbySettings(settingsArgs(lobby.id))
+                member1.call.updateLobbySettings(defaultSettingsArgs(lobby.id))
             );
             expect(err).toContain('Only the host, moderators, or admins can perform this action.');
 
@@ -196,7 +155,7 @@ describe('Lobby Settings, Slots & Ready', () => {
 
             // Switch to private with a password
             await host.call.updateLobbySettings(
-                settingsArgs(lobby.id, { isPublic: false, password: 'newsecret' })
+                defaultSettingsArgs(lobby.id, { isPublic: false, password: 'newsecret' })
             );
             await host.sync();
 
@@ -234,7 +193,7 @@ describe('Lobby Settings, Slots & Ready', () => {
 
             // Switch to public (remove password)
             await host.call.updateLobbySettings(
-                settingsArgs(lobby.id, { isPublic: true, password: '' })
+                defaultSettingsArgs(lobby.id, { isPublic: true, password: '' })
             );
             await host.sync();
 

@@ -28,6 +28,7 @@ import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
 import { completeTournamentDraft } from '../../shared/helpers/drafts';
+import { gameScoreArgs } from '../../shared/helpers/scores';
 import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -224,13 +225,13 @@ async function setupTournamentMatch(
     if (!mr) throw new Error(`MatchResultRecord not found for lobby #${lobbyId}`);
 
     // Record scores (referee records both sides)
-    await toUser.call.recordGameScores({
+    await toUser.call.recordGameScores(gameScoreArgs({
         matchResultId: mr.id,
         gameNumber: 1,
         winnerTeamSide: 'Blue',
         teamBlueCyclesUsed: 7,
         teamRedCyclesUsed: 10,
-    });
+    }));
     await toUser.sync(1000);
 
     // Confirm both sides

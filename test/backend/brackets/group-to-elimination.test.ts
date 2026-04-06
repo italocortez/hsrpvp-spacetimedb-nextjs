@@ -109,6 +109,7 @@ describe('Group-to-Elimination Advancement', () => {
                 waitlistEnabled: false,
                 scheduledStartAt: '',
                 registrationDeadline: '',
+                maxAccountsPerPlayer: 1,
             });
             await toUser.sync(1500);
 
@@ -181,6 +182,7 @@ describe('Group-to-Elimination Advancement', () => {
                 waitlistEnabled: false,
                 scheduledStartAt: '',
                 registrationDeadline: '',
+                maxAccountsPerPlayer: 1,
             });
             await toUser.sync(1500);
 

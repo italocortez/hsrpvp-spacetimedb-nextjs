@@ -76,6 +76,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync(1000);
 
@@ -168,6 +169,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync(1000);
 

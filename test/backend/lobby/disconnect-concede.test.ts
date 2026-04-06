@@ -34,16 +34,16 @@ import { ensureHsrAccount } from '../../shared/helpers/hsrAccounts';
 
 const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) => sharedDefaultLobbyArgs({
     teamSize: 3,
-    banMode: { tag: 'Six' as const, value: {} },
+    banMode: { tag: 'Six' as const },
     characterBudget: 500, lightconeBudget: 300, minimumBidRaise: 20,
-    disconnectPolicy: { tag: 'Standard' as const, value: {} },
+    disconnectPolicy: { tag: 'Standard' as const },
     disconnectForfeitSeconds: 60,
     allowMirrorPicks: false,
     ...overrides,
 });
 
 const defaultSettingsArgs = (lobbyId: number, overrides: Record<string, unknown> = {}) =>
-    sharedDefaultSettingsArgs(lobbyId, { disconnectPolicy: { tag: 'Standard' as const, value: {} }, ...overrides });
+    sharedDefaultSettingsArgs(lobbyId, { disconnectPolicy: { tag: 'Standard' as const }, ...overrides });
 
 /** Create a lobby in Drafting state with host(spectator) + blue + red */
 async function setupDraftingLobby(
@@ -70,9 +70,9 @@ async function setupDraftingLobby(
     await red.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
     await red.sync(500);
 
-    await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const, value: {} } });
+    await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const } });
     await blue.sync(500);
-    await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const, value: {} } });
+    await red.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: red.userId, lobbySlot: { tag: 'RedPlayer' as const } });
     await red.sync(500);
 
     await blue.call.confirmReady({ lobbyId: lobby.id });
@@ -131,7 +131,7 @@ describe('Concede / Forfeit / Defer', () => {
 
                 await blue.call.joinLobby({ lobbyId: lobby.id, joinCode: '', password: '' });
                 await blue.sync(500);
-                await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const, value: {} } });
+                await blue.call.setTeamSlot({ lobbyId: lobby.id, targetUserId: blue.userId, lobbySlot: { tag: 'BluePlayer' as const } });
                 await blue.sync(500);
 
                 // Lobby is still in Waiting — concede should be rejected
@@ -204,8 +204,8 @@ describe('Concede / Forfeit / Defer', () => {
 
             try {
                 const lobbyId = await setupDraftingLobby(host, blue, red,
-                    { disconnectPolicy: { tag: 'Deferred' as const, value: {} } },
-                    { disconnectPolicy: { tag: 'Deferred' as const, value: {} } },
+                    { disconnectPolicy: { tag: 'Deferred' as const } },
+                    { disconnectPolicy: { tag: 'Deferred' as const } },
                 );
 
                 const err = await expectReducerError(
@@ -228,8 +228,8 @@ describe('Concede / Forfeit / Defer', () => {
 
             try {
                 const lobbyId = await setupDraftingLobby(host, blue, red,
-                    { disconnectPolicy: { tag: 'Deferred' as const, value: {} } },
-                    { disconnectPolicy: { tag: 'Deferred' as const, value: {} } },
+                    { disconnectPolicy: { tag: 'Deferred' as const } },
+                    { disconnectPolicy: { tag: 'Deferred' as const } },
                 );
 
                 await blue.call.deferMatch({ lobbyId });

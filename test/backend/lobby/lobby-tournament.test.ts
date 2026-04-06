@@ -19,49 +19,9 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
+import { defaultSettingsArgs } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** update_lobby_settings args */
-function settingsArgs(lobbyId: number, overrides: Record<string, unknown> = {}) {
-    return {
-        lobbyId,
-        teamSize: 1,
-        draftMode: { tag: 'Classic' as const, value: {} },
-        banMode: { tag: 'None' as const, value: {} },
-        gameMode: { tag: 'MemoryOfChaos' as const, value: {} },
-        matchType: { tag: 'Casual' as const, value: {} },
-        standardTurnSeconds: 60,
-        reserveBankSeconds: 120,
-        characterBudget: 100,
-        lightconeBudget: 50,
-        minimumBidRaise: 0.5,
-        rosterDiffAdvantage: 0,
-        rosterThreshold: 0,
-        underThresholdAdvantage: 0,
-        aboveThresholdPenalty: 0,
-        deathPenalty: 0,
-        isAnonymousPlayers: false,
-        isAnonymousSpectators: false,
-        rosterVisibility: { tag: 'OpenRoster' as const, value: {} },
-        requireOwnership: false,
-        costSetId: 0,
-        disconnectPolicy: { tag: 'Deferred' as const, value: {} },
-        disconnectForfeitSeconds: 0,
-        allowMirrorPicks: true,
-        autoRandomPick: false,
-        refereeCanUndo: true,
-        refereeCanPause: true,
-        refereeCanSetCaptain: true,
-        refereeCanKick: true,
-        allowPlayerPause: true,
-        teamBlueAlias: 'Blue',
-        teamRedAlias: 'Red',
-        isPublic: true,
-        password: '',
-        ...overrides,
-    };
-}
 
 /** Get lobbies created/hosted by this user */
 function myLobbies(h: TestHarness) {
@@ -154,6 +114,7 @@ describe('Tournament Lobby & Stand-In', () => {
             waitlistEnabled: false,
             scheduledStartAt: '',
             registrationDeadline: '',
+            maxAccountsPerPlayer: 1,
         });
         await toUser.sync(1500);
 
@@ -389,7 +350,7 @@ describe('Tournament Lobby & Stand-In', () => {
             // Attempt to change locked fields (teamSize, gameMode, matchType)
             // and free fields (draftMode, standardTurnSeconds, teamBlueAlias)
             await toUser.call.updateLobbySettings(
-                settingsArgs(lockedLobbyId, {
+                defaultSettingsArgs(lockedLobbyId, {
                     // Locked fields — should NOT change
                     teamSize: 3,
                     gameMode: { tag: 'ApocalypticShadow' as const, value: {} },

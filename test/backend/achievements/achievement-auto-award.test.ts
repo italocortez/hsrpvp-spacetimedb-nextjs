@@ -17,6 +17,7 @@ import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 import { getUsername } from '../../shared/helpers/users';
 import { completeDraft } from '../../shared/helpers/drafts';
+import { gameScoreArgs } from '../../shared/helpers/scores';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -68,8 +69,9 @@ describe.skipIf(!hasServerToken())('Achievement Auto-Award via Finalization', ()
             statTable: 'PlayerStat',
             statField: 'matchesPlayed',
             operator: { tag: 'GreaterOrEqual' },
-            threshold: 1,
+            thresholdValue: 1,
             filterGameMode: undefined,
+            filterCharacterName: undefined,
             filterMatchType: undefined,
         });
         await admin.sync(1500);
@@ -149,13 +151,13 @@ describe.skipIf(!hasServerToken())('Achievement Auto-Award via Finalization', ()
         const mr = [...host.conn.db.MatchResultRecord.iter()].find(r => r.lobbyId === lobbyId);
         expect(mr).toBeDefined();
 
-        await host.call.recordGameScores({
+        await host.call.recordGameScores(gameScoreArgs({
             matchResultId: mr!.id,
             gameNumber: 1,
             winnerTeamSide: 'Blue',
             teamBlueCyclesUsed: 7,
             teamRedCyclesUsed: 10,
-        });
+        }));
         await host.sync(1000);
 
         await blue.call.confirmMatchScores({ matchResultId: mr!.id });
