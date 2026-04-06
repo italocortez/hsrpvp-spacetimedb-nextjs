@@ -1,114 +1,99 @@
 # Technology Stack
 
-**Analysis Date:** 2026-03-15
+**Analysis Date:** 2026-04-06
 
 ## Languages
 
 **Primary:**
-- TypeScript 5.6.2 - Used across all application code, frontend and backend
+- TypeScript ~5.6.2 - All frontend (Next.js app, components, lib) and backend (SpacetimeDB module in `spacetimedb/src/`)
+- CSS - Global styles in `app/globals.css`, `app/tokens.css`, and module CSS files (e.g., `app/layout.module.css`)
 
 **Secondary:**
-- JavaScript/JSX - React components and configuration files
-- Rust - SpacetimeDB module definitions (in `spacetimedb/src/` but TypeScript bindings are generated)
+- None detected (no Rust Cargo workspace despite a `generate` script comment; the SpacetimeDB module compiles via the `spacetimedb` npm SDK's build toolchain)
 
 ## Runtime
 
 **Environment:**
-- Node.js >= 24.0.0 (specified in `package.json` engines)
+- Node.js >=24.0.0 (enforced via `engines.node` in `package.json`; active: v24.14.0)
 
 **Package Manager:**
-- npm (pnpm compatible, using `pnpm --dir` for subprojects)
-- Lockfile: `package-lock.json` present
+- npm (explicit per project convention; `package-lock.json` present)
+- Lockfile: present (`package-lock.json` in root and `spacetimedb/package-lock.json`)
 
 ## Frameworks
 
 **Core:**
-- Next.js 15.0.0 - Full-stack React framework, used for frontend and API routes (`app/` directory)
-- React 18.3.1 - UI framework and components
-- React DOM 18.3.1 - React DOM rendering
+- Next.js ^15.0.0 - App Router, API routes, SSR/CSR hybrid; configured in `next.config.ts`
+- React ^18.3.1 - UI rendering; `react-dom` ^18.3.1
 
-**Authentication & Backend:**
-- SpacetimeDB 2.0.3 - Multiplayer sync engine and database (`spacetimedb/` module)
-- NextAuth 4.24.13 - Session and OAuth authentication management
+**UI Component Library:**
+- HeroUI (multiple packages ^2.x) - Buttons, chips, inputs, modals, selects, tables, tabs, system, theme; configured in `tailwind.config.ts` via `heroui()` plugin
+  - `@heroui/button`, `@heroui/chip`, `@heroui/input`, `@heroui/modal`, `@heroui/select`, `@heroui/system`, `@heroui/table`, `@heroui/tabs`, `@heroui/theme`
 
-**UI/Styling:**
-- Tailwind CSS 4.2.1 - Utility-first CSS framework, configured in `tailwind.config.ts`
-- @tailwindcss/postcss 4.2.1 - PostCSS plugin for Tailwind
-- HeroUI 2.x (multiple component packages) - Pre-built React UI components with dark mode support
-  - @heroui/button, @heroui/chip, @heroui/input, @heroui/modal, @heroui/select, @heroui/table, @heroui/tabs, @heroui/system, @heroui/theme
+**Styling:**
+- Tailwind CSS ^4.2.1 - Utility-first CSS; PostCSS integration via `@tailwindcss/postcss` in `postcss.config.mjs`
+- Dark mode: class-based, defaultTheme dark with custom cyan (`#00f2ff`) accent palette defined in `tailwind.config.ts`
 
-**Animation & Motion:**
-- Framer Motion 12.35.2 - Advanced animation library for React
+**Animation:**
+- Framer Motion ^12.35.2 - Available but minimally used (detected in `CostBreakdownChart.tsx` area)
 
-**Data Visualization:**
-- Chart.js 4.5.1 - JavaScript charting library
-- react-chartjs-2 5.3.1 - React wrapper for Chart.js
-- chartjs-plugin-datalabels 2.2.0 - Chart.js plugin for data labels
+**Charting:**
+- Chart.js ^4.5.1 + `react-chartjs-2` ^5.3.1 + `chartjs-plugin-datalabels` ^2.2.0 - Used in `components/features/team-builder/cost-breakdown-chart/CostBreakdownChart.tsx`
+
+**Authentication:**
+- next-auth ^4.24.13 - Session management; Discord OAuth provider only; `SessionProvider` wraps app in `app/providers.tsx`
 
 **Testing:**
-- No dedicated testing framework configured (none detected in package.json)
+- Vitest ^4.1.0 - Both unit and integration test runner; configs at `test/vitest.config.ts` and `test/vitest.integration.config.ts`
 
 **Build/Dev:**
-- TypeScript - Type checking during build
-- PostCSS 8.5.8 - CSS transformation pipeline
+- `next dev` / `next build` / `next start` - Standard Next.js dev/build/serve scripts
+- `prettier` - Auto-formats generated SpacetimeDB bindings after `npm run generate`
 
 ## Key Dependencies
 
 **Critical:**
-- spacetimedb 2.0.3 - Provides database connection, multiplayer sync, client/server bindings, and reducer execution
-- next-auth 4.24.13 - Handles Discord OAuth integration and session management
+- `spacetimedb` ^2.0.3 - SpacetimeDB TypeScript SDK; used both as client SDK (frontend via `SpacetimeDBProvider` from `spacetimedb/react`) and server module runtime (backend `spacetimedb/src/` compiled via `spacetimedb/server`)
+- `next-auth` ^4.24.13 - Discord OAuth session; required for the Discord-to-SpacetimeDB identity linking flow
 
 **Infrastructure:**
-- @tailwindcss/postcss 4.2.1 - CSS processing pipeline
-- postcss 8.5.8 - CSS transformation engine
+- `@tailwindcss/postcss` ^4.2.1 - PostCSS integration for Tailwind v4
+- `postcss` ^8.5.8 - CSS processing pipeline
 
 ## Configuration
 
 **Environment:**
-- Configured via `.env` and `.env.local` files
-- Required variables:
-  - `NEXT_PUBLIC_SPACETIMEDB_HOST` - SpacetimeDB server URL (default: `wss://maincloud.spacetimedb.com`)
-  - `NEXT_PUBLIC_SPACETIMEDB_DB_NAME` - Database name (default: `nextjs-ts`)
-  - `SPACETIMEDB_HOST` - Server-side SpacetimeDB host
-  - `SPACETIMEDB_DB_NAME` - Server-side database name
-  - `SPACETIMEDB_SERVER_TOKEN` - Auth token for server identity (generated by `scripts/register-server.ts`)
-  - `DISCORD_CLIENT_ID` - OAuth app ID from Discord Developer Portal
-  - `DISCORD_CLIENT_SECRET` - OAuth app secret from Discord Developer Portal
-  - `NEXTAUTH_SECRET` - Session encryption secret
-  - `NEXTAUTH_URL` - Application URL for NextAuth callbacks (default: `http://localhost:3000`)
+- `.env.local` (not committed) — runtime secrets; `.env.example` documents all required vars
+- `NEXT_PUBLIC_SPACETIMEDB_HOST` and `NEXT_PUBLIC_SPACETIMEDB_DB_NAME` — client-side connection (exposed to browser)
+- `SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME`, `SPACETIMEDB_SERVER_TOKEN` — server-side only (API routes)
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` — Discord OAuth
+
+**SpacetimeDB project config:**
+- `spacetime.json` — database name (`hsrpvp-spacetimedb-nextjs-test1`), server (`maincloud`), module path (`./spacetimedb`)
+- `spacetime.local.json` — local dev database name override
 
 **Build:**
-- TypeScript configuration: `tsconfig.json`
-- Tailwind CSS configuration: `tailwind.config.ts`
-- PostCSS configuration: `postcss.config.mjs`
-- Next.js configuration: `next.config.ts`
-- SpacetimeDB configuration: `spacetime.json` (defines dev command, database name, server, module path)
+- `tsconfig.json` — ES2020 target, bundler module resolution, strict mode, path alias `@/*` → project root
+- `next.config.ts` — CSP headers; WebSocket allow-list includes `wss://maincloud.spacetimedb.com` and Discord CDN
+- `postcss.config.mjs` — only `@tailwindcss/postcss` plugin
+- `tailwind.config.ts` — HeroUI plugin, dark theme, custom color palette
+
+**Backend module config:**
+- `spacetimedb/tsconfig.json` — separate TS config for the SpacetimeDB module (`outDir: ./dist`)
+- `spacetimedb/package.json` — standalone package with `spacetimedb` ^2.0.3 and TypeScript ~5.6.2
 
 ## Platform Requirements
 
 **Development:**
-- Node.js >= 24.0.0
-- npm or pnpm (for installing dependencies)
-- SpacetimeDB CLI (`spacetime` command) for module development and publishing
-- Rust toolchain (for building SpacetimeDB module, handled by `spacetime build`)
+- Node.js >=24.0.0
+- SpacetimeDB CLI (`spacetime`) — required for `spacetime generate`, `spacetime publish`, `spacetime build`
+- Network access to `wss://maincloud.spacetimedb.com` for integration tests and module publishing
 
 **Production:**
-- Deployment target: Vercel (implied by Next.js setup and presence of Vercel-related skills in project docs)
-- SpacetimeDB maincloud hosting (default server configured as "maincloud" in `spacetime.json`)
-
-## Development Scripts
-
-**Frontend:**
-- `npm run dev` - Start Next.js dev server (port 3001 to avoid SpacetimeDB conflict on 3000)
-- `npm run build` - Build Next.js application for production
-- `npm run start` - Start Next.js production server
-- `npm run lint` - Run Next.js linter
-
-**SpacetimeDB:**
-- `npm run generate` - Generate TypeScript bindings from SpacetimeDB module
-- `npm run spacetime:publish:local` - Publish module to local SpacetimeDB server
-- `npm run spacetime:publish` - Publish module to maincloud
+- Deployment target: Vercel (detected via Vercel plugin active in tooling)
+- SpacetimeDB backend hosted on SpacetimeDB maincloud (`https://spacetimedb.com/@<username>/hsrpvp-spacetimedb-nextjs-test1`)
+- Port note: `next dev` should run on port 3001 to avoid conflict with SpacetimeDB local server on port 3000
 
 ---
 
-*Stack analysis: 2026-03-15*
+*Stack analysis: 2026-04-06*

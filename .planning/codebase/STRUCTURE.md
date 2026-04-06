@@ -1,313 +1,262 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-03-15
+**Analysis Date:** 2026-04-06
 
 ## Directory Layout
 
 ```
 hsrpvp-spacetimedb-nextjs/
-├── app/                        # Next.js app directory (routes, API, layouts)
-│   ├── (authenticated)/        # Protected routes (require auth)
-│   │   ├── admin-view/
-│   │   ├── lobby/
-│   │   └── profile/
-│   ├── (game)/                 # Game-specific routes
-│   │   └── draft/[matchId]/
-│   ├── (landing-page)/         # Public landing page and tools
-│   │   ├── costs/
-│   │   └── teambuilder/
-│   ├── api/                    # API routes (NextAuth, webhooks)
-│   │   └── auth/
-│   ├── layout.tsx              # Root layout wrapper
-│   ├── providers.tsx           # Global provider setup
-│   └── globals.css             # Global styles
-├── components/                 # React components (reusable + feature-specific)
-│   ├── features/               # Feature modules (one per major feature)
-│   │   ├── admin-view/         # Admin dashboard components
-│   │   ├── auth/               # Auth-related components
-│   │   ├── costs/              # Character/lightcone cost tables
-│   │   ├── drafting/           # Game drafting UI (auction, classic)
-│   │   ├── game-data/          # Game data providers and helpers
-│   │   ├── hooks/              # Custom hooks (filters, loadouts)
-│   │   ├── landing/            # Landing page components
-│   │   ├── profile/            # User profile components
-│   │   ├── team-builder/       # Team composition tool
-│   │   └── types/              # Feature-specific types
-│   └── globals/                # Global reusable components
+├── app/                        # Next.js App Router — pages and API routes
+│   ├── (authenticated)/        # Route group: auth-gated pages (lobby, profile, admin)
+│   ├── (game)/                 # Route group: live draft page
+│   ├── (landing-page)/         # Route group: public pages (home, costs, teambuilder)
+│   ├── api/                    # Server-side API routes
+│   │   └── auth/               # NextAuth handler + Discord link endpoint
+│   ├── layout.tsx              # Root layout (fonts, Providers, NavBar, Footer)
+│   ├── providers.tsx           # Client providers tree (SpacetimeDB, NextAuth, HeroUI)
+│   ├── globals.css             # Global styles
+│   └── tokens.css              # Design token CSS variables
+├── components/                 # Reusable React components
+│   ├── features/               # Feature-scoped components
+│   │   ├── admin-view/         # Admin panel components
+│   │   ├── auth/               # Auth components, hooks, types
+│   │   ├── costs/              # Cost table display components
+│   │   ├── drafting/           # Draft UI: classic + auction modes
+│   │   ├── game-data/          # GameDataProvider + mapping helpers
+│   │   ├── hooks/              # Shared feature hooks (filters, loadouts, icons)
+│   │   ├── landing/            # Landing page section components
+│   │   ├── profile/            # Profile card + Discord link components
+│   │   ├── team-builder/       # Team roster builder components
+│   │   └── types/              # Shared frontend types (enums, structs, tableColumns)
+│   └── globals/                # App-wide shared components
 │       ├── icons/              # Icon components
-│       ├── layout/             # Layout components (Header, Footer)
-│       └── modals/             # Modal components
-├── lib/                        # Utilities and singleton instances
-│   ├── spacetimedb.ts          # Client config (host, db name, token key)
-│   └── spacetimedb-server.ts   # Server singleton connection
-├── src/                        # Generated code and custom src
-│   └── module_bindings/        # AUTO-GENERATED SpacetimeDB bindings
-│       ├── index.ts            # Main export (tables, reducers)
-│       ├── types.ts            # Generated type definitions
-│       └── types/              # Type subdirectory
-├── spacetimedb/                # SpacetimeDB Rust backend
+│       ├── layout/             # NavBar, Footer, Logo, GearIcon
+│       └── modals/             # Global modal components
+├── src/
+│   └── module_bindings/        # Generated SpacetimeDB TypeScript bindings (DO NOT EDIT)
+│       ├── index.ts            # Barrel export for all bindings
+│       ├── types.ts            # Shared binding types
+│       ├── types/              # procedures.ts, reducers.ts
+│       ├── *_table.ts          # One file per SpacetimeDB table
+│       └── *_reducer.ts        # One file per SpacetimeDB reducer
+├── spacetimedb/                # SpacetimeDB module source (TypeScript → WASM)
 │   ├── src/
-│   │   ├── helpers/            # Shared backend utilities
-│   │   ├── reducers/           # Transactional mutation handlers
-│   │   ├── tables/             # Table definitions (schema)
-│   │   ├── types/              # Type enums and structs
-│   │   ├── index.ts            # Module entry, lifecycle handlers
-│   │   └── schema.ts           # Database schema definition
-│   ├── Cargo.toml              # Rust dependencies
-│   └── tsconfig.json           # TypeScript config for codegen
-├── public/                     # Static assets (images, icons)
-├── scripts/                    # One-off setup scripts
-├── .planning/                  # GSD documentation
-│   └── codebase/               # Architecture/structure analysis
-├── .claude/                    # Claude IDE configuration
-├── tsconfig.json               # TypeScript config (root)
-├── next.config.ts              # Next.js configuration
+│   │   ├── index.ts            # Module entry: reducer exports, lifecycle hooks
+│   │   ├── schema.ts           # Table registration with SpacetimeDB schema()
+│   │   ├── tables/             # Table definitions (one file per table)
+│   │   ├── reducers/           # Reducer implementations (grouped by domain)
+│   │   ├── helpers/            # Shared server-side utilities
+│   │   ├── views/              # Security and anonymous views
+│   │   └── types/              # Server-side enums and structs
+│   ├── dist/                   # Compiled JS output (generated, committed)
+│   └── package.json            # Separate package for the module
+├── lib/
+│   ├── spacetimedb.ts          # Client-side connection constants (host, db name, token key)
+│   └── spacetimedb-server.ts   # Server-side SpacetimeDB connection singleton
+├── test/
+│   └── backend/                # Integration and unit tests for the SpacetimeDB module
+│       ├── achievements/
+│       ├── anonymous-play/
+│       ├── brackets/
+│       ├── calendar/
+│       ├── chat/
+│       ├── cost-sets/
+│       ├── lobby/
+│       ├── match-results/
+│       ├── match-session/
+│       └── roster/
+├── docs/                       # Feature documentation
+│   └── {feature}/              # Per-feature: architecture.md + contract.md
+├── public/                     # Static assets served by Next.js
+├── scripts/                    # One-off setup scripts (e.g., register-server.ts)
+├── tools/                      # Development tooling
+├── notes/                      # Developer notes and UAT report cards
+├── .planning/                  # GSD project planning artifacts
+├── next.config.ts              # Next.js configuration (CSP headers, port 3001)
+├── tsconfig.json               # TypeScript config (@/* alias maps to repo root)
 ├── tailwind.config.ts          # Tailwind CSS configuration
-├── postcss.config.mjs          # PostCSS configuration
-├── spacetime.json              # SpacetimeDB CLI config
-├── package.json                # Node dependencies
-└── README.md                   # Project documentation
+├── spacetime.json              # SpacetimeDB CLI project config (maincloud)
+└── package.json                # Root npm package (Next.js app)
 ```
 
 ## Directory Purposes
 
-**app/ (Next.js Routes):**
-- Purpose: Pages and API routes using Next.js 15+ app directory
-- Contains: Page components, layouts, server actions, API handlers
-- Key files: `layout.tsx` (root), `providers.tsx` (provider tree), `globals.css`
+**`app/(authenticated)/`:**
+- Purpose: Auth-gated pages requiring a logged-in SpacetimeDB user
+- Contains: `lobby/page.tsx`, `profile/page.tsx`, `admin-view/page.tsx`, shared `layout.tsx` (wraps in `AuthRequired`)
+- Key files: `app/(authenticated)/layout.tsx` (auth guard), `app/(authenticated)/lobby/page.tsx`, `app/(authenticated)/profile/page.tsx`
 
-**(authenticated)/ (Protected Routes):**
-- Purpose: Pages requiring user authentication
-- Contains: Lobby, profile, admin-view pages
-- Access: Guarded by `AuthRequired` wrapper component
+**`app/(game)/`:**
+- Purpose: Live in-match draft interface, accessible by match participants
+- Contains: `draft/[matchId]/page.tsx` — dynamic route for active draft sessions
+- Key files: `app/(game)/draft/[matchId]/page.tsx`
 
-**(game)/ (Game Routes):**
-- Purpose: In-game experiences (drafting, match sessions)
-- Contains: Draft page component with matchId parameter
-- Access: Requires active match session
+**`app/(landing-page)/`:**
+- Purpose: Public-facing pages (no auth required)
+- Contains: Home page, costs reference page, team builder tool
+- Key files: `app/(landing-page)/page.tsx`, `app/(landing-page)/costs/page.tsx`, `app/(landing-page)/teambuilder/page.tsx`
 
-**(landing-page)/ (Public Pages):**
-- Purpose: Public pages accessible without authentication
-- Contains: Landing page, costs calculator, team builder tool
-- Access: No auth required
+**`app/api/auth/`:**
+- Purpose: Server-side auth endpoints
+- Contains: NextAuth catch-all handler, Discord-to-SpacetimeDB identity linker
+- Key files: `app/api/auth/[...nextauth]/route.ts`, `app/api/auth/link-discord/route.ts`, `app/api/auth/authOptions.ts`
 
-**api/auth/ (Authentication API):**
-- Purpose: NextAuth route handlers and custom auth endpoints
-- Key files: `[...nextauth]/route.ts` (NextAuth handler), `link-discord/route.ts` (Discord linking)
-- Used by: Frontend auth flows, Discord OAuth callbacks
+**`components/features/`:**
+- Purpose: Feature-scoped components organized by domain, each with `components/`, `hooks/`, and optionally `types.ts`
+- Contains: One subdirectory per feature area
+- Key files: `components/features/auth/hooks/useAuth.ts`, `components/features/game-data/components/GameDataProvider.tsx`, `components/features/drafting/hooks/useDraftState.ts`
 
-**components/features/ (Feature Modules):**
-- Purpose: Organize components by business feature
-- Naming: One directory per major feature (drafting, costs, admin-view, etc.)
-- Contains: Feature-specific components, hooks, types
-- Pattern: Each feature self-contained; no cross-feature imports
+**`components/globals/`:**
+- Purpose: App-wide shared UI components not tied to any feature
+- Contains: Navigation, layout chrome, icons, modals
+- Key files: `components/globals/layout/NavBar.tsx`, `components/globals/layout/Footer.tsx`
 
-**components/features/hooks/ (Custom Hooks):**
-- Purpose: Reusable state and side-effect logic for components
-- Key files: `useCharacterFilters.ts`, `useLightconeFilters.ts`, `useLoadouts.ts`, `useIconMaps.ts`
-- Used by: Components within features that need shared logic
+**`src/module_bindings/`:**
+- Purpose: Auto-generated TypeScript client bindings for the SpacetimeDB module — regenerated with `spacetime generate` after every publish
+- Contains: Table subscription classes, reducer call classes, shared types
+- Key files: `src/module_bindings/index.ts` (import `tables` and `DbConnection` from here)
+- Generated: Yes — never edit these files manually
 
-**components/globals/ (Global Reusable Components):**
-- Purpose: Components used across multiple features or pages
-- Subdirs:
-  - `layout/`: Header, Footer, layout wrappers
-  - `icons/`: Icon components (Honkai Star Rail characters, elements, paths)
-  - `modals/`: Modal/dialog components
+**`spacetimedb/src/tables/`:**
+- Purpose: SpacetimeDB table schema definitions
+- Contains: One TypeScript file per table; each exports a `Table` class with column types and indexes
+- Key files: `spacetimedb/src/tables/user.ts`, `spacetimedb/src/tables/lobby.ts`, `spacetimedb/src/tables/matchSession.ts`
 
-**lib/spacetimedb.ts:**
-- Purpose: Client-side SpacetimeDB configuration constants
-- Contains: HOST, DB_NAME, TOKEN_KEY computed from env vars
-- Used by: `app/providers.tsx` to initialize connection
+**`spacetimedb/src/reducers/`:**
+- Purpose: Server-side mutation handlers grouped by domain
+- Contains: Domain-grouped files (e.g., `lobbyLifecycle.ts`, `draftClassic.ts`, `tournamentManagement.ts`)
+- Key files: `spacetimedb/src/reducers/auth.ts`, `spacetimedb/src/reducers/lobbyLifecycle.ts`, `spacetimedb/src/reducers/matchFinalization.ts`
 
-**lib/spacetimedb-server.ts:**
-- Purpose: Server-side SpacetimeDB singleton connection for API routes
-- Contains: `getServerConnection()` function (lazy-loaded, reused across routes)
-- Used by: API routes that need to call server-only reducers (e.g., `server_link_discord`)
+**`spacetimedb/src/helpers/`:**
+- Purpose: Shared server-side utilities called by reducers
+- Contains: Permission guards, audit columns, draft sequences, bracket logic, ELO calculation, flag transfer
+- Key files: `spacetimedb/src/helpers/ensurePermissions.ts`, `spacetimedb/src/helpers/auditColumns.ts`, `spacetimedb/src/helpers/eloCalculation.ts`
 
-**src/module_bindings/ (AUTO-GENERATED):**
-- Purpose: TypeScript bindings generated from SpacetimeDB schema
-- Location: Generated by `npm run generate` or `spacetime generate`
-- Contains:
-  - `index.ts`: Main export with DbConnection class, table accessors, reducer functions
-  - `types.ts`: Type definitions for all tables and data structures
-  - `*_table.ts`: Individual table class files (auto-generated)
-  - `*_reducer.ts`: Individual reducer function files (auto-generated)
-- DO NOT EDIT: These are overwritten on every generation
+**`spacetimedb/src/views/`:**
+- Purpose: Server-computed data projections — per-user views for private tables, anonymous views for public browsing
+- Contains: `securityViews.ts` (22 named views for roster visibility, auth, tournament organizer access), `anonymousViews.ts` (history/draft replay views)
+- Key files: `spacetimedb/src/views/securityViews.ts`
 
-**spacetimedb/src/ (Backend Schema & Logic):**
-- Purpose: SpacetimeDB server-side code (Rust)
-- Subdirs:
-  - `tables/`: Table definitions (schema, indexes, primary keys)
-  - `reducers/`: Transactional mutation handlers
-  - `helpers/`: Shared utilities (audit columns, permissions)
-  - `types/`: Enums and struct definitions
-  - `index.ts`: Module entry point, exports reducers, lifecycle hooks
+**`test/backend/`:**
+- Purpose: Integration tests for the SpacetimeDB module, grouped by feature domain
+- Contains: `*.test.ts` (integration tests against a live/test module), `*.unit.test.ts` (pure logic unit tests)
+- Key files: `test/backend/lobby/lobby-lifecycle.test.ts`, `test/backend/match-session/draft-classic.test.ts`
 
-**spacetimedb/src/tables/ (Database Schema):**
-- Purpose: Define data model and indexes
-- Pattern: One file per table
-- Key tables:
-  - `user.ts`: User accounts (auth, profile, deleted flag)
-  - `userIdentity.ts`: Maps SpacetimeDB identities to user IDs
-  - `lobby.ts`: Lobby sessions for match drafting
-  - `matchSession.ts`: Active game session state
-  - `hsr*.ts`: Static Honkai Star Rail game data (characters, lightcones, costs)
-
-**spacetimedb/src/reducers/ (Mutation Handlers):**
-- Purpose: Transactional business logic (mutations only, no return values)
-- Pattern: One file per domain
-- Key reducers:
-  - `auth.ts`: `login_as_guest`, `delete_guest_account`
-  - `profile.ts`: `update_display_name`, `update_avatar`
-  - `server.ts`: `server_link_discord`, `register_server` (server-only)
-  - `admin.ts`: Admin CRUD operations
-  - `cursor.ts`: Broadcast cursor events
-
-**spacetimedb/src/helpers/ (Backend Utilities):**
-- Purpose: Shared backend code
-- Key files:
-  - `auditColumns.ts`: Helpers for injecting audit fields (createdAt, createdBy, updatedAt, updatedBy)
-  - `ensurePermissions.ts`: Authorization checks
+**`docs/{feature}/`:**
+- Purpose: Per-feature documentation — architecture diagrams and acceptance contracts
+- Contains: `architecture.md` (table relationships, reducer reference), `contract.md` (Given/When/Then specs)
+- Key files: `docs/tournament/architecture.md`, `docs/lobby/contract.md`, `docs/match-session/architecture.md`
 
 ## Key File Locations
 
 **Entry Points:**
-
-- `app/layout.tsx`: Root layout, wraps app in Providers
-- `app/providers.tsx`: SpacetimeDB client setup, provider tree nesting
-- `spacetimedb/src/index.ts`: Backend module entry, exports reducers, lifecycle hooks
+- `app/layout.tsx`: Root Next.js layout — all pages pass through here
+- `app/providers.tsx`: SpacetimeDB connection initialization and React context tree
+- `spacetimedb/src/index.ts`: SpacetimeDB module entry — reducer exports and lifecycle hooks
 
 **Configuration:**
-
-- `next.config.ts`: Next.js build and server config
-- `tailwind.config.ts`: Tailwind CSS utilities and theme
-- `tsconfig.json`: TypeScript compiler config with path alias `@/*` → root
-- `spacetime.json`: SpacetimeDB CLI config (module path, server)
-- `.env.example`: Template for env vars (HOST, DB_NAME, SERVER_TOKEN)
+- `next.config.ts`: Next.js config (CSP security headers, runs on port 3001)
+- `tsconfig.json`: TypeScript config with `@/*` path alias (root-relative)
+- `tailwind.config.ts`: Tailwind CSS configuration
+- `spacetime.json`: SpacetimeDB CLI config (maincloud server, database name)
+- `lib/spacetimedb.ts`: Client-side connection constants (`SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME`, `SPACETIMEDB_TOKEN_KEY`)
 
 **Core Logic:**
-
-- `lib/spacetimedb.ts`: Client SpacetimeDB constants
-- `lib/spacetimedb-server.ts`: Server SpacetimeDB singleton
-- `spacetimedb/src/schema.ts`: Database schema definition (imports all tables)
-- `spacetimedb/src/reducers/*.ts`: Business logic for mutations
-- `components/features/*/components/*Provider.tsx`: Global state providers
+- `spacetimedb/src/schema.ts`: Complete table registry
+- `spacetimedb/src/helpers/ensurePermissions.ts`: Role-based permission guards for all reducers
+- `spacetimedb/src/helpers/auditColumns.ts`: Audit field helpers (createdById/Date, lastModifiedById/Date)
+- `components/features/auth/hooks/useAuth.ts`: Auth state machine (SpacetimeDB identity + NextAuth Discord session)
+- `components/features/game-data/components/GameDataProvider.tsx`: Static HSR game data context
 
 **Testing:**
-
-- No test files found in codebase (testing not yet set up)
+- `test/backend/`: All backend integration and unit tests
+- `test/README.md`: Test setup and harness documentation
 
 ## Naming Conventions
 
 **Files:**
-
-- **Pages:** `page.tsx` (Next.js convention)
-- **Layouts:** `layout.tsx` (Next.js convention)
-- **API Routes:** `route.ts` (Next.js convention)
-- **Components:** PascalCase with `.tsx` extension (e.g., `CharacterCard.tsx`)
-- **Hooks:** `use*` prefix (e.g., `useCharacterFilters.ts`)
-- **Utilities:** camelCase (e.g., `spacetimedb.ts`)
-- **Styles:** Component name + `.module.css` (e.g., `CharacterPool.module.css`)
-- **Types:** PascalCase, often in `types/` subdirs or inline
+- Next.js pages: `page.tsx`, `layout.tsx` (Next.js convention)
+- Next.js API routes: `route.ts`
+- React components: PascalCase (`AuthProvider.tsx`, `CharacterPool.tsx`)
+- Hooks: camelCase with `use` prefix (`useAuth.ts`, `useDraftState.ts`)
+- CSS modules: Same name as component (`AuthRequired.module.css`)
+- SpacetimeDB tables: camelCase (`lobbyMember.ts`, `matchSession.ts`)
+- SpacetimeDB reducers: camelCase grouped by domain (`lobbyLifecycle.ts`, `draftClassic.ts`)
+- SpacetimeDB helpers: camelCase descriptive (`ensurePermissions.ts`, `auditColumns.ts`)
+- Generated bindings: snake_case (matches SpacetimeDB naming: `lobby_member_table.ts`, `start_draft_reducer.ts`)
 
 **Directories:**
-
-- **Feature directories:** kebab-case (e.g., `admin-view`, `team-builder`)
-- **Component directories:** Mirrors component name in PascalCase (e.g., `components/features/drafting/components/`)
-- **Table files:** snake_case matching table name (e.g., `user.ts`, `hsr_character.ts`)
-- **Reducer files:** snake_case matching reducer name (e.g., `auth.ts`, `profile.ts`)
-
-**Code Identifiers:**
-
-- **Functions:** camelCase (e.g., `getServerConnection()`, `login_as_guest()`)
-- **Variables:** camelCase (e.g., `connectionBuilder`, `guestUsername`)
-- **Types:** PascalCase (e.g., `AuthContextType`, `DbConnection`)
-- **Constants:** UPPER_SNAKE_CASE (e.g., `TOKEN_KEY`, `SYSTEM_USER_ID`)
-- **React Components:** PascalCase (e.g., `AuthProvider`, `CharacterCard`)
+- Feature components: lowercase with hyphens (`admin-view/`, `team-builder/`, `game-data/`)
+- Route groups: parentheses (`(authenticated)/`, `(game)/`, `(landing-page)/`)
+- Dynamic routes: square brackets (`[matchId]/`)
+- Doc features: lowercase with hyphens (`match-session/`, `cost-sets/`)
 
 ## Where to Add New Code
 
-**New Feature (UI + Backend):**
+**New Page (authenticated):**
+- Create: `app/(authenticated)/{page-name}/page.tsx` and `app/(authenticated)/{page-name}/page.module.css`
+- Auth guard is inherited from `app/(authenticated)/layout.tsx` — no extra wiring needed
 
-1. **Create backend reducers:**
-   - File: `spacetimedb/src/reducers/[feature].ts`
-   - Pattern: `export const my_reducer = spacetimedb.reducer((ctx) => { ... })`
-
-2. **Create or update backend tables:**
-   - File: `spacetimedb/src/tables/[entity].ts`
-   - Pattern: Export table with decorators for indexes
-
-3. **Create frontend feature directory:**
-   - Directory: `components/features/[feature-name]/`
-   - Subdirs: `components/`, `hooks/`, `types/`
-
-4. **Create feature components:**
-   - File: `components/features/[feature-name]/components/[Component].tsx`
-   - Pattern: React components, use `useSpacetimeDB()` hook for table access
-
-5. **Create feature hooks:**
-   - File: `components/features/[feature-name]/hooks/use*.ts`
-   - Pattern: Custom hooks for state/side-effects
-
-6. **Create page:**
-   - File: `app/[route-group]/[feature]/page.tsx`
-   - Pattern: Page component, wrap in layout with `AuthRequired` if needed
-
-7. **Regenerate bindings:**
-   - Run: `npm run generate`
-   - Auto-generates `src/module_bindings/` from schema
-
-**New Component (UI Only):**
-
-1. If global/reusable: `components/globals/[category]/[Component].tsx`
-2. If feature-specific: `components/features/[feature]/components/[Component].tsx`
-3. Import and use in pages/parent components
-
-**New Utility/Helper:**
-
-1. **Client utility:** `lib/[name].ts` (if used across features)
-2. **Backend helper:** `spacetimedb/src/helpers/[name].ts` (if used across reducers)
-3. **Feature utility:** Inside feature directory as needed
+**New Page (public):**
+- Create: `app/(landing-page)/{page-name}/page.tsx`
 
 **New API Route:**
+- Create: `app/api/{domain}/route.ts`
+- Use `getServerConnection()` from `lib/spacetimedb-server.ts` for SpacetimeDB calls; use `getServerSession(authOptions)` for auth verification
 
-1. File: `app/api/[route]/route.ts`
-2. Pattern: Use `getServerConnection()` if accessing SpacetimeDB
-3. Handle NextAuth session if auth-required
+**New Feature Component:**
+- Create feature directory: `components/features/{feature-name}/`
+- Components go in: `components/features/{feature-name}/components/`
+- Hooks go in: `components/features/{feature-name}/hooks/`
+- Feature-local types go in: `components/features/{feature-name}/types.ts`
+
+**New SpacetimeDB Table:**
+- Create: `spacetimedb/src/tables/{tableName}.ts`
+- Register: Add to `spacetimedb/src/schema.ts` schema object
+- Regenerate bindings after publishing: `spacetime generate`
+
+**New SpacetimeDB Reducer:**
+- Add to existing domain file in `spacetimedb/src/reducers/` if it fits, or create new file
+- Export from: `spacetimedb/src/index.ts`
+- Always call `getAuthenticatedUser(ctx)` or appropriate `ensure*` guard at the start
+- Always spread `auditInsert`/`auditUpdate` on rows modified
+
+**New SpacetimeDB View:**
+- Add to `spacetimedb/src/views/securityViews.ts` (per-user) or `spacetimedb/src/views/anonymousViews.ts` (public)
+- Use `spacetimedb.view(...)` for authenticated views, `spacetimedb.anonymousView(...)` for public
+
+**New Test:**
+- Integration test: `test/backend/{domain}/{feature-name}.test.ts`
+- Unit test: `test/backend/{domain}/{helper-name}.unit.test.ts`
+
+**Utilities:**
+- Shared frontend hooks: `components/features/hooks/`
+- Shared frontend types: `components/features/types/enums.ts` or `components/features/types/structs.ts`
+- Server-side SpacetimeDB helpers: `spacetimedb/src/helpers/{helperName}.ts`
 
 ## Special Directories
 
-**node_modules/:**
-- Purpose: Installed npm dependencies
-- Generated: Yes (run `npm install`)
-- Committed: No (in .gitignore)
+**`src/module_bindings/`:**
+- Purpose: Auto-generated SpacetimeDB client bindings
+- Generated: Yes — by `spacetime generate` after `spacetime publish`
+- Committed: Yes — checked into git for type availability without a live module
+- Never edit manually
 
-**.next/:**
-- Purpose: Next.js build output and cache
-- Generated: Yes (run `npm run build` or `next dev`)
-- Committed: No (in .gitignore)
+**`spacetimedb/dist/`:**
+- Purpose: Compiled output of the SpacetimeDB TypeScript module
+- Generated: Yes — by `tsc` in the `spacetimedb/` package
+- Committed: Yes — SpacetimeDB CLI publishes from dist
 
-**spacetimedb/node_modules/:**
-- Purpose: Backend Rust dependencies compiled to WASM
-- Generated: Yes (run `npm install` in spacetimedb dir)
-- Committed: No
-
-**src/module_bindings/:**
-- Purpose: Auto-generated SpacetimeDB TypeScript bindings
-- Generated: Yes (run `npm run generate`)
-- Committed: Yes (checked in for IDE support)
-- Overwrite: Every generation replaces all files
-
-**.planning/:**
-- Purpose: GSD documentation and planning
-- Generated: Yes (by GSD commands)
+**`.planning/`:**
+- Purpose: GSD project management artifacts (phases, milestones, research, codebase docs)
+- Generated: Partially (by GSD workflows)
 - Committed: Yes
 
-**.claude/, .cursor/, .vscode/:**
-- Purpose: IDE configuration for Claude/Cursor/VSCode
-- Generated: No (manually created)
-- Committed: No (local settings)
+**`tmp/`:**
+- Purpose: Temporary scratch files
+- Generated: Yes
+- Committed: No (excluded from tsconfig)
 
 ---
 
-*Structure analysis: 2026-03-15*
+*Structure analysis: 2026-04-06*
