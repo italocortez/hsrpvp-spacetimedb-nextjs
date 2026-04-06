@@ -10,6 +10,8 @@ export const hsrCharacterColumns = {
     element: Element,
     role: CharRole,
     imageUrl: t.string(),
+    versionReleased: t.f64(),
+    treatAsVersion: t.f64(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

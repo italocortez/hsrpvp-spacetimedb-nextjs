@@ -53,6 +53,9 @@ import { MmrHistory } from './tables/mmrHistory';
 import { EloConfigTable } from './tables/eloConfig';
 import { Leaderboard } from './tables/leaderboard';
 
+// Account Rating Config
+import { AccountRatingConfig } from './tables/accountRatingConfig';
+
 // Player Stats
 import { PlayerStat } from './tables/playerStats';
 import { PlayerCharacterStat } from './tables/characterStats';
@@ -162,6 +165,9 @@ const spacetimedb = schema({
     // ELO Config
     EloConfigTable,
     Leaderboard,
+
+    // Account Rating Config
+    AccountRatingConfig,
 
     // Player Stats
     PlayerStat,
