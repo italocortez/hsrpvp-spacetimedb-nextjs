@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10.3: Tournament Organizer Views** - TO-scoped server-side views replacing full-table subscriptions (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED) (completed 2026-04-05)
-- [ ] **Phase 11: Archetype Playstyle Stats** - PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag, same PK pattern as stat tables
+- [ ] **Phase 11: Account Rating Matrix** - Replace TEMPORARY accountRating with matrix-based formula: vertical (eidolons + age decay) + horizontal (archetype coverage), runtime-configurable
 
 ## Phase Details
 
@@ -335,15 +335,18 @@ Plans:
 - [x] 10.5-04-PLAN.md — Bisect cross-file failures + fix root causes (D-01) until test:all is green
 - [x] 10.5-05-PLAN.md — Finalize AUDIT.md lessons learned + post-fix runtime baseline
 
-### Phase 11: Archetype Playstyle Stats
-**Goal**: Track playstyle stats when 3+ picks in a draft share an archetype tag; auto-increment during finalization pipeline
-**Depends on**: Phase 6 (player stats infrastructure), Phase 2 (archetype tables)
-**Requirements**: ARCH-01, ARCH-02
+### Phase 11: Account Rating Matrix
+**Goal**: Replace the TEMPORARY accountRating formula with a matrix-based rating measuring vertical investment (eidolons + age decay) and horizontal investment (archetype coverage), with runtime-configurable weights and admin recalculation
+**Depends on**: Phase 2 (archetype tables, HsrCharacter), Phase 5 (accountRating column, ELO integration)
+**Requirements**: ARCH-01, ARCH-02 (redefined)
 **Success Criteria** (what must be TRUE):
-  1. PlayerArchetypeStat table exists with same PK pattern as other stat tables (userId, gameMode, draftMode, seasonId, matchType, teamSize, archetypeId)
-  2. During finalization, if a player's picked characters include 3+ that share an archetype tag, the corresponding PlayerArchetypeStat row is incremented
-  3. Stats track matches played, wins, losses per archetype per player
-**Plans:** 1 plan
+  1. HsrCharacter has `versionReleased` (f64) and `treatAsVersion` (f64) columns, seeded from updated `characters_table.json`
+  2. Archetype data (12 archetypes, 66 character assignments) is seeded into Archetype + HsrCharacterArchetype tables via seed scripts
+  3. AccountRatingConfig single-row table exists with all formula constants (weights, compression, role exponents, scale) as f64, admin-editable at runtime
+  4. `computeAccountRating` implements the matrix formula: `round((vertical * verticalWeight + horizontal * horizontalWeight) * scale)` with sqrt base curve, role-dependent age decay, within-version compression, and dynamic archetype threshold
+  5. `calculateAccountModifier` in ELO reads `scale` from AccountRatingConfig instead of hardcoded divisor
+  6. `admin_recalculate_all_ratings` reducer recomputes all accounts on demand
+**Plans:** [To be planned]
 Plans:
 - [ ] 11-01-PLAN.md — [To be planned]
 
