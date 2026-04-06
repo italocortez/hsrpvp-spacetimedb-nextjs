@@ -23,6 +23,14 @@
             "command": "node -e \"require(require('path').join(require('child_process').execSync('git rev-parse --show-toplevel',{encoding:'utf8'}).trim(),'.claude/hooks/gsd-check-update.js'))\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-session-state.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -54,6 +62,26 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-workflow-guard.js",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-validate-commit.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -72,6 +100,16 @@
           {
             "type": "command",
             "command": "node -e \"require(require('path').join(require('child_process').execSync('git rev-parse --show-toplevel',{encoding:'utf8'}).trim(),'.claude/hooks/post-test-index-reminder.js'))\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-phase-boundary.sh",
+            "timeout": 5
           }
         ]
       }
