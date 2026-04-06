@@ -4,6 +4,7 @@ import { ScheduleAt } from 'spacetimedb';
 import { ensureAdmin } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { Path, Element, CharRole, GameMode, Role } from '../types/enums';
+import { computeMaxPossible, updateAccountRating } from '../helpers/accountRating';
 import { hsrCharacterColumns } from '../tables/hsrCharacter';
 import { hsrLightconeColumns } from '../tables/hsrLightcone';
 import { hsrCharacterCostColumns } from '../tables/hsrCharacterCost';
@@ -273,11 +274,51 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         element: { tag: r.element, value: {} },
                         role: { tag: r.role, value: {} },
                         imageUrl: r.imageUrl || '',
+                        versionReleased: r.versionReleased ?? 0,
+                        treatAsVersion: r.treatAsVersion ?? 0,
                     };
                     if (existing) {
                         ctx.db.HsrCharacter.name.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
                     } else {
                         ctx.db.HsrCharacter.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
+                    }
+                }
+
+                // Auto-trigger: recompute maxPossible and recalculate all ratings if changed (D-33)
+                const ratingConfig = ctx.db.AccountRatingConfig.id.find(1);
+                if (ratingConfig) {
+                    const allChars = [...ctx.db.HsrCharacter.iter()];
+                    const maxVersion = Math.max(...allChars.map((c: any) => c.versionReleased));
+                    if (maxVersion > 0) {
+                        const roleExponent: Record<string, number> = {
+                            Dps: ratingConfig.roleExponentDps,
+                            Support: ratingConfig.roleExponentSupport,
+                            Sustain: ratingConfig.roleExponentSustain,
+                        };
+                        const ageWeightMap = new Map<string, number>();
+                        for (const c of allChars) {
+                            const version = c.treatAsVersion > 0 ? c.treatAsVersion : c.versionReleased;
+                            const major = Math.floor(version);
+                            const frac = version - major;
+                            const effective = major + frac * ratingConfig.compression;
+                            const baseWeight = Math.sqrt(effective / maxVersion);
+                            const exp = roleExponent[c.role.tag] ?? 1.0;
+                            ageWeightMap.set(c.name, Math.pow(baseWeight, exp));
+                        }
+                        const newMaxPossible = computeMaxPossible(ctx, ratingConfig, ageWeightMap, allChars);
+                        if (Math.abs(newMaxPossible - ratingConfig.maxPossible) > 0.0001) {
+                            ctx.db.AccountRatingConfig.id.update({
+                                ...ratingConfig,
+                                maxPossible: newMaxPossible,
+                                ...auditUpdate(ctx, ratingConfig, admin.id),
+                            } as any);
+                            // Recalculate all account ratings with new maxPossible
+                            const accounts = [...ctx.db.HsrAccount.iter()];
+                            for (const account of accounts) {
+                                updateAccountRating(ctx, account.id, admin.id);
+                            }
+                            console.log(`[ADMIN] HsrCharacter bulk upsert auto-triggered rating recalc: maxPossible ${ratingConfig.maxPossible.toFixed(4)} -> ${newMaxPossible.toFixed(4)}, ${accounts.length} accounts updated`);
+                        }
                     }
                 }
                 break;
