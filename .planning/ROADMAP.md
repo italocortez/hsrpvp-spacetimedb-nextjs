@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED) (completed 2026-04-05)
 - [x] **Phase 11: Account Rating Matrix** - Replace TEMPORARY accountRating with matrix-based formula: vertical (eidolons + age decay) + horizontal (archetype coverage), runtime-configurable (completed 2026-04-06)
-- [ ] **Phase 12: Auth Security Hardening** - Isolate sensitive auth data into UserPrivate private table, make UserIdentity private, add BanRecord system (Discord ID + Google ID bans), server-side identity resolution via ephemeral connection, unified server_link_provider reducer
+- [ ] **Phase 12: Auth Security Hardening** - Isolate sensitive auth data into UserPrivate private table, make UserIdentity private, add BanRecord system (Discord ID bans), server-side identity resolution via ephemeral connection, unified server_link_provider reducer
 
 ## Phase Details
 
@@ -353,15 +353,15 @@ Plans:
 - [x] 11-02-PLAN.md — Admin reducers (seed/update/recalculate config), admin_bulk_upsert HsrCharacter update + auto-trigger, seed script updates for archetype seeding
 
 ### Phase 12: Auth Security Hardening
-**Goal**: Harden the authentication system by isolating sensitive user data into a private UserPrivate table, adding permanent ban infrastructure (Discord ID + Google ID), closing the identity resolution gap in the Discord link flow, and making UserIdentity private — without changing the auth library
+**Goal**: Harden the authentication system by isolating sensitive user data into a private UserPrivate table, adding permanent ban infrastructure (Discord ID only — Google descoped), closing the identity resolution gap in the Discord link flow, and making UserIdentity private — without changing the auth library
 **Depends on**: Phase 1 (User table), existing auth reducers (server.ts, auth flow)
 **Requirements**: SEC-01, SEC-02, SEC-03, SEC-04, SEC-05
 **Success Criteria** (what must be TRUE):
-  1. UserPrivate private table holds discordId, discordUsername, googleId (schema-only), email (schema-only) — discordId removed from public User table, replaced by hasDiscordLinked/hasGoogleLinked booleans
-  2. UserIdentity table is `public: false`; `useAuth.ts` reads from `view_my_identity` view instead
-  3. BanRecord private table supports Discord ID and Google ID bans (permanent); `server_link_provider` rejects banned provider IDs at link-time; banned users soft-deleted on reconnect
+  1. UserPrivate private table holds discordId, discordUsername, email (schema-only) — discordId removed from public User table, replaced by hasDiscordLinked boolean (Google descoped per CONTEXT.md)
+  2. UserIdentity table is `public: false`; `useAuth.ts` reads from `view_my_profile` merged view instead
+  3. BanRecord private table supports Discord ID bans (permanent); `server_link_provider` rejects banned provider IDs at link-time; banned users soft-deleted on reconnect
   4. `/api/auth/link-discord` resolves identity server-side from SpacetimeDB token via ephemeral connection instead of trusting client-supplied hex
-  5. SEC-05 (Google OAuth) descoped per CONTEXT.md — schema supports it (googleId column), implementation deferred to future phase
+  5. SEC-05 (Google OAuth) descoped per CONTEXT.md — no schema columns, implementation deferred to future phase
 **Plans:** 3 plans
 Plans:
 - [ ] 12-01-PLAN.md — Schema foundation: BanType enum, UserPrivate table, BanRecord table, User column changes, ban helper, deletion cascade update
