@@ -29,6 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED) (completed 2026-04-05)
 - [x] **Phase 11: Account Rating Matrix** - Replace TEMPORARY accountRating with matrix-based formula: vertical (eidolons + age decay) + horizontal (archetype coverage), runtime-configurable (completed 2026-04-06)
+- [ ] **Phase 12: Auth Security Hardening** - Isolate sensitive auth data into UserPrivate private table, make UserIdentity private, add BanRecord system (Discord ID + Google ID bans), server-side identity resolution via ephemeral connection, unified server_link_provider reducer
 
 ## Phase Details
 
@@ -351,10 +352,26 @@ Plans:
 - [x] 11-01-PLAN.md — Schema additions (HsrCharacter columns + AccountRatingConfig table), TDD rewrite of computeAccountRating/computeMaxPossible with unit tests
 - [x] 11-02-PLAN.md — Admin reducers (seed/update/recalculate config), admin_bulk_upsert HsrCharacter update + auto-trigger, seed script updates for archetype seeding
 
+### Phase 12: Auth Security Hardening
+**Goal**: Harden the authentication system by isolating sensitive user data into a private UserPrivate table, adding permanent ban infrastructure (Discord ID + Google ID), closing the identity resolution gap in the Discord link flow, and making UserIdentity private — without changing the auth library
+**Depends on**: Phase 1 (User table), existing auth reducers (server.ts, auth flow)
+**Requirements**: SEC-01, SEC-02, SEC-03, SEC-04, SEC-05
+**Success Criteria** (what must be TRUE):
+  1. UserPrivate private table holds discordId, discordUsername, googleId (schema-only), email (schema-only) — discordId removed from public User table, replaced by hasDiscordLinked/hasGoogleLinked booleans
+  2. UserIdentity table is `public: false`; `useAuth.ts` reads from `view_my_identity` view instead
+  3. BanRecord private table supports Discord ID and Google ID bans (permanent); `server_link_provider` rejects banned provider IDs at link-time; banned users soft-deleted on reconnect
+  4. `/api/auth/link-discord` resolves identity server-side from SpacetimeDB token via ephemeral connection instead of trusting client-supplied hex
+  5. SEC-05 (Google OAuth) descoped per CONTEXT.md — schema supports it (googleId column), implementation deferred to future phase
+**Plans:** 3 plans
+Plans:
+- [ ] 12-01-PLAN.md — Schema foundation: BanType enum, UserPrivate table, BanRecord table, User column changes, ban helper, deletion cascade update
+- [ ] 12-02-PLAN.md — Reducer + view rewrite: server_link_provider, ban admin reducers, register_server fix, clientConnected ban check, view_my_profile merge, view_admin_user_private, view_user_directory projection
+- [ ] 12-03-PLAN.md — Client + API + privacy + tests: UserIdentity private, useAuth.ts view migration, API route ephemeral identity verification, test harness update, publish + bindings + docs
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 11
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 11 -> 12
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
 Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 as Scope F.
@@ -377,4 +394,5 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.3. Tournament Organizer Views | 1/1 | Complete    | 2026-04-04 |
 | 10.4. Account Selection Per Match | 3/3 | Complete    | 2026-04-04 |
 | 11. Account Rating Matrix | 2/2 | Complete   | 2026-04-06 |
+| 12. Auth Security Hardening | 0/3 | Planned | — |
 
