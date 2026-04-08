@@ -11,7 +11,6 @@ export const gcResultColumns = {
     ranAt: t.timestamp(),
     itemsScanned: t.u32(),
     itemsDeleted: t.u32(),
-    durationMs: t.u32(),          // Always 0 -- ctx.timestamp is pinned at reducer invocation
     details: t.string(),          // JSON-encoded breakdown per GC type
     createdById: t.u32(),
     createdDate: t.timestamp(),
