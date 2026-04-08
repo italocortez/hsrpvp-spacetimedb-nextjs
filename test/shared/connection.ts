@@ -95,12 +95,15 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
           const guestUsername = `Guest_${shortId}`;
 
           const allUsers = [...connInner.db.User.iter()];
-          // If guest, matches Guest_<shortId>
-          // If verified, username was changed to the Discord test username pattern
-          const myUser = allUsers.find((u: any) =>
-            u.username === guestUsername ||
-            (opts.verify && (u.username as string).startsWith('TestUser_'))
-          );
+          // If guest, exact match on Guest_<shortId>
+          // If verified, match the most recent TestUser_* (sorted by ID desc)
+          // to avoid picking up a previously created/banned user from another test
+          const myUser = opts.verify
+            ? allUsers
+                .filter((u: any) => (u.username as string).startsWith('TestUser_'))
+                .sort((a: any, b: any) => (b as any).id - (a as any).id)[0]
+              ?? allUsers.find((u: any) => u.username === guestUsername)
+            : allUsers.find((u: any) => u.username === guestUsername);
 
           if (myUser) {
             userId = (myUser as any).id;
@@ -183,6 +186,20 @@ function verifyUserViaServerConnection(targetIdentityHex: string): Promise<void>
 }
 
 /**
+ * Unwrap SpacetimeDB SQL optional value format.
+ * SQL returns `(some = "value")` for Some and `(none = ())` for None.
+ * Strips the wrapper and quotes, returning the raw value or empty string.
+ */
+export function unwrapSqlOptional(raw: string): string {
+  if (!raw) return '';
+  const someMatch = raw.match(/^\(some\s*=\s*"(.*)"\)$/);
+  if (someMatch) return someMatch[1];
+  if (raw.match(/^\(none\s*=\s*\(\)\)$/)) return '';
+  // Already a plain value (non-optional column) — strip quotes if present
+  return raw.replace(/^"|"$/g, '');
+}
+
+/**
  * Get the test Discord provider ID for a verified harness user.
  * The test harness uses `test_<timestamp>_<random>` as the Discord provider ID.
  * Returns it by querying UserPrivate via SQL (private table, not in client subscription).
@@ -192,7 +209,7 @@ export async function getTestDiscordId(userId: number): Promise<string> {
     `SELECT discord_id FROM user_private WHERE user_id = ${userId}`
   );
   if (rows.length === 0) throw new Error(`No UserPrivate found for userId ${userId}`);
-  return rows[0].discord_id;
+  return unwrapSqlOptional(rows[0].discord_id);
 }
 
 /**

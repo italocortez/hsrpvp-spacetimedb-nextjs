@@ -6,9 +6,11 @@ import {
   expectReducerError,
   queryPrivateTable,
   getTestDiscordId,
+  unwrapSqlOptional,
   TestHarness,
 } from '../../shared/connection';
 import { promoteToRole } from '../../shared/helpers/promoteUser';
+import { DbConnection } from '@/src/module_bindings';
 
 describe('Auth Security Hardening', () => {
   const harnesses: TestHarness[] = [];
@@ -91,8 +93,7 @@ describe('Auth Security Hardening', () => {
 
       // Server connection for serverLinkProvider call later
       const serverConn = await new Promise<any>((resolve, reject) => {
-        const { DbConnection: DbConn } = require('@/src/module_bindings');
-        DbConn.builder()
+        DbConnection.builder()
           .withUri(process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com')
           .withDatabaseName(process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1')
           .withToken(process.env.SPACETIMEDB_SERVER_TOKEN!)
@@ -114,7 +115,7 @@ describe('Auth Security Hardening', () => {
         `SELECT * FROM ban_record WHERE provider_id = '${targetDiscordId}'`
       );
       expect(banRecords.length).toBe(1);
-      expect(banRecords[0].reason).toBe('Test ban for SEC-03');
+      expect(unwrapSqlOptional(banRecords[0].reason)).toBe('Test ban for SEC-03');
 
       // Now create a NEW user and try to link with the banned Discord ID
       // This should be rejected by server_link_provider's ban check
@@ -171,8 +172,8 @@ describe('Auth Security Hardening', () => {
         `SELECT deleted_at FROM user WHERE id = ${victim.userId}`
       );
       expect(userBefore.length).toBe(1);
-      // deleted_at should be null/empty before ban
-      expect(userBefore[0].deleted_at).toBeFalsy();
+      // deleted_at should be null/empty before ban (SQL returns "(none = ())" for null optionals)
+      expect(unwrapSqlOptional(userBefore[0].deleted_at)).toBeFalsy();
 
       // Ban the victim's Discord ID — triggers soft-delete (D-08 enforcement point 3)
       admin.call.adminBanUser({
