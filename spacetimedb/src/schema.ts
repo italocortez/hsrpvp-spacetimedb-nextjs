@@ -105,9 +105,13 @@ import { TournamentPlayerAccount } from './tables/tournamentPlayerAccount';
 // Match Result Game History
 import { MatchResultGameHistory } from './tables/matchResultGameHistory';
 
+// GC Audit
+import { GcResult } from './tables/gcResult';
+
 // Scheduled Jobs
 import { UserDeletionJob } from './tables/userDeletionJob';
 import { LobbyGcJob } from './tables/lobbyGcJob';
+import { IdentityGcJob } from './tables/identityGcJob';
 
 const spacetimedb = schema({
     // User / Auth
@@ -219,9 +223,13 @@ const spacetimedb = schema({
     // Tournament Player Accounts
     TournamentPlayerAccount,
 
+    // GC Audit
+    GcResult,
+
     // Scheduled Jobs
     UserDeletionJob,
     LobbyGcJob,
+    IdentityGcJob,
 });
 
 export default spacetimedb;
