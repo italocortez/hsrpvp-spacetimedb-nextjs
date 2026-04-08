@@ -43,6 +43,7 @@ export function performUserDeletion(ctx: any, userId: number, actorId: number): 
     const user = ctx.db.User.id.find(userId);
     if (!user) return;
 
+    // D-09 audit (Phase 12.1): UserPrivate cascade verified complete -- hard-deleted here
     // Cascade: hard-delete UserPrivate (D-03: BanRecord retains discordId independently)
     const userPrivate = ctx.db.UserPrivate.userId.find(userId);
     if (userPrivate) {

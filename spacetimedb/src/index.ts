@@ -68,6 +68,14 @@ spacetimedb.clientConnected((ctx) => {
         ...auditUpdate(ctx, user, user.id),
       });
 
+      // D-01: Bump lastSeenAt for GC staleness tracking
+      ctx.db.UserIdentity.identity.update({
+        ...mapping,
+        lastSeenAt: ctx.timestamp,
+        lastModifiedById: user.id,
+        lastModifiedDate: ctx.timestamp,
+      });
+
       // D-08 enforcement point 2: Check if the user's provider is banned on reconnect
       const userPrivate = ctx.db.UserPrivate.userId.find(mapping.userId);
       if (userPrivate && userPrivate.discordId) {
