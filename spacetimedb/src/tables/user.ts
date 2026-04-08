@@ -10,7 +10,7 @@ export const userColumns = {
     isPrivate: t.bool(),
     lastLoginAt: t.timestamp(),
     role: Role,
-    discordId: t.string().optional(),
+    hasDiscordLinked: t.bool(),           // D-02: replaces sensitive auth ID; only bool exposed on public table
     avatarCharacterName: t.string(), // FK reference to HsrCharacter name
     displayedAchievementId: t.u32().optional(), // FK to Achievement.id — shown on profile
     deletedAt: t.timestamp().optional(), // Set by admin soft-delete; scheduled job hard-deletes after 5s
@@ -23,7 +23,4 @@ export const userColumns = {
 export const User = table({
     name: 'user',
     public: true,
-    indexes: [
-        { accessor: 'discord_id', algorithm: 'btree', columns: ['discordId'] },
-    ]
 }, userColumns);

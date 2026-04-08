@@ -212,3 +212,7 @@ export const BracketSide = t.enum('BracketSide', {
     ThirdPlace: t.unit(),
     Group: t.unit(),
 });
+
+export const BanType = t.enum('BanType', {
+    DiscordId: t.unit(),
+});
