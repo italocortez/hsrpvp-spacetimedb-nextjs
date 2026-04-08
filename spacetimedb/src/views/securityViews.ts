@@ -2,10 +2,12 @@ import spacetimedb from '../schema';
 import { t } from 'spacetimedb/server';
 import { User } from '../tables/user';
 import { UserIdentity } from '../tables/userIdentity';
+import { UserPrivate } from '../tables/userPrivate';
+import { isRoleAtLeast } from '../helpers/ensurePermissions';
 import { Lobby } from '../tables/lobby';
 import { CostSet } from '../tables/costSet';
 import { Tournament } from '../tables/tournament';
-import { GameMode, DraftMode, MatchType, LobbyStage } from '../types/enums';
+import { GameMode, DraftMode, MatchType, LobbyStage, Role } from '../types/enums';
 import { CostSetDraftCharacter } from '../tables/costSetDraftCharacter';
 import { CostSetDraftLightcone } from '../tables/costSetDraftLightcone';
 import { CostSetDraftSynergy } from '../tables/costSetDraftSynergy';
@@ -145,29 +147,125 @@ spacetimedb.view(
 );
 
 // ---------------------------------------------------------------------------
-// 4. Public User Directory (anonymous view) — safe subset for all clients
-//    Returns full User rows. Sensitive fields (discordId, deletedAt, isGuest,
-//    role, isPrivate) are included in the rowType but this is the stepping
-//    stone — the table stays public for now. When the frontend migrates to
-//    subscribe to this view instead, the User table can be made private.
+// 4. Public User Directory (anonymous view) — safe subset for all clients.
+//    Returns ONLY the D-16 field list: no auth IDs, no audit columns, no
+//    sensitive timestamps. (D-16)
 // ---------------------------------------------------------------------------
+const UserDirectoryRow = t.object('UserDirectoryRow', {
+    id: t.u32(),
+    username: t.string(),
+    displayName: t.string(),
+    role: Role,
+    avatarCharacterName: t.string(),
+    isOnline: t.bool(),
+    isGuest: t.bool(),
+    hasDiscordLinked: t.bool(),
+    displayedAchievementId: t.u32().optional(),
+});
+
 spacetimedb.anonymousView(
     { name: 'view_user_directory', public: true },
-    t.array(User.rowType),
-    (ctx) => ctx.from.User
+    t.array(UserDirectoryRow),
+    (ctx) => {
+        return [...ctx.db.User.iter()]
+            .filter(u => !u.deletedAt)
+            .map(u => ({
+                id: u.id,
+                username: u.username,
+                displayName: u.displayName,
+                role: u.role,
+                avatarCharacterName: u.avatarCharacterName,
+                isOnline: u.isOnline,
+                isGuest: u.isGuest,
+                hasDiscordLinked: u.hasDiscordLinked,
+                displayedAchievementId: u.displayedAchievementId,
+            }));
+    }
 );
 
 // ---------------------------------------------------------------------------
-// 5. My Profile (per-user view) — full User row for the requesting user
-//    Resolves ctx.sender → userId, then returns the single User row.
+// 5. My Profile (per-user view) -- merged User + UserPrivate for the requesting
+//    user. Returns full User fields plus private auth fields (discordId,
+//    discordUsername, email) so the caller sees their own data in a single
+//    subscription. (D-04)
 // ---------------------------------------------------------------------------
+const MyProfileRow = t.object('MyProfileRow', {
+    // User fields
+    id: t.u32(),
+    username: t.string(),
+    displayName: t.string(),
+    isGuest: t.bool(),
+    isOnline: t.bool(),
+    isPrivate: t.bool(),
+    lastLoginAt: t.timestamp(),
+    role: Role,
+    hasDiscordLinked: t.bool(),
+    avatarCharacterName: t.string(),
+    displayedAchievementId: t.u32().optional(),
+    deletedAt: t.timestamp().optional(),
+    // UserPrivate fields (only visible to the user themselves)
+    discordId: t.string().optional(),
+    discordUsername: t.string().optional(),
+    email: t.string().optional(),
+    // Audit from User
+    createdById: t.u32(),
+    createdDate: t.timestamp(),
+    lastModifiedById: t.u32(),
+    lastModifiedDate: t.timestamp(),
+});
+
 spacetimedb.view(
     { name: 'view_my_profile', public: true },
-    t.option(User.rowType),
+    t.option(MyProfileRow),
     (ctx) => {
         const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
         if (!mapping) return undefined;
-        return ctx.db.User.id.find(mapping.userId) ?? undefined;
+        const user = ctx.db.User.id.find(mapping.userId);
+        if (!user) return undefined;
+
+        // Merge UserPrivate fields if they exist
+        const priv = ctx.db.UserPrivate.userId.find(mapping.userId);
+
+        return {
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            isGuest: user.isGuest,
+            isOnline: user.isOnline,
+            isPrivate: user.isPrivate,
+            lastLoginAt: user.lastLoginAt,
+            role: user.role,
+            hasDiscordLinked: user.hasDiscordLinked,
+            avatarCharacterName: user.avatarCharacterName,
+            displayedAchievementId: user.displayedAchievementId,
+            deletedAt: user.deletedAt,
+            discordId: priv?.discordId,
+            discordUsername: priv?.discordUsername,
+            email: priv?.email,
+            createdById: user.createdById,
+            createdDate: user.createdDate,
+            lastModifiedById: user.lastModifiedById,
+            lastModifiedDate: user.lastModifiedDate,
+        };
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 5b. Admin User Private (admin/mod view) -- returns all UserPrivate rows
+//     when caller has role >= Moderator (level 75). Enables admins and
+//     moderators to look up discordUsername for moderation. (D-05)
+// ---------------------------------------------------------------------------
+spacetimedb.view(
+    { name: 'view_admin_user_private', public: true },
+    t.array(UserPrivate.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const user = ctx.db.User.id.find(mapping.userId);
+        if (!user) return [];
+        if (!isRoleAtLeast(user.role, 'Moderator')) return [];
+        // iter() acceptable: admin-only view, bounded by number of verified users
+        return [...ctx.db.UserPrivate.iter()];
     }
 );
 

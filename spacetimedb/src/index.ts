@@ -1,6 +1,7 @@
 import spacetimedb from './schema';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
 import { transferCaptain, transferReferee, transferHost } from './helpers/flagTransferHelpers';
+import { checkProviderBan } from './helpers/banHelper';
 
 // Private auth tables — imported for schema registration
 import './tables/userPrivate';
@@ -12,7 +13,8 @@ import './views/anonymousViews';
 export { broadcast_cursor } from './reducers/cursor';
 export { login_as_guest } from './reducers/auth';
 export { delete_guest_account, update_display_name, update_username, update_avatar } from './reducers/profile';
-export { register_server, server_link_discord, server_set_role, server_delete_user, server_set_mmr } from './reducers/server';
+export { register_server, server_link_provider, server_set_role, server_delete_user, server_set_mmr } from './reducers/server';
+export { admin_ban_user, admin_unban_user } from './reducers/banAdmin';
 export { admin_delete_row, admin_bulk_upsert, admin_update_user } from './reducers/admin';
 export { admin_update_elo_config, admin_seed_elo_config } from './reducers/eloAdmin';
 export { admin_seed_rating_config, admin_update_rating_config, admin_recalculate_all_ratings } from './reducers/ratingAdmin';
@@ -65,6 +67,21 @@ spacetimedb.clientConnected((ctx) => {
         isOnline: true,
         ...auditUpdate(ctx, user, user.id),
       });
+
+      // D-08 enforcement point 2: Check if the user's provider is banned on reconnect
+      const userPrivate = ctx.db.UserPrivate.userId.find(mapping.userId);
+      if (userPrivate && userPrivate.discordId) {
+        const isBanned = checkProviderBan(ctx, { tag: 'DiscordId', value: {} } as any, userPrivate.discordId);
+        if (isBanned && !user.deletedAt) {
+          ctx.db.User.id.update({
+            ...user,
+            isOnline: false,
+            deletedAt: ctx.timestamp,
+            ...auditUpdate(ctx, user, user.id),
+          });
+          console.log(`[BAN-RECONNECT] User #${user.id} soft-deleted -- banned Discord ID detected on reconnect.`);
+        }
+      }
     }
   }
 });
