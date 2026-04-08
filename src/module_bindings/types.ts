@@ -142,6 +142,27 @@ export const BanPayload = __t.object("BanPayload", {
 });
 export type BanPayload = __Infer<typeof BanPayload>;
 
+export const BanRecord = __t.object("BanRecord", {
+  id: __t.u32(),
+  get banType() {
+    return BanType;
+  },
+  providerId: __t.string(),
+  reason: __t.string(),
+  bannedByUserId: __t.u32(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type BanRecord = __Infer<typeof BanRecord>;
+
+// The tagged union or sum type for the algebraic type `BanType`.
+export const BanType = __t.enum("BanType", {
+  DiscordId: __t.unit(),
+});
+export type BanType = __Infer<typeof BanType>;
+
 export const BidPayload = __t.object("BidPayload", {
   amount: __t.f32(),
   targetCharacter: __t.string(),
@@ -1599,7 +1620,7 @@ export const User = __t.object("User", {
   get role() {
     return Role;
   },
-  discordId: __t.option(__t.string()),
+  hasDiscordLinked: __t.bool(),
   avatarCharacterName: __t.string(),
   displayedAchievementId: __t.option(__t.u32()),
   deletedAt: __t.option(__t.timestamp()),
@@ -1643,6 +1664,18 @@ export const UserIdentity = __t.object("UserIdentity", {
   lastModifiedDate: __t.timestamp(),
 });
 export type UserIdentity = __Infer<typeof UserIdentity>;
+
+export const UserPrivate = __t.object("UserPrivate", {
+  userId: __t.u32(),
+  discordId: __t.option(__t.string()),
+  discordUsername: __t.option(__t.string()),
+  email: __t.option(__t.string()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type UserPrivate = __Infer<typeof UserPrivate>;
 
 // The tagged union or sum type for the algebraic type `ValidationStatus`.
 export const ValidationStatus = __t.enum("ValidationStatus", {

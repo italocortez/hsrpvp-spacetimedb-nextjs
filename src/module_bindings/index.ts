@@ -37,6 +37,7 @@ import {
 import AcceptTeamRequestReducer from "./accept_team_request_reducer";
 import AddAchievementCriteriaReducer from "./add_achievement_criteria_reducer";
 import AdminAssignCharacterArchetypesReducer from "./admin_assign_character_archetypes_reducer";
+import AdminBanUserReducer from "./admin_ban_user_reducer";
 import AdminBatchRemoveCharactersReducer from "./admin_batch_remove_characters_reducer";
 import AdminBatchUpsertCharactersReducer from "./admin_batch_upsert_characters_reducer";
 import AdminBulkUpsertReducer from "./admin_bulk_upsert_reducer";
@@ -50,6 +51,7 @@ import AdminRemoveCharacterArchetypesReducer from "./admin_remove_character_arch
 import AdminSeedEloConfigReducer from "./admin_seed_elo_config_reducer";
 import AdminSeedRatingConfigReducer from "./admin_seed_rating_config_reducer";
 import AdminSetBracketWinnerReducer from "./admin_set_bracket_winner_reducer";
+import AdminUnbanUserReducer from "./admin_unban_user_reducer";
 import AdminUpdateEloConfigReducer from "./admin_update_elo_config_reducer";
 import AdminUpdateHsrAccountReducer from "./admin_update_hsr_account_reducer";
 import AdminUpdateRatingConfigReducer from "./admin_update_rating_config_reducer";
@@ -145,7 +147,7 @@ import SeedBracketReducer from "./seed_bracket_reducer";
 import SelectMatchAccountReducer from "./select_match_account_reducer";
 import SendChatMessageReducer from "./send_chat_message_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
-import ServerLinkDiscordReducer from "./server_link_discord_reducer";
+import ServerLinkProviderReducer from "./server_link_provider_reducer";
 import ServerSetMmrReducer from "./server_set_mmr_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
@@ -231,7 +233,6 @@ import TournamentTeamMemberRow from "./tournament_team_member_table";
 import TournamentTeamRequestRow from "./tournament_team_request_table";
 import UserRow from "./user_table";
 import UserAchievementRow from "./user_achievement_table";
-import UserIdentityRow from "./user_identity_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -965,9 +966,6 @@ const tablesSchema = __schema({
   User: __table({
     name: 'user',
     indexes: [
-      { accessor: 'discord_id', name: 'user_discord_id_idx_btree', algorithm: 'btree', columns: [
-        'discordId',
-      ] },
       { accessor: 'id', name: 'user_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
@@ -1001,20 +999,6 @@ const tablesSchema = __schema({
       { name: 'user_achievement_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, UserAchievementRow),
-  UserIdentity: __table({
-    name: 'user_identity',
-    indexes: [
-      { accessor: 'identity', name: 'user_identity_identity_idx_btree', algorithm: 'btree', columns: [
-        'identity',
-      ] },
-      { accessor: 'user_id', name: 'user_identity_user_id_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-      ] },
-    ],
-    constraints: [
-      { name: 'user_identity_identity_key', constraint: 'unique', columns: ['identity'] },
-    ],
-  }, UserIdentityRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -1022,6 +1006,7 @@ const reducersSchema = __reducers(
   __reducerSchema("accept_team_request", AcceptTeamRequestReducer),
   __reducerSchema("add_achievement_criteria", AddAchievementCriteriaReducer),
   __reducerSchema("admin_assign_character_archetypes", AdminAssignCharacterArchetypesReducer),
+  __reducerSchema("admin_ban_user", AdminBanUserReducer),
   __reducerSchema("admin_batch_remove_characters", AdminBatchRemoveCharactersReducer),
   __reducerSchema("admin_batch_upsert_characters", AdminBatchUpsertCharactersReducer),
   __reducerSchema("admin_bulk_upsert", AdminBulkUpsertReducer),
@@ -1035,6 +1020,7 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_seed_elo_config", AdminSeedEloConfigReducer),
   __reducerSchema("admin_seed_rating_config", AdminSeedRatingConfigReducer),
   __reducerSchema("admin_set_bracket_winner", AdminSetBracketWinnerReducer),
+  __reducerSchema("admin_unban_user", AdminUnbanUserReducer),
   __reducerSchema("admin_update_elo_config", AdminUpdateEloConfigReducer),
   __reducerSchema("admin_update_hsr_account", AdminUpdateHsrAccountReducer),
   __reducerSchema("admin_update_rating_config", AdminUpdateRatingConfigReducer),
@@ -1130,7 +1116,7 @@ const reducersSchema = __reducers(
   __reducerSchema("select_match_account", SelectMatchAccountReducer),
   __reducerSchema("send_chat_message", SendChatMessageReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
-  __reducerSchema("server_link_discord", ServerLinkDiscordReducer),
+  __reducerSchema("server_link_provider", ServerLinkProviderReducer),
   __reducerSchema("server_set_mmr", ServerSetMmrReducer),
   __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),

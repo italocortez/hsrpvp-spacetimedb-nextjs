@@ -48,7 +48,7 @@ export async function createTestHarness(): Promise<TestHarness> {
 /**
  * Creates a connected test harness with a verified (non-guest) user.
  * Requires SPACETIMEDB_SERVER_TOKEN env var.
- * Calls server_link_discord to upgrade the guest to a verified user.
+ * Calls server_link_provider to upgrade the guest to a verified user.
  */
 export async function createVerifiedTestHarness(): Promise<TestHarness> {
   if (!hasServerToken()) {
@@ -78,7 +78,7 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
         await connInner.reducers.loginAsGuest({});
 
         if (opts.verify && getServerToken()) {
-          // Create a second connection with the server token to call server_link_discord
+          // Create a second connection with the server token to call server_link_provider
           await verifyUserViaServerConnection(identityHex);
           // Re-login to refresh the user data in subscription cache
           await connInner.reducers.loginAsGuest({});
@@ -87,11 +87,31 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
         clearTimeout(timeout);
         // Wait for subscription sync, then resolve userId from cache
         setTimeout(() => {
-          // Look up this connection's userId via UserIdentity → User
-          const mapping = [...connInner.db.UserIdentity.iter()].find(
-            (m) => m.identity.toHexString() === identityHex
+          // UserIdentity is now private — cannot iterate it from client.
+          // Resolve userId from the User table via guest username pattern or verified user lookup.
+          let userId = 0;
+
+          const shortId = identityHex.slice(0, 8);
+          const guestUsername = `Guest_${shortId}`;
+
+          const allUsers = [...connInner.db.User.iter()];
+          // If guest, matches Guest_<shortId>
+          // If verified, username was changed to the Discord test username pattern
+          const myUser = allUsers.find((u: any) =>
+            u.username === guestUsername ||
+            (opts.verify && (u.username as string).startsWith('TestUser_'))
           );
-          const userId = mapping ? mapping.userId : 0;
+
+          if (myUser) {
+            userId = (myUser as any).id;
+          } else {
+            // Fallback: use the most recently inserted non-SYSTEM user
+            const nonSystemUsers = allUsers.filter((u: any) => (u as any).id !== 0);
+            if (nonSystemUsers.length > 0) {
+              nonSystemUsers.sort((a: any, b: any) => (b as any).id - (a as any).id);
+              userId = (nonSystemUsers[0] as any).id;
+            }
+          }
 
           const harness: TestHarness = {
             conn: connInner,
@@ -121,7 +141,7 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
 }
 
 /**
- * Uses a server-token connection to call server_link_discord,
+ * Uses a server-token connection to call server_link_provider,
  * which upgrades a guest user to verified.
  */
 function verifyUserViaServerConnection(targetIdentityHex: string): Promise<void> {
@@ -137,10 +157,11 @@ function verifyUserViaServerConnection(targetIdentityHex: string): Promise<void>
       .withToken(getServerToken())
       .onConnect(async (serverConn) => {
         try {
-          await serverConn.reducers.serverLinkDiscord({
+          await serverConn.reducers.serverLinkProvider({
             callerIdentityHex: targetIdentityHex,
-            discordId: testDiscordId,
-            discordUsername: `TestUser_${testDiscordId.slice(-6)}`,
+            provider: 'discord',
+            providerId: testDiscordId,
+            providerName: `TestUser_${testDiscordId.slice(-6)}`,
           });
           clearTimeout(timeout);
           serverConn.disconnect();
@@ -159,6 +180,19 @@ function verifyUserViaServerConnection(targetIdentityHex: string): Promise<void>
       .onDisconnect(() => {})
       .build();
   });
+}
+
+/**
+ * Get the test Discord provider ID for a verified harness user.
+ * The test harness uses `test_<timestamp>_<random>` as the Discord provider ID.
+ * Returns it by querying UserPrivate via SQL (private table, not in client subscription).
+ */
+export async function getTestDiscordId(userId: number): Promise<string> {
+  const rows = await queryPrivateTable(
+    `SELECT discord_id FROM user_private WHERE user_id = ${userId}`
+  );
+  if (rows.length === 0) throw new Error(`No UserPrivate found for userId ${userId}`);
+  return rows[0].discord_id;
 }
 
 /**
@@ -188,8 +222,9 @@ export function sleep(ms: number): Promise<void> {
  * Query private tables via `spacetime sql` CLI.
  * Returns parsed rows as key-value objects (snake_case column names).
  *
- * Use this for tables with `public: false` (PlayerStat, PlayerCharacterStat,
- * PlayerRelationship) that aren't accessible via WebSocket subscriptions.
+ * Use this for tables with `public: false` (UserPrivate, BanRecord, UserIdentity,
+ * PlayerStat, PlayerCharacterStat, PlayerRelationship) that aren't accessible
+ * via WebSocket subscriptions.
  */
 export async function queryPrivateTable(sql: string): Promise<Record<string, string>[]> {
   const { execSync } = await import('child_process');

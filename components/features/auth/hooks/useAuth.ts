@@ -32,6 +32,10 @@ export function useAuth() {
             })
             .subscribe('SELECT * FROM view_my_profile');
 
+        // Subscribe to view_my_identity as fallback for userId resolution
+        // (A1 failed: ViewMyProfile not in generated bindings — Strategy B path)
+        conn.subscriptionBuilder().subscribe('SELECT * FROM view_my_identity');
+
         // Also subscribe to User table for general user list (admin views, etc.)
         conn.subscriptionBuilder().subscribe('SELECT * FROM user');
 

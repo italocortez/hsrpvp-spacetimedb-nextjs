@@ -11,7 +11,7 @@ import {
 } from "spacetimedb";
 
 export default {
-  callerIdentityHex: __t.string(),
-  discordId: __t.string(),
-  discordUsername: __t.string(),
+  banTypeTag: __t.string(),
+  providerId: __t.string(),
+  reason: __t.string(),
 };
