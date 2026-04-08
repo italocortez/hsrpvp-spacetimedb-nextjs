@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 11
+current_phase: 12
 current_plan: Not started
-status: executing
-last_updated: "2026-04-07T11:17:33.074Z"
+status: completed
+last_updated: "2026-04-08T09:35:42.103Z"
 progress:
   total_phases: 18
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 57
-  completed_plans: 54
-  percent: 95
+  completed_plans: 57
+  percent: 100
 ---
 
 # Session State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 11
+**Current phase:** 12
 **Current plan:** Not started
-**Status:** Ready to execute
+**Status:** Milestone complete
 
 ## Decisions
 
@@ -177,6 +177,7 @@ See: .planning/PROJECT.md
 - Phase 10.3 inserted after Phase 10.1: Tournament Organizer Views — TO-scoped server-side views (view_my_tournaments, view_tournament_dashboard, view_tournament_match_status) to reduce frontend bandwidth
 - Phase 10.4 inserted after Phase 10.3: Account Selection Per Match — multi-account per match, account switching between games, drop TournamentEnrolled.hsrAccountId
 - Phase 10.5 inserted after Phase 10.4: Test Suite Stabilization — audit cross-file failures, test isolation, cleanup hygiene exposed after 10.4 schema changes
+- Phase 12.1 inserted after Phase 12: Identity Garbage Collection — scheduled cleanup of stale UserIdentity rows (orphaned after logout) based on lastSeenAt age (INSERTED)
 
 ## Session Log
 

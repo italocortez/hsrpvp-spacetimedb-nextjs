@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10.4: Account Selection Per Match** - Multi-account support per match, account switching between games, drop redundant hsrAccountId (INSERTED) (completed 2026-04-04)
 - [x] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED) (completed 2026-04-05)
 - [x] **Phase 11: Account Rating Matrix** - Replace TEMPORARY accountRating with matrix-based formula: vertical (eidolons + age decay) + horizontal (archetype coverage), runtime-configurable (completed 2026-04-06)
-- [ ] **Phase 12: Auth Security Hardening** - Isolate sensitive auth data into UserPrivate private table, make UserIdentity private, add BanRecord system (Discord ID bans), server-side identity resolution via ephemeral connection, unified server_link_provider reducer
+- [x] **Phase 12: Auth Security Hardening** - Isolate sensitive auth data into UserPrivate private table, make UserIdentity private, add BanRecord system (Discord ID bans), server-side identity resolution via ephemeral connection, unified server_link_provider reducer (completed 2026-04-08)
 
 ## Phase Details
 
@@ -362,11 +362,11 @@ Plans:
   3. BanRecord private table supports Discord ID bans (permanent); `server_link_provider` rejects banned provider IDs at link-time; banned users soft-deleted on reconnect
   4. `/api/auth/link-discord` resolves identity server-side from SpacetimeDB token via ephemeral connection instead of trusting client-supplied hex
   5. SEC-05 (Google OAuth) descoped per CONTEXT.md — no schema columns, implementation deferred to future phase
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 Plans:
-- [ ] 12-01-PLAN.md — Schema foundation: BanType enum, UserPrivate table, BanRecord table, User column changes, ban helper, deletion cascade update
-- [ ] 12-02-PLAN.md — Reducer + view rewrite: server_link_provider, ban admin reducers, register_server fix, clientConnected ban check, view_my_profile merge, view_admin_user_private, view_user_directory projection
-- [ ] 12-03-PLAN.md — Client + API + privacy + tests: UserIdentity private, useAuth.ts view migration, API route ephemeral identity verification, test harness update, publish + bindings + docs
+- [x] 12-01-PLAN.md — Schema foundation: BanType enum, UserPrivate table, BanRecord table, User column changes, ban helper, deletion cascade update
+- [x] 12-02-PLAN.md — Reducer + view rewrite: server_link_provider, ban admin reducers, register_server fix, clientConnected ban check, view_my_profile merge, view_admin_user_private, view_user_directory projection
+- [x] 12-03-PLAN.md — Client + API + privacy + tests: UserIdentity private, useAuth.ts view migration, API route ephemeral identity verification, test harness update, publish + bindings + docs
 
 ## Progress
 
@@ -394,5 +394,15 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.3. Tournament Organizer Views | 1/1 | Complete    | 2026-04-04 |
 | 10.4. Account Selection Per Match | 3/3 | Complete    | 2026-04-04 |
 | 11. Account Rating Matrix | 2/2 | Complete   | 2026-04-06 |
-| 12. Auth Security Hardening | 0/3 | Planned | — |
+| 12. Auth Security Hardening | 3/3 | Complete    | 2026-04-08 |
 
+
+### Phase 12.1: Identity Garbage Collection (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12.1 to break down)

@@ -16,6 +16,7 @@ test/data/
 # next.js
 /.next/
 /out/
+spacetimedb/.next/
 
 # production
 /build

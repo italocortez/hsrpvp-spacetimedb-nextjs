@@ -790,9 +790,18 @@ const {
 const conn = getConnection();
 ```
 
-### Identity comparison
+### Identity comparison and construction
 ```typescript
-const isOwner = row.ownerId.toHexString() === myIdentity.toHexString();
+// Compare two Identity objects
+const isOwner = row.ownerId.isEqual(myIdentity);
+
+// Construct Identity from hex string (server or client)
+import { Identity } from 'spacetimedb';
+const identity = Identity.fromString(hexString);  // throws if invalid (not 32 bytes)
+const identity2 = new Identity(hexString);         // equivalent
+
+// Use constructed Identity for PK/index lookups instead of iter scanning
+const mapping = ctx.db.UserIdentity.identity.find(identity);  // O(1)
 ```
 
 ### Table row callbacks (client-side)

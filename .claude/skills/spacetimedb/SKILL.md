@@ -129,6 +129,29 @@ const [users, isReady] = useTable(tables.user, {
 });
 ```
 
+### Subscription pitfalls
+
+**Combined `subscribe([...])` vs separate subscriptions:** When subscribing to multiple queries, `subscribe(['SELECT * FROM a', 'SELECT * FROM b'])` fires `onApplied` when the subscription message is acknowledged — NOT when all table data has arrived. If your `onApplied` callback reads from table B, the data may not be there yet.
+
+Use separate subscriptions with individual `onApplied` callbacks when you need to read from specific tables:
+```typescript
+// ✅ CORRECT — each table has its own onApplied
+conn.subscriptionBuilder()
+    .onApplied(() => { /* view_my_profile data is ready */ })
+    .subscribe('SELECT * FROM view_my_profile');
+
+conn.subscriptionBuilder()
+    .onApplied(() => { /* user data is ready — safe to read conn.db.User */ })
+    .subscribe('SELECT * FROM user');
+
+// ❌ WRONG — onApplied fires but conn.db.User may be empty
+conn.subscriptionBuilder()
+    .onApplied(() => { const users = [...conn.db.User.iter()]; /* may be 0! */ })
+    .subscribe(['SELECT * FROM view_my_profile', 'SELECT * FROM user']);
+```
+
+**Views have no typed client bindings:** `spacetime generate` does NOT create typed table accessors for views. `conn.db.ViewMyProfile` is always `undefined`, even when subscribing via `subscribe('SELECT * FROM view_my_profile')`. The subscription delivers data but it has nowhere to land in the typed `conn.db`. Use regular table subscriptions + index lookups instead of relying on view accessors.
+
 ### Handling reducer errors on the client
 Reducers don't return data, so errors surface via callbacks. Use `_then()` to detect failures from a specific call, and `ctx.event.status` to read the `SenderError` message:
 ```typescript
@@ -322,6 +345,8 @@ These are APIs that don't exist — LLMs hallucinate them frequently:
 | `ctx.db.Table.pkCol.filter(val)` | `ctx.db.Table.pkCol.find(val)` — PK/unique columns only have `.find()`, not `.filter()` (TypeError) |
 | `{ microsSinceUnixEpoch: BigInt }` in server insert/update | `new Timestamp(BigInt)` — plain objects lack the internal `__timestamp_micros_since_unix_epoch__` property, causing PANIC |
 | `null` / `undefined` for optional struct fields | Use sentinel values (e.g. `255` for u8, `new Timestamp(0n)` for timestamp) — optional inside `t.object()` can't serialize null/undefined |
+| `conn.db.ViewMyProfile.iter()` (view accessor on client) | Views have NO typed client bindings — `conn.db.ViewName` is always `undefined`. Subscribe via SQL string, read data from regular table subscriptions instead |
+| `subscribe([...]).onApplied(() => read all tables)` | Combined array subscribe fires `onApplied` before all table data arrives — use separate subscriptions with individual `onApplied` callbacks per table |
 
 ## Feature implementation checklist
 
@@ -485,10 +510,17 @@ lastModifiedDate: t.timestamp(),
 | Multi-column lookup (multi-col btree) | `[...ctx.db.Table.by_col1_and_col2.filter([val1, val2])]` | `.filter({col1, col2})` (object arg silently returns 0 rows!) |
 | Multi-column lookup (single-col btree fallback) | `[...ctx.db.Table.idx.filter(col1Val)].find(r => r.col2 === col2Val)` | `.filter([val1, val2])` on single-col index (silently returns 0 rows!) |
 | Composite PK lookup | Define multi-col btree index, then `[...ctx.db.Table.by_col1_and_col2.filter([val1, val2])]` | `.primaryKey.find()` (undefined at runtime — PANIC!) |
-| Identity hex string match | `.iter()` (no hex→Identity conversion exists) | N/A — iter is the only option |
+| Identity from hex string | `Identity.fromString(hex)` then `.find()` on PK/index | `.iter()` + `.toHexString()` comparison (O(n) scan) |
 | Composite key upsert (no PK accessor) | `.iter()` + match | N/A — iter is the only option |
 
-**When `.iter()` is unavoidable**, add a comment explaining why (e.g. "identity is an object, we only have the hex string").
+**`Identity` construction from hex strings:** The `Identity` class accepts hex strings directly — `new Identity(hexString)` or `Identity.fromString(hexString)`. Both throw if the input is not a valid 32-byte hex string. Use this to convert hex strings for PK/index lookups instead of iterating:
+```typescript
+import { Identity } from 'spacetimedb';
+const identity = Identity.fromString(callerIdentityHex);  // throws on invalid input
+const row = ctx.db.UserIdentity.identity.find(identity);  // O(1) PK lookup
+```
+
+**When `.iter()` is unavoidable**, add a comment explaining why (e.g. "composite key with no multi-column index defined").
 
 ## TypeScript patterns in SpacetimeDB (SDK limitations)
 

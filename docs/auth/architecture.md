@@ -79,10 +79,16 @@ createdById, createdDate, lastModifiedById, lastModifiedDate
 
 The Next.js API route performs ephemeral connection identity verification:
 
-1. Verify the NextAuth (Discord OAuth) session server-side → get `discordId`, `discordUsername`
-2. Parse `spacetimeToken` from request body
-3. Create an ephemeral SpacetimeDB connection using the client's token → extract server-verified identity hex (WR-02: fail-fast on disconnect)
-4. Call `server_link_provider` via the trusted server connection with the verified identity
+1. Read NextAuth session JWT directly from cookies (bypasses `getServerSession` which returns null in App Router POST handlers — known next-auth 4.x bug)
+2. Decode JWT via `next-auth/jwt` `decode()` with `NEXTAUTH_SECRET` → extract `discordId` (token.sub), `discordUsername` (token.name)
+3. Parse `spacetimeToken` from request body
+4. Create an ephemeral SpacetimeDB connection using the client's token → extract server-verified identity hex (WR-02: fail-fast on disconnect)
+5. Call `server_link_provider` via the trusted server connection with the verified identity
+
+**Key implementation details:**
+- Supports chunked cookies (next-auth splits large JWTs across multiple cookies)
+- Cookie name derived from `NEXTAUTH_URL` protocol: `__Secure-next-auth.session-token` (https) or `next-auth.session-token` (http)
+- `spacetimedb-server.ts` imports HOST/DB_NAME from shared `lib/spacetimedb.ts` — single source of truth prevents client/server database mismatch
 
 This replaces the previous approach of trusting client-supplied identity hex (SEC-04).
 
@@ -104,6 +110,50 @@ This replaces the previous approach of trusting client-supplied identity hex (SE
 | Point 1 (link-time) | `server_link_provider` | `rejectIfBanned` called before any user mutation |
 | Point 2 (reconnect) | `clientConnected` | Ban check on reconnect; if banned → soft-delete immediately |
 | Point 3 (ban-time) | `admin_ban_user` | Soft-deletes the currently linked user on ban creation |
+
+## Frontend Auth Flow (useAuth.ts)
+
+### Profile Resolution Strategies
+
+`readProfileFromConnection` resolves the current user via three strategies, tried in order:
+
+| Strategy | Lookup | When it wins |
+|----------|--------|-------------|
+| 1. Cached userId | `localStorage` → `User.id.find()` | Returning user, same browser |
+| 2. Guest username | `Guest_{identity_hex8}` → `User.username.find()` | Just created guest |
+| 3. Session name | `session.user.name` → `User.username.find()` | Post-merge recovery (identity re-pointed to existing user, guest deleted) |
+
+### Reactive Table Callbacks
+
+`conn.db.User.onInsert` and `conn.db.User.onUpdate` trigger profile re-reads for live changes. Filtered by `event.tag`:
+- `'Reducer'` — this connection's reducer (e.g., `loginAsGuest`)
+- `'Transaction'` — other connection's reducer (e.g., `server_link_provider` from server connection)
+- `'SubscribeApplied'` — skipped (initial subscription data, handled by `onApplied`)
+
+### Discord Linking Intent
+
+`hasDiscordIntent` (sessionStorage flag with 5-minute TTL) gates Discord linking:
+- Set by `loginDiscord()` — called from LoginForm and DiscordLink profile component
+- Required for Step B (Discord link API call) — prevents stale NextAuth sessions from auto-linking
+- Cleared immediately when Step B initiates — prevents re-entry loops
+- `linkingRef` stays `true` on success (blocks re-entry from memoized intent), resets on failure (allows retry)
+
+### Auth Paths
+
+| Path | Flow |
+|------|------|
+| Guest → Link Discord | `loginAsGuest` → Strategy 2 → user clicks Link Discord → `loginDiscord()` sets intent → OAuth → Step B links |
+| Direct Discord login | `loginDiscord()` sets intent → OAuth → Step A (`loginAsGuest`) → `onInsert` → Step B links |
+| Logout → Discord re-login | New identity → Step A creates guest → Strategy 3 finds existing user → Step B triggers merge |
+| Cross-browser Discord login | Same as logout path — new identity, merge via `server_link_provider` Case 1b |
+
+### server_link_provider Merge Cases
+
+| Case | Condition | Action |
+|------|-----------|--------|
+| 1a | Identity → guest, no existing provider owner | Upgrade guest: `isGuest=false`, `hasDiscordLinked=true`, `username=providerName` |
+| 1b | Identity → guest, provider already linked to different user | Re-point identity to existing user, delete orphaned guest |
+| 1c | Identity → verified user, refresh | Update timestamps, upsert UserPrivate |
 
 ## Key Patterns
 
