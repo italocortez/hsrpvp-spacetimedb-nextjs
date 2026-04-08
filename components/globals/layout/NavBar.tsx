@@ -7,6 +7,8 @@ import styles from './NavBar.module.css';
 import { Logo } from './Logo';
 import { GearIcon } from './GearIcon';
 import { useAuthContext } from '@/components/features/auth/components/AuthProvider';
+import LoginForm from '@/components/features/auth/components/LoginForm';
+import { getSessionCookieClient } from '@/lib/session-cookie';
 
 interface NavBarProps {
   className?: string;
@@ -22,7 +24,13 @@ const NAV_ITEMS = [
 
 export const NavBar = ({ className }: NavBarProps) => {
   const pathname = usePathname();
-  const { isAuthenticated, user, loginGuest } = useAuthContext();
+  const { isAuthenticated, isLoadingData, isConnecting, user, loginGuest, loginDiscord } = useAuthContext();
+  const [showLogin, setShowLogin] = useState(false);
+  // Start null to match SSR, hydrate from cookie after mount
+  const [cachedDisplayName, setCachedDisplayName] = useState<string | null>(null);
+  useEffect(() => {
+    setCachedDisplayName(getSessionCookieClient());
+  }, []);
   const isAdmin = user?.role?.tag === 'Admin';
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -161,17 +169,32 @@ export const NavBar = ({ className }: NavBarProps) => {
           <GearIcon size={20} color="currentColor" />
         </Link>
 
-        {/* Auth: user display or login CTA */}
+        {/* Auth: user display, loading, or login CTA */}
         {isAuthenticated ? (
           <Link href="/profile" className={styles.userInfo}>
             {user?.displayName}
           </Link>
+        ) : (isLoadingData || isConnecting) ? (
+          cachedDisplayName ? (
+            <span className={styles.userInfo}>{cachedDisplayName}</span>
+          ) : null
         ) : (
-          <button className={styles.loginCta} onClick={loginGuest} type="button">
+          <button className={styles.loginCta} onClick={() => setShowLogin(true)} type="button">
             LOG IN
           </button>
         )}
       </div>
+
+      {showLogin && (
+        <div className={styles.loginOverlay} onClick={() => setShowLogin(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <LoginForm
+              loginGuest={() => { loginGuest(); setShowLogin(false); }}
+              loginDiscord={() => { loginDiscord(); setShowLogin(false); }}
+            />
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

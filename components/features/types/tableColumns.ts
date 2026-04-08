@@ -11,7 +11,6 @@ export const EVENT_TABLES: ReadonlySet<string> = new Set([
 // Derived by listing all tables where public: true and event is not true.
 export const PUBLIC_TABLES = [
     'User',
-    'UserIdentity',
     'HsrCharacter',
     'HsrLightcone',
     'HsrCharacterCost',

@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' wss://maincloud.spacetimedb.com ws://localhost:* https://discord.com https://cdn.discordapp.com",
+              "connect-src 'self' wss://maincloud.spacetimedb.com https://maincloud.spacetimedb.com ws://localhost:* https://discord.com https://cdn.discordapp.com",
               "frame-ancestors 'none'",
             ].join('; '),
           },
