@@ -227,9 +227,9 @@ export function sleep(ms: number): Promise<void> {
  * via WebSocket subscriptions.
  */
 export async function queryPrivateTable(sql: string): Promise<Record<string, string>[]> {
-  const { execSync } = await import('child_process');
+  const { execFileSync } = await import('child_process');
   const db = getDb();
-  const raw = execSync(`spacetime sql ${db} "${sql.replace(/"/g, '\\"')}"`, {
+  const raw = execFileSync('spacetime', ['sql', db, sql], {
     encoding: 'utf-8',
     timeout: 15000,
   });

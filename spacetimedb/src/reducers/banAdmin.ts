@@ -23,8 +23,14 @@ export const admin_ban_user = spacetimedb.reducer({
     if (!providerId || providerId.length === 0) {
         throw new SenderError('providerId is required');
     }
+    if (providerId.length > 32) {
+        throw new SenderError('providerId must be 32 characters or fewer');
+    }
     if (!reason || reason.length === 0) {
         throw new SenderError('reason is required');
+    }
+    if (reason.length > 500) {
+        throw new SenderError('reason must be 500 characters or fewer');
     }
 
     // Check for existing ban with same type + provider.

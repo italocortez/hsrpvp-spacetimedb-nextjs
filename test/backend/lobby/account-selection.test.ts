@@ -24,7 +24,7 @@ import {
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs as sharedDefaultLobbyArgs } from '../../shared/helpers/lobbies';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 const DB = process.env.SPACETIMEDB_DB ?? 'hsrpvp-spacetimedb-nextjs-test1';
 
@@ -32,7 +32,7 @@ const DB = process.env.SPACETIMEDB_DB ?? 'hsrpvp-spacetimedb-nextjs-test1';
 
 /** Query private tables via spacetime sql CLI. Returns parsed row objects. */
 function sql(query: string): Record<string, string>[] {
-    const raw = execSync(`spacetime sql ${DB} "${query.replace(/"/g, '\\"')}"`, {
+    const raw = execFileSync('spacetime', ['sql', DB, query], {
         encoding: 'utf-8',
         timeout: 15000,
     });

@@ -8,6 +8,7 @@ import {
   getTestDiscordId,
   TestHarness,
 } from '../../shared/connection';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
 
 describe('Auth Security Hardening', () => {
   const harnesses: TestHarness[] = [];
@@ -59,16 +60,9 @@ describe('Auth Security Hardening', () => {
       harnesses.push(h);
       await h.sync(2000);
 
-      // UserIdentity should not be iterable (private)
-      try {
-        const rows = [...h.conn.db.UserIdentity.iter()];
-        // If accessible, should only contain our own (view filters)
-        expect(rows.length).toBeLessThanOrEqual(1);
-      } catch {
-        // Expected -- private table
-      }
-
-      // Verify via SQL that our identity mapping exists
+      // UserIdentity is private (public: false) — not accessible via client subscription.
+      // Verify the mapping exists via SQL (server-side query).
+      // The absence of h.conn.db.UserIdentity confirms privacy at the type level.
       const identityRows = await queryPrivateTable(
         `SELECT * FROM user_identity WHERE user_id = ${h.userId}`
       );
@@ -92,7 +86,10 @@ describe('Auth Security Hardening', () => {
       harnesses.push(admin);
       await admin.sync(2000);
 
-      // Promote admin to Admin role via server connection
+      // Promote admin to Admin role
+      await promoteToRole(admin, 'Admin');
+
+      // Server connection for serverLinkProvider call later
       const serverConn = await new Promise<any>((resolve, reject) => {
         const { DbConnection: DbConn } = require('@/src/module_bindings');
         DbConn.builder()
@@ -103,13 +100,6 @@ describe('Auth Security Hardening', () => {
           .onConnectError((_: any, err: any) => reject(new Error(`Server conn failed: ${err}`)))
           .build();
       });
-
-      // Set admin role
-      serverConn.reducers.serverSetRole({
-        targetUserId: admin.userId,
-        roleTag: 'Admin',
-      });
-      await new Promise(r => setTimeout(r, 1000));
 
       // Ban the target's Discord ID
       admin.call.adminBanUser({
@@ -174,22 +164,7 @@ describe('Auth Security Hardening', () => {
       harnesses.push(admin);
       await admin.sync(2000);
 
-      const serverConn = await new Promise<any>((resolve, reject) => {
-        const { DbConnection: DbConn } = require('@/src/module_bindings');
-        DbConn.builder()
-          .withUri(process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com')
-          .withDatabaseName(process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1')
-          .withToken(process.env.SPACETIMEDB_SERVER_TOKEN!)
-          .onConnect((conn: any) => resolve(conn))
-          .onConnectError((_: any, err: any) => reject(new Error(`Server conn failed: ${err}`)))
-          .build();
-      });
-
-      serverConn.reducers.serverSetRole({
-        targetUserId: admin.userId,
-        roleTag: 'Admin',
-      });
-      await new Promise(r => setTimeout(r, 1000));
+      await promoteToRole(admin, 'Admin');
 
       // Verify victim is NOT soft-deleted before ban
       const userBefore = await queryPrivateTable(
@@ -213,8 +188,6 @@ describe('Auth Security Hardening', () => {
       );
       expect(userAfter.length).toBe(1);
       expect(userAfter[0].deleted_at).toBeTruthy();
-
-      serverConn.disconnect();
     });
   });
 

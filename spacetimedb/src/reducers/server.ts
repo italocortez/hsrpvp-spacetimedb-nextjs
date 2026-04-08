@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
+import { Identity } from 'spacetimedb';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
 import { performUserDeletion } from '../helpers/userDeletionHelper';
 import { rejectIfBanned } from '../helpers/banHelper';
@@ -104,16 +105,13 @@ export const server_link_provider = spacetimedb.reducer({
     rejectIfBanned(ctx, banType, providerId);
 
     // 5. Resolve the end-user's identity -> UserIdentity -> User
-    //    iter() required: identity is an opaque object with no fromHexString() constructor.
-    //    The API route only provides the hex string, so we must scan and compare via .toHexString().
-    //    This is a one-shot operation (once per user lifetime) so O(n) on ~600 rows is negligible.
-    let userMapping: any = null;
-    for (const row of ctx.db.UserIdentity.iter()) {
-        if (row.identity.toHexString() === callerIdentityHex) {
-            userMapping = row;
-            break;
-        }
+    let callerIdentity: any;
+    try {
+        callerIdentity = Identity.fromString(callerIdentityHex);
+    } catch {
+        throw new SenderError('callerIdentityHex is not a valid identity');
     }
+    const userMapping: any = ctx.db.UserIdentity.identity.find(callerIdentity);
 
     let currentUser: any = null;
     if (userMapping) {
