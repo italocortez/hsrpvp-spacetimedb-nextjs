@@ -10,7 +10,7 @@ interface DiscordLinkProps {
 }
 
 export default function DiscordLink({ user }: DiscordLinkProps) {
-    if (!user.isGuest && user.discordId) {
+    if (!user.isGuest && user.hasDiscordLinked) {
         return (
             <div className={styles.container}>
                 <div className={styles.linked}>

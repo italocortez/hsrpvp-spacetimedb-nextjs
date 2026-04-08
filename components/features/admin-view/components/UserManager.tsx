@@ -49,7 +49,7 @@ export default function UserManager() {
             u.username.toLowerCase().includes(q) ||
             u.displayName.toLowerCase().includes(q) ||
             u.role.tag.toLowerCase().includes(q) ||
-            (u.discordId && u.discordId.toLowerCase().includes(q))
+            (u.hasDiscordLinked ? 'discord linked' : '').includes(q)
         );
     }, [allUsers, searchQuery]);
 
@@ -117,7 +117,7 @@ export default function UserManager() {
 
             <div className="flex items-end gap-3">
                 <Input
-                    placeholder="Search users by name, role, or Discord ID..."
+                    placeholder="Search users by name, role, or discord linked..."
                     value={searchQuery}
                     onValueChange={setSearchQuery}
                     isClearable
@@ -153,7 +153,7 @@ export default function UserManager() {
                     <TableColumn>Display Name</TableColumn>
                     <TableColumn>Role</TableColumn>
                     <TableColumn>Guest</TableColumn>
-                    <TableColumn>Discord ID</TableColumn>
+                    <TableColumn>Discord</TableColumn>
                     <TableColumn>Last Login</TableColumn>
                     <TableColumn align="center">Actions</TableColumn>
                 </TableHeader>
@@ -221,8 +221,8 @@ export default function UserManager() {
                             </TableCell>
                             <TableCell>{user.isGuest ? 'Yes' : 'No'}</TableCell>
                             <TableCell>
-                                <span className="block max-w-[120px] truncate" title={user.discordId || ''}>
-                                    {user.discordId || '-'}
+                                <span className="block max-w-[120px] truncate">
+                                    {user.hasDiscordLinked ? 'Linked' : '-'}
                                 </span>
                             </TableCell>
                             <TableCell>{formatTimestamp(user.lastLoginAt)}</TableCell>

@@ -1,65 +1,147 @@
 import { useMemo, useEffect, useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useTable, useSpacetimeDB } from 'spacetimedb/react';
-import { tables } from '@/src/module_bindings';
+import { useSpacetimeDB } from 'spacetimedb/react';
 import { SPACETIMEDB_TOKEN_KEY } from '@/lib/spacetimedb';
-import { AuthState, User, UserIdentityRow } from '../types';
+import { AuthState, User } from '../types';
 
 export function useAuth() {
-    // 1. External state: NextAuth session + SpacetimeDB connection + router
     const router = useRouter();
     const { data: session, status: nextAuthStatus } = useSession();
     const { isActive, identity, getConnection, connectionError } = useSpacetimeDB();
 
-    // 2. Subscribe to UserIdentity and User tables
-    // Note: tables.UserIdentity requires regenerated bindings after publish
-    const [identityRows, identitiesReady] = useTable(tables.UserIdentity);
-    const allIdentities = (identityRows || []) as unknown as UserIdentityRow[];
+    // Track the user's profile from view_my_profile subscription
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [profileReady, setProfileReady] = useState(false);
+    const subscribedRef = useRef(false);
 
-    const [userRows, usersReady] = useTable(tables.User);
-    const allUsers = (userRows || []) as unknown as User[];
+    // Set up view_my_profile subscription when connected — event-driven via onApplied
+    useEffect(() => {
+        if (!isActive || subscribedRef.current) return;
+        const conn = getConnection();
+        if (!conn) return;
+        subscribedRef.current = true;
 
-    const subscriptionsReady = identitiesReady && usersReady;
+        // Subscribe to the merged profile view (User + UserPrivate)
+        // onApplied fires ONCE when initial data is loaded — no polling needed
+        conn.subscriptionBuilder()
+            .onApplied(() => {
+                setProfileReady(true);
+                // Read profile data immediately inside onApplied
+                readProfileFromConnection(conn);
+            })
+            .subscribe('SELECT * FROM view_my_profile');
 
-    // 3. Check if this identity has a UserIdentity mapping
-    const hasMapping = useMemo(() => {
-        if (!isActive || !identity) return false;
-        return allIdentities.some(m =>
-            m.identity.toHexString() === identity.toHexString()
-        );
-    }, [allIdentities, identity, isActive]);
+        // Also subscribe to User table for general user list (admin views, etc.)
+        conn.subscriptionBuilder().subscribe('SELECT * FROM user');
 
-    // 4. Resolve: identity → UserIdentity → User
-    const currentUser = useMemo(() => {
-        if (!isActive || !identity) return null;
+        return () => {
+            subscribedRef.current = false;
+            setProfileReady(false);
+        };
+    }, [isActive, getConnection]);
 
-        const mapping = allIdentities.find(m =>
-            m.identity.toHexString() === identity.toHexString()
-        );
-        if (!mapping) return null;
+    // Event-driven profile reader — called from onApplied and after reducer calls
+    const readProfileFromConnection = useCallback((conn: any) => {
+        if (!identity) return;
 
-        return allUsers.find(u => u.id === mapping.userId) || null;
-    }, [allIdentities, allUsers, identity, isActive]);
+        // Strategy A: Try reading from the generated view table (if A1 holds)
+        try {
+            const viewRows = [...(conn.db as any).ViewMyProfile?.iter?.() ?? []];
+            if (viewRows.length > 0) {
+                const profile = viewRows[0];
+                setCurrentUser({
+                    id: profile.id,
+                    username: profile.username,
+                    displayName: profile.displayName,
+                    isGuest: profile.isGuest,
+                    lastLoginAt: profile.lastLoginAt,
+                    role: profile.role,
+                    hasDiscordLinked: profile.hasDiscordLinked,
+                    avatarCharacterName: profile.avatarCharacterName,
+                    deletedAt: profile.deletedAt,
+                    discordId: profile.discordId,
+                    discordUsername: profile.discordUsername,
+                } as User);
+                return;
+            }
+        } catch {
+            // ViewMyProfile table may not exist in generated bindings (A1 failed)
+        }
 
-    // 5. Discord linking: only runs when the user explicitly clicked "Connect with Discord"
-    //    in this tab session. A sessionStorage flag tracks intent (survives OAuth redirect).
-    //    If the user already has a mapping + linked Discord, the flag is cleared and
-    //    subsequent visits with a stale NextAuth cookie won't auto-register.
+        // Strategy B (A1 fallback): Read from User table + identity match
+        // Since UserIdentity is private, we can't use it directly.
+        // But after loginAsGuest, the User table will have our row.
+        // Match by guest username pattern or by view_my_identity.
+        try {
+            const allUsers = [...(conn.db as any).User?.iter?.() ?? []];
+            const shortId = identity.toHexString().slice(0, 8);
+            const guestUsername = `Guest_${shortId}`;
+
+            // Try exact guest username match first
+            let myUser = allUsers.find((u: any) => u.username === guestUsername);
+
+            // If verified user, username was changed — try matching by view_my_identity
+            if (!myUser && allUsers.length > 0) {
+                try {
+                    const identityRows = [...(conn.db as any).ViewMyIdentity?.iter?.() ?? []];
+                    if (identityRows.length > 0) {
+                        const userId = identityRows[0].userId;
+                        myUser = allUsers.find((u: any) => u.id === userId);
+                    }
+                } catch {
+                    // ViewMyIdentity also not in bindings — last resort
+                }
+            }
+
+            if (myUser) {
+                setCurrentUser({
+                    id: myUser.id,
+                    username: myUser.username,
+                    displayName: myUser.displayName,
+                    isGuest: myUser.isGuest,
+                    lastLoginAt: myUser.lastLoginAt,
+                    role: myUser.role,
+                    hasDiscordLinked: myUser.hasDiscordLinked,
+                    avatarCharacterName: myUser.avatarCharacterName,
+                    deletedAt: myUser.deletedAt,
+                    // Private fields not available in fallback mode
+                    discordId: undefined,
+                    discordUsername: undefined,
+                } as User);
+                return;
+            }
+        } catch {
+            // Fallback failed
+        }
+
+        setCurrentUser(null);
+    }, [identity]);
+
+    // Re-read profile when profileReady changes or identity changes
+    useEffect(() => {
+        if (!isActive || !profileReady) {
+            setCurrentUser(null);
+            return;
+        }
+        const conn = getConnection();
+        if (!conn) return;
+        readProfileFromConnection(conn);
+    }, [isActive, profileReady, identity, getConnection, readProfileFromConnection]);
+
+    // Discord linking logic (same intent pattern, updated body)
     const DISCORD_INTENT_KEY = 'discord_login_intent';
     const DISCORD_INTENT_TIMEOUT_KEY = 'discord_login_intent_ts';
-    const DISCORD_INTENT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+    const DISCORD_INTENT_TTL_MS = 5 * 60 * 1000;
     const linkingRef = useRef(false);
     const autoRegisteredRef = useRef(false);
 
-    // Discord intent flag with expiry — prevents stale flags from persisting
     const hasDiscordIntent = useMemo(() => {
         if (typeof window === 'undefined') return false;
         const flag = sessionStorage.getItem(DISCORD_INTENT_KEY);
         if (!flag) return false;
         const ts = Number(sessionStorage.getItem(DISCORD_INTENT_TIMEOUT_KEY) || '0');
         if (Date.now() - ts > DISCORD_INTENT_TTL_MS) {
-            // Expired — clear stale intent
             sessionStorage.removeItem(DISCORD_INTENT_KEY);
             sessionStorage.removeItem(DISCORD_INTENT_TIMEOUT_KEY);
             return false;
@@ -67,18 +149,17 @@ export function useAuth() {
         return true;
     }, [nextAuthStatus]);
 
+    const hasMapping = !!currentUser;
+
     useEffect(() => {
         if (nextAuthStatus !== "authenticated" || !session?.user) return;
         if (!isActive || !identity) return;
-        // Only proceed if user explicitly initiated Discord login, OR
-        // if they already have a mapping (returning user on authenticated page).
         if (!hasDiscordIntent && !hasMapping) return;
 
         const conn = getConnection();
         if (!conn) return;
 
-        // Step A: No mapping yet — call loginAsGuest to create one, then wait
-        // for the subscription to deliver the mapping (next render).
+        // Step A: No mapping yet -- call loginAsGuest
         if (!hasMapping && !autoRegisteredRef.current) {
             autoRegisteredRef.current = true;
             try {
@@ -87,21 +168,28 @@ export function useAuth() {
                 console.error("Auto-register loginAsGuest failed:", err);
                 autoRegisteredRef.current = false;
             }
-            return; // Wait for mapping to appear via subscription
+            return;
         }
 
-        // Step B: Mapping exists, now link Discord if needed
+        // Step B: Link Discord if needed
         if (!currentUser) return;
 
-        const discordUser = session.user as any;
-        const needsSync = currentUser.isGuest || (currentUser.discordId !== discordUser.id);
+        // D-02: Use hasDiscordLinked instead of discordId comparison
+        const needsSync = currentUser.isGuest || !currentUser.hasDiscordLinked;
 
         if (needsSync && !linkingRef.current) {
             linkingRef.current = true;
+            // D-09: Send spacetimeToken instead of identity hex
+            const spacetimeToken = localStorage.getItem(SPACETIMEDB_TOKEN_KEY);
+            if (!spacetimeToken) {
+                console.error("No SpacetimeDB token available for identity verification");
+                linkingRef.current = false;
+                return;
+            }
             fetch('/api/auth/link-discord', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ callerIdentityHex: identity.toHexString() }),
+                body: JSON.stringify({ spacetimeToken }),
             })
                 .then(res => {
                     if (!res.ok) return res.json().then(d => { throw new Error(d.error); });
@@ -110,29 +198,20 @@ export function useAuth() {
                 .finally(() => { linkingRef.current = false; });
         }
 
-        // Linking complete (or not needed) — clear the intent flag
         if (!needsSync) {
             sessionStorage.removeItem(DISCORD_INTENT_KEY);
             sessionStorage.removeItem(DISCORD_INTENT_TIMEOUT_KEY);
         }
     }, [nextAuthStatus, session, isActive, identity, hasMapping, hasDiscordIntent, currentUser, getConnection]);
 
-    // 5b. Detect soft-delete: if admin set deletedAt, notify user and auto-logout.
-    // Navigate to landing page (client-side, preserves React state) so the banner
-    // is visible, then sign out after 4 seconds.
+    // Soft-delete detection (same logic, uses currentUser from view)
     const [isDeleted, setIsDeleted] = useState(false);
     const deletionHandledRef = useRef(false);
     useEffect(() => {
         if (!currentUser?.deletedAt || deletionHandledRef.current) return;
         deletionHandledRef.current = true;
         setIsDeleted(true);
-
-        // Navigate to landing page so user can't interact with authenticated pages
         router.push('/');
-
-        // Sign out after delay so user can read the banner.
-        // Use signOut with redirect:false then force a hard reload to ensure
-        // the SpacetimeDB connection is fully reset (no stale subscriptions).
         const timer = setTimeout(async () => {
             localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
             await signOut({ redirect: false });
@@ -141,19 +220,13 @@ export function useAuth() {
         return () => clearTimeout(timer);
     }, [currentUser?.deletedAt, router]);
 
-    // Discord linking is in progress when the user explicitly initiated Discord login
-    // and the link hasn't completed yet. Prevents flash of "Welcome Guest_xxx".
     const isLinkingDiscord = hasDiscordIntent && nextAuthStatus === "authenticated" && (!currentUser || currentUser.isGuest);
 
     // If a token existed at mount time, the user likely has an account — wait for
     // subscriptions before showing the login form (prevents flash during page transitions).
-    // We use a ref so that tokens saved by onConnect AFTER mount don't trigger waiting.
-    // Once subscriptions load and there's no mapping (orphaned identity), stop waiting.
     const hadTokenOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem(SPACETIMEDB_TOKEN_KEY));
-    const isOrphanedIdentity = subscriptionsReady && !hasMapping;
+    const isOrphanedIdentity = profileReady && !hasMapping;
     const isWaitingForData = isActive && !currentUser && hadTokenOnMount.current && !isOrphanedIdentity;
-
-    // Auth state
     const isConnecting = !isActive && !connectionError;
 
     const authState: AuthState = {
@@ -165,18 +238,14 @@ export function useAuth() {
         connectionError,
     };
 
-    // 6. Actions
     const loginGuest = useCallback(() => {
         const conn = getConnection();
         if (!conn) {
-            console.error("SpacetimeDB connection not active. Cannot login as guest.");
+            console.error("SpacetimeDB connection not active.");
             return;
         }
-        try {
-            conn.reducers.loginAsGuest({});
-        } catch (err) {
-            console.error("Failed to call loginAsGuest reducer:", err);
-        }
+        try { conn.reducers.loginAsGuest({}); }
+        catch (err) { console.error("Failed loginAsGuest:", err); }
     }, [getConnection]);
 
     const loginDiscord = useCallback(() => {
@@ -185,23 +254,16 @@ export function useAuth() {
         signIn("discord");
     }, []);
 
-    // Logout: clear SpacetimeDB token so a fresh identity is generated next time.
-    // For Discord users this is safe — they re-link via server_link_discord on next login.
     const logout = useCallback(() => {
         localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
         signOut({ callbackUrl: '/' });
     }, []);
 
-    // Guest-only: delete the guest account before clearing credentials.
-    // The caller is responsible for showing a confirmation dialog before calling this.
     const deleteGuestAccount = useCallback(() => {
         const conn = getConnection();
         if (!conn) return;
-        try {
-            conn.reducers.deleteGuestAccount({});
-        } catch (err) {
-            console.error("Failed to delete guest account:", err);
-        }
+        try { conn.reducers.deleteGuestAccount({}); }
+        catch (err) { console.error("Failed to delete guest account:", err); }
         localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
         signOut({ callbackUrl: '/' });
     }, [getConnection]);
