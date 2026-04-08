@@ -1,5 +1,7 @@
 import { schema } from 'spacetimedb/server';
 import { User } from './tables/user';
+import { UserPrivate } from './tables/userPrivate';
+import { BanRecord } from './tables/banRecord';
 import { UserIdentity } from './tables/userIdentity';
 import { ServerIdentity } from './tables/serverIdentity';
 import { HsrCharacter } from './tables/hsrCharacter';
@@ -110,6 +112,8 @@ import { LobbyGcJob } from './tables/lobbyGcJob';
 const spacetimedb = schema({
     // User / Auth
     User,
+    UserPrivate,
+    BanRecord,
     UserIdentity,
     ServerIdentity,
 

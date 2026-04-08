@@ -2,6 +2,9 @@ import spacetimedb from './schema';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
 import { transferCaptain, transferReferee, transferHost } from './helpers/flagTransferHelpers';
 
+// Private auth tables — imported for schema registration
+import './tables/userPrivate';
+import './tables/banRecord';
 // Security views — must be imported so they register with the module
 import './views/securityViews';
 // Anonymous + history views — imported so they register with the module

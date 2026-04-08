@@ -41,7 +41,7 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
         isPrivate: false,
         lastLoginAt: ctx.timestamp,
         role: { tag: 'User' },
-        discordId: undefined,
+        hasDiscordLinked: false,
         avatarCharacterName: 'march7th',
         displayedAchievementId: undefined,
         deletedAt: undefined,

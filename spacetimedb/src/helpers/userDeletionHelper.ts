@@ -43,6 +43,12 @@ export function performUserDeletion(ctx: any, userId: number, actorId: number): 
     const user = ctx.db.User.id.find(userId);
     if (!user) return;
 
+    // Cascade: hard-delete UserPrivate (D-03: BanRecord retains discordId independently)
+    const userPrivate = ctx.db.UserPrivate.userId.find(userId);
+    if (userPrivate) {
+        ctx.db.UserPrivate.userId.delete(userId);
+    }
+
     // Cascade: delete all calendar data (availability slots, saved calendars, events, invites) (D-23)
     deleteAllCalendarDataForUser(ctx, userId);
 
@@ -71,12 +77,12 @@ export function performUserDeletion(ctx: any, userId: number, actorId: number): 
 
     // Soft-delete: preserve row for history table FK integrity
     // - username sentinel frees the unique constraint for reuse
-    // - discordId cleared so Discord account can re-link
+    // - hasDiscordLinked cleared (UserPrivate hard-deleted above; BanRecord preserved)
     // - displayName preserved for history/stat table lookups
     ctx.db.User.id.update({
         ...user,
         username: `deleted_${userId}`,
-        discordId: undefined,
+        hasDiscordLinked: false,
         isOnline: false,
         deletedAt: user.deletedAt ?? ctx.timestamp,
         ...auditUpdate(ctx, user, actorId),
