@@ -2,6 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
 import { performUserDeletion } from '../helpers/userDeletionHelper';
+import { rejectIfBanned } from '../helpers/banHelper';
 
 /**
  * Helper: verify the caller is the registered server identity.
@@ -15,17 +16,9 @@ function requireServer(ctx: any) {
 }
 
 /**
- * Helper: get the system user (discordId = "1"). Created during register_server.
- */
-function getSystemUserId(ctx: any): number {
-    const results = [...ctx.db.User.discord_id.filter('1')];
-    return results.length > 0 ? results[0].id : SYSTEM_USER_ID;
-}
-
-/**
  * Bootstrap reducer: register the calling identity as the trusted server.
  * Only works when no server identity exists yet (first-come-first-served).
- * Also creates a SYSTEM user (discordId = "1") for audit trail purposes.
+ * Also creates a SYSTEM user for audit trail purposes.
  *
  * Run via: npx tsx scripts/register-server.ts
  */
@@ -43,7 +36,6 @@ export const register_server = spacetimedb.reducer((ctx) => {
     });
 
     // Create the SYSTEM user — the first user in the database.
-    // discordId = "1" is the sentinel for the system account.
     const systemUser = ctx.db.User.insert({
         id: 0,
         username: 'SYSTEM',
@@ -53,7 +45,7 @@ export const register_server = spacetimedb.reducer((ctx) => {
         isPrivate: false,
         lastLoginAt: ctx.timestamp,
         role: { tag: 'Admin' },
-        discordId: '1',
+        hasDiscordLinked: false,
         avatarCharacterName: 'march7th',
         displayedAchievementId: undefined,
         deletedAt: undefined,
@@ -71,34 +63,47 @@ export const register_server = spacetimedb.reducer((ctx) => {
 });
 
 /**
- * Server-only reducer: link a Discord account to a user identity.
- * Called by the Next.js API route after verifying the Discord OAuth session.
+ * Server-only reducer: link an OAuth provider to a user identity.
+ * Replaces server_link_discord with a unified, extensible approach.
+ * Currently supports: discord (only provider in scope).
  *
- * The callerIdentityHex is the SpacetimeDB identity hex of the end-user's
- * browser client. The server passes it along so we know which UserIdentity
- * to update.
+ * Called by the Next.js API route after verifying the OAuth session.
+ *
+ * The callerIdentityHex is the verified SpacetimeDB identity hex of the
+ * end-user (verified via ephemeral connection in the API route).
  */
-export const server_link_discord = spacetimedb.reducer({
+export const server_link_provider = spacetimedb.reducer({
     callerIdentityHex: t.string(),
-    discordId: t.string(),
-    discordUsername: t.string(),
-}, (ctx, { callerIdentityHex, discordId, discordUsername }) => {
+    provider: t.string(),       // 'discord' -- extensible for future providers
+    providerId: t.string(),
+    providerName: t.string(),
+}, (ctx, { callerIdentityHex, provider, providerId, providerName }) => {
     // 1. Verify caller is the trusted server
     requireServer(ctx);
-    const systemUserId = getSystemUserId(ctx);
+    const systemUserId = SYSTEM_USER_ID;
 
     // 2. Validate inputs
-    if (!discordId || discordId.length === 0) {
-        throw new SenderError('discordId is required');
+    if (!providerId || providerId.length === 0) {
+        throw new SenderError('providerId is required');
     }
-    if (!discordUsername || discordUsername.length === 0) {
-        throw new SenderError('discordUsername is required');
+    if (!providerName || providerName.length === 0) {
+        throw new SenderError('providerName is required');
     }
     if (!callerIdentityHex || callerIdentityHex.length === 0) {
         throw new SenderError('callerIdentityHex is required');
     }
 
-    // 3. Resolve the end-user's identity → UserIdentity → User
+    // 3. Validate provider and map to BanType
+    const validProviders = ['discord'];
+    if (!validProviders.includes(provider)) {
+        throw new SenderError(`Invalid provider "${provider}". Must be one of: ${validProviders.join(', ')}`);
+    }
+    const banType = { tag: 'DiscordId', value: {} } as any;  // Only discord for now
+
+    // 4. Ban check (D-08 enforcement point 1: link-time)
+    rejectIfBanned(ctx, banType, providerId);
+
+    // 5. Resolve the end-user's identity -> UserIdentity -> User
     //    iter() required: identity is an opaque object with no fromHexString() constructor.
     //    The API route only provides the hex string, so we must scan and compare via .toHexString().
     //    This is a one-shot operation (once per user lifetime) so O(n) on ~600 rows is negligible.
@@ -115,29 +120,30 @@ export const server_link_discord = spacetimedb.reducer({
         currentUser = ctx.db.User.id.find(userMapping.userId);
     }
 
-    // 4. Check if a User with this discordId already exists
-    const existingByDiscord = [...ctx.db.User.discord_id.filter(discordId)];
-    const discordOwner = existingByDiscord.length > 0 ? existingByDiscord[0] : null;
+    // 6. Check if a UserPrivate row with this providerId already exists
+    const existingByProvider = [...ctx.db.UserPrivate.user_private_discord_id.filter(providerId)];
+    const providerOwnerPrivate = existingByProvider.length > 0 ? existingByProvider[0] : null;
+    const providerOwner = providerOwnerPrivate ? ctx.db.User.id.find(providerOwnerPrivate.userId) : null;
 
     if (currentUser) {
-        if (discordOwner && discordOwner.id !== currentUser.id) {
-            // Case 1b: User's identity currently points to a different user (guest),
-            // but the Discord account belongs to an existing verified user.
-            // Re-point identity to the Discord owner, clean up orphaned guest.
+        if (providerOwner && providerOwner.id !== currentUser.id) {
+            // Case 1b: Identity currently points to a different user (guest),
+            // but the provider account belongs to an existing verified user.
+            // Re-point identity to the provider owner, clean up orphaned guest.
             const oldGuestId = currentUser.id;
             const wasGuest = currentUser.isGuest;
 
             ctx.db.UserIdentity.identity.update({
                 ...userMapping,
-                userId: discordOwner.id,
+                userId: providerOwner.id,
                 lastSeenAt: ctx.timestamp,
                 ...auditUpdate(ctx, userMapping, systemUserId),
             });
 
             ctx.db.User.id.update({
-                ...discordOwner,
+                ...providerOwner,
                 lastLoginAt: ctx.timestamp,
-                ...auditUpdate(ctx, discordOwner, systemUserId),
+                ...auditUpdate(ctx, providerOwner, systemUserId),
             });
 
             if (wasGuest) {
@@ -149,13 +155,14 @@ export const server_link_discord = spacetimedb.reducer({
             return;
         }
 
-        // Case 1a / 1c: Upgrade guest or refresh Discord info
+        // Case 1a / 1c: Upgrade guest or refresh provider info
+        // Update User table
         ctx.db.User.id.update({
             ...currentUser,
-            username: currentUser.isGuest ? discordUsername : currentUser.username,
-            displayName: currentUser.isGuest ? discordUsername : currentUser.displayName,
+            username: currentUser.isGuest ? providerName : currentUser.username,
+            displayName: currentUser.isGuest ? providerName : currentUser.displayName,
             isGuest: false,
-            discordId,
+            hasDiscordLinked: true,
             lastLoginAt: ctx.timestamp,
             ...auditUpdate(ctx, currentUser, systemUserId),
         });
@@ -164,16 +171,35 @@ export const server_link_discord = spacetimedb.reducer({
             lastSeenAt: ctx.timestamp,
             ...auditUpdate(ctx, userMapping, systemUserId),
         });
+
+        // Upsert UserPrivate row
+        const existingPrivate = ctx.db.UserPrivate.userId.find(currentUser.id);
+        if (existingPrivate) {
+            ctx.db.UserPrivate.userId.update({
+                ...existingPrivate,
+                discordId: providerId,
+                discordUsername: providerName,
+                ...auditUpdate(ctx, existingPrivate, systemUserId),
+            });
+        } else {
+            ctx.db.UserPrivate.insert({
+                userId: currentUser.id,
+                discordId: providerId,
+                discordUsername: providerName,
+                email: undefined,
+                ...auditInsert(ctx, systemUserId),
+            });
+        }
         return;
     }
 
     // No UserIdentity mapping exists for this identity yet
-    if (discordOwner) {
-        // Case 2: Cross-device login — client must call login_as_guest first.
+    if (providerOwner) {
+        // Case 2: Cross-device login -- client must call login_as_guest first.
         throw new SenderError('Identity not registered. Call login_as_guest first.');
     }
 
-    // Case 3: Same problem — can't create UserIdentity without the Identity object.
+    // Case 3: Same problem -- can't create UserIdentity without the Identity object.
     throw new SenderError('Identity not registered. Call login_as_guest first.');
 });
 
@@ -186,7 +212,7 @@ export const server_set_role = spacetimedb.reducer({
     roleTag: t.string(),
 }, (ctx, { username, roleTag }) => {
     requireServer(ctx);
-    const systemUserId = getSystemUserId(ctx);
+    const systemUserId = SYSTEM_USER_ID;
 
     if (!username || username.length === 0) {
         throw new SenderError('username is required');
@@ -230,8 +256,7 @@ export const server_delete_user = spacetimedb.reducer({
         throw new SenderError(`User "${username}" not found`);
     }
 
-    const systemUserId = getSystemUserId(ctx);
-    performUserDeletion(ctx, targetUser.id, systemUserId);
+    performUserDeletion(ctx, targetUser.id, SYSTEM_USER_ID);
 });
 
 /**
@@ -247,7 +272,7 @@ export const server_set_mmr = spacetimedb.reducer({
     rating: t.u32(),
 }, (ctx, { userId, gameMode, rating }) => {
     requireServer(ctx);
-    const systemUserId = getSystemUserId(ctx);
+    const systemUserId = SYSTEM_USER_ID;
 
     const user = ctx.db.User.id.find(userId);
     if (!user) {
