@@ -1,185 +1,312 @@
-# Frontend Developer Handoff
+# HSRPVP Backend -- Frontend Handoff
 
-> **TL;DR:** The backend (v0.5) is complete through Phase 6.1. You have 55 tables, 80+ reducers, generated TypeScript bindings, and a working auth system. The frontend (v1) needs to be built on top of this. This doc routes you to everything you need.
+Last updated: 2026-04-09
 
-## What's Ready
-
-- **55 production tables** with audit trails, composite PKs, and proper relationships
-- **80+ reducers** covering auth, tournaments, rosters, brackets, match results, MMR, stats, seasons
-- **130 generated TypeScript binding files** in `src/module_bindings/` — type-safe reducer calls and table subscriptions
-- **19 feature doc sets** in `docs/{feature}/` with architecture diagrams and behavior specs
-- **Working auth** — guest login via SpacetimeDB identity, Discord OAuth linking via NextAuth
-- **Landing page** — just redesigned (Phase 06.1) with video hero, features carousel, contact section
-
-## What's NOT Ready (Phases 7-10)
-
-| Phase | What | Status |
-|-------|------|--------|
-| 7 | Achievements & Titles | Schema exists, no reducers |
-| 8 | Calendar & Scheduling | Schema exists, no reducers |
-| 9 | Lobby Browser, Chat, Cursor Tracking | Schema exists, basic cursor reducer only |
-| 10 | Disconnect Handling, Cost Parity | Nothing implemented |
-| 11 | Archetype Playstyle Stats | Not started — PlayerArchetypeStat table, auto-increment when 3+ picks share an archetype tag |
-
-Phases 7-11 are remaining backend tasks (all v0.5 scope). The frontend dev doesn't need to wait for them unless building UI for those specific features.
+> **TL;DR:** The backend (v0.5) is complete. All 83 mapped requirements are implemented across 20 phases. You have 67 tables, ~155 reducer exports, 32 server-side views, and generated TypeScript bindings. The frontend (v1) needs to be built on top of this. This document routes you to everything you need.
 
 ---
 
-## Index — Where to Find Things
+## Backend Summary
 
-### Architecture & Behavior Specs
+- **SpacetimeDB SDK:** 2.1.0 (`spacetimedb/react` on the client, `spacetimedb/server` in the module)
+- **Tables:** 67 production table definitions (`spacetimedb/src/tables/`)
+- **Reducers:** ~155 exports across 44 reducer source files (`spacetimedb/src/reducers/`)
+- **Views:** 32 server-side named views (`securityViews.ts`: 24, `anonymousViews.ts`: 8)
+- **Requirements:** All 83 mapped v0.5 requirements complete (see `.planning/REQUIREMENTS.md` traceability table)
+- **Tests:** 673+ tests across 41 integration test files (Phase 10.5 baseline)
+- **Generated bindings:** 236 TypeScript files in `src/module_bindings/` — regenerate with `spacetime generate` after schema changes
 
-Each feature has two docs. Architecture = tables, reducers, data flow. Contract = acceptance scenarios (Given/When/Then), edge cases, error messages.
+---
 
-| Feature | Architecture | Contract | Phase |
-|---------|-------------|----------|-------|
-| Auth | [docs/auth/architecture.md](auth/architecture.md) | [docs/auth/contract.md](auth/contract.md) | 1 |
-| Admin | [docs/admin/architecture.md](admin/architecture.md) | [docs/admin/contract.md](admin/contract.md) | 1 |
-| Roster | [docs/roster/architecture.md](roster/architecture.md) | [docs/roster/contract.md](roster/contract.md) | 2 |
-| Archetypes | [docs/archetypes/architecture.md](archetypes/architecture.md) | [docs/archetypes/contract.md](archetypes/contract.md) | 2 |
-| Tournament | [docs/tournament/architecture.md](tournament/architecture.md) | [docs/tournament/contract.md](tournament/contract.md) | 3 |
-| Teams | [docs/teams/architecture.md](teams/architecture.md) | [docs/teams/contract.md](teams/contract.md) | 3 |
-| Cost Sets | [docs/cost-sets/architecture.md](cost-sets/architecture.md) | [docs/cost-sets/contract.md](cost-sets/contract.md) | 3 |
-| Brackets | [docs/brackets/architecture.md](brackets/architecture.md) | [docs/brackets/contract.md](brackets/contract.md) | 4 |
-| Match Results | [docs/match-results/architecture.md](match-results/architecture.md) | [docs/match-results/contract.md](match-results/contract.md) | 5 |
-| MMR | [docs/mmr/architecture.md](mmr/architecture.md) | [docs/mmr/contract.md](mmr/contract.md) | 5 |
-| Anonymous Play | [docs/anonymous-play/architecture.md](anonymous-play/architecture.md) | [docs/anonymous-play/contract.md](anonymous-play/contract.md) | 6 |
-| Player Stats | [docs/player-stats/architecture.md](player-stats/architecture.md) | [docs/player-stats/contract.md](player-stats/contract.md) | 6 |
-| Lobby | [docs/lobby/architecture.md](lobby/architecture.md) | [docs/lobby/contract.md](lobby/contract.md) | 3 |
-| Match Session | [docs/match-session/architecture.md](match-session/architecture.md) | [docs/match-session/contract.md](match-session/contract.md) | 1 |
-| Cost Tables | [docs/cost-tables/architecture.md](cost-tables/architecture.md) | [docs/cost-tables/contract.md](cost-tables/contract.md) | — |
-| Views | [docs/views/architecture.md](views/architecture.md) | — | 6 |
+## Feature Map
 
-### Project Planning
+Each of the 19 feature areas has two canonical docs: `architecture.md` (tables, reducer flows, data model) and `contract.md` (acceptance scenarios, edge cases, error messages).
+
+| Feature | Tables | Reducers | Docs |
+|---------|--------|----------|------|
+| Auth | 4 (User, UserIdentity, UserPrivate, ServerIdentity) | 8 | [arch](auth/architecture.md) / [contract](auth/contract.md) |
+| Admin | 2 (BanRecord, UserDeletionJob) | 8 | [arch](admin/architecture.md) / [contract](admin/contract.md) |
+| Roster | 5 (HsrAccount, HsrAccountCharacter, HsrAccountLightcone, Archetype, HsrCharacterArchetype) | 22 | [arch](roster/architecture.md) / [contract](roster/contract.md) |
+| Archetypes | 2 (Archetype, HsrCharacterArchetype) | 4 | [arch](archetypes/architecture.md) / [contract](archetypes/contract.md) |
+| Cost Tables | 3 (HsrCharacter, HsrLightcone + cost tables) | 3 | [arch](cost-tables/architecture.md) / [contract](cost-tables/contract.md) |
+| Cost Sets | 6 (CostSet, 3 live + 3 draft tables) | 8 | [arch](cost-sets/architecture.md) / [contract](cost-sets/contract.md) |
+| Tournament | 6 (Tournament, TournamentEnrolled, TournamentTeam, TournamentTeamMember, TournamentAssistant, TournamentPlayerAccount, TournamentTeamRequest, TournamentStandIn) | 29 | [arch](tournament/architecture.md) / [contract](tournament/contract.md) |
+| Brackets | 2 (BracketMatch, GroupPhaseRecord) | 7 | [arch](brackets/architecture.md) / [contract](brackets/contract.md) |
+| Match Session | 6 (MatchSession, MatchSessionStep, MatchSessionHistory, MatchSessionStepHistory, MatchParticipantHistory, LobbyCursorEvent) | 18 | [arch](match-session/architecture.md) / [contract](match-session/contract.md) |
+| Lobby | 7 (Lobby, LobbyMember, LobbyMemberAccount, LobbyBan, LobbyPreset, LobbyPassword, LobbyGcJob) | 18 | [arch](lobby/architecture.md) / [contract](lobby/contract.md) |
+| Match Results | 7 (MatchResultRecord, MatchResultGame, MatchResultParticipant, MatchResultGameHistory, ChatMessage, EloConfig) | 9 | [arch](match-results/architecture.md) / [contract](match-results/contract.md) |
+| MMR | 4 (MmrRating, MmrHistory, Leaderboard, EloConfig, Season) | 7 | [arch](mmr/architecture.md) / [contract](mmr/contract.md) |
+| Player Stats | 5 (PlayerStat, PlayerCharacterStat, GlobalCharacterStat, PlayerRelationship, AccountRatingConfig) | 0 direct (computed) | [arch](player-stats/architecture.md) / [contract](player-stats/contract.md) |
+| Achievements | 3 (Achievement, AchievementCriteria, UserAchievement) | 7 | [arch](achievements/architecture.md) / [contract](achievements/contract.md) |
+| Calendar | 4 (CalendarEvent, CalendarEventInvite, AvailabilitySlot, SavedCalendar) | 12 | [arch](calendar/architecture.md) / [contract](calendar/contract.md) |
+| Anonymous Play | (views only -- no tables) | 0 direct | [arch](anonymous-play/architecture.md) / [contract](anonymous-play/contract.md) |
+| Chat | 1 (ChatMessage) | 2 | [arch](chat/architecture.md) / [contract](chat/contract.md) |
+| Views | (32 named views, no tables) | 32 views | [arch](views/architecture.md) / [contract](views/contract.md) |
+| Smoke / GC | 3 (ServerIdentity, IdentityGcJob, GcResult) | 5 | [arch](smoke/architecture.md) / [contract](smoke/contract.md) |
+
+**Start here:** `docs/roster/` is the gold standard docs example and the simplest feature. Read it first to understand the doc format.
+
+---
+
+## Authentication Flow
+
+```
+1. App loads → DbConnection.builder().withConfirmedReads(false).build() → WebSocket to maincloud
+2. No token → new SpacetimeDB identity created, stored in localStorage
+3. User clicks LOG IN → loginAsGuest() reducer → User + UserIdentity rows created
+4. Optional: Discord OAuth via NextAuth → POST /api/auth/link-discord → server_link_provider reducer
+   - Stores discordId/discordUsername/email in UserPrivate (PRIVATE table, not broadcast)
+5. view_my_profile delivers merged profile (User + UserPrivate) to client
+6. On every connect: ban check via BanRecord table; banned users are disconnected immediately
+```
+
+**Session cookie pattern:** `stdb_session` cookie is set for SSR-safe auth display. Read `components/features/auth/hooks/useAuth.ts` for the full orchestration.
+
+**Key auth tables:**
+- `User` (public) — username, avatarCharacterName, displayedAchievementId
+- `UserPrivate` (PRIVATE) — discordId, discordUsername, email; accessed only via `view_my_profile`
+- `UserIdentity` (PRIVATE) — maps SpacetimeDB Identity to userId; accessed only via named views
+- `BanRecord` (PRIVATE) — checked on connect; accessed only via `view_admin_user_private`
+
+---
+
+## Data Access Patterns
+
+### Subscriptions (Reading Data)
+
+SpacetimeDB tables auto-sync via WebSocket subscription. Public tables broadcast to all subscribers. Private tables (`public: false`) are never broadcast — they are only accessible via server-side named views.
+
+```typescript
+import { tables } from '@/src/module_bindings';
+
+// Returns rows[], isReady
+const [characters] = useTable(tables.HsrCharacter);
+const [tournaments] = useTable(tables.Tournament);
+```
+
+**Private tables (never subscribed directly):**
+`UserPrivate`, `BanRecord`, `UserIdentity`, `ServerIdentity`, `HsrAccount`, `HsrAccountCharacter`, `PlayerStat`, `PlayerCharacterStat`, `PlayerRelationship`, `GcResult`, `LobbyMemberAccount`
+
+### Views (Filtered/Private Data)
+
+32 server-side views replace raw table subscriptions for private or bandwidth-sensitive data. Views are the primary privacy mechanism — they filter rows to only what the current caller should see.
+
+```typescript
+// Subscribe to a view (same pattern as tables)
+const profile = useTable(conn.db.view_my_profile);
+const rosterAccounts = useTable(conn.db.view_my_roster);
+const lobbyBrowser = useTable(conn.db.view_lobby_browser);
+```
+
+**Key views for frontend:**
+| View | Purpose |
+|------|---------|
+| `view_my_profile` | Authenticated user's full profile (User + UserPrivate merged) |
+| `view_my_roster` | Caller's HsrAccount rows + characters (replaces direct HsrAccount subscription) |
+| `view_lobby_browser` | Public lobby listings with computed fields |
+| `view_my_lobby_members` | Lobby members with anonymous labels applied |
+| `view_my_match_steps` | Draft steps with anonymous character names applied |
+| `view_my_tournaments` | Tournaments the caller is enrolled in |
+| `view_public_accounts` | HSR accounts with public visibility flag applied |
+| `view_match_history` | Archived match sessions for replay |
+| `view_match_participant_history` | Participants from archived matches |
+
+See `docs/views/architecture.md` for the full list of all 32 views.
+
+### Reducer Calls (Writing Data)
+
+Reducers are transactional server-side functions. They **do not return data** — results are read via table subscriptions after the reducer completes.
+
+```typescript
+import { DbConnection } from '@/src/module_bindings';
+
+const conn = getConnection(); // from useSpacetimeDB()
+
+// Phase 12.2: reducer calls return Promise<void> -- use .catch() for errors
+conn.reducers.create_tournament({
+  name: "Weekly Cup",
+  format: "SingleElimination",
+  // ...
+}).catch(err => console.error('create_tournament failed:', err));
+
+// Table subscription auto-updates with new tournament row
+```
+
+### Client Bindings
+
+Generated via `spacetime generate` from the published module. Located in `src/module_bindings/` (236 files):
+- One file per table: `{table_name}_table.ts`
+- One file per reducer: `{reducer_name}_reducer.ts`
+- 32 view binding files: `view_{name}_table.ts`
+
+Regenerate after any schema change: `npx spacetime generate --lang typescript --out-dir src/module_bindings`
+
+---
+
+## Key Conventions for Frontend
+
+### Enums Are Tag Objects
+
+SpacetimeDB enums arrive as `{ tag: 'EnumVariant' }` objects, not plain strings.
+
+```typescript
+// Correct
+tournament.stage.tag === 'Registration'
+matchResult.status.tag === 'Completed'
+
+// Wrong
+tournament.stage === 'Registration'
+```
+
+### Timestamps
+
+SpacetimeDB `Timestamp` values are microseconds since epoch as `bigint`.
+
+```typescript
+const date = new Date(Number(ts.__timestamp_micros_since_unix_epoch) / 1000);
+```
+
+### Optional = Sentinel
+
+- Missing `u32` FK → `0` (sentinel value, not null)
+- Missing string → empty string `""`
+- Optional SpacetimeDB fields use `.optional()` in schema and `undefined` in TypeScript
+
+### Identity vs userId
+
+- `Identity` = opaque 32-byte hex string, SpacetimeDB's internal identifier
+- `userId` = `u32` auto-increment, the application's user identifier
+- `UserIdentity` maps between them (PRIVATE — access via views only)
+- **Always use `userId` for application logic**, never raw `Identity`
+
+### Anonymous Play Labels
+
+Labels for anonymous players are computed server-side in `anonymousLabels.ts`. The frontend just displays what `view_my_lobby_members` and `view_my_match_steps` return — do not compute labels on the client.
+
+### Roster Visibility
+
+Roster visibility (public/private) is server-enforced at the view layer. `view_public_accounts` and `view_my_roster` handle the filtering. The frontend never needs to manually check `isRosterPublic`.
+
+### Tournament Lifecycle
+
+Stage machine (forward-only):
+
+```
+Draft -> Registration -> [CheckIn ->] Seeding -> InProgress -> Completed
+                                                             -> Cancelled (from any non-terminal stage)
+```
+
+### Match Lifecycle (Lobby Stages)
+
+```
+Waiting -> Drafting -> Equipping -> Scoring -> AwaitingResult -> Completed
+```
+
+### Best-of-N Series
+
+Series management uses `advance_to_next_game`, `shelve_series`, and `resume_series`. The `MatchResultRecord` tracks the current series state. See `docs/match-session/architecture.md` for the full series flow.
+
+### Reducer Error Handling (Phase 12.2)
+
+All reducer calls return `Promise<void>`. Errors surface via `.catch()`:
+
+```typescript
+conn.reducers.joinLobby(lobbyId).catch(err => {
+  // err.message contains the SenderError string from the backend
+  showToast(err.message);
+});
+```
+
+---
+
+## Existing Frontend Pages
+
+| Route | Layout | Auth Required | Status |
+|-------|--------|---------------|--------|
+| `/` | landing-page | No | Working — video hero, features carousel, contact section |
+| `/costs` | landing-page | No | Working — cost table browser |
+| `/teambuilder` | landing-page | No | Working — team composition builder |
+| `/lobby` | authenticated | Yes | Stub — placeholder only |
+| `/profile` | authenticated | Yes | Working — Discord link, avatar, logout |
+| `/admin-view` | authenticated | Yes (Admin) | Working — table explorer, bulk upsert, user manager |
+| `/draft/[matchId]` | game | Yes | Stub — draft picking placeholder |
+
+---
+
+## Missing from Backend (v1 Frontend Tasks)
+
+The following were descoped from v0.5 backend; schema may exist but logic was not implemented:
+
+| Item | Status |
+|------|--------|
+| Seasons implementation | Schema exists (Season table, seasonId on stats/MMR), logic deferred |
+| HoYoverse API roster import | Deferred to v1+ (API availability uncertain) |
+| Computer vision screenshot import | Deferred to v1+ (high complexity) |
+| Swiss-system brackets | Deferred (only single/double elim + group phase implemented) |
+| Persistent teams (TEAM-01/02/03) | Reclassified Out of Scope; TournamentTeam covers v0.5 needs |
+
+---
+
+## Project Planning References
 
 | What | File |
 |------|------|
 | Full requirements | [.planning/REQUIREMENTS.md](../.planning/REQUIREMENTS.md) |
 | Roadmap & phase status | [.planning/ROADMAP.md](../.planning/ROADMAP.md) |
 | Current state | [.planning/STATE.md](../.planning/STATE.md) |
-| Project overview | [.planning/PROJECT.md](../.planning/PROJECT.md) |
+| Architecture overview | [.planning/codebase/ARCHITECTURE.md](../.planning/codebase/ARCHITECTURE.md) |
+| Tech stack | [.planning/codebase/STACK.md](../.planning/codebase/STACK.md) |
+| Project structure | [.planning/codebase/STRUCTURE.md](../.planning/codebase/STRUCTURE.md) |
+| Schema diagram | [notes/erd-mermaid.md](../notes/erd-mermaid.md) |
 
-### Code Locations
+---
+
+## Code Locations
 
 | What | Path | Notes |
 |------|------|-------|
-| Backend tables | `spacetimedb/src/tables/` | 55 table definitions |
-| Backend reducers | `spacetimedb/src/reducers/` | 80+ reducers |
-| Backend helpers | `spacetimedb/src/helpers/` | ELO calc, bracket gen, stats, audit |
-| Backend enums | `spacetimedb/src/types/enums.ts` | Role, GameMode, TournamentStage, etc. |
-| Generated bindings | `src/module_bindings/` | 130 files, regenerate with `spacetime generate` |
-| Frontend components | `components/features/` | 34 components across 8 feature groups |
-| Pages | `app/` | Landing, costs, teambuilder, lobby, profile, admin, draft |
+| Backend tables | `spacetimedb/src/tables/` | 67 table definitions |
+| Backend reducers | `spacetimedb/src/reducers/` | 44 reducer files, ~155 exports |
+| Backend views | `spacetimedb/src/views/` | 32 named views (securityViews.ts: 24, anonymousViews.ts: 8) |
+| Backend helpers | `spacetimedb/src/helpers/` | ELO calc, bracket gen, stats, audit, roster |
+| Backend enums | `spacetimedb/src/types/enums.ts` | Role, GameMode, DraftMode, TournamentStage, BracketFormat, etc. |
+| Generated bindings | `src/module_bindings/` | 236 files — regenerate with `spacetime generate` |
+| Frontend components | `components/features/` | Feature-grouped components |
+| Pages | `app/` | Next.js App Router pages |
 | Auth system | `components/features/auth/` | AuthProvider, useAuth, LoginForm |
 | Connection config | `lib/spacetimedb.ts` | Host + DB name |
 | Providers stack | `app/providers.tsx` | SpacetimeDB → Auth → GameData |
+| Design tokens | `app/tokens.css` | 89 CSS custom properties |
 
 ---
 
-## How the Frontend Talks to the Backend
+## Development Entry Points
 
-### Connection
-
-SpacetimeDB uses a persistent WebSocket. The connection is established once at app root (`app/providers.tsx`) and shared via React context.
-
-```
-lib/spacetimedb.ts          → host + db name config
-app/providers.tsx            → DbConnection.builder() → SpacetimeDBProvider
-components/.../AuthProvider  → subscribes to UserIdentity + User tables
-components/.../GameDataProvider → subscribes to HsrCharacter, HsrLightcone, costs
-```
-
-### Reading Data (Subscriptions)
-
-Tables auto-sync via WebSocket subscription. Use the `useTable` hook:
-
-```typescript
-import { tables } from '@/src/module_bindings';
-
-// Returns [rows[], isReady]
-const [characters] = useTable(tables.HsrCharacter);
-const [tournaments] = useTable(tables.Tournament);
-```
-
-Data updates automatically when the backend changes — no polling, no refetching.
-
-### Writing Data (Reducer Calls)
-
-Reducers are transactional server-side functions. They **do not return data** — you read results via table subscriptions.
-
-```typescript
-import { DbConnection } from '@/src/module_bindings';
-
-const conn = getConnection(); // from useSpacetimeDB()
-conn.reducers.create_tournament({
-  name: "Weekly Cup",
-  format: "SingleElimination",
-  // ...
-});
-// Table subscription auto-updates with new tournament row
-```
-
-### Key Gotchas
-
-| Gotcha | Detail |
-|--------|--------|
-| **Reducers don't return data** | Read via table subscriptions, not return values |
-| **Enums are tag objects** | `tournament.stage.tag === 'Registration'` not `=== 'Registration'` |
-| **JSON string params** | Complex args passed as `JSON.stringify(...)` |
-| **Timestamps** | SpacetimeDB `Timestamp` → `new Date(Number(ts) * 1000)` for display |
-| **Optional = sentinel** | `0` for missing u32, empty string for missing text |
-| **Identity vs userId** | `Identity` = opaque hex, `userId` = numeric. `UserIdentity` maps between them |
-| **Auto-increment gaps** | IDs have gaps — don't use for ordering |
-| **ctx.sender** | Backend uses sender identity for auth — never trust client-supplied identity |
-
----
-
-## Existing Frontend Pages
-
-| Route | Layout | Auth Required | What's There |
-|-------|--------|---------------|-------------|
-| `/` | landing-page | No | Hero video, features carousel, contact section |
-| `/costs` | landing-page | No | Cost table browser |
-| `/teambuilder` | landing-page | No | Team composition builder |
-| `/lobby` | authenticated | Yes | Lobby placeholder (stub) |
-| `/profile` | authenticated | Yes | User profile, Discord link, logout |
-| `/admin-view` | authenticated | Yes (Admin) | Table explorer, bulk upsert, user manager |
-| `/draft/[matchId]` | game | Yes | Draft picking placeholder (stub) |
-
-### Auth Flow
-
-1. App loads → SpacetimeDB WebSocket connects (auto, with stored token)
-2. If no token → new identity created, stored in localStorage
-3. User clicks LOG IN → `loginAsGuest()` reducer creates User + UserIdentity
-4. Optional: Discord OAuth via NextAuth → `server_link_discord` upgrades guest to Discord user
-5. `AuthRequired` wrapper on protected pages shows LoginForm if not authenticated
-
----
-
-## Design System
-
-The landing page uses a custom token system (`app/tokens.css`) with 89 CSS custom properties:
-
-- **Colors:** `--color-void` (#0A0A0B), `--color-iris` (#7C6AFF), `--color-haze` (#2A2640), etc.
-- **Fonts:** `--font-inter` (body), `--font-jetbrains-mono` (headings, labels, code)
-- **Gradients, shadows, border radii** all tokenized
-
-The authenticated pages currently use HeroUI components. The landing page uses CSS modules with the token system.
+1. **Start here:** `docs/roster/` — simplest feature, gold standard docs format, best example of table/reducer/view patterns
+2. **Auth first:** `docs/auth/architecture.md` — understand identity, UserPrivate, view_my_profile before building any authenticated UI
+3. **Core gameplay loop:** `docs/lobby/`, `docs/match-session/`, `docs/tournament/` — the three main interaction surfaces
+4. **Schema overview:** `notes/erd-mermaid.md` — paste into [mermaid.live](https://mermaid.live) for a visual schema map with all 67 tables
 
 ---
 
 ## For AI Agents
 
-If you're an AI agent reading this file, here's your routing guide:
+Routing guide for AI agents reading this file:
 
-- **To understand a feature's data model:** Read `docs/{feature}/architecture.md`
-- **To understand expected behavior:** Read `docs/{feature}/contract.md`
-- **To see what reducer params look like:** Read `src/module_bindings/{reducer_name}_reducer.ts`
-- **To see table schemas:** Read `src/module_bindings/{table_name}_table.ts`
-- **To understand auth flow:** Read `components/features/auth/hooks/useAuth.ts`
-- **To understand data subscriptions:** Read `components/features/game-data/components/GameDataProvider.tsx`
-- **To understand the connection:** Read `app/providers.tsx` and `lib/spacetimedb.ts`
-- **To see project requirements:** Read `.planning/REQUIREMENTS.md`
-- **To see what's done vs pending:** Read `.planning/ROADMAP.md`
-- **To see the design token system:** Read `app/tokens.css`
-- **To understand SpacetimeDB patterns:** Read `.claude/skills/spacetimedb/SKILL.md`
+- **Feature data model:** Read `docs/{feature}/architecture.md`
+- **Expected behavior and edge cases:** Read `docs/{feature}/contract.md`
+- **Reducer params (exact types):** Read `src/module_bindings/{reducer_name}_reducer.ts`
+- **Table schemas:** Read `src/module_bindings/{table_name}_table.ts`
+- **Auth flow:** Read `components/features/auth/hooks/useAuth.ts`
+- **Data subscriptions:** Read `components/features/game-data/components/GameDataProvider.tsx`
+- **Connection setup:** Read `app/providers.tsx` and `lib/spacetimedb.ts`
+- **Project requirements:** Read `.planning/REQUIREMENTS.md`
+- **Phase completion status:** Read `.planning/ROADMAP.md`
+- **Design tokens:** Read `app/tokens.css`
+- **SpacetimeDB patterns:** Read `.claude/skills/spacetimedb/SKILL.md`
+- **Architecture overview:** Read `.planning/codebase/ARCHITECTURE.md`
+
+---
+
+*Last updated: 2026-04-09*
+*Backend complete as of Phase 12.2 (SDK 2.1.0 upgrade). All v0.5 requirements implemented.*
