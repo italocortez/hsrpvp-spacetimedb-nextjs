@@ -238,3 +238,4 @@ Authentication manages how users connect to the SpacetimeDB module, create accou
 | DiscordLink.tsx uses loginDiscord() instead of direct signIn("discord") | Phase 12 execution | 2026-04-08 |
 | server_link_provider Case 1b: identity merge (re-point identity, delete orphaned guest) verified across all 4 auth paths | Phase 12 execution | 2026-04-08 |
 | Phase 12.1 implemented: Identity GC with 90-day TTL, guards (guests, online, preserve-newest, orphans), GcResult audit — see [smoke/contract.md](../smoke/contract.md#identity-garbage-collection-phase-121) | Phase 12.1 execution | 2026-04-08 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |

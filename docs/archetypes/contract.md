@@ -205,12 +205,13 @@ Archetypes feed the **horizontal score** component of account ratings:
 
 ## Phase History
 
-| Decision | Source |
-|----------|--------|
-| Archetype CRUD reducers (admin_upsert/delete/assign/remove) | Phase 3 execution |
-| All-or-nothing validation pattern for assign/remove | Phase 3 execution |
-| Idempotent assign (skip existing, no error) | Phase 3 execution |
-| Cascading delete on archetype removal | Phase 3 execution |
-| Rating horizontal score integration with archetypeThreshold | Phase 7 execution |
-| Generic admin operations (bulk_upsert, delete_row) | Phase 3 execution |
-| Contract retroactively written | Phase 12.1 execution |
+| Decision | Source | Date |
+|----------|--------|------|
+| Archetype CRUD reducers (admin_upsert/delete/assign/remove) | Phase 3 execution | 2026-03-17 |
+| All-or-nothing validation pattern for assign/remove | Phase 3 execution | 2026-03-17 |
+| Idempotent assign (skip existing, no error) | Phase 3 execution | 2026-03-17 |
+| Cascading delete on archetype removal | Phase 3 execution | 2026-03-17 |
+| Rating horizontal score integration with archetypeThreshold | Phase 7 execution | 2026-03-28 |
+| Generic admin operations (bulk_upsert, delete_row) | Phase 3 execution | 2026-03-17 |
+| Contract retroactively written | Phase 12.1 execution | 2026-04-08 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |

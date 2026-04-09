@@ -592,8 +592,9 @@ When a user account is deleted, cascade-delete all calendar data:
 ---
 
 | TournamentParticipant renamed to TournamentEnrolled + TournamentTeamMember | Phase 10.1 execution | 2026-04-03 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-09*
 *Feature owner: Phase 8*

@@ -219,8 +219,9 @@ Lobby chat provides ephemeral, per-lobby messaging for all lobby members. Messag
 | Host/referee/admin/moderator can delete messages (D-26) | Phase 9 execution | 2026-03-29 |
 | Chat messages ephemeral, cascade-deleted on lobby close (CHAT-03) | Phase 9 execution | 2026-03-29 |
 | Client reads via view_my_lobby_chat, not raw ChatMessage table (D-92) | Phase 9 execution | 2026-03-29 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-09*
 *Feature owner: Phase 9*

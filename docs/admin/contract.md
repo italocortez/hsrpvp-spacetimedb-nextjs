@@ -308,3 +308,4 @@ Admin and server operations handle privileged actions: server identity registrat
 | admin_update_user field-level updates | Phase 3 execution | 2026-03-17 |
 | Calendar cascade in performUserDeletion | Phase 8 execution | 2026-03-28 |
 | Auth/Admin doc separation | Pre-Phase 11 cleanup | 2026-04-06 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |

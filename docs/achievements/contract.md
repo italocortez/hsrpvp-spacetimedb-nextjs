@@ -1,8 +1,10 @@
 # Achievements & Titles
 
+**Architecture:** [architecture.md](architecture.md)
+
 ## Feature Overview
 
-Admins and Moderators can define achievements with flexible, data-driven criteria. The system auto-awards achievements during match finalization when a player's stats satisfy all criteria (AND logic). TOs and Moderators can also manually award achievements. Players can display an earned achievement as a title on their profile.
+Admins and Moderators define achievements with flexible, data-driven criteria. The system auto-awards achievements during match finalization when a player's stats satisfy all criteria (AND logic). TOs and Moderators can manually award achievements. Players can display an earned achievement as a title on their profile. Achievements are defined by name, description, rarity, and an optional global cap on total awards.
 
 ## Reducers
 
@@ -26,6 +28,9 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 2. Validate name is non-empty
 3. Check name uniqueness via `Achievement.name` unique index
 4. Insert Achievement row with auto-increment ID
+
+**Expected State Changes:**
+- Achievement row inserted (name, description, rarity, isManualOnly, maxAwards, audit columns)
 
 **Error Cases:**
 | Condition | Error Message |
@@ -54,6 +59,9 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 3. If name is changing, verify new name doesn't conflict
 4. Update row with changed fields, preserve unchanged fields
 
+**Expected State Changes:**
+- Achievement.name, description, rarity updated
+
 **Error Cases:**
 | Condition | Error Message |
 |-----------|--------------|
@@ -66,6 +74,11 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 
 **Permission:** Admin only
 
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| achievementId | u32 | Yes | Achievement to delete |
+
 **Flow:**
 1. Verify caller is Admin
 2. Find achievement by ID
@@ -73,6 +86,12 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 4. CASCADE step 2: Delete all UserAchievement rows for this achievement
 5. CASCADE step 3: Clear User.displayedAchievementId for any user displaying this achievement
 6. CASCADE step 4: Delete the Achievement row
+
+**Expected State Changes:**
+- All AchievementCriteria rows for this achievement deleted
+- All UserAchievement rows for this achievement deleted
+- User.displayedAchievementId cleared for users displaying this achievement
+- Achievement row deleted
 
 **Error Cases:**
 | Condition | Error Message |
@@ -105,12 +124,15 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 4. Validate statTable is one of the 3 supported resolver targets
 5. Insert AchievementCriteria row
 
+**Expected State Changes:**
+- AchievementCriteria row inserted (linked to achievement by achievementId)
+
 **Error Cases:**
 | Condition | Error Message |
 |-----------|--------------|
 | Achievement not found | "Achievement #{id} not found." |
 | Criteria locked | "Cannot modify criteria: players have already earned this achievement." |
-| Invalid statTable | "Invalid statTable "{name}". Must be one of: PlayerStat, PlayerCharacterStat, MmrRating." |
+| Invalid statTable | "Invalid statTable \"{name}\". Must be one of: PlayerStat, PlayerCharacterStat, MmrRating." |
 
 ### remove_achievement_criteria
 
@@ -118,11 +140,19 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 
 **Permission:** Moderator+
 
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| criteriaId | u32 | Yes | Criteria row to remove |
+
 **Flow:**
 1. Verify caller is Moderator or Admin
 2. Find criteria row by ID
 3. Check criteria lock: reject if any UserAchievement exists for the parent achievement
 4. Delete the criteria row
+
+**Expected State Changes:**
+- AchievementCriteria row deleted
 
 **Error Cases:**
 | Condition | Error Message |
@@ -150,6 +180,9 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 5. Verify target user exists
 6. Insert UserAchievement row with awardedById = caller
 
+**Expected State Changes:**
+- UserAchievement row inserted (achievementId, userId, awardedById, awardedAt)
+
 **Error Cases:**
 | Condition | Error Message |
 |-----------|--------------|
@@ -157,7 +190,7 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 | TO targeting non-participant | "Forbidden: Target user is not a participant in your tournaments." |
 | Achievement not found | "Achievement #{id} not found." |
 | Already earned | "User has already earned this achievement." |
-| Global cap reached | "Achievement "{name}" has reached its global award limit ({N})." |
+| Global cap reached | "Achievement \"{name}\" has reached its global award limit ({N})." |
 | Target user not found | "User #{id} not found." |
 
 ### set_displayed_achievement
@@ -178,6 +211,9 @@ Admins and Moderators can define achievements with flexible, data-driven criteri
 3. If setting own title, reject guests
 4. If achievementId provided and non-zero: verify achievement exists, verify user earned it
 5. Update User.displayedAchievementId
+
+**Expected State Changes:**
+- User.displayedAchievementId updated (set to achievementId or cleared)
 
 **Error Cases:**
 | Condition | Error Message |
@@ -303,8 +339,9 @@ The achievement checker runs at step 16.5 of `runFinalization`, after all stat i
 | 3 starter achievements seeded via post-publish.ts (MMR Elite, Veteran, Solar First Tournament Winner) | Phase 07 execution | 2026-03-28 |
 | Moderators have same permissions as Admins except delete_achievement and set other user's title | Phase 07 UAT (user decision) | 2026-03-28 |
 | Bootstrap seedAchievements fixed: subscriptionBuilder().subscribeToAllTables() + cache lookup replaces broken onInsert pattern | Phase 07 UAT | 2026-03-28 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-03-28*
+*Last updated: 2026-04-09*
 *Feature owner: Phase 7*
