@@ -446,7 +446,7 @@ Plans:
 **Scope:**
 1. **Confirmed reads fix (HIGH):** Add `.withConfirmedReads(false)` to `test/shared/connection.ts` builder + all standalone scripts (bootstrap.ts, seed-data.ts, promoteUser.ts, identity-gc.test.ts, etc.)
 2. **Sync strategy overhaul (HIGH):** Replace fixed 2000ms post-subscription delay in connection.ts with `onApplied` callback-based readiness. Audit all `h.sync(N)` calls across test files for unnecessarily long timeouts.
-3. **View test implementation (HIGH):** Replace 4 placeholder tests in `auth-views.test.ts` with real integration tests using typed view bindings (view_user_directory, view_my_profile, view_my_identity, view_admin_user_private)
+3. **View test implementation (DEFERRED):** `auth-views.test.ts` has stale placeholders, but auth view patterns may change during v1 frontend subscription strategy work. Defer until subscription strategy is locked.
 4. **Duplicate helper cleanup (MEDIUM):** Replace local `latestLobby()` in anonymous-labels.test.ts and draft-control.test.ts with import from shared `queries.ts`
 5. **Suite runtime profiling:** Identify slowest test files and optimize connection setup/teardown patterns
 
