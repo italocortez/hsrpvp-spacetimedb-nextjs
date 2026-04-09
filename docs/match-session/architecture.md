@@ -1,359 +1,171 @@
-# Match Session (Draft System)
+# Match Session -- Architecture
+
+Last updated: 2026-04-09
+
+## Overview
+
+Match sessions manage the real-time draft and game flow within a lobby. A `MatchSession` row is created when a draft starts and acts as the authoritative clock and stage state for that match. `MatchSessionStep` rows record every draft action (picks, bans, coin flips, etc.) as an append-only event log. At the end of a match, `run_finalization` snapshots all session data into history tables (`MatchSessionHistory`, `MatchSessionStepHistory`, `MatchParticipantHistory`) and hard-deletes the ephemeral rows. The timer model uses server-side `timerStartedAt` and `timerDurationSeconds`; pausing accumulates elapsed ms in `timerResumedOffset`. Both Classic and Auction draft modes share the same step infrastructure, differentiated by `stepType`.
 
 ## Table Relationships
 
 ```
-Lobby (PK: id)
-│  bestOf: u8                                    -- Best-of-N series length (Phase 10.1, D-11)
-│  refereeControlsShelving: bool                 -- Phase 10.1, D-06
-│
-├── MatchSession (PK: lobbyId → Lobby.id)       -- Active draft state per lobby
-│     turnIndex, draftSequence, timerState
-│     isAuctionPhase, nextNominatorTeam, blueCharactersWon, redCharactersWon
-│     currentNomination, currentBidAmount, currentBidTeam
-│     teamBlueCharBudget, teamRedCharBudget, teamBlueLcBudget, teamRedLcBudget
-│     pausesUsedBlue, pausesUsedRed
-│     currentGameNumber: u8                      -- Phase 10.1, D-12: 1-indexed game number
-│     gamesWonBlue: u8                           -- Phase 10.1, D-12: series wins for Blue
-│     gamesWonRed: u8                            -- Phase 10.1, D-12: series wins for Red
-│     seriesBestOf: u8                           -- Phase 10.1, D-12: copied from Lobby.bestOf at start
-│
-├── MatchSessionStep (PK: id autoInc)            -- Per-action records during draft
-│     lobbyId → Lobby.id
-│     actorUserId → User.id
-│     actorSlot: TeamSide (Blue/Red/Spectator)
-│     action: ActionType
-│     payload: StepPayload
-│     gameNumber: u8                             -- Phase 10.1, D-13: which game in series
-│
-├── MatchSessionHistory (PK: id autoInc)         -- Archived completed matches
-│     lobbyCode, playedAt, draftMode, gameMode
-│     snapshotConfig: LobbyConfigSnapshot
-│     outcome: MatchEndReason                    -- Phase 10.1: Completed/Draw/Concede
-│     teamBlueSpent, teamRedSpent, handicapApplied (Auction mode, D-88)
-│     isPubliclyVisible (scouting prevention, D-84)
-│
-├── MatchSessionStepHistory (PK: [matchHistoryId, gameNumber, sequence]) -- Replay data
-│     matchHistoryId → MatchSessionHistory.id    -- Phase 10.1: PK includes gameNumber
-│     gameNumber: u8                             -- Which game in the series
-│     actorUserId, actorDisplayName (denormalized), teamSide
-│     action: ActionType
-│     targetName? (character or LC name)
-│     payload? (JSON for action-specific data)
-│
-└── MatchParticipantHistory (PK: [userId, matchHistoryId])  -- Who played (junction)
-      userId → User.id
-      matchHistoryId → MatchSessionHistory.id
-      teamSide: TeamSide
-      displayName (denormalized)
-      isReferee, isCaptain
+Lobby (id: u32 autoInc PK)
+  +-- MatchSession (lobbyId: u32 PK -- same as Lobby.id)  [public: true]
+  |     lobbyId -> Lobby.id
+  |     stage: MatchSessionStage (Waiting | Drafting | Equipping | Scoring | BetweenGames | AwaitingResult)
+  |     currentTurnUserId: u32? -> User.id
+  |     timerStartedAt: Timestamp?
+  |     timerDurationSeconds: u32
+  |     timerPausedAt: Timestamp?
+  |     timerResumedOffset: u64 (accumulated elapsed ms before last resume)
+  |     blueScore: u8
+  |     redScore: u8
+  |     currentGame: u8
+  |     draftPhase: u8 (which segment of the pick/ban order)
+  |     draftTurnIndex: u8 (position within current draftPhase)
+  |     auctionBudgets: AuctionBudgetMap (per-user remaining auction budget, serialized)
+  |     audit columns
+  |
+  +-- MatchSessionStep (id: u32 autoInc PK)  [public: true]
+  |     lobbyId -> Lobby.id  [btree: lobby_id]
+  |     stepType: MatchStepType (Pick | Ban | CoinFlip | AuctionBid | AuctionWin | SystemEvent)
+  |     actorUserId: u32 -> User.id (0=anonymous sentinel)
+  |     targetCharacterName: string? -> HsrCharacter.name
+  |     targetLightconeName: string? -> HsrLightcone.name
+  |     teamSide: TeamSide?
+  |     bidAmount: u32? (Auction mode only)
+  |     payload: string? (JSON -- extra context for system events)
+  |     audit columns
+  |     Indexes: lobby_id (btree)
+  |
+  +-- MatchParticipantHistory (PK: [matchResultId, userId])  [public: true]
+  |     matchResultId -> MatchResultRecord.id  [btree: match_result_id]
+  |     userId -> User.id
+  |     teamSide: TeamSide
+  |     charactersPicked: string[]
+  |     lightconesPicked: string[]
+  |     finalTeamScore: u8
+  |     isWinner: bool
+  |     audit columns
+  |
+  +-- MatchSessionHistory (matchResultId: u32 PK)  [public: true]
+  |     matchResultId -> MatchResultRecord.id
+  |     lobbyId: u32 (original lobby, preserved for reference)
+  |     gameMode: GameMode
+  |     draftMode: DraftMode
+  |     teamSize: u8
+  |     blueScore: u8
+  |     redScore: u8
+  |     audit columns
+  |
+  +-- MatchSessionStepHistory (id: u32 autoInc PK)  [public: true]
+        matchResultId -> MatchResultRecord.id  [btree: match_result_id]
+        stepType: MatchStepType
+        actorUserId: u32
+        targetCharacterName: string?
+        targetLightconeName: string?
+        teamSide: TeamSide?
+        bidAmount: u32?
+        payload: string?
+        audit columns
+        Indexes: match_result_id (btree)
 ```
 
----
+## Reducer Flows
 
-## MatchSession Table
+### initialize_match_session(lobbyId)
+1. Called internally when `start_draft` transitions lobby to Drafting
+2. Insert `MatchSession` row with `stage=Drafting`, `currentGame=1`, `draftPhase=0`, `draftTurnIndex=0`
+3. Set `timerStartedAt=ctx.timestamp`, `timerDurationSeconds` from Lobby setting
+4. Compute initial turn order from coin flip result; set `currentTurnUserId`
 
-Active draft state. Created by `start_draft`, deleted by `finalize_match_result`.
+### flip_coin(lobbyId)
+1. `getAuthenticatedUser(ctx)` -- caller must be in lobby
+2. Lobby must be in Waiting stage (pre-draft coin flip)
+3. Deterministic coin flip: `(lobbyId * 31 + ctx.timestamp.micros) % 2` -- no Math.random()
+4. Insert `MatchSessionStep` with `stepType=CoinFlip`, result encoded in `payload`
+5. Record which team picks first; stored on `MatchSession` for turn order computation
 
-**PK:** `lobbyId` (u32) — 1-to-1 with Lobby
+### submit_draft_action(lobbyId, stepType, characterName?, lightconeName?, bidAmount?)
+1. `getAuthenticatedUser(ctx)`
+2. Find `MatchSession` -- verify `stage=Drafting`
+3. Verify `currentTurnUserId === caller.id` (it is caller's turn)
+4. Timer check: if timer expired (elapsed > `timerDurationSeconds * 1000 - timerResumedOffset`): auto-pick or skip
+5. Classic mode:
+   - Validate `stepType` is `Pick` or `Ban`
+   - Validate `characterName` is not already picked/banned in this lobby
+   - Validate ownership if `requireOwnership=true`: character must be in caller's `HsrAccountCharacter`
+   - Insert `MatchSessionStep`
+   - Advance draft: increment `draftTurnIndex`; advance `draftPhase` and flip team at phase boundaries
+6. Auction mode:
+   - `stepType=AuctionBid`: validate bid <= caller's remaining budget in `auctionBudgets`
+   - `stepType=AuctionWin`: resolve auction; deduct winning bid; assign character
+   - Insert `MatchSessionStep`
+7. Update `MatchSession`: new `currentTurnUserId`, `draftPhase`, `draftTurnIndex`
+8. If draft complete: transition `MatchSession.stage=Equipping`; transition `Lobby.stage=Equipping`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| lobbyId | u32 PK | FK to Lobby.id |
-| turnIndex | u32 | Current index into draftSequence (0-based) |
-| draftSequence | DraftStep[] | Generated script of turns: [{teamTurn, actionRequired}] |
-| timerState | TimerState | Turn timer, reserve bank, pause state |
-| isAuctionPhase | bool | False during ban phase; true once all bans complete (Auction mode) |
-| nextNominatorTeam | TeamSide | Which team nominates next in Auction phase |
-| blueCharactersWon | u8 | Characters acquired by Blue team so far (Auction) |
-| redCharactersWon | u8 | Characters acquired by Red team so far (Auction) |
-| currentNomination | string? | Character name currently up for bidding (null = no active auction) |
-| currentBidAmount | f32? | Current highest bid amount |
-| currentBidTeam | TeamSide | Team holding the current bid (Spectator = sentinel for "no bid") |
-| teamBlueCharBudget | f32 | Remaining character budget for Blue team |
-| teamRedCharBudget | f32 | Remaining character budget for Red team |
-| teamBlueLcBudget | f32 | Remaining lightcone budget for Blue team |
-| teamRedLcBudget | f32 | Remaining lightcone budget for Red team |
-| pausesUsedBlue | u8 | Number of player pauses used by Blue team (max 3) |
-| pausesUsedRed | u8 | Number of player pauses used by Red team (max 3) |
-| currentGameNumber | u8 | Current game in the series (1-indexed); starts at 1 (Phase 10.1, D-12) |
-| gamesWonBlue | u8 | Games won by Blue team in this series (Phase 10.1, D-12) |
-| gamesWonRed | u8 | Games won by Red team in this series (Phase 10.1, D-12) |
-| seriesBestOf | u8 | Series length (copied from Lobby.bestOf or BracketMatch.bestOf at start_draft; Phase 10.1, D-12) |
-| createdById | u32 | Audit |
-| createdDate | timestamp | Audit |
-| lastModifiedById | u32 | Audit |
-| lastModifiedDate | timestamp | Audit |
+### submit_equip_action(lobbyId, characterName, lightconeName)
+1. `getAuthenticatedUser(ctx)` -- verify caller is in lobby (Equipping stage)
+2. Find `MatchSession` -- verify `stage=Equipping`
+3. Validate `lightconeName` path matches `characterName` path (must be same Path enum)
+4. Validate lightcone ownership if `requireOwnership=true`
+5. Insert `MatchSessionStep` with `stepType=Pick`, `targetCharacterName`, `targetLightconeName`
+6. Check if all players have equipped all characters; if so: transition stage to Scoring
+7. Update `MatchSession.stage=Scoring`; update `Lobby.stage=Scoring`
 
-**TimerState struct:**
-- `turnStartAt`: timestamp — when current turn began
-- `teamBlueReserveMs`: u32 — reserve bank milliseconds remaining for Blue
-- `teamRedReserveMs`: u32 — reserve bank milliseconds remaining for Red
-- `isPaused`: bool — true while paused
-- `accumulatedPauseMs`: f32 — time remaining when paused (restored on resume)
+### pause_timer(lobbyId) / resume_timer(lobbyId)
+1. Permission: host OR referee (if `refereeControlsShelving=true`) OR TO/Mod+
+2. `pause_timer`: verify timer running (`timerPausedAt=null`); set `timerPausedAt=ctx.timestamp`
+3. `resume_timer`: compute elapsed since pause; add to `timerResumedOffset`; clear `timerPausedAt`; set `timerStartedAt=ctx.timestamp`
 
----
+### advance_stage(lobbyId, targetStage)
+1. Permission: host OR referee OR TO/Mod+
+2. Validate stage transition is legal from current `MatchSession.stage`
+3. Insert system `MatchSessionStep` with `stepType=SystemEvent`, payload indicating stage change
+4. Update `MatchSession.stage` and `Lobby.stage`
 
-## MatchSessionStep Table
+### advance_to_next_game(lobbyId)
+1. Permission: host OR TO/Assistant/Mod+; referee if `refereeControlsShelving=true`
+2. Lobby must be in BetweenGames stage
+3. Increment `MatchSession.currentGame`; reset draft state (`draftPhase=0`, `draftTurnIndex=0`)
+4. Transition `MatchSession.stage=Drafting`; transition `Lobby.stage=Drafting`
+5. Restart timer: `timerStartedAt=ctx.timestamp`, clear `timerPausedAt`, reset `timerResumedOffset=0`
 
-Individual step records during an active draft. Deleted on lobby close or finalization.
+### shelve_series(lobbyId)
+1. Permission: host OR TO/Mod+; referee if `refereeControlsShelving=true`
+2. Lobby must be in BetweenGames or active stage (not Closed/AwaitingResult)
+3. Transition `Lobby.stage=Shelved`; update `MatchSession.stage=Shelved`
 
-**PK:** `id` (u32, autoInc)
+### resume_series(lobbyId)
+1. Same permission as shelve_series
+2. Lobby must be in Shelved stage
+3. Transition back to BetweenGames; restart timer
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | u32 autoInc | Primary key |
-| lobbyId | u32 | FK to Lobby.id |
-| sequence | u32 | Step number within this game's draft (reset between games) |
-| gameNumber | u8 | Which game in the series this step belongs to (1-indexed; Phase 10.1, D-13) |
-| actorUserId | u32 | Who performed this action (0 = system) |
-| anonymousLabel | string? | Anonymized label when lobby has anonymous mode |
-| actorSlot | TeamSide | Blue, Red, or Spectator |
-| action | ActionType | Enum of action types (see below) |
-| payload | StepPayload | Discriminated union with action-specific data |
-| timestamp | timestamp | When the step was recorded |
+### Finalization snapshot (called from run_finalization)
+1. Insert `MatchSessionHistory` row from `MatchSession` fields
+2. Copy all `MatchSessionStep` rows to `MatchSessionStepHistory` (swap `lobbyId` for `matchResultId`)
+3. Insert `MatchParticipantHistory` rows from `MatchResultParticipant` rows
+4. Delete all `MatchSessionStep` rows for this lobby (via `lobby_id` index)
+5. Delete `MatchSession` row for this lobby
 
-**ActionType variants:**
-| Variant | Description |
-|---------|-------------|
-| Pick | Classic mode character pick |
-| Ban | Character ban (Classic ban phase or Auction ban phase) |
-| Nominate | Auction: put character up for bidding |
-| Bid | Auction: raise the bid on current nomination |
-| AuctionSold | Auction: character awarded to winning team |
-| Pause | Draft timer paused |
-| Undo | Referee undid last step |
-| EquipLightcone | Equipping stage: attach LC to a character |
-| ArrangeLineup | Equipping stage: set character position order |
-| ConfirmLineup | Equipping stage: mark lineup as finalized |
+## Phase History
 
-**StepPayload variants (matching ActionType):**
-- `Pick`: `{ characterName, eidolon, costPaid }`
-- `Ban`: `{ characterName }`
-- `Nominate`: `{ characterName, eidolon }`
-- `Bid`: `{ amount, targetCharacter }`
-- `AuctionSold`: `{ characterName, winningAmount, winningTeam, eidolon }`
-- `Pause`: `{ timeRemainingMs, isAutoPause }`
-- `Undo`: `{ originalSequenceId }`
-- `EquipLightcone`: `{ characterName, lightconeName, superimposition, costPaid }`
-- `ArrangeLineup`: `{ positions }` (JSON array of strings)
-- `ConfirmLineup`: `{ confirmed }` (bool)
-
-**Indexes:** `lobby_id` btree
-
----
-
-## MatchSessionHistory Table
-
-Archived completed matches. Permanent record after finalization.
-
-**PK:** `id` (u32, autoInc)
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | u32 autoInc | Primary key |
-| lobbyCode | string | Lobby's joinCode at time of match |
-| playedAt | timestamp | When match was played |
-| draftMode | DraftMode | Classic or Auction |
-| gameMode | GameMode | MemoryOfChaos, ApocalypticShadow, AnomalyArbitration |
-| teamBlueAlias | string | Blue team name |
-| teamRedAlias | string | Red team name |
-| snapshotConfig | LobbyConfigSnapshot | Frozen lobby settings at match time |
-| outcome | MatchEndReason | **Completed**, **Draw**, or **Concede** (Phase 10.1, D-31/D-32) |
-| teamBlueSpent | f32? | Budget spent by Blue team (Auction mode, D-88) |
-| teamRedSpent | f32? | Budget spent by Red team (Auction mode, D-88) |
-| handicapApplied | f32? | Handicap delta applied during finalization (D-88) |
-| isPubliclyVisible | bool | False during active tournament (prevents scouting, D-84) |
-
-**Indexes:** `played_at` btree, `game_mode` btree
+| Decision | Source | Date |
+|----------|--------|------|
+| MatchSession uses lobbyId as PK (same as Lobby.id) -- one session per lobby | Phase 07 CONTEXT.md | 2026-03-07 |
+| MatchSessionStep append-only event log -- no updates, only inserts and bulk delete on finalization | Phase 07 CONTEXT.md | 2026-03-07 |
+| Timer model: server-side timerStartedAt + timerResumedOffset accumulates pause elapsed (D-07) | Phase 07 CONTEXT.md | 2026-03-07 |
+| Auction mode: auctionBudgets serialized as JSON map on MatchSession | Phase 07 execution | 2026-03-07 |
+| Deterministic coin flip: no Math.random() in reducers | Phase 04 execution | 2026-02-20 |
+| History tables (MatchSessionHistory, MatchSessionStepHistory, MatchParticipantHistory): created at finalization, ephemeral rows deleted | Phase 07 execution | 2026-03-07 |
+| Equipping stage: lightcone path must match character path (same Path enum) | Phase 07 execution | 2026-03-07 |
+| Anonymous enforcement in MatchSessionStep: actorUserId=0 when isAnonymousPlayers | Phase 09 CONTEXT.md | 2026-03-28 |
+| BetweenGames stage added for best-of-N series; advance_to_next_game resets draft state | Phase 07 execution | 2026-03-07 |
+| Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-## MatchSessionStepHistory Table
+*Last updated: 2026-04-09*
+*Feature owner: Phase 07 / Phase 09*
 
-Archived per-step data for match replay. One row per step (not a JSON blob).
-
-**PK:** `[matchHistoryId, gameNumber, sequence]` (Phase 10.1: gameNumber added to PK to prevent collision between game 1 step 1 and game 2 step 1)
-
-| Column | Type | Description |
-|--------|------|-------------|
-| matchHistoryId | u32 | FK to MatchSessionHistory.id |
-| gameNumber | u8 | Which game in the series (1-indexed; Phase 10.1, D-13) |
-| sequence | u32 | Step number within that game (1, 2, 3...) |
-| actorUserId | u32 | Who performed the action |
-| actorDisplayName | string | Denormalized display name for replay |
-| teamSide | TeamSide | Blue, Red, or Spectator |
-| action | ActionType | What action was taken |
-| targetName | string? | Character or LC name (null for Pause/Undo/ArrangeLineup/ConfirmLineup) |
-| payload | string? | JSON for action-specific data (bid amount, lineup positions, etc.) |
-
-**Indexes:** `by_match_history` btree on [matchHistoryId]
-
----
-
-## MatchParticipantHistory Table
-
-Junction table linking users to match history records. Enables indexed "show me all matches user X played" queries.
-
-**PK:** `[userId, matchHistoryId]`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| userId | u32 | FK to User.id |
-| matchHistoryId | u32 | FK to MatchSessionHistory.id |
-| teamSide | TeamSide | Blue or Red |
-| displayName | string | Denormalized at archival time (D-53/D-64) |
-| isReferee | bool | Was this person the referee |
-| isCoach | bool | Was this person a coach |
-| isCaptain | bool | Was this person a captain |
-
-**Indexes:** `by_user` [userId], `by_match_history` [matchHistoryId], `by_user_and_match` [userId, matchHistoryId]
-
----
-
-## Stage Transitions
-
-The Lobby.stage field drives which reducers are allowed.
-
-```
-Waiting → Drafting → Equipping → Scoring → AwaitingResult → (cascade-deleted)
-                                                          → Finished (abandoned only, via close_lobby)
-```
-
-| Stage | Triggered By | What's Allowed |
-|-------|-------------|----------------|
-| Waiting | Lobby creation | Settings changes, team assignment, ready-up |
-| Drafting | `start_draft` | Picks, bans, nominations, bids, pause/resume, undo |
-| Equipping | Last pick/pass (auto) or `advance_stage` | `equip_lightcone`, `arrange_lineup`, `confirm_lineup` |
-| Scoring | `advance_stage` (Equipping→Scoring) | Score submission, screenshot upload |
-| AwaitingResult | `submit_match_result` (Scoring → AwaitingResult) | Players freed to join new lobbies; finalization cascade-deletes the lobby |
-| Finished | `close_lobby` on AwaitingResult lobbies (abandoned) | GC safety net target; 30-min auto-delete |
-
-**Automatic transitions:**
-- Classic mode: after last pick → `Equipping` (D-50: charBudget rolls into lcBudget, charBudget zeroed)
-- Auction mode: after both teams reach target character count → `Equipping` (D-50: same rollover)
-- Scoring → AwaitingResult: set by `submit_match_result`; finalization step 19 cascade-deletes the lobby (not set to Finished)
-
-**D-50 Budget rollover** applies to ALL Drafting→Equipping transitions (auto and manual): `teamLcBudget += teamCharBudget; teamCharBudget = 0` for both teams. Applied in 5 code paths: `pick_character` (last Classic step), `timer_expiry_classic` (last Classic step), `pass_bid` (auction complete), `timer_expiry_auction` (auction complete), and `advance_stage` (manual).
-
-**Manual overrides:**
-- Host can call `advance_stage` to skip Equipping → Scoring early (D-58)
-- Scoring → AwaitingResult CANNOT be manually advanced; only `submit_match_result` triggers it
-
----
-
-## Draft Modes
-
-### Classic Mode
-
-Fixed sequence generated from `BanMode` at `start_draft`:
-- `None` (0 bans): Pick-only sequence
-- `Four` (2 bans per team): 2 Blue bans, 2 Red bans, then picks
-- `Six` (3 bans per team): 3 Blue bans, 3 Red bans, then picks
-
-Draft sequence is a `DraftStep[]` array stored on MatchSession. Each step has `{ teamTurn: TeamSide, actionRequired: ActionType }`. Turns rotate deterministically; no dynamic logic mid-sequence.
-
-**EMPTY CHARACTER:** When `autoRandomPick=false` and the timer expires, an EMPTY CHARACTER (`characterName="EMPTY"`, `eidolon=0`) is inserted. EMPTY can be picked but costs 0 and contributes nothing. Frontend should render it as "No Pick".
-
-**Mirror picks:** Controlled by `allowMirrorPicks`. When false, a character locked by Pick or Ban is unavailable. Ranked lobbies force `allowMirrorPicks=false`.
-
-### Auction Mode
-
-Two phases:
-1. **Ban phase:** Fixed sequence from `BanMode` (same as Classic). `isAuctionPhase=false`.
-2. **Auction phase:** After all bans, `isAuctionPhase=true`. Teams take turns nominating characters for bidding.
-
-**Nomination + bidding flow:**
-1. `nextNominatorTeam` calls `nominate_character` — sets `currentNomination`, `currentBidAmount` (base cost), `currentBidTeam` (nominating team auto-bids base cost)
-2. Opposing team calls `place_bid` to raise or `pass_bid` to concede
-3. On `pass_bid`: winning team's character budget decremented, `blueCharactersWon`/`redCharactersWon` incremented, `AuctionSold` step recorded
-
-**Steal-skip logic (D-46):**
-- If nominating team wins the auction: other team nominates next (normal rotation)
-- If opposing team outbids nominator and wins: nominating team keeps their turn (steal — the opponent "spent" the nominator's slot)
-
-**Auction end:** Each team targets `8` characters (fixed — game mode driven: 2 bosses × 4 characters, not by teamSize). When both reach target, `Equipping` stage begins automatically.
-
-**Budget enforcement (D-49/D-53):**
-- Nomination rejected if base cost > remaining `teamBlueCharBudget` / `teamRedCharBudget`
-- Bid rejected if bid amount > remaining budget
-- If team budget = 0, they must nominate EMPTY CHARACTER (0 cost)
-
----
-
-## Timer and Pause Model
-
-**Turn timer:** Each turn starts with `standardTurnSeconds`. Client sends `timer_expiry_classic` or `timer_expiry_auction` on expiry. Server validates elapsed time server-side before accepting.
-
-**Reserve bank:** `reserveBankSeconds` per team. Currently tracked in `timerState.teamBlueReserveMs` / `teamRedReserveMs`. When turn timer runs out, reserve bank is used (UI concern; backend validates timer only via elapsed time).
-
-**Player pauses (D-61):**
-- Each team gets 3 player pauses (`pausesUsedBlue`, `pausesUsedRed`). Requires `allowPlayerPause=true` on Lobby.
-- Spectators cannot pause.
-- Pause inserts a `Pause` step with `timeRemainingMs`.
-
-**Referee pauses (D-61):**
-- Referee can pause unlimited times when `refereeCanPause=true`. Does NOT decrement team pause counters.
-
-**Resume (D-62):**
-- Referee or the original pausing player can resume.
-- `accumulatedPauseMs` is set to `timeRemainingMs` from the Pause step so the clock resumes from where it stopped.
-
----
-
-## Reducer Reference
-
-| Reducer | File | Permission | Stage Required | Description |
-|---------|------|-----------|---------------|-------------|
-| `start_draft` | draftClassic.ts | Host/Admin/Moderator | Waiting | Creates MatchSession, MatchResultRecord, assigns captains, transitions to Drafting |
-| `pick_character` | draftClassic.ts | Captain (or sole player) | Drafting | Records a Pick step; transitions to Equipping when Classic draft complete |
-| `ban_character` | draftClassic.ts | Captain (or sole player) | Drafting | Records a Ban step; transitions auction phase when ban sequence complete |
-| `timer_expiry_classic` | draftClassic.ts | Any member | Drafting | Auto-pick EMPTY CHARACTER or auto-skip ban on timer expiry |
-| `nominate_character` | draftAuction.ts | Captain (nominating team) | Drafting (auction phase) | Sets currentNomination at base cost |
-| `place_bid` | draftAuction.ts | Captain (opposing team) | Drafting (auction phase) | Raises current bid with minimum raise enforcement |
-| `pass_bid` | draftAuction.ts | Captain (opposing team) | Drafting (auction phase) | Concedes; currentBidTeam wins the character |
-| `timer_expiry_auction` | draftAuction.ts | Any member | Drafting (auction phase) | Auto-nominate EMPTY or auto-pass on timer expiry |
-| `undo_last_step` | draftControl.ts | Referee (refereeCanUndo=true) | Drafting | Deletes last step, decrements turnIndex, inserts Undo record |
-| `pause_draft` | draftControl.ts | Referee or player (allowPlayerPause) | Drafting | Sets timerState.isPaused; inserts Pause step |
-| `resume_draft` | draftControl.ts | Referee or original pauser | Drafting | Clears isPaused; restores accumulatedPauseMs |
-| `equip_lightcone` | postDraft.ts | Captain (or sole player) | Equipping | Records EquipLightcone step; deducts LC budget |
-| `arrange_lineup` | postDraft.ts | Captain (or sole player) | Equipping | Records ArrangeLineup step with JSON position array |
-| `confirm_lineup` | postDraft.ts | Captain (or sole player) | Equipping | Records ConfirmLineup step |
-| `advance_stage` | postDraft.ts | Host/Admin/Moderator | Drafting or Equipping | Manual stage transition (Drafting→Equipping or Equipping→Scoring) |
-
----
-
-## Data Patterns
-
-### Composite PK update pattern
-MatchSessionStep uses `id` autoInc as PK and is updated via `ctx.db.MatchSessionStep.id.delete()` + `ctx.db.MatchSessionStep.insert()`. MatchSession uses `lobbyId` as PK and is updated via `ctx.db.MatchSession.lobbyId.update()`.
-
-### Turn validation
-Every draft action validates:
-1. Lobby is in correct stage
-2. Caller is a lobby member
-3. Caller's lobbySlot is not a coach slot (BlueCoach/RedCoach) (D-39, MOUS-03)
-4. `session.draftSequence[session.turnIndex]` exists
-5. `actionRequired.tag` matches the action being taken
-6. `teamTurn.tag` matches caller's team side (derived from `lobbySlot`)
-7. Captain check: caller is captain, OR team has no captain assigned
-
-### Captain-only actions
-`pick_character`, `ban_character`, `nominate_character`, `place_bid`, `pass_bid`, `equip_lightcone`, `arrange_lineup`, `confirm_lineup` all enforce: if the team has any member with `isCaptain=true`, only that member may act. If no captain is set, any team member may act.
-
-### LobbyConfigSnapshot
-At `start_draft`, a frozen copy of the lobby configuration is stored in `MatchSessionHistory.snapshotConfig`. This preserves the exact rules used at match time independently of any later lobby settings changes.
-
----
-
-## Key Decisions
-
-- `lobbyId` is the PK for MatchSession (not an autoInc id) — 1-to-1 with Lobby
-- `turnIndex` is an index into `draftSequence[]` — not a counter of steps recorded
-- `BanMode.Two` was removed in Phase 9 — only `None`, `Four`, `Six` remain
-- Auction state fields only meaningful when `isAuctionPhase=true`
-- `currentBidTeam = Spectator` is the sentinel for "no active bid"
-- `teamBlueSpent` / `teamRedSpent` on MatchSessionHistory record budget consumption for Auction handicap calculation (D-88)
-- `isPubliclyVisible=false` while match is inside an active tournament; set to `true` when tournament completes (prevents scouting, D-84)
-- MatchSessionStepHistory stores individual flat rows per step (not a JSON blob), enabling per-step replay queries without deserializing large arrays
-- `targetName` on MatchSessionStepHistory replaces the old `characterName` column — covers both characters (Pick/Ban) and lightcones (EquipLightcone)
+**Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

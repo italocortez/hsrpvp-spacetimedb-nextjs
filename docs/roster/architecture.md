@@ -1,170 +1,124 @@
-# Roster Management — Architecture
+# Roster Management -- Architecture
+
+Last updated: 2026-04-09
 
 ## Overview
 
-Players create HSR account entries (up to 5), add owned characters with eidolon levels,
-control visibility, and migrate rosters between accounts. Admins can proxy all operations.
-Archetype tagging enables frontend diversity scoring.
+Players create HSR account entries (up to 5), add owned characters with eidolon levels, control visibility, and migrate rosters between accounts. Admins can proxy all operations. Archetype tagging enables frontend diversity scoring. `HsrAccount` and `HsrAccountCharacter` are private tables -- clients access roster data via server-side views only.
 
 ## Table Relationships
 
 ```
-User (id)
-  └── HsrAccount (userId → User.id)  [PRIVATE — D-20, Phase 10.4]
-        ├── isActive (default preference, per-lobby selection overrides)
-        ├── isRosterPublic, isRatingPublic (visibility toggles)
-        ├── isDuplicateUid (auto-recalculated when accounts share a UID)
-        └── HsrAccountCharacter (hsrAccountId → HsrAccount.id)  [PRIVATE — D-20, Phase 10.4]
-              ├── characterName → HsrCharacter.name (validated on write)
-              └── eidolonLevel (u8, 0-6)
+User (id: u32 autoInc PK)
+  +-- HsrAccount (id: u32 autoInc PK)  [PRIVATE]
+  |     userId -> User.id  [btree: user_id]
+  |     uid: string (9-digit region UID)
+  |     region: string (derived from uid first digit)
+  |     displayLabel: string
+  |     isActive: bool (default preference; per-lobby selection overrides)
+  |     isRosterPublic: bool
+  |     isRatingPublic: bool
+  |     isDuplicateUid: bool (auto-recalculated when accounts share a UID)
+  |     audit columns
+  |     Indexes: user_id (btree)
+  |
+  |     +-- HsrAccountCharacter (PK: [hsrAccountId, characterName])  [PRIVATE]
+  |           hsrAccountId -> HsrAccount.id  [btree: hsr_account_id]
+  |           characterName -> HsrCharacter.name
+  |           eidolonLevel: u8 (0-6)
+  |           audit columns
+  |           Indexes: hsr_account_id (btree)
 
-Archetype (id, name unique, description) — admin-managed
-  └── HsrCharacterArchetype (characterName + archetypeId) — junction
-        ├── characterName → HsrCharacter.name (application-enforced)
-        └── archetypeId → Archetype.id (application-enforced)
+Archetype (id: u32 autoInc PK)  [public: true]
+  +-- name: string (unique)
+  +-- description: string
+  +-- audit columns
 
-HsrCharacterCost, HsrLightconeCost, HsrSynergyCost
-  └── costSetId (u32, default 0 = default cost set, Phase 3 adds CostSet table)
+  +-- HsrCharacterArchetype (PK: [characterName, archetypeId])  [public: true]
+        characterName -> HsrCharacter.name
+        archetypeId -> Archetype.id
+        audit columns
 ```
 
 ## Reducer Flows
 
 ### create_hsr_account(uid, displayLabel)
-1. ensureVerifiedUser → validates non-guest
-2. validateUid → 9-digit regex, valid region digit (6/7/8/9)
-3. deriveRegion → first digit maps to region string
-4. Check 5-account limit per user
-5. Auto-default label to "Account N" if empty
-6. First account auto-activates (isActive = true)
-7. Insert HsrAccount
-8. recalcDuplicateUid → updates isDuplicateUid for all accounts sharing this UID
+1. `ensureVerifiedUser(ctx)` -- reject guests
+2. `validateUid(uid)` -- 9-digit regex; valid region first digit (6/7/8/9)
+3. `deriveRegion(uid)` -- maps first digit to region string
+4. Check 5-account cap per user (via `user_id` index count)
+5. Auto-default label to "Account N" if empty after trim
+6. First account auto-activates (`isActive=true`)
+7. Insert `HsrAccount`
+8. `recalcDuplicateUid(ctx, uid, userId)` -- updates `isDuplicateUid` for all accounts sharing this UID
 
 ### update_hsr_account(hsrAccountId, displayLabel, isRosterPublic, isRatingPublic)
-1. ensureVerifiedUser → ownership check (account.userId === user.id)
-2. Validate displayLabel not empty after trim
-3. Update label and visibility flags
-4. UID and region are immutable — not accepted by this reducer
+1. `ensureVerifiedUser(ctx)` -- ownership check (`account.userId === caller.id`)
+2. Validate `displayLabel` not empty after trim
+3. Update `displayLabel`, `isRosterPublic`, `isRatingPublic`
+4. UID and region are immutable -- not accepted by this reducer
 
 ### set_active_hsr_account(hsrAccountId)
-1. ensureVerifiedUser → ownership check
+1. `ensureVerifiedUser(ctx)` -- ownership check
 2. No-op if account is already active
-3. Deactivate all other accounts for this user
-4. Activate the target account
+3. Deactivate all other accounts for this user (iter via `user_id` index)
+4. Activate target account (`isActive=true`)
 
 ### delete_hsr_account(hsrAccountId)
-1. ensureVerifiedUser → ownership check
-2. **Deletion guard (D-24, Phase 10.4):** throws if account has any `LobbyMemberAccount` rows (active lobby usage)
-3. **Deletion guard (D-24, Phase 10.4):** throws if account has `TournamentPlayerAccount` rows for non-terminal tournaments (not Completed/Cancelled)
-4. Cascade: delete all HsrAccountCharacter rows for this account
-5. Delete HsrAccount
-6. If was active: auto-activate oldest remaining (sort by createdDate ascending)
-7. recalcDuplicateUid for the deleted UID
+1. `ensureVerifiedUser(ctx)` -- ownership check
+2. Deletion guard (D-24): reject if account has any `LobbyMemberAccount` rows (active lobby usage)
+3. Deletion guard (D-24): reject if account has `TournamentPlayerAccount` rows for non-terminal tournaments (not Completed/Cancelled)
+4. Cascade: delete all `HsrAccountCharacter` rows for this account (via `hsr_account_id` index)
+5. Delete `HsrAccount` row
+6. If was active: auto-activate oldest remaining account (sort by `createdDate` ascending)
+7. `recalcDuplicateUid` for the deleted UID
 
 ### batch_upsert_characters(hsrAccountId, charactersJson)
-1. ensureVerifiedUser → ownership check
-2. Parse JSON array of {characterName, eidolonLevel}
-3. Phase 1: Validate ALL (character exists in HsrCharacter, eidolon 0-6)
-4. Phase 2: Upsert ALL (composite PK find → delete + insert pattern)
+1. `ensureVerifiedUser(ctx)` -- ownership check
+2. Parse JSON array of `{ characterName, eidolonLevel }` objects
+3. Phase 1 -- validate ALL entries: `characterName` exists in `HsrCharacter`; `eidolonLevel` in 0-6 range
+4. Phase 2 -- upsert ALL: find existing `HsrAccountCharacter` by composite PK; delete+insert pattern
 5. Atomic: any validation failure rejects entire batch
 
 ### batch_remove_characters(hsrAccountId, characterNamesJson)
-1. ensureVerifiedUser → ownership check
-2. Parse JSON array of characterName strings
-3. Phase 1: Validate ALL names exist on this account
-4. Phase 2: Delete ALL
+1. `ensureVerifiedUser(ctx)` -- ownership check
+2. Parse JSON array of character name strings
+3. Phase 1 -- validate ALL names exist on this account
+4. Phase 2 -- delete ALL matching `HsrAccountCharacter` rows
 5. Atomic: any name not found rejects entire batch
 
 ### migrate_roster(sourceAccountId, targetAccountId, mode)
-1. ensureVerifiedUser → both accounts must belong to the same user
-2. Validate source !== target
-3. Copy mode: upsert source chars into target (overwrite eidolon level if exists)
-4. Move mode: same as copy, then delete all source chars
-
-## Table Privacy (Phase 10.4 — D-20)
-
-`HsrAccount` and `HsrAccountCharacter` are **private tables** (no `public: true`). Clients cannot subscribe to these tables directly. Server-side code (reducers, helpers, views) can still read them.
-
-Client access is via server-side views:
-- `view_my_roster` — authenticated, caller's own accounts + characters (for self roster management)
-- `view_public_accounts` — anonymous view, accounts where `isRosterPublic=true` (for profile browsing)
-- `view_tournament_registrant_accounts` — authenticated, locked accounts for enrolled tournaments
-- `view_my_roster_visibility` — authenticated, opponent/ally roster data per lobby visibility rules
-
-`spacetime generate` still produces TypeScript type definitions for private tables. Use `--include-private` flag for admin tooling if needed.
-
-## Visibility Rules
-
-- isRosterPublic: controls whether other users can see character roster
-- isRatingPublic: controls whether other users see computed rating
-- Lobby/tournament override (Phase 3+): isOpenRoster on Lobby forces visibility
-- Admins always see everything
-- Rating = frontend-computed from character costs + archetype diversity (see HsrCharacterCost)
-
-| Viewer | Can see roster when |
-|--------|---------------------|
-| Admin | Always |
-| TO | Only participants in their active tournament |
-| Opponent | Only while in same lobby/match with open-roster setting |
-| Everyone else | Only if isRosterPublic = true |
-
-## Admin Proxy
-
-All admin_* reducers mirror user reducers but:
-- Use ensureAdmin(ctx) instead of ensureVerifiedUser
-- Accept targetUserId parameter (for create) or operate on any account
-- No ownership checks
-- Audit trail uses admin.id
+1. `ensureVerifiedUser(ctx)` -- both accounts must belong to same user
+2. Validate `sourceAccountId !== targetAccountId`
+3. Copy mode: upsert all source characters into target (overwrite eidolon level if character exists)
+4. Move mode: same as copy, then delete all source `HsrAccountCharacter` rows
 
 ### Admin proxy reducers
+All mirror user variants with `ensureAdmin(ctx)` and `targetUserId` parameter (no ownership checks):
+- `admin_create_hsr_account(targetUserId, uid, displayLabel)`
+- `admin_update_hsr_account(hsrAccountId, displayLabel, isRosterPublic, isRatingPublic)`
+- `admin_delete_hsr_account(hsrAccountId)` -- same deletion guard as user variant (D-24)
+- `admin_batch_upsert_characters(hsrAccountId, charactersJson)`
+- `admin_batch_remove_characters(hsrAccountId, characterNamesJson)`
 
-- admin_create_hsr_account(targetUserId, uid, displayLabel)
-- admin_update_hsr_account(hsrAccountId, displayLabel, isRosterPublic, isRatingPublic)
-- admin_delete_hsr_account(hsrAccountId) — **Same deletion guard as user variant (D-25, Phase 10.4):** blocked if `LobbyMemberAccount` rows or active tournament `TournamentPlayerAccount` rows exist. Admins must remove lobby/tournament references before deleting.
-- admin_batch_upsert_characters(hsrAccountId, charactersJson)
-- admin_batch_remove_characters(hsrAccountId, characterNamesJson)
+## Phase History
 
-## Archetype System
+| Decision | Source | Date |
+|----------|--------|------|
+| 5-account cap per user | Phase 02 CONTEXT.md | 2026-02-10 |
+| isDuplicateUid auto-recalculated on create/delete via recalcDuplicateUid helper | Phase 02 execution | 2026-02-10 |
+| HsrAccount and HsrAccountCharacter made private (no public:true) -- clients use views only (D-20) | Phase 10.4 execution | 2026-03-29 |
+| Deletion guard: blocked if LobbyMemberAccount or non-terminal TournamentPlayerAccount rows exist (D-24) | Phase 10.4 execution | 2026-03-29 |
+| Archetype system: admin-managed Archetype table + HsrCharacterArchetype junction; used for diversity scoring | Phase 02 execution | 2026-02-10 |
+| admin_upsert_archetype uses id.update() not name.update() -- unique index accessor lacks update() | Phase 02 execution | 2026-02-10 |
+| migrate_roster copy vs move modes | Phase 02 execution | 2026-02-10 |
+| Visibility: isRosterPublic / isRatingPublic; lobby/tournament can force open-roster override | Phase 02 CONTEXT.md | 2026-02-10 |
+| HsrAccountLightcone cascade not yet implemented -- lightcone reducers descoped from Phase 2 | Phase 02 execution | 2026-02-10 |
+| Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 
-- Admin-managed via admin_upsert_archetype(name, description) and admin_delete_archetype(archetypeId)
-- Characters assigned via admin_assign_character_archetypes(characterName, archetypeIdsJson)
-- Characters removed via admin_remove_character_archetypes(characterName, archetypeIdsJson)
-- Many-to-many: one character can have many archetypes; one archetype covers many characters
-- Used by frontend for horizontal diversity scoring (e.g. "sustain", "hyper-carry", "support")
-- Delete archetype cascades to all HsrCharacterArchetype junction rows
-- admin_upsert_archetype uses id.update() not name.update() — unique index accessor lacks update()
+---
 
-## UID Validation
-
-UIDs are 9-digit strings. First digit maps to region:
-- 6 → America
-- 7 → Europe
-- 8 → Asia
-- 9 → TW_HK_MO
-
-Helpers in helpers/rosterHelpers.ts:
-- validateUid(uid) → throws SenderError if format invalid
-- deriveRegion(uid) → returns region string from first digit
-- recalcDuplicateUid(ctx, uid, actorId) → syncs isDuplicateUid flag across all accounts sharing the UID
-
-## User Deletion Cascade
-
-performUserDeletion (helpers/userDeletionHelper.ts) cascades in order:
-1. Delete UserIdentity rows (severs auth link)
-2. Delete HsrAccountCharacter rows for each HsrAccount owned by user
-3. Delete HsrAccount rows
-4. [Phase 8] Delete AvailabilitySlot rows
-5. [Phase 8] Delete SavedCalendar rows — both as subscriber and as target
-6. [Phase 8] Delete CalendarEventInvite rows as invitee
-7. [Phase 8] Delete CalendarEvent rows as organizer + cascade their invites
-8. If guest with no history references → hard-delete User row
-9. Otherwise → soft-delete: username='deleted_&lt;id&gt;', discordId cleared, displayName preserved
-
-Guest history check (`hasHistoryReferences`) scans 8 tables via btree indexes with early exit:
-MatchResultParticipant, MmrHistory, PlayerStat, PlayerCharacterStat, PlayerRelationship,
-Leaderboard, TournamentEnrolled, UserAchievement.
-
-All deletion paths use `performUserDeletion`: run_user_deletion (scheduled), server_delete_user (CLI), server_link_discord (orphan guest cleanup).
-
-Note: HsrAccountLightcone rows are NOT cascaded yet (lightcone reducers descoped from Phase 2).
+*Last updated: 2026-04-09*
+*Feature owner: Phase 02 / Phase 10.4*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

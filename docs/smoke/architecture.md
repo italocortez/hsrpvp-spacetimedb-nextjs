@@ -1,164 +1,92 @@
-<!-- generated-by: gsd-doc-writer -->
-# Smoke Tests & Bootstrap Infrastructure
+# Smoke & Server Lifecycle -- Architecture
 
-## Tables
+Last updated: 2026-04-09
 
-### Private Tables
+## Overview
 
-```
-ServerIdentity (singleton — trusted server identity)
-|  identity (PK) -> SpacetimeDB sender identity
-|  registeredAt   -> Timestamp
-|  (public: false — not accessible via client subscriptions)
-```
+The smoke subsystem handles server identity registration, online/offline heartbeats, and garbage collection of stale identity and lobby rows. `ServerIdentity` is a private singleton that authenticates server-to-server reducer calls. `GcResult` is an append-only audit log of GC runs. `IdentityGcJob` is a scheduled table that fires `run_identity_gc` on a configurable interval to clean up disconnected guest identities. `LobbyGcJob` (defined in the lobby subsystem) fires `lobby_gc` to auto-close abandoned lobbies. Post-publish bootstrap runs `register_server` and `seed_identity_gc_job` to initialize the server identity and GC schedule after a `--clear-database` redeploy.
 
-Only one row should ever exist. The registered identity is the only caller allowed to invoke server-only reducers (`server_link_provider`, `server_set_role`, `server_delete_user`, `server_set_mmr`).
+## Table Relationships
 
 ```
-GcResult (Phase 12.1 — GC audit log)
-|  id (u32 PK autoInc)
-|  gcType (string)          -- 'identity' | 'lobby'
-|  ranAt (timestamp)
-|  itemsScanned (u32)
-|  itemsDeleted (u32)
-|  details (string)         -- JSON breakdown per GC type
-|  + audit columns (createdById, createdDate, lastModifiedById, lastModifiedDate)
-|  (public: false — dashboard-only visibility)
-|  No indexes (small table — one row per GC invocation)
-|  Source: spacetimedb/src/tables/gcResult.ts
+ServerIdentity (id: u32 autoInc PK)  [PRIVATE]
+  +-- identity: Identity (SpacetimeDB client identity)
+  +-- serverDatetime: Timestamp (server clock, updated by heartbeat)
+  +-- isOnline: bool
+  +-- audit columns
+
+GcResult (id: u32 autoInc PK)  [public: true]
+  +-- gcType: GcType (Identity | Lobby)
+  +-- deletedCount: u32
+  +-- checkedCount: u32
+  +-- ranAt: Timestamp
+  +-- audit columns
+
+IdentityGcJob (scheduledId: u64 autoInc PK)  [PRIVATE]
+  +-- scheduledAt: Timestamp
+  +-- scheduledReducer: string (= "run_identity_gc")
+  +-- data: IdentityGcJobData
+        .intervalMs: u64 (how often to reschedule)
 ```
 
-### Scheduled Tables (Phase 12.1)
+## Reducer Flows
 
-```
-IdentityGcJob (scheduled — weekly identity GC)
-|  scheduledId (u64 PK autoInc)
-|  scheduledAt (ScheduleAt)
-|  Mutable binding pattern for circular-dep avoidance (mirrors LobbyGcJob)
-|  Source: spacetimedb/src/tables/identityGcJob.ts
-```
+### register_server(identityHex)
+1. Called from `post-publish.ts` after `--clear-database` redeploy
+2. Parses `identityHex` into a SpacetimeDB `Identity`
+3. Upserts `ServerIdentity` row (delete existing if present, insert new)
+4. Logs confirmation
 
-## Reducers
+### server_set_datetime(datetimeMs)
+1. `ensureServerIdentity(ctx)` -- ctx.sender must match `ServerIdentity.identity`
+2. Updates `ServerIdentity.serverDatetime` to provided timestamp
+3. Used as heartbeat to confirm server clock alignment
 
-| Reducer | File | Permission | Description |
-|---------|------|-----------|-------------|
-| `register_server` | `reducers/server.ts` | Any (first-come-first-served) | Inserts ServerIdentity row + creates SYSTEM user (id=0) + links identity via UserIdentity. Rejects if ServerIdentity already exists. |
-| `server_set_datetime` | `reducers/server.ts` | Server-only | Sets timestamp fields on supported tables (`user_identity/lastSeenAt`, `user_identity/createdDate`, `lobby/createdDate`). Test utility for time-dependent behavior. *(Phase 12.1)* |
-| `server_set_online` | `reducers/server.ts` | Server-only | Forces `User.isOnline` flag. Workaround for maincloud disconnect detection delay in tests. *(Phase 12.1)* |
-| `run_identity_gc` | `reducers/identityGc.ts` | Scheduled (weekly) | Scans all UserIdentity rows, deletes stale (90-day TTL) and orphaned rows. Writes GcResult only when items deleted. Self-requeues 7 days. *(Phase 12.1)* |
-| `admin_gc_identities` | `reducers/identityGc.ts` | Moderator+ | One-shot identity GC with GcResult audit (always writes). No self-requeue. *(Phase 12.1)* |
-| `seed_identity_gc_job` | `reducers/identityGc.ts` | Server-only | Idempotent bootstrap for the weekly identity GC chain. Inserts first IdentityGcJob row. *(Phase 12.1)* |
-| `admin_gc_lobbies` | `reducers/lobbyGc.ts` | Moderator+ | One-shot lobby GC with GcResult audit (always writes). No self-requeue. *(Phase 12.1)* |
+### server_set_online(isOnline)
+1. `ensureServerIdentity(ctx)`
+2. Updates `ServerIdentity.isOnline` flag
+3. Called on server startup (`isOnline=true`) and graceful shutdown (`isOnline=false`)
 
-### Lobby GC Restructuring (Phase 12.1)
+### seed_identity_gc_job(intervalMs)
+1. `ensureServerIdentity(ctx)` OR `ensureAdmin(ctx)`
+2. Delete any existing `IdentityGcJob` rows (cancel old schedule)
+3. Insert new `IdentityGcJob` row with `scheduledAt = ctx.timestamp + intervalMs`
+4. Called from `post-publish.ts` to initialize GC schedule after redeploy
 
-`run_lobby_gc` was restructured to use a shared `performLobbyGc` helper (extracted from the scheduled reducer). Both `run_lobby_gc` and the new `admin_gc_lobbies` call this helper. Both write GcResult audit rows — scheduled writes only when items were deleted, admin always writes. `seed_lobby_gc_job` was also added (server-only, idempotent) to automate the GC chain bootstrap via post-publish.
+### run_identity_gc() -- scheduled reducer
+1. Fired by SpacetimeDB scheduler from `IdentityGcJob.scheduledAt`
+2. Scan all `UserIdentity` rows; find identities where the SpacetimeDB connection is disconnected
+3. For disconnected guest identities with no match history references: delete `UserIdentity` row and associated `User` row (soft or hard based on `hasHistoryReferences`)
+4. Insert `GcResult` row: `gcType=Identity`, counts of checked and deleted rows
+5. Reschedule: insert new `IdentityGcJob` row with `scheduledAt = ctx.timestamp + intervalMs`
 
-### `requireServer(ctx)` helper
+### admin_gc_identities()
+1. `ensureAdmin(ctx)` -- Admin only
+2. Runs same logic as `run_identity_gc` but on-demand (no reschedule)
+3. Returns result via `GcResult` insert
 
-Defined in `reducers/server.ts`. Used by all server-only reducers to gate access:
+### admin_gc_lobbies()
+1. `ensureAdmin(ctx)` -- Admin only
+2. Scan all `Lobby` rows in non-terminal stages (not Closed)
+3. For each: check if host identity is disconnected and GC timeout has elapsed
+4. Trigger `hardDeleteLobby` for eligible stale lobbies
+5. Insert `GcResult` row: `gcType=Lobby`, counts
 
-```
-ctx.db.ServerIdentity.identity.find(ctx.sender)
-  -> found: allow
-  -> not found: throw SenderError('Forbidden: caller is not the registered server identity.')
-```
+## Phase History
 
-## Flow
+| Decision | Source | Date |
+|----------|--------|------|
+| ServerIdentity is private singleton -- authenticates server-to-server calls via ctx.sender identity | Phase 01 execution | 2026-02-01 |
+| Post-publish bootstrap: register_server + seed_identity_gc_job called from post-publish.ts after --clear-database | Phase 01 execution | 2026-02-01 |
+| GcResult audit log: append-only record of every GC run with counts (Phase 12.1) | Phase 12.1 execution | 2026-04-04 |
+| IdentityGcJob scheduled table: self-rescheduling pattern (insert next job at end of run) | Phase 01 execution | 2026-02-01 |
+| LobbyGcJob moved to lobby subsystem (Phase 12.1 GC restructuring) | Phase 12.1 execution | 2026-04-04 |
+| admin_gc_identities / admin_gc_lobbies: on-demand GC for admin tooling | Phase 12.1 execution | 2026-04-04 |
+| Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 
-### Post-Publish Bootstrap (`scripts/post-publish.ts`)
+---
 
-Run immediately after `spacetime publish --clear-database`:
+*Last updated: 2026-04-09*
+*Feature owner: Phase 01 / Phase 12.1*
 
-```
-npx tsx scripts/post-publish.ts
-```
-
-Steps:
-
-1. Connects to SpacetimeDB with **no token** (gets a fresh identity)
-2. Calls `register_server` -- marks that identity as trusted, creates SYSTEM user (id=0, role=Admin)
-3. Writes the connection token to `.env.local` as `SPACETIMEDB_SERVER_TOKEN`
-4. Calls `seedAll()` -- upserts HsrCharacter, HsrLightcone, costs, archetypes, synergies
-5. Seeds starter achievements (MMR Elite, Veteran, Solar First Tournament Winner)
-6. Seeds identity GC job (`seedIdentityGcJob`) -- first run in 7 days *(Phase 12.1)*
-7. Seeds lobby GC job (`seedLobbyGcJob`) -- first run in 15 minutes *(Phase 12.1)*
-8. Seeds config tables (EloConfig, AccountRatingConfig)
-
-Configuration is read from `spacetime.json` (database name, server) and env vars (host override).
-
-### Standalone Registration (`scripts/register-server.ts`)
-
-Lightweight alternative -- registers server identity only, prints token to stdout:
-
-```
-npx tsx scripts/register-server.ts
-```
-
-Does not seed data. Token must be manually added to `.env.local`.
-
-### Test Database Bootstrap (`test/shared/bootstrap.ts`)
-
-Used for test databases. Connects with an **existing** `SPACETIMEDB_SERVER_TOKEN` from `.env.local` and calls `registerServer`. Intended for re-bootstrapping after `--clear-database` on the test DB.
-
-### Test Harness Connection (`test/shared/connection.ts`)
-
-Two harness types for integration tests:
-
-| Harness | Function | Use Case |
-|---------|----------|----------|
-| Guest | `createTestHarness()` | Permission guard tests -- user remains `isGuest: true` |
-| Verified | `createVerifiedTestHarness()` | Feature CRUD tests -- upgrades guest via `server_link_provider` |
-
-Connection flow:
-
-1. `DbConnection.builder()` connects to the test DB (defaults: `wss://maincloud.spacetimedb.com`, `hsrpvp-spacetimedb-nextjs-test1`)
-2. Subscribes to all tables
-3. Calls `loginAsGuest` to create a User + UserIdentity
-4. (Verified only) Opens a **second** connection using `SPACETIMEDB_SERVER_TOKEN`, calls `serverLinkProvider` to upgrade the guest to a verified user with a test Discord ID (`test_<timestamp>_<random>`)
-5. Resolves `userId` from the subscription cache by matching guest username pattern (`Guest_<hex8>`) or verified username pattern (`TestUser_*`)
-
-Harness interface:
-
-```typescript
-interface TestHarness {
-  conn: DbConnection;        // Active WebSocket connection
-  identity: string;          // Identity hex string
-  userId: number;            // Resolved User.id
-  call: DbConnection['reducers'];  // Typed reducer calls (Promise-based)
-  sync: (ms?) => Promise<void>;    // Wait for subscription cache sync
-  disconnect: () => Promise<void>;
-}
-```
-
-Utilities:
-
-| Function | Purpose |
-|----------|---------|
-| `expectReducerError(promise)` | Asserts a reducer call fails, returns the error message |
-| `queryPrivateTable(sql)` | Runs `spacetime sql` CLI to read private tables (UserPrivate, BanRecord, etc.) |
-| `getTestDiscordId(userId)` | Queries UserPrivate via SQL for the test Discord provider ID |
-| `hasServerToken()` | Checks if `SPACETIMEDB_SERVER_TOKEN` is available |
-| `sleep(ms)` | Fixed-duration wait |
-
-### Integration Test Configuration (`test/vitest.integration.config.ts`)
-
-- Includes: `test/backend/**/*.test.ts` (excludes `*.unit.test.ts`)
-- Timeout: 30s (network round-trips to maincloud)
-- Sequential execution: `fileParallelism: false`, `concurrent: false` -- tests share SpacetimeDB state
-- Env loading: reads `.env.local` at config time for `SPACETIMEDB_*` vars
-
-### Environment Loading (`test/shared/load-env.ts`)
-
-Parses `.env.local` into `process.env` for standalone scripts that run outside vitest. Not needed for vitest tests (handled by `vitest.integration.config.ts`).
-
-## Key Patterns
-
-- **First-come-first-served registration** -- `register_server` checks `ServerIdentity.iter()` for emptiness. If any row exists, it rejects. No admin override; re-registration requires `--clear-database`.
-- **SYSTEM user bootstrap** -- `register_server` creates User id=0 (username=`SYSTEM`, role=Admin) and links it to the server identity via UserIdentity. This allows server-token connections to pass `getAuthenticatedUser` / `ensureAdmin` checks.
-- **Token persistence** -- `post-publish.ts` writes `SPACETIMEDB_SERVER_TOKEN` to `.env.local`. All server-only operations (API routes, test harness, seed scripts) read this token.
-- **Dual-connection verification** -- `createVerifiedTestHarness` opens two simultaneous connections: one as the test user, one as the server. The server connection calls `serverLinkProvider` to upgrade the test user, mimicking the production API route flow.
-- **Private table queries in tests** -- `queryPrivateTable` shells out to `spacetime sql` CLI because private tables (`public: false`) are not accessible via WebSocket subscriptions.
-- **Configuration source of truth** -- `spacetime.json` contains the database name and server. Scripts read it directly; the test harness falls back to env vars (`SPACETIMEDB_URI`, `SPACETIMEDB_DB`).
-
-**Behavior specification:** See [contract.md](contract.md)
+**Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

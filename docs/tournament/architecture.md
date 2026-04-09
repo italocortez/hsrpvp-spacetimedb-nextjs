@@ -1,352 +1,211 @@
-# Tournament System
+# Tournament -- Architecture
 
-Architecture documentation for the tournament system feature domain.
+Last updated: 2026-04-09
 
----
+## Overview
+
+Tournaments manage the full lifecycle of competitive events: creation, registration, team formation, bracket generation, match play, and completion. The lifecycle advances through stages: Draft -> Registration -> [CheckIn ->] Seeding -> InProgress -> Completed (or Cancelled from any non-terminal stage). All participant references use `TournamentTeam.id` -- even solo players get an auto-created team on registration so bracket code treats all formats uniformly. `TournamentEnrolled` records enrollment and status; `TournamentTeamMember` records team assignment -- the two were split from a single `TournamentParticipant` table in Phase 10.1 to decouple enrollment from team management. `TournamentPlayerAccount` locks which HSR accounts a player uses in a tournament. `TournamentAssistant` grants staff-level access to non-organizers.
 
 ## Table Relationships
 
 ```
-Tournament (PK: id autoInc)
-│   └── maxAccountsPerPlayer (u8, default 1) — controls how many HSR accounts a player can activate per match (D-10, D-33, Phase 10.4)
-├── TournamentEnrolled (PK: [tournamentId, userId])   [Phase 10.1 — split from TournamentParticipant]
-│   (hsrAccountId removed — TournamentPlayerAccount is sole source of truth for locked accounts, D-23, Phase 10.4)
-├── TournamentTeamMember (PK: [teamId, userId])       [Phase 10.1 — split from TournamentParticipant]
-│   ├── tournamentId → Tournament.id (+ by_tournament_and_user btree index)
-│   └── teamId → TournamentTeam.id
-├── TournamentAssistant (PK: [tournamentId, userId])
-├── TournamentTeam (PK: id autoInc)
-│   └── TournamentTeamRequest (PK: [teamId, userId])
-└── BracketMatch (FK: tournamentId) [Phase 4]
+Tournament (id: u32 autoInc PK)  [public: true]
+  +-- organizerId -> User.id  [btree: organizer_id]
+  +-- name: string
+  +-- description: string?
+  +-- stage: TournamentStage (Draft | Registration | CheckIn | Seeding | InProgress | Completed | Cancelled)
+  +-- format: BracketFormat (SingleElimination | DoubleElimination | GroupPhase | GroupIntoSingleElim | GroupIntoDoubleElim)
+  +-- gameMode: GameMode
+  +-- teamSize: u8
+  +-- maxParticipants: u32
+  +-- waitlistEnabled: bool
+  +-- requireVerified: bool
+  +-- requireRoster: bool
+  +-- requireApproval: bool
+  +-- checkInEnabled: bool
+  +-- autoAdvanceBracket: bool
+  +-- costSetId: u32 (0=default sentinel)
+  +-- groupSize: u8 (target group size for round-robin; min 3)
+  +-- has3rdPlaceMatch: bool
+  +-- maxAccountsPerPlayer: u8 (D-10, D-33)
+  +-- isPublic: bool
+  +-- startAt: Timestamp?
+  +-- audit columns
+
+  +-- TournamentEnrolled (PK: [tournamentId, userId])  [public: true]
+  |     tournamentId -> Tournament.id  [btree: tournament_id]
+  |     userId -> User.id  [btree: user_id]
+  |     status: ParticipantStatus (Registered | CheckedIn | Withdrawn | Disqualified | Active | Eliminated)
+  |     isWaitlisted: bool
+  |     approvedByToAt: Timestamp?
+  |     anonymousAlias: string?
+  |     allowRandomTeamAssignment: bool
+  |     audit columns
+  |
+  +-- TournamentTeam (id: u32 autoInc PK)  [public: true]
+  |     tournamentId -> Tournament.id  [btree: tournament_id]
+  |     captainUserId -> User.id
+  |     name: string
+  |     seedNumber: u32?
+  |     audit columns
+  |
+  |     +-- TournamentTeamMember (PK: [teamId, userId])  [public: true]
+  |     |     teamId -> TournamentTeam.id  [btree: team_id]
+  |     |     userId -> User.id
+  |     |     tournamentId -> Tournament.id  [btree: tournament_id]
+  |     |     isCaptain: bool
+  |     |     audit columns
+  |     |     Indexes: team_id (btree), tournament_id (btree), by_tournament_and_user (btree, [tournamentId, userId])
+  |     |
+  |     +-- TournamentTeamRequest (PK: [teamId, userId])  [public: true]
+  |           teamId -> TournamentTeam.id  [btree: team_id]
+  |           userId -> User.id
+  |           audit columns
+  |
+  +-- TournamentAssistant (PK: [tournamentId, userId])  [public: true]
+  |     tournamentId -> Tournament.id  [btree: tournament_id]
+  |     userId -> User.id
+  |     canManageRoster: bool
+  |     canManageBracket: bool
+  |     audit columns
+  |
+  +-- TournamentPlayerAccount (PK: [tournamentId, userId, hsrAccountId])  [public: true]
+        tournamentId -> Tournament.id
+        userId -> User.id
+        hsrAccountId -> HsrAccount.id
+        audit columns
+        Indexes: by_tournament_and_user (btree, [tournamentId, userId]), by_user (btree, userId)
 ```
 
-**Role Hierarchy:**
-```
-Admin (100) > Moderator (75) > TournamentHost (50) > User (25) > Guest (0)
-```
+## Reducer Flows
+
+### create_tournament(params)
+1. `ensureTournamentHost(ctx)` -- requires TournamentHost+ role
+2. Validate name, format, gameMode, teamSize, maxParticipants
+3. If `costSetId > 0`: verify CostSet exists and `isPublished=true`
+4. Insert `Tournament` row with `stage=Draft`
+
+### update_tournament(tournamentId, params)
+1. `ensureTournamentAccess(ctx, tournamentId)` -- organizer, assistant, or Moderator+
+2. Tournament must be in Draft or Registration stage
+3. Update allowed fields (name, description, settings); cannot change gameMode after registration opens
+4. If updating `costSetId`: verify new CostSet is published
+
+### advance_tournament_stage(tournamentId)
+1. `ensureTournamentAccess(ctx, tournamentId)`
+2. Stage must not be terminal (Completed or Cancelled)
+3. Transition guards:
+   - Registration -> Seeding (or Registration -> CheckIn if enabled): requires 2+ enrolled participants
+   - CheckIn -> Seeding: auto-removes participants who did not check in; calls `cleanupTeamRequests()`
+   - Seeding -> InProgress: requires BracketMatch rows to exist and first-round matches to have participants; sets all enrolled players to `status=Active`
+   - InProgress -> Completed: final stage transition
+4. Advance `Tournament.stage` to next stage in sequence
+
+### cancel_tournament(tournamentId)
+1. `ensureTournamentAccess(ctx, tournamentId)`
+2. Tournament must not be terminal
+3. Call `cascadeCleanupTournament(ctx, tournamentId)`:
+   - Delete TournamentTeamRequest rows
+   - Delete CalendarEvent + CalendarEventInvite rows linked to bracket matches (Phase 8, D-21)
+   - Hard-delete shelved/active Lobby rows linked via `Lobby.bracketMatchId`
+   - Delete GroupPhaseRecord rows
+   - Delete BracketMatch rows
+   - Delete TournamentPlayerAccount rows
+   - Delete TournamentTeamMember rows
+   - Delete TournamentTeam rows
+   - Delete TournamentAssistant rows
+   - Preserve TournamentEnrolled rows (audit trail) and MatchResultRecord rows (match history)
+4. Set `Tournament.stage=Cancelled`
+
+### register_for_tournament(tournamentId)
+1. `getAuthenticatedUser(ctx)` -- reject guests
+2. Tournament must be in Registration or Seeding stage
+3. Duplicate check: reject if `TournamentEnrolled` row already exists for `[tournamentId, userId]`
+4. `requireVerified` check: reject guests if enabled
+5. `requireRoster` check: reject if no active `HsrAccount`
+6. Capacity check: count non-waitlisted participants vs `maxParticipants`; if full and `waitlistEnabled=true`: set `isWaitlisted=true`; if full and `waitlistEnabled=false`: reject
+7. `requireApproval` check: if true, `approvedByToAt=null`; if false, auto-approve
+8. Insert `TournamentEnrolled` row with `status=Registered`
+9. Solo auto-team (`teamSize=1`): auto-create `TournamentTeam` + `TournamentTeamMember` for captain
+
+### check_in_tournament(tournamentId)
+1. `getAuthenticatedUser(ctx)`
+2. Tournament must be in CheckIn stage
+3. Find `TournamentEnrolled` -- verify status is Registered; update to CheckedIn
+
+### withdraw_from_tournament(tournamentId)
+1. `getAuthenticatedUser(ctx)`
+2. Tournament must be in Registration, CheckIn, or Seeding stage
+3. Withdrawal cleanup (in order):
+   - Captain transfer: if caller captains a team, call `transferTournamentCaptain()`; if no other members, disband team
+   - Delete `TournamentTeamMember` row for caller
+   - Delete all caller's pending `TournamentTeamRequest` rows in this tournament
+   - Update `TournamentEnrolled.status=Withdrawn` (delete+insert composite PK pattern)
+   - Delete all `TournamentPlayerAccount` rows for this user+tournament
+
+### approve_participant(tournamentId, targetUserId) / waitlist_promote(tournamentId, targetUserId)
+1. `ensureTournamentAccess(ctx, tournamentId)`
+2. `approve_participant`: find `TournamentEnrolled` -- set `approvedByToAt=ctx.timestamp`
+3. `waitlist_promote`: find waitlisted participant; set `isWaitlisted=false`
+
+### create_tournament_team(tournamentId, teamName)
+1. `getAuthenticatedUser(ctx)` -- must be enrolled in tournament
+2. Tournament must be in Registration stage
+3. Insert `TournamentTeam` row with `captainUserId=caller.id`
+4. Insert `TournamentTeamMember` row for captain (`isCaptain=true`)
+
+### request_join_team(teamId) / accept_team_request(teamId, userId) / reject_team_request(teamId, userId)
+1. `request_join_team`: caller must be enrolled; tournament in Registration; insert `TournamentTeamRequest`
+2. `accept_team_request`: caller must be team captain; check `tournament.teamSize` member count cap; delete request; delete caller's other pending requests in this tournament; insert `TournamentTeamMember`
+3. `reject_team_request`: captain deletes the request row
+
+### leave_tournament_team(teamId) / disband_tournament_team(teamId)
+1. `leave_tournament_team`: non-captain only; delete `TournamentTeamMember` row
+2. `disband_tournament_team`: captain only; delete all `TournamentTeamMember` rows; delete all `TournamentTeamRequest` rows for this team; delete `TournamentTeam` row
+
+### assign_tournament_assistant(tournamentId, targetUserId, permissions) / remove_tournament_assistant(tournamentId, targetUserId)
+1. `ensureTournamentAccess(ctx, tournamentId)` -- organizer or Moderator+
+2. `assign_tournament_assistant`: upsert `TournamentAssistant` row with permission flags
+3. `remove_tournament_assistant`: delete `TournamentAssistant` row by `[tournamentId, targetUserId]`
+
+### dq_participant(tournamentId, targetUserId)
+1. `ensureTournamentAccess(ctx, tournamentId)` -- TO/Assistant/Moderator+
+2. Three cases:
+   - Captain DQ: `transferTournamentCaptain()` to next member (D-21); team survives
+   - Last member DQ: delete team; auto-advance opponent on any active BracketMatch (D-27)
+   - DQ during active lobby (Drafting/Equipping/Scoring): kick player; if last member: force-concede match (D-25)
+3. Set `TournamentEnrolled.status=Disqualified`
+
+### select_match_account(lobbyId, hsrAccountId) / deselect_match_account(lobbyId, hsrAccountId)
+1. `getAuthenticatedUser(ctx)` -- must be active LobbyMember
+2. Lobby must be in Waiting or BetweenGames stage
+3. Tournament path (additive, D-07): validate account against `TournamentPlayerAccount`; check `maxAccountsPerPlayer` cap; insert `LobbyMemberAccount`
+4. Non-tournament path (replace, D-07): delete existing `LobbyMemberAccount` for user; insert new one (always exactly 1)
+5. `deselect_match_account`: tournament path only; delete specific `LobbyMemberAccount` row
+
+## Phase History
+
+| Decision | Source | Date |
+|----------|--------|------|
+| Forward-only stage lifecycle: Draft -> Registration -> [CheckIn ->] Seeding -> InProgress -> Completed | Phase 04 CONTEXT.md | 2026-02-20 |
+| TournamentParticipant split into TournamentEnrolled (enrollment) + TournamentTeamMember (team membership) -- decouples enrollment from team assignment (D-20) | Phase 10.1 execution | 2026-03-25 |
+| Solo tournaments auto-create TournamentTeam + TournamentTeamMember on register_for_tournament | Phase 04 execution | 2026-02-20 |
+| TournamentEnrolled preserved on cancellation -- audit trail of who registered | Phase 04 CONTEXT.md | 2026-02-20 |
+| ParticipantStatus enum: Registered / CheckedIn / Withdrawn / Disqualified / Active / Eliminated (D-35 through D-41) | Phase 10.1 execution | 2026-03-25 |
+| Status fields are informational only -- no reducer gating on status values | Phase 10.1 execution | 2026-03-25 |
+| TournamentTeamRequest: transactional table -- row existence = pending request | Phase 04 execution | 2026-02-20 |
+| seedNumber moved to TournamentTeam (not TournamentEnrolled) -- seeding is team-level | Phase 04 execution | 2026-02-20 |
+| cancel_tournament cascade order: requests -> calendar events -> shelved lobbies -> standings -> bracket -> accounts -> team members -> teams -> assistants | Phase 08 execution | 2026-03-28 |
+| TournamentPlayerAccount: locks HSR accounts per tournament; sole source of truth for locked accounts (D-23) | Phase 06 execution | 2026-02-28 |
+| maxAccountsPerPlayer on Tournament controls additive LobbyMemberAccount cap for tournament path (D-10, D-33) | Phase 10.4 execution | 2026-03-29 |
+| Stand-in TPA creation: TournamentPlayerAccount snapshotted at join_lobby for approved stand-ins (D-26) | Phase 10.4 execution | 2026-03-29 |
+| ensureTournamentAccess: organizer OR TournamentAssistant row OR Moderator+ | Phase 04 execution | 2026-02-20 |
+| costSetId=0 sentinel; costSetId>0 must reference published CostSet | Phase 03 execution | 2026-02-15 |
+| Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-## Tournament Lifecycle
-
-```
-Draft → Registration → [CheckIn →] Seeding → InProgress → Completed
-  └────────────────────────────────────────────────────→ Cancelled
-```
-
-- **Forward-only:** Stages can only advance, never go back
-- **Manual advancement:** Tournament organizer (or Moderator+) must call `advance_tournament_stage` explicitly
-- **CheckIn stage:** Optional, controlled by `Tournament.checkInEnabled`. If enabled, Registration → CheckIn → Seeding. If disabled, Registration → Seeding directly.
-- **Cancellation:** Allowed from any non-terminal state. Cascade-deletes all infrastructure rows (see Cancellation Cascade below)
-- **Terminal states:** Completed and Cancelled — cannot transition further
-
-### Stage Descriptions
-
-| Stage | Description |
-|-------|-------------|
-| Draft | Tournament is being configured, not yet open to players |
-| Registration | Players can register; organizer can still edit settings |
-| CheckIn | Players check in to confirm attendance (optional stage) |
-| Seeding | Registration closed; bracket/seed assignment in progress |
-| InProgress | Tournament is running; all enrolled players set to Active status |
-| Completed | Tournament has ended |
-| Cancelled | Tournament was cancelled before completion |
-
-### ParticipantStatus Lifecycle (Phase 10.1 — D-35 through D-41)
-
-| Status | When Set | Meaning |
-|--------|----------|---------|
-| Registered | On enrollment | Player registered, not yet checked in |
-| CheckedIn | `check_in_tournament` called | Player confirmed attendance |
-| Withdrawn | `withdraw_from_tournament` | Player voluntarily left |
-| Disqualified | `dq_participant` | Player removed by TO/admin |
-| Active | Tournament advances to InProgress | All checked-in (or registered) players become Active |
-| Eliminated | Final bracket loss | Single elim: any loss; double elim: losers bracket loss |
-
-Status fields are **informational only** — no reducer gating on these values. Existing permission checks already gate behavior.
-
-### Cancellation Cascade
-
-When `cancel_tournament` is called, `cascadeCleanupTournament()` deletes all tournament infrastructure rows. The tournament row itself is preserved with stage=Cancelled.
-
-| Table | Action | Reason |
-|-------|--------|--------|
-| TournamentTeamRequest | **Deleted** | Transactional rows, no audit value |
-| CalendarEvent + CalendarEventInvite | **Deleted** | Events linked to bracket matches + all their invites (Phase 8, D-21) |
-| Lobby (shelved/active) | **Deleted** | `hardDeleteLobby` called for each lobby linked via `Lobby.bracketMatchId` (Phase 10.1, D-18) |
-| GroupPhaseRecord | **Deleted** | Bracket infrastructure |
-| BracketMatch | **Deleted** | Bracket infrastructure |
-| TournamentPlayerAccount | **Deleted** | Locked roster snapshots, no value after cancellation |
-| TournamentTeamMember | **Deleted** | Team assignment rows |
-| TournamentTeam | **Deleted** | Ephemeral per-tournament teams |
-| TournamentAssistant | **Deleted** | Staff assignments, no value after cancellation |
-| TournamentEnrolled | **Preserved** | Audit trail — who registered, who withdrew |
-| MatchResultRecord | **Preserved** | Player-facing match history |
-| Tournament | **Preserved** | Stage set to Cancelled; row serves as historical record |
-
-Deletion order: requests → calendar events → shelved lobbies → standings → bracket → accounts → team members → teams → assistants (calendar before bracket — reads BracketMatch rows to find linked events).
-
-### Stage Transition Cleanup
-
-| Transition | Cleanup |
-|---|---|
-| Registration → Seeding | `cleanupTeamRequests()` — deletes all pending team join requests |
-| CheckIn → Seeding | Auto-removes participants who did not check in |
-| Any → Cancelled | `cascadeCleanupTournament()` — full cascade (see table above) |
-
----
-
-## Reducer Reference
-
-| Reducer | File | Permission | Description |
-|---------|------|-----------|-------------|
-| `create_tournament` | tournamentManagement.ts | TournamentHost+ | Create tournament in Draft stage |
-| `update_tournament` | tournamentManagement.ts | TO/Assistant/Mod+ | Update settings (Draft/Registration only) |
-| `advance_tournament_stage` | tournamentManagement.ts | TO/Assistant/Mod+ | Forward-only stage transition |
-| `cancel_tournament` | tournamentManagement.ts | TO/Assistant/Mod+ | Cancel from any non-terminal state; cascade-deletes infrastructure rows |
-| `register_for_tournament` | tournamentRegistration.ts | Authenticated | Register (no team param — enrollment and team assignment decoupled per D-20) |
-| `check_in_tournament` | tournamentRegistration.ts | Authenticated | Check in during CheckIn stage (D-36) |
-| `withdraw_from_tournament` | tournamentRegistration.ts | Authenticated | Withdraw (Registration/Seeding/CheckIn only); handles captain-transfer, cleans up TournamentTeamMember, requests, and locked accounts |
-| `approve_participant` | tournamentRegistration.ts | TO/Assistant/Mod+ | Approve a pending participant |
-| `waitlist_promote` | tournamentRegistration.ts | TO/Assistant/Mod+ | Promote from waitlist to active |
-| `create_tournament_team` | tournamentTeams.ts | Authenticated | Create team (captain role), must be registered; inserts TournamentTeamMember for captain |
-| `request_join_team` | tournamentTeams.ts | Authenticated | Submit join request to a team |
-| `accept_team_request` | tournamentTeams.ts | Team Captain | Accept join request; inserts TournamentTeamMember; cleans up user's other pending requests |
-| `reject_team_request` | tournamentTeams.ts | Team Captain | Reject and delete a join request |
-| `leave_tournament_team` | tournamentTeams.ts | Authenticated | Leave team (non-captain only); deletes TournamentTeamMember row |
-| `disband_tournament_team` | tournamentTeams.ts | Team Captain | Disband team; deletes all TournamentTeamMember rows, pending requests, and team row |
-| `transfer_referee` | refereeManagement.ts | Current Referee | Transfer referee flag to another lobby member |
-| `reclaim_referee` | refereeManagement.ts | Lobby Host | Reclaim referee flag from current holder |
-| `confirm_match_scores` | matchResultSubmission.ts | Match Participant | Confirm team's scores |
-| `submit_match_result` | matchResultSubmission.ts | Referee/Mod/Admin | Submit match result (requires both teams confirmed; winnerId=0 for draw) |
-| `dispute_match_result` | matchResultSubmission.ts | Match Participant | Dispute submitted result (once per match) |
-| `dq_participant` | tournamentAdmin.ts | TO/Assistant/Mod/Admin | Disqualify tournament participant; handles captain-transfer (D-21, D-25, D-26) |
-| `override_match_result` | tournamentAdmin.ts | TO/Mod/Admin | Override match result status; winnerTeamSideTag ('Blue'/'Red'/'' for draw) |
-| `assign_tournament_assistant` | tournamentAdmin.ts | Organizer/Mod/Admin | Assign or update tournament assistant permissions |
-| `remove_tournament_assistant` | tournamentAdmin.ts | Organizer/Mod/Admin | Remove tournament assistant |
-| `mod_promote_to_host` | tournamentAdmin.ts | Moderator/Admin | Promote User role to TournamentHost |
-| `mod_demote_from_host` | tournamentAdmin.ts | Moderator/Admin | Demote TournamentHost role to User |
-| `generate_bracket` | bracketGeneration.ts | TO/Assistant/Mod/Admin | Generate bracket for all 5 formats |
-| `seed_bracket` | bracketGeneration.ts | TO/Assistant/Mod/Admin | Assign seedNumber to TournamentTeams |
-| `swap_seeds` | bracketGeneration.ts | TO/Assistant/Mod/Admin | Swap seedNumber between two teams |
-| `advance_bracket_match` | bracketAdvancement.ts | TO/Assistant/Mod/Admin | Place winner in next match slot; route loser (double elim) |
-| `submit_and_advance_bracket` | bracketAdvancement.ts | Authenticated | Map winnerTeamSide → winnerTeamId, set BracketMatch.winnerTeamId, auto-advance if enabled |
-| `rollback_bracket_match` | bracketAdvancement.ts | TO/Assistant/Mod/Admin | Reverse bracket advancement one step (blocked if MMR processed) |
-| `advance_to_next_game` | seriesManagement.ts | Host/TO/Assistant/Mod/Admin; Referee if refereeControlsShelving=true | Advance lobby from BetweenGames to next game in a best-of series (D-07) |
-| `shelve_series` | seriesManagement.ts | Host/TO/Assistant/Mod/Admin; Referee if refereeControlsShelving=true | Shelve a lobby between games (sets stage to Shelved) (D-07) |
-| `resume_series` | seriesManagement.ts | Host/TO/Assistant/Mod/Admin; Referee if refereeControlsShelving=true | Resume a shelved lobby (transitions from Shelved back to active) (D-07) |
-| `server_set_mmr` | server.ts | Server identity | Upsert MmrRating row for a user (test/admin utility) |
-| `select_match_account` | accountSelection.ts | Authenticated lobby member | Select HSR account(s) for use in a lobby match. Tournament path validates against TPA and `maxAccountsPerPlayer` limit (additive). Non-tournament path is replace-based (always max 1). Stage guard: Waiting + BetweenGames only. (D-05, D-07, D-11, Phase 10.4) |
-| `deselect_match_account` | accountSelection.ts | Authenticated lobby member | Remove an account selection for tournament multi-account scenarios. Non-tournament lobbies always have exactly one account (deselect not applicable). (Phase 10.4) |
-
-### TO/Assistant/Mod+ Access
-
-Tournament management operations (update, advance stage, cancel, approve, waitlist promote) require one of:
-- The tournament's `organizerId` (the TO who created it)
-- A `TournamentAssistant` row with matching `[tournamentId, userId]`
-- `Moderator` or `Admin` role (role level 75+)
-
-This is enforced by `ensureTournamentAccess()` in `helpers/tournamentHelpers.ts`.
-
----
-
-## Registration Requirements
-
-When a player calls `register_for_tournament`, the following validations run in order:
-
-1. **Tournament stage** — Must be `Registration` or `Seeding`
-2. **Duplicate check** — Cannot register twice (composite PK lookup)
-3. **requireVerified** — If `true`, guest accounts are rejected
-4. **requireRoster** — If `true`, player must have at least one active HSR account
-5. **minimumMmr** — MMR check deferred to Phase 5 (not yet enforced)
-6. **Capacity check** — Counts non-waitlisted participants vs `maxParticipants`
-   - If full and `waitlistEnabled = true`: insert with `isWaitlisted = true`
-   - If full and `waitlistEnabled = false`: throw "Tournament is full"
-7. **requireApproval** — If `true`, sets `approvedByToAt = undefined` (TO must approve later)
-   - If `false`: auto-approves by setting `approvedByToAt = ctx.timestamp`
-8. **Solo auto-team** — For `teamSize=1` tournaments, auto-creates `TournamentTeam` + `TournamentTeamMember` on enrollment
-
-### Withdrawal
-
-- `withdraw_from_tournament` marks status as `Withdrawn` but does NOT delete the TournamentEnrolled row
-- This preserves audit history and allows TOs to see who registered and left
-- Withdrawal is only allowed in `Registration`, `CheckIn`, or `Seeding` stage
-- During `InProgress`, only a TO can disqualify a participant
-
-Withdrawal cleanup (in order):
-1. **Captain-transfer** — if the withdrawing user captains a team, `transferTournamentCaptain()` transfers captaincy to next team member (D-22). If no other member, team is disbanded.
-2. **TournamentTeamMember row deleted** — non-captain withdrawal removes just their membership row (D-23)
-3. **Team request cleanup** — deletes all pending TournamentTeamRequest rows from this user to any team in the tournament
-4. **Enrollment status** — TournamentEnrolled.status set to Withdrawn
-5. **Locked accounts** — all TournamentPlayerAccount rows for this user+tournament deleted
-
-### DQ Flow (Phase 10.1 — D-21, D-25, D-26)
-
-`dq_participant` handles three cases:
-
-1. **Captain DQ** — Transfer captain flag to next team member (D-21). Team survives.
-2. **Last member DQ** — Team destroyed; auto-advance opponent on any active bracket match (D-27).
-3. **DQ during active lobby** (Drafting/Equipping/Scoring) — Kick DQ'd player from lobby. If last member: force-concede match (D-25).
-4. **DQ during Shelved/BetweenGames lobby** — Remove TournamentTeamMember row. Captain DQ: transfer captain. If last member: hard-delete the shelved lobby (D-26).
-
----
-
-## Tournament-Scoped Teams
-
-Tournament teams (`TournamentTeam`) are ephemeral and scoped per tournament. They differ from persistent organization-level `Team` objects:
-
-| Property | TournamentTeam | Team (org-level) |
-|----------|---------------|-----------------|
-| Scope | One tournament only | Persistent across time |
-| Captain | Any registered player | Owner role in TeamMember |
-| Lifecycle | Disbanded when tournament ends | Persists until owner deletes |
-| Purpose | Group participants for bracket | Organization, recruitment |
-
-### TournamentEnrolled + TournamentTeamMember (Phase 10.1 — D-20)
-
-`TournamentParticipant` was split into two tables to decouple enrollment from team assignment:
-
-**TournamentEnrolled** (PK: [tournamentId, userId]):
-- Registration record: status, isWaitlisted, approvedByToAt, anonymousAlias, allowRandomTeamAssignment, audit cols
-- No `hsrAccountId` column — removed in Phase 10.4 (D-23). `TournamentPlayerAccount` is the sole source of truth for locked accounts.
-- No team reference — enrollment and team assignment are fully decoupled
-
-**TournamentTeamMember** (PK: [teamId, userId]):
-- Team assignment link
-- Contains `tournamentId` column + `by_tournament_and_user` btree index for direct per-tournament membership queries
-- Created on team creation (captain) or `accept_team_request`; deleted on `leave_tournament_team`, `disband_tournament_team`, or withdrawal
-
-### Team Formation Flow
-
-```
-1. Player calls register_for_tournament → TournamentEnrolled row inserted
-   (no team assignment at registration time)
-
-2. Player calls create_tournament_team → TournamentTeam row inserted
-   → TournamentTeamMember row inserted for captain
-
-3. Player calls request_join_team → TournamentTeamRequest inserted (transactional — row exists = pending)
-
-4. Captain calls accept_team_request → request row deleted
-   → Player's other pending requests in this tournament also deleted
-   → TournamentTeamMember row inserted for joiner
-
-   OR
-
-4. Captain calls reject_team_request → request row deleted
-
-5. Non-captain: leave_tournament_team → TournamentTeamMember row deleted
-   Captain: disband_tournament_team → ALL TournamentTeamMember rows deleted, all requests deleted, team deleted
-```
-
-### Constraints
-
-- Teams can only be created, joined, and disbanded during `Registration` stage
-- Captain cannot leave their own team (they must disband it)
-- Team size enforced by `tournament.teamSize` — `accept_team_request` checks current member count
-- Solo tournaments (`teamSize = 1`) auto-create team on registration (no explicit team management needed)
-
----
-
-## CostSet Integration
-
-Each tournament can reference a published `CostSet` via `costSetId`:
-
-- `costSetId = 0` → uses the default/global cost set
-- `costSetId > 0` → must reference an existing, published CostSet (`isPublished = true`)
-
-This allows TOs to configure custom character/lightcone costs for their tournament without affecting other tournaments or the global defaults.
-
----
-
-## Data Patterns
-
-### Composite PK Updates (delete + insert)
-
-`TournamentEnrolled` and `TournamentTeamRequest` have composite primary keys. SpacetimeDB does not support in-place updates for composite PK rows, so all updates use the delete + re-insert pattern:
-
-```typescript
-ctx.db.TournamentEnrolled.delete(enrolled);
-ctx.db.TournamentEnrolled.insert({
-    ...enrolled,
-    status: { tag: 'Withdrawn', value: {} } as any,
-    ...auditUpdate(ctx, enrolled, user.id),
-} as any);
-```
-
-When upserting, preserve audit fields: if existing row present, use `auditUpdate`; if new, use `auditInsert`.
-
-### Audit Columns
-
-Every table in this domain follows the standard audit pattern:
-- `createdById` / `createdDate` — set on insert, never modified
-- `lastModifiedById` / `lastModifiedDate` — updated on every write
-
----
+*Last updated: 2026-04-09*
+*Feature owner: Phase 04 / Phase 06 / Phase 08 / Phase 10.1 / Phase 10.4*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
-
----
-
-## TournamentPlayerAccount (Phase 6 execution — D-21)
-
-Junction table that locks which HSR accounts a player will use in a tournament. Created at registration time.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| tournamentId | u32 | FK to Tournament.id |
-| userId | u32 | FK to User.id |
-| hsrAccountId | u32 | FK to HsrAccount.id |
-
-PK: [tournamentId, userId, hsrAccountId]
-Indexes: `by_tournament_and_user` (tournamentId, userId), `by_user` (userId)
-
-During tournament matches, `LobbyMemberAccount` rows (which reference TPA-validated accounts) determine which characters a player can pick. `TournamentPlayerAccount` is the source of truth for which accounts are locked to a tournament — but actual per-match selection is controlled by `LobbyMemberAccount` (Phase 10.4, D-14, D-15).
-
-**Stand-in TPA creation (D-26, Phase 10.4):** When an approved stand-in joins a tournament lobby via `join_lobby`, their active account(s) are snapshotted into `TournamentPlayerAccount` at join time — same locking as regular registration, just deferred.
-
-## LobbyMemberAccount (Phase 10.4 — D-01)
-
-Per-match account selection join table. Tracks which HSR account(s) each lobby member is using for this match. Non-public (D-02) — opponents cannot see account selection via raw subscription.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| lobbyId | u32 | FK to Lobby.id (composite PK) |
-| userId | u32 | FK to User.id (composite PK) |
-| hsrAccountId | u32 | FK to HsrAccount.id (composite PK) |
-
-PK: [lobbyId, userId, hsrAccountId]
-Indexes: `lobby_id` (lobbyId), `by_lobby_and_user` (lobbyId, userId), `by_account` (hsrAccountId)
-
-No audit columns — ephemeral join table. Created at `join_lobby`, deleted at `leave_lobby` and via `hardDeleteLobby` cascade.
-
-**Tournament path (additive, D-07):** Players may have multiple LMA rows per lobby (up to `tournament.maxAccountsPerPlayer`). `select_match_account` validates the account against TPA entries before inserting.
-
-**Non-tournament path (replace, D-07):** Always exactly one LMA row per player. `select_match_account` deletes existing and inserts new — no `maxAccountsPerPlayer` column on Lobby needed.
-
-### requireOwnership Inheritance (Phase 6 — D-19)
-
-Tournament lobbies inherit `requireOwnership` from `tournament.requireRoster`:
-- `requireRoster=true` → lobby `requireOwnership=true` (draft picks validated against HsrAccountCharacter)
-- `requireRoster=false` → lobby `requireOwnership=false` (any character allowed)
-
-These are separate concepts: `requireRoster` gates signup eligibility, `requireOwnership` gates draft enforcement.
-
----
-
-## Bracket Generation (Phase 4)
-
-After Registration closes and Seeding begins:
-1. `seed_bracket(tournamentId, 'mmr'|'random')` assigns seed numbers to teams
-2. `swap_seeds(tournamentId, teamId1, teamId2)` allows manual seed adjustment
-3. `generate_bracket(tournamentId)` creates BracketMatch rows with FK wiring
-4. TO advances to InProgress (guards verify bracket exists)
-
-New Tournament columns (Phase 4):
-- `groupSize: u8` -- target group size for round-robin (min 3)
-- `has3rdPlaceMatch: bool` -- enables 3rd place consolation match
-- `autoAdvanceBracket: bool` -- auto-advance winner on result confirmation
-
-Stage transition guards:
-- Registration -> Seeding: requires 2+ active participants (2+ complete teams for team tournaments)
-- Seeding -> InProgress: requires BracketMatch rows to exist, first-round matches to have participants

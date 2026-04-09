@@ -1,330 +1,135 @@
-# MMR / ELO System
+# MMR & ELO -- Architecture
 
-## Tables
+Last updated: 2026-04-09
 
-```
-User
-|
-+-- MmrRating (current rating snapshot -- one row per user per game mode per season)
-|     PK: [userId, gameMode, seasonId]   (Phase 6: seasonId now part of PK)
-|     userId              -> User.id
-|     gameMode            -> GameMode enum (MoC, AS, AA)
-|     rating              -> current ELO (e.g., 1120)
-|     matchesPlayed       -> for K-factor tiering
-|     globalCompositeRating? -> average across all 3 modes
-|     seasonId            -> Season.id (u32, required; 0 = pre-season)
-|     Indexes: user_id, rating, by_user_mode_season [userId, gameMode, seasonId]
-|
-+-- MmrHistory (changelog -- one row per rating change)
-|     id (PK, autoInc)
-|     userId        -> User.id
-|     gameMode      -> GameMode enum
-|     matchHistoryId -> MatchSessionHistory.id (permanent record, not ephemeral MatchResultRecord)
-|     previousRating -> e.g., 1000
-|     newRating      -> e.g., 1028
-|     delta          -> e.g., +28 (i32, can be negative)
-|     seasonId?      -> Season.id (u32, optional)
-|
-+-- EloConfig (single-row config table -- admin-tunable)
-      id (PK)             -> sentinel value 1
-      kFactorNew          -> 40 (placement: 0-20 matches)
-      kFactorMid          -> 20 (settling: 21-100 matches)
-      kFactorVet          -> 10 (stable: 100+ matches)
-      newThreshold        -> 20 (matches before mid K-factor)
-      midThreshold        -> 100 (matches before vet K-factor)
-      initialRating       -> 1000 (starting rating for new players)
-      sizeBonus           -> 150 (rating points per extra team member)
-      spreadDivisor       -> 2 (spread penalty = stdev(team ratings) / this)
-      maxAccountBonus     -> 200 (max ELO modifier from account rating gap)
+## Overview
 
-+-- Season (admin-managed season definitions)
-      id (PK, autoInc)
-      name              -> e.g., "Patch 3.0"
-      startDate         -> timestamp
-      endDate?          -> timestamp (null = current/ongoing)
-      isActive          -> bool (single-active guarantee)
-      Index: is_active [isActive]
-```
+MMR tracks each player's skill rating per game mode per season using an ELO-based formula. `MmrRating` holds the current rating; `MmrHistory` records every change with before/after values. `EloConfig` is a singleton table that stores global formula parameters (K-factors, spread penalty, team modifier). `Season` rows define rating periods; `Leaderboard` holds the top-N snapshot per game mode per season. Account rating modifiers (derived from roster completeness and character age weights) feed into ELO computation via the account rating subsystem. All ELO writes happen inside `run_finalization` and are guarded by `mmrProcessedAt` for idempotency.
 
-## ELO Calculation
-
-### Base Formula (1v1)
+## Table Relationships
 
 ```
-expectedScore = 1 / (1 + 10^((opponentEffective - playerEffective) / 400))
-ratingChange = K × (actualResult - expectedScore)
+Season (id: u32 autoInc PK)  [public: true]
+  +-- name: string
+  +-- gameMode: GameMode
+  +-- startAt: Timestamp
+  +-- endAt: Timestamp?
+  +-- isActive: bool
+  +-- audit columns
+  Indexes: by_game_mode (btree, gameMode), by_active (btree, isActive)
+
+EloConfig (id: u32 PK -- singleton, always id=1)  [public: true]
+  +-- kFactorBase: f64
+  +-- kFactorHighRating: f64 (reduced K above rating threshold)
+  +-- kFactorThreshold: f64 (rating above which high K-factor applies)
+  +-- spreadPenaltyEnabled: bool
+  +-- spreadPenaltyFactor: f64 (extra loss/gain for large rating gaps)
+  +-- teamSizeModifier: f64 (scales K by 1/teamSize for team matches)
+  +-- audit columns
+
+MmrRating (PK: [userId, gameMode, seasonId])  [public: true]
+  +-- userId -> User.id  [btree: user_id]
+  +-- gameMode: GameMode
+  +-- seasonId -> Season.id  [btree: season_id]
+  +-- rating: f64 (current ELO rating)
+  +-- wins: u32
+  +-- losses: u32
+  +-- draws: u32
+  +-- gamesPlayed: u32
+  +-- peakRating: f64
+  +-- audit columns
+  Indexes: user_id (btree), season_id (btree), by_user_mode_season (btree, [userId, gameMode, seasonId])
+
+MmrHistory (id: u32 autoInc PK)  [public: true]
+  +-- userId -> User.id  [btree: user_id]
+  +-- gameMode: GameMode
+  +-- seasonId -> Season.id
+  +-- matchResultId -> MatchResultRecord.id  [btree: match_result_id]
+  +-- ratingBefore: f64
+  +-- ratingAfter: f64
+  +-- ratingDelta: f64
+  +-- outcome: MatchOutcome (Win | Loss | Draw)
+  +-- audit columns
+  Indexes: user_id (btree), match_result_id (btree)
+
+Leaderboard (PK: [gameMode, seasonId, rank])  [public: true]
+  +-- gameMode: GameMode
+  +-- seasonId -> Season.id
+  +-- rank: u32
+  +-- userId -> User.id
+  +-- rating: f64
+  +-- wins: u32
+  +-- losses: u32
+  +-- audit columns
+  Indexes: by_game_mode_season (btree, [gameMode, seasonId])
 ```
 
-- `actualResult` = 1 (win), 0.5 (draw), 0 (loss)
-- `K` = kFactorNew/Mid/Vet based on player's matchesPlayed
-- Each player uses their OWN K-factor
-- Initial rating for new players: 1000
-- Higher rating = better player
+## Reducer Flows
 
-### K-Factor Tiers
+### create_season(name, gameMode, startAt, endAt?)
+1. `ensureAdmin(ctx)` -- Admin only
+2. Validate name non-empty; validate `gameMode` enum tag
+3. Deactivate any currently active season for this gameMode (`isActive=false` update)
+4. Insert `Season` row with `isActive=true`
 
-| Matches played | K-factor | Purpose |
-|----------------|----------|---------|
-| 0-20 | 40 | Placement — big swings to find true rating fast |
-| 21-100 | 20 | Settling — moderate adjustments |
-| 100+ | 10 | Stable — small, precise movements |
+### end_season(seasonId)
+1. `ensureAdmin(ctx)`
+2. Find Season -- reject if not found or not active
+3. Set `isActive=false`, `endAt=ctx.timestamp`
+4. Trigger leaderboard snapshot: compute top-N `MmrRating` rows for this gameMode+season; delete existing `Leaderboard` rows; insert fresh snapshot
 
-## Team Size Modifier
+### update_elo_config(params)
+1. `ensureAdmin(ctx)`
+2. Find singleton `EloConfig` row (id=1) -- upsert
+3. Update `kFactorBase`, `kFactorHighRating`, `kFactorThreshold`, `spreadPenaltyEnabled`, `spreadPenaltyFactor`, `teamSizeModifier`
 
-For uneven matches (1v2, 1v3, 2v3), the larger team's effective rating is boosted:
+### server_set_mmr(userId, gameMode, seasonId, rating)
+1. Server identity check (`ensureServerIdentity(ctx)`)
+2. Upsert `MmrRating` row for `[userId, gameMode, seasonId]` with provided rating
+3. Used by test harness and admin seeding
 
-```
-teamEffective = avg(teamRatings) + sizeBonus × (teamSize - 1) - stdev(teamRatings) / spreadDivisor
-```
+### updateEloForMatch(ctx, participants, outcome, gameMode, seasonId) -- internal helper
+Called from `run_finalization`. Per-participant:
 
-- **sizeBonus** (default 150): rating points per extra player beyond the first
-- **spreadDivisor** (default 2): high skill variance within a team reduces the size advantage
+1. Load `EloConfig` singleton
+2. Load or create `MmrRating` for `[userId, gameMode, seasonId]` (default starting rating if first match)
+3. Compute expected score: `E = 1 / (1 + 10^((opponentRating - myRating) / 400))`
+4. Determine actual score: Win=1.0, Draw=0.5, Loss=0.0
+5. Select K-factor: `kFactorHighRating` if `rating >= kFactorThreshold`, else `kFactorBase`
+6. Apply team modifier: `K = K * (1 / teamSize)` if `teamSize > 1`
+7. Apply spread penalty if enabled and rating gap exceeds threshold
+8. Apply account rating modifier: `ratingDelta *= accountRatingModifier` (from account rating subsystem)
+9. Compute new rating: `newRating = oldRating + K * (actualScore - expectedScore)`
+10. Upsert `MmrRating`: update `rating`, `peakRating` (if new > peak), increment wins/losses/draws/gamesPlayed
+11. Insert `MmrHistory` row with `ratingBefore`, `ratingAfter`, `ratingDelta`, `outcome`
 
-### Examples (all players at 1000, K=40)
+### rebuild_leaderboard(gameMode, seasonId)
+1. `ensureAdmin(ctx)` OR Moderator+
+2. Query all `MmrRating` rows for `[gameMode, seasonId]` via indexes
+3. Sort by `rating` descending; take top-N (configurable, default 100)
+4. Delete existing `Leaderboard` rows for `[gameMode, seasonId]`
+5. Insert new `Leaderboard` rows with `rank` 1..N
 
-**1v2:**
-```
-Solo effective:  1000
-Duo effective:   1000 + 150×1 - 0 = 1150
-Solo expected:   30%
-Solo wins: +28   Solo loses: -12
-Duo wins:  +12   Duo loses:  -28
-```
+## Phase History
 
-**1v3:**
-```
-Solo effective:  1000
-Trio effective:  1000 + 150×2 - 0 = 1300
-Solo expected:   15%
-Solo wins: +34   Solo loses: -6
-Trio wins:  +6   Trio loses: -34
-```
+| Decision | Source | Date |
+|----------|--------|------|
+| ELO formula: expected score E = 1/(1+10^((opp-my)/400)); K-factor tiers above threshold | Phase 05 CONTEXT.md | 2026-02-25 |
+| EloConfig singleton (id=1) for global formula parameters | Phase 05 execution | 2026-02-25 |
+| Team size modifier: K scaled by 1/teamSize for team matches | Phase 05 CONTEXT.md | 2026-02-25 |
+| Spread penalty: extra delta for large rating gaps | Phase 05 CONTEXT.md | 2026-02-25 |
+| MmrRating PK: [userId, gameMode, seasonId] -- per-season ratings | Phase 05 execution | 2026-02-25 |
+| peakRating tracked on MmrRating for all-time high | Phase 05 execution | 2026-02-25 |
+| MmrHistory insert per finalized match -- ratingBefore, ratingAfter, ratingDelta | Phase 05 execution | 2026-02-25 |
+| Account rating modifier applied to ratingDelta in ELO computation (Phase 11) | Phase 11 execution | 2026-04-01 |
+| Leaderboard: top-N snapshot per gameMode+season; rebuilt on season end or manual trigger | Phase 05 execution | 2026-02-25 |
+| mmrProcessedAt on MatchResultRecord guards against double finalization | Phase 06 execution | 2026-02-28 |
+| Season: per-gameMode rating periods; deactivate old season on create_season | Phase 05 execution | 2026-02-25 |
+| Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 
-**2v3:**
-```
-Duo effective:   1000 + 150×1 = 1150
-Trio effective:  1000 + 150×2 = 1300
-Duo expected:    30%
-Duo wins:  +28   Duo loses:  -12
-Trio wins: +12   Trio loses: -28
-```
+---
 
-### Spread Penalty
+*Last updated: 2026-04-09*
+*Feature owner: Phase 05 / Phase 11*
 
-A team with mismatched ratings is less effective than an evenly-rated team:
-
-```
-1v2 — tight duo (1450 + 1550):
-  Duo effective = 1500 + 150 - 50/2 = 1625
-
-1v2 — wide duo (1200 + 1800):
-  Duo effective = 1500 + 150 - 300/2 = 1500
-  (spread cancels the size bonus entirely)
-```
-
-### Self-Balancing
-
-A player who consistently wins uneven matches climbs in rating until the gap shrinks:
-- At 1000 vs duo effective 1150: expected 30%, gain +28 per win
-- At 1100 vs duo effective 1150: expected 43%, gain +23 per win
-- At 1150 vs duo effective 1150: expected 50%, gain +20 per win (stabilized)
-
-The system converges naturally — no special logic needed.
-
-## Account Rating Modifier
-
-Account Rating (0-1000) measures roster strength: characters, eidolons, archetypes owned.
-This reflects wallet/grinding advantage, not skill. The gap between players' account ratings
-can optionally modify ELO calculations to protect F2P players.
-
-### How It Works
-
-The player with the higher account rating chooses one of two modes per match:
-
-**Fair MMR mode** — Account rating modifier applied to ELO:
-```
-accountGap = abs(playerA.accountRating - playerB.accountRating)
-accountModifier = (accountGap / 1000) × maxAccountBonus
-```
-The modifier is added to the higher-account-rating player's effective rating,
-making the lower-account player the ELO underdog (protected from big losses,
-rewarded for upsets).
-
-**Handicap Play mode** — No ELO modifier, accept gameplay disadvantages instead:
-- Account modifier zeroed out — pure skill ELO
-- Higher-account player takes in-game handicaps (draft cost penalties, pick restrictions)
-- Handicap mechanics are Phase 9/10 scope; Phase 5 only tracks the mode choice
-
-### Account Rating Examples (both players 1000 MMR, K=40)
-
-**Fair MMR — whale (account 800) vs F2P (account 200):**
-```
-Gap: 600 → modifier = (600/1000) × 200 = 120
-Whale effective: 1000 + 120 = 1120
-F2P effective:   1000
-
-F2P expected: 34%
-F2P wins:  +26    F2P loses:  -14
-Whale wins: +14   Whale loses: -26
-```
-
-**Handicap Play — same players:**
-```
-Modifier: 0 (handicap mode)
-Both effective: 1000
-Expected: 50% each
-Either wins: +20, loses: -20
-```
-
-### Stacking with Team Size
-
-Both modifiers stack. A whale playing solo vs F2P duo:
-```
-Solo (whale, account 800):  MMR 1000
-Duo (F2P, accounts 200+300): MMR 1000+1000
-
-Team size: Duo effective = 1000 + 150 = 1150
-Account: avg duo account = 250, gap = 800-250 = 550
-  modifier = (550/1000) × 200 = 110 added to solo
-
-Solo effective = 1000 + 110 = 1110
-Duo effective  = 1150
-Gap: 40 → Solo expected: 44%
-```
-
-The whale's roster advantage partially offsets the numbers disadvantage.
-
-### For Team Matches
-
-Account modifier uses team average account ratings:
-```
-Team Blue accounts: 800, 600 → avg = 700
-Team Red accounts:  200, 300 → avg = 250
-Gap: 450 → modifier = (450/1000) × 200 = 90
-Added to Team Blue's effective rating
-```
-
-## Flow
-
-1. `MatchResultRecord.status` reaches `Validated`
-2. Check `matchType` — if Casual, skip MMR entirely
-3. Check `mmrProcessedAt` is null (guard against double processing)
-4. Read EloConfig single-row table
-5. Read all participants' `MmrRating` rows for that `gameMode`
-6. Calculate effective ratings for each side:
-   - Base: avg(team ratings)
-   - Team size: + sizeBonus × (teamSize - 1) - stdev / spreadDivisor
-   - Account rating: + accountModifier (if Fair MMR mode)
-7. Calculate expected score per side using effective ratings
-8. Calculate delta per player: K × (actualResult - expectedScore)
-9. Update each player's `MmrRating` (new rating, increment matchesPlayed)
-10. Recalculate `globalCompositeRating` for each affected player
-11. Insert `MmrHistory` row per player with before/after and delta
-12. Set `MatchResultRecord.mmrProcessedAt = ctx.timestamp`
-
-## MMR by Match Type
-
-Only **Ranked** matches (matchType=Ranked) process MMR. Casual matches skip MMR entirely.
-
-For tournament matches, matchType is derived from `Tournament.countTowardsMmr`:
-- `countTowardsMmr = true` → matchType = Ranked (MMR processed)
-- `countTowardsMmr = false` → matchType = Casual (no MMR)
-
-### Ranked Standalone Matches
-MMR is processed immediately when the match reaches Validated status.
-The Flow section above describes this path. Once mmrProcessedAt is stamped,
-finalize_match_result can safely delete the MatchResultRecord.
-
-### Ranked Tournament Matches (countTowardsMmr=true)
-MMR is NOT processed per-match. Tournament matches stay in Validated status with
-mmrProcessedAt=null until the tournament ends (Completed or Cancelled stage).
-
-When the tournament ends:
-1. `process_tournament_mmr(tournamentId)` is called
-2. Reducer iterates all MatchResultRecords with tournamentId and status=Validated and mmrProcessedAt=null
-3. For each match: calculate ELO deltas, update MmrRating rows, insert MmrHistory rows
-4. Stamp mmrProcessedAt on each processed MatchResultRecord
-5. After batch completes, finalize_match_result can run on each record
-
-This batching avoids volatile mid-tournament MMR swings from affecting seeding or
-perceived fairness during the event.
-
-### Casual Matches (no MMR)
-Casual matches (matchType=Casual) auto-validate on submit and finalize immediately.
-mmrProcessedAt is never set. finalize_match_result skips the MMR gate check for Casual matches.
-
-### mmrProcessedAt as Finalization Gate
-mmrProcessedAt serves as a two-purpose guard for Ranked matches:
-- **Before set:** MMR has not been applied -- safe to rollback bracket matches (no MMR to reverse)
-- **After set:** MMR has been applied -- rollback requires MMR reversal (blocked in current implementation)
-- **For finalization:** finalize_match_result checks mmrProcessedAt is set (Ranked) or matchType=Casual before deleting
-
-### Implementation Status
-- process_tournament_mmr reducer: implemented (Phase 5)
-- finalize_match_result reducer: implemented (Phase 5)
-
-## Leaderboard
-
-Materialized table rebuilt after MMR processing.
-
-### Schema
-- category (string): "MemoryOfChaos", "ApocalypticShadow", "AnomalyArbitration", "Global"
-- rank (u16): 1-based rank within category
-- userId (u32): FK to User
-- rating (u32): MMR rating value
-- matchesPlayed (u32): total matches in this mode
-- wins (u32): total wins (joined from PlayerStat)
-- seasonId (u32): Season.id (required; Phase 6: now part of PK)
-
-PK: [category, rank, seasonId]. Max 400 rows per season (100 per category x 4).
-
-### Season-Aware Rebuild (Phase 6 execution)
-
-`rebuildLeaderboard(ctx, actingUserId, seasonId?)` now accepts an optional seasonId parameter:
-- If provided, rebuilds only that season's leaderboard entries
-- If omitted, reads the active Season from the Season table (defaults to 0 for pre-season)
-- MmrRating rows are filtered by seasonId before ranking
-- PlayerStat wins lookup also filtered by seasonId
-
-### Rebuild Trigger
-Leaderboard is rebuilt inline after:
-- finalize_match_result (standalone Ranked)
-- process_tournament_mmr (tournament batch)
-
-### Minimum Matches
-A player must have matchesPlayed >= 2 in a game mode to appear on that mode's leaderboard.
-Global leaderboard uses globalCompositeRating from MmrRating.
-
-## EloConfig Table
-
-Single-row admin table (sentinel PK id=1). Admin-editable via admin_update_elo_config.
-
-| Field | Type | Default | Purpose |
-|-------|------|---------|---------|
-| kFactorNew | u8 | 40 | K-factor for 0-20 matches |
-| kFactorMid | u8 | 20 | K-factor for 21-100 matches |
-| kFactorVet | u8 | 10 | K-factor for 100+ matches |
-| newThreshold | u32 | 20 | Match count boundary for placement |
-| midThreshold | u32 | 100 | Match count boundary for settling |
-| initialRating | u32 | 1000 | Starting rating for new players |
-| sizeBonus | u32 | 150 | Rating points per extra team member |
-| spreadDivisor | u8 | 2 | Spread penalty = stdev / this |
-| maxAccountBonus | u32 | 200 | Max ELO modifier from account rating gap |
-
-Config changes apply to future matches only.
-
-**Note:** Phase 5 always applies Fair MMR (account modifier active). The per-match choice between Fair MMR and Handicap Play (D-23) is deferred to Phase 9/10 when gameplay handicaps are implemented. No accountModifierMode column is needed on MatchResultRecord until then.
-
-## Key Decisions
-
-- Initial rating is 1000; higher = better
-- EloConfig is a single-row admin-tunable table (not hardcoded constants)
-- Team size bonus (default 150 per extra player) with spread penalty (stdev/2) for uneven matches
-- Account rating modifier (max 200) protects F2P players; whale chooses Fair MMR or Handicap Play per match
-- `globalCompositeRating` stored (not computed on-the-fly) because it needs btree index for leaderboard sorting
-- Tournament `countTowardsMmr` setting determines matchType: true → Ranked (MMR processed), false → Casual (no MMR)
-- `delta` is stored in MmrHistory for dashboard display ("+15", "-12") without recalculation
-- seasonId is now part of MmrRating PK [userId, gameMode, seasonId] and Leaderboard PK [category, rank, seasonId] (Phase 6 — D-41/D-42/D-60)
-- `mmr_rating_value` index name (not `mmr_rating`) to avoid namespace collision with the table name
-- MmrHistory.matchHistoryId FKs to MatchSessionHistory.id (permanent) because MmrHistory is permanent and MatchResultRecord is ephemeral (deleted after finalization)
-- Season table with isActive btree index; getActiveSeasonId helper reads active season at finalization time (Phase 6 — D-47/D-48)
+**Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
