@@ -435,3 +435,20 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 13 to break down)
+
+### Phase 14: Test Harness Modernization for SDK 2.1.0
+
+**Goal:** Fix test harness confirmed reads default, replace fixed-timeout sync with event-driven subscription readiness, implement stale placeholder view tests, and reduce overall test suite runtime. Cohesive pass across all test infrastructure.
+**Depends on:** Phase 12.2
+**Requirements**: TEST-MODERN-01 (test harness uses withConfirmedReads(false)), TEST-MODERN-02 (subscription sync uses onApplied instead of fixed timeouts), TEST-MODERN-03 (auth-views.test.ts has real view integration tests), TEST-MODERN-04 (full test suite completes faster than current baseline)
+**Plans:** 0 plans
+
+**Scope:**
+1. **Confirmed reads fix (HIGH):** Add `.withConfirmedReads(false)` to `test/shared/connection.ts` builder + all standalone scripts (bootstrap.ts, seed-data.ts, promoteUser.ts, identity-gc.test.ts, etc.)
+2. **Sync strategy overhaul (HIGH):** Replace fixed 2000ms post-subscription delay in connection.ts with `onApplied` callback-based readiness. Audit all `h.sync(N)` calls across test files for unnecessarily long timeouts.
+3. **View test implementation (HIGH):** Replace 4 placeholder tests in `auth-views.test.ts` with real integration tests using typed view bindings (view_user_directory, view_my_profile, view_my_identity, view_admin_user_private)
+4. **Duplicate helper cleanup (MEDIUM):** Replace local `latestLobby()` in anonymous-labels.test.ts and draft-control.test.ts with import from shared `queries.ts`
+5. **Suite runtime profiling:** Identify slowest test files and optimize connection setup/teardown patterns
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 14 to break down)
