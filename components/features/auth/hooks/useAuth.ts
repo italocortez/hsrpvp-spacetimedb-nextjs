@@ -217,11 +217,9 @@ export function useAuth() {
         if (!hasMapping && !autoRegisteredRef.current) {
             autoRegisteredRef.current = true;
             console.log('[useAuth] Discord flow Step A: calling loginAsGuest (no mapping yet)');
-            conn.reducers.loginAsGuest({})._then((ctx: any) => {
-                if (ctx.event.status.tag === 'Failed') {
-                    console.error('[useAuth] Discord auto-register loginAsGuest failed:', ctx.event.status.value);
-                    autoRegisteredRef.current = false;
-                }
+            conn.reducers.loginAsGuest({}).catch((err: any) => {
+                console.error('[useAuth] Discord auto-register loginAsGuest failed:', err);
+                autoRegisteredRef.current = false;
             });
             return;
         }
@@ -312,10 +310,8 @@ export function useAuth() {
             console.error("SpacetimeDB connection not active.");
             return;
         }
-        conn.reducers.loginAsGuest({})._then((ctx: any) => {
-            if (ctx.event.status.tag === 'Failed') {
-                console.error('[useAuth] loginGuest failed:', ctx.event.status.value);
-            }
+        conn.reducers.loginAsGuest({}).catch((err: any) => {
+            console.error('[useAuth] loginGuest failed:', err);
         });
     }, [getConnection, readProfileFromConnection]);
 
@@ -335,10 +331,8 @@ export function useAuth() {
     const deleteGuestAccount = useCallback(() => {
         const conn = getConnection();
         if (!conn) return;
-        conn.reducers.deleteGuestAccount({})._then((ctx: any) => {
-            if (ctx.event.status.tag === 'Failed') {
-                console.error('[useAuth] deleteGuestAccount failed:', ctx.event.status.value);
-            }
+        conn.reducers.deleteGuestAccount({}).catch((err: any) => {
+            console.error('[useAuth] deleteGuestAccount failed:', err);
         });
         localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
         localStorage.removeItem(USER_ID_KEY);
