@@ -371,7 +371,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 11 -> 12
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 10.5 -> 11 -> 12 -> 12.1 -> 12.2 -> 13
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
 Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 as Scope F.
@@ -395,17 +395,21 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.4. Account Selection Per Match | 3/3 | Complete    | 2026-04-04 |
 | 11. Account Rating Matrix | 2/2 | Complete   | 2026-04-06 |
 | 12. Auth Security Hardening | 3/3 | Complete    | 2026-04-08 |
+| 10.5. Test Suite Stabilization | 1/1 | Complete    | 2026-04-06 |
+| 12.1. Identity Garbage Collection | 1/1 | Complete    | 2026-04-08 |
+| 12.2. SDK Upgrade Audit | 2/2 | Complete    | 2026-04-09 |
+| 13. Documentation Normalization | 5/5 | In Progress | — |
 
 
 ### Phase 12.1: Identity Garbage Collection (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Scheduled cleanup of stale UserIdentity rows (orphaned after logout) based on lastSeenAt age.
+**Requirements**: Phase 12 complete
 **Depends on:** Phase 12
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 12.1 to break down)
+- [x] 12.1-01-PLAN.md — Identity GC scheduled job and cleanup reducer
 
 ### Phase 12.2: SDK Upgrade Audit (2.0.3 → 2.1.0) (INSERTED)
 
@@ -423,7 +427,7 @@ Plans:
 **Goal:** Normalize all documentation to a consistent structure, fully hydrate from current codebase, regenerate codebase maps, rewrite FRONTEND-HANDOFF.md, and update ERD. Docs-only phase — no code changes.
 **Requirements**: All backend phases complete
 **Depends on:** Phase 12.2
-**Plans:** 3/5 plans executed
+**Plans:** 5/5 plans complete
 
 **Scope:**
 1. **Templates + ROADMAP scope update:** Create architecture.md and contract.md templates, update Phase 13 scope in ROADMAP.md, cleanup pass on completed phase descriptions
@@ -435,9 +439,9 @@ Plans:
 Plans:
 - [x] 13-01-PLAN.md — Templates + ROADMAP scope update
 - [x] 13-02-PLAN.md — Architecture normalization (19 files)
-- [ ] 13-03-PLAN.md — Contract full hydration (18 files)
+- [x] 13-03-PLAN.md — Contract full hydration (18 files)
 - [x] 13-04-PLAN.md — Codebase docs full regeneration (7 files)
-- [ ] 13-05-PLAN.md — FRONTEND-HANDOFF rewrite + ERD mermaid update
+- [x] 13-05-PLAN.md — FRONTEND-HANDOFF rewrite + ERD mermaid update
 
 ### Phase 14: Test Harness Modernization for SDK 2.1.0
 

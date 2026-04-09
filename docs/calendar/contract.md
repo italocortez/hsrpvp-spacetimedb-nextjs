@@ -1,5 +1,7 @@
 # Calendar & Scheduling
 
+**Architecture:** [architecture.md](architecture.md)
+
 ## Feature Overview
 
 Players can record recurring availability windows, bookmark other players' calendars to find common free time, and create calendar events with invites. Tournament organizers can schedule matches by creating events linked to bracket matches, with auto-invite of match participants. All calendar data is public. Common availability computation happens client-side from subscription data.

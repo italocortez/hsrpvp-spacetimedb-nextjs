@@ -203,6 +203,22 @@ Archetypes feed the **horizontal score** component of account ratings:
 - **When:** Any archetype reducer called
 - **Then:** "Forbidden: Requires Admin privileges."
 
+## Edge Cases
+
+| Case | Expected |
+|------|----------|
+| Upsert with identical name + description | No-op (description overwritten with same value) |
+| Assign with duplicate IDs in array | Second insert skipped silently |
+| Delete archetype with zero assignments | Cascade is no-op, archetype deleted |
+| Assign/remove with mix of valid/invalid IDs | All-or-nothing: no writes if any ID invalid |
+| Rating recalculation after archetype edit | Must be triggered manually via `admin_recalculate_all_ratings` |
+
+## Integration Points
+
+- **Account Rating System:** Archetypes feed horizontal score via `archetypeThreshold` config. Changes to archetype assignments require manual `admin_recalculate_all_ratings` call.
+- **HsrCharacter:** Character names validated against HsrCharacter table on assign. No FK constraint — application-enforced.
+- **Generic Admin:** `admin_bulk_upsert` and `admin_delete_row` support Archetype and HsrCharacterArchetype tables with same semantics as dedicated reducers.
+
 ## Phase History
 
 | Decision | Source | Date |
