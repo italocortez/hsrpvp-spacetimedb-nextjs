@@ -135,24 +135,9 @@ Match the generated bindings exactly in reducer calls:
 2. **Optional fields** -- pass `undefined` for optional reducer params you don't need (e.g. `teamBlueScore: undefined`). Don't omit them -- the generated type requires all keys.
 3. **All required fields** -- include every field the reducer expects. When new fields are added to reducers, update the shared helpers first, then callers inherit.
 
-## View-Accurate Filtering
+## Filtering Convention
 
-The test harness uses `subscribeToAllTables()` for convenience, but production clients subscribe to scoped views. If you use `iter()` after `subscribeToAllTables()`, you MUST filter to simulate the real client view.
-
-| Production pattern | Test equivalent with `subscribeToAllTables()` |
-|---|---|
-| Subscribe to "my accounts" view -> get only my rows | `iter().filter(a => a.userId === h.userId)` |
-| Subscribe to tournament X -> get only that tournament's data | `iter().filter(m => m.tournamentId === targetId)` |
-| Subscribe to lobby members -> get only current lobby | `iter().filter(m => m.lobbyId === currentLobbyId)` |
-
-Unfiltered `iter()` in tests returns cross-user data a real client would never see. Every `iter()` call must be filtered to match the production subscription scope.
-
-If you don't know how the production view would filter, check:
-1. `spacetimedb/src/views/` for existing view definitions
-2. The bandwidth rules in the spacetimedb skill (subscription strategy section)
-3. `docs/{feature}/architecture.md` for data access patterns
-
-Never invent a filter just to make a test pass. The filter must correspond to a real subscription boundary.
+The harness uses `subscribeToAllTables()` internally, but all existing tests already use `.find()` or `.filter()` on every `iter()` call to scope data the way a real client would. Follow the same pattern -- always filter by userId, lobbyId, tournamentId, etc. rather than iterating unfiltered. The filter should correspond to the production subscription boundary, not be invented just to make a test pass.
 
 ## Environment
 
