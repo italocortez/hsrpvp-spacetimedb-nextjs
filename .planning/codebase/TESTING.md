@@ -1,11 +1,11 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-04-06
+**Analysis Date:** 2026-04-09
 
 ## Test Framework
 
 **Runner:**
-- Vitest 4.x
+- Vitest ^4.1.0
 - Unit config: `test/vitest.config.ts`
 - Integration config: `test/vitest.integration.config.ts`
 
@@ -47,7 +47,7 @@ test/
 │   ├── load-env.ts                       # Loads .env.local vars for test process
 │   ├── mocks/
 │   │   └── spacetimedb-server.ts         # Mock for spacetimedb/server module (unit tests)
-│   └── helpers/
+│   └── helpers/                          # Shared async setup/teardown flows (Phase 10.5)
 │       ├── lobbies.ts                    # defaultLobbyArgs, defaultSettingsArgs, cleanupLobby
 │       ├── tournaments.ts                # createTournamentArgs, setupRegistrationTournament, advanceToInProgress
 │       ├── users.ts                      # getUsername
@@ -69,12 +69,29 @@ test/
     ├── calendar/                         # calendar-availability, calendar-events, calendar-saved
     ├── chat/                             # chat-messages
     ├── cost-sets/                        # cost-set-lifecycle
-    └── anonymous-play/                   # anonymous-labels
+    ├── anonymous-play/                   # anonymous-labels
+    ├── auth/                             # auth tests
+    └── garbage-collector/                # GC tests (Phase 12.1)
 ```
+
+## Vitest Configuration Details
+
+**Unit config (`test/vitest.config.ts`):**
+- Includes: `test/backend/**/*.unit.test.ts` only
+- Aliases: `spacetimedb/server` → `test/shared/mocks/spacetimedb-server.ts` (module swap for all unit tests)
+- Timeout: 5s test, 10s hook
+- Fast: no SpacetimeDB connection required
+
+**Integration config (`test/vitest.integration.config.ts`):**
+- Includes: `test/backend/**/*.test.ts`, excludes `*.unit.test.ts`
+- Loads `.env.local` via inline `loadEnvLocal()` function (Vite's envDir only exposes `VITE_*` prefixed vars)
+- Timeout: 30s test, 30s hook — network round-trips to maincloud
+- Sequential execution: `fileParallelism: false`, `sequence.concurrent: false` — tests share SpacetimeDB state
+- Requires `SPACETIMEDB_SERVER_TOKEN` in `.env.local` for verified user test harnesses
 
 ## Test Structure
 
-**Integration suite organization:**
+**Integration suite template:**
 ```typescript
 /**
  * Integration tests for {domain} reducers.
@@ -89,6 +106,7 @@ test/
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { cleanupLobby } from '../../shared/helpers/lobbies';
 
 describe.skipIf(!hasServerToken())('Domain Name', () => {
     let host: TestHarness;
@@ -100,10 +118,9 @@ describe.skipIf(!hasServerToken())('Domain Name', () => {
         joiner = await createVerifiedTestHarness();
         await host.sync();
         await joiner.sync();
-    }, 30000);  // extended timeout for multi-harness setup
+    }, 30000);
 
     afterAll(async () => {
-        // Cleanup all resources opened during the suite
         for (const id of openedLobbyIds) {
             await cleanupLobby(host, [joiner], id).catch(() => {});
         }
@@ -115,7 +132,6 @@ describe.skipIf(!hasServerToken())('Domain Name', () => {
         it('does the expected thing', async () => {
             await host.call.someReducer({ param: value });
             await host.sync();
-            // assert via subscription cache
             const row = [...host.conn.db.TableName.iter()].find(r => r.field === value);
             expect(row).toBeDefined();
         });
@@ -130,7 +146,7 @@ describe.skipIf(!hasServerToken())('Domain Name', () => {
 });
 ```
 
-**Unit suite organization:**
+**Unit suite template:**
 ```typescript
 /**
  * Unit tests for spacetimedb/src/helpers/{helperName}.ts
@@ -140,36 +156,52 @@ describe.skipIf(!hasServerToken())('Domain Name', () => {
  */
 
 import { describe, it, expect } from 'vitest';
-import { functionName, type TypeName } from '../../../spacetimedb/src/helpers/helperName';
-
-const FIXTURE = { ... };
+import { functionName } from '../../../spacetimedb/src/helpers/helperName';
 
 describe('functionName', () => {
     it('description of behavior', () => {
         expect(functionName(args)).toBe(expectedValue);
     });
-
-    it('boundary case', () => {
-        expect(functionName(boundaryArgs)).toBeCloseTo(0.5, 5);
-    });
 });
 ```
 
-**Patterns:**
-- `beforeAll` / `afterAll` — no `beforeEach` / `afterEach`; state persists across tests in a suite (shared DB)
+**Key patterns:**
+- `beforeAll` / `afterAll` only — no `beforeEach` / `afterEach`; state persists across tests in a suite (shared DB)
 - Section comments inside `describe` blocks: `// ── section name ──────────────`
 - Cleanup registered in arrays (`openedLobbyIds: number[]`) and swept in `afterAll`
-- `describe.skipIf(!hasServerToken())` guards suites requiring a server token (verified user tests)
-- Nested `describe` groups match the reducer name being tested
+- `describe.skipIf(!hasServerToken())` guards suites requiring a server token
+
+## Phase 10.5 Cleanup Pattern (afterAll)
+
+Phase 10.5 established the canonical cleanup pattern. All suites that open lobbies or tournaments use shared helpers:
+
+```typescript
+afterAll(async () => {
+    for (const id of openedLobbyIds) {
+        await cleanupLobby(host, [joiner], id).catch(() => {});
+    }
+    await host?.disconnect();
+    await joiner?.disconnect();
+});
+```
+
+`cleanupLobby` (from `test/shared/helpers/lobbies.ts`):
+```typescript
+export async function cleanupLobby(host, members, lobbyId): Promise<void> {
+    for (const m of members) {
+        try { await m.call.leaveLobby({ lobbyId }); } catch (_) {}
+    }
+    try { await host.call.closeLobby({ lobbyId }); } catch (_) {}
+}
+```
+
+Cleanup helpers swallow all errors — test state may already be in a different shape.
 
 ## Mocking
 
-**Framework:** Vitest built-in (`vi.mock`, `vi.fn`) + manual mock pattern
+**Strategy 1: Alias-based module swap (preferred for unit tests)**
 
-**Unit test approach — two strategies:**
-
-**Strategy 1: Alias-based module swap (preferred)**
-The vitest config in `test/vitest.config.ts` aliases `spacetimedb/server` to `test/shared/mocks/spacetimedb-server.ts` for all unit tests. No per-test mock declarations needed — the entire module is replaced at import time.
+The vitest unit config aliases `spacetimedb/server` to `test/shared/mocks/spacetimedb-server.ts` for all unit tests. No per-test mock declarations needed.
 
 ```typescript
 // test/shared/mocks/spacetimedb-server.ts
@@ -178,7 +210,6 @@ export function schema(...args: any[]) {
     return { reducer: (_config: any, handler: any) => handler };
 }
 export function table(...args: any[]) { return {}; }
-// Fully recursive proxy — any property access or function call returns another proxy
 function deepProxy(): any {
     return new Proxy(() => deepProxy(), {
         get: (_target, _prop) => deepProxy(),
@@ -188,25 +219,16 @@ export const t = deepProxy();
 ```
 
 **Strategy 2: `vi.mock` for specific dependencies**
-Used when only a subset of an imported module needs mocking:
 ```typescript
 vi.mock('../../../spacetimedb/src/helpers/auditColumns', () => ({
     auditUpdate: vi.fn(() => ({})),
 }));
-
-const { validateUid, deriveRegion } = await import(
-    '../../../spacetimedb/src/helpers/rosterHelpers'
-);
+const { validateUid } = await import('../../../spacetimedb/src/helpers/rosterHelpers');
 ```
 
 **Strategy 3: Manual ctx mock objects**
-For helpers that take `ctx: any`, construct minimal mock objects:
 ```typescript
-function mockCtx(opts: {
-    matchResults?: any[];
-    lobbyMembers?: any[];
-    matchSession?: any;
-}) {
+function mockCtx(opts: { matchResults?: any[]; lobbyMembers?: any[] }) {
     return {
         db: {
             MatchResultRecord: {
@@ -215,26 +237,19 @@ function mockCtx(opts: {
                         (opts.matchResults ?? []).filter((r: any) => r.lobbyId === lobbyId),
                 },
             },
-            // ... other tables
         },
     };
 }
 ```
 
-**What to Mock:**
-- `spacetimedb/server` module in all unit tests (via alias config)
-- Specific helper modules that touch tables when testing a caller that uses them (`auditColumns`)
-- `ctx.db` table access when testing helpers that accept `ctx: any`
+**What to mock:** `spacetimedb/server` module in all unit tests (via alias config); specific helper modules; `ctx.db` table access for helpers accepting `ctx: any`
 
-**What NOT to Mock:**
-- Nothing in integration tests — all calls go to the live SpacetimeDB database on maincloud
-- The pure math functions under test (`eloCalculation.ts`, `bracketGeneration.ts`) — these take plain numbers/arrays and need no mocking
+**What NOT to mock:** Nothing in integration tests — all calls go to the live SpacetimeDB database on maincloud
 
 ## Fixtures and Factories
 
 **Test Data Constants (`test/shared/fixtures.ts`):**
 ```typescript
-// Typed region-keyed UID constants
 export const UIDS = {
     america: '600000001',
     europe: '700000001',
@@ -242,77 +257,30 @@ export const UIDS = {
     twHkMo: '900000001',
 } as const;
 
-// Invalid UIDs for negative tests
 export const INVALID_UIDS = {
     tooShort: '80012345',
     // ...
 } as const;
 
-// Counter-based unique UID generator (call resetUidCounter() in beforeAll)
 let uidCounter = 0;
 export function nextUid(region: '6' | '7' | '8' | '9' = '8'): string { ... }
 export function resetUidCounter(): void { uidCounter = 0; }
 ```
 
-**Factory Functions (override pattern):**
+**Factory functions (override pattern):**
 ```typescript
 export function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
     return {
         joinCode: '',
+        presetId: 0,
         teamSize: 1,
         draftMode: { tag: 'Classic' as const, value: {} },
         // ... all required fields with sensible defaults
-        ...overrides,  // caller overrides only what they care about
+        // Phase 10.4+ requires: bestOf, refereeControlsShelving
+        ...overrides,
     };
 }
 ```
-
-**Location:** `test/shared/fixtures.ts` — test data constants and simple factories; `test/shared/helpers/` — reusable async setup/teardown flows
-
-**Cleanup pattern:**
-```typescript
-export async function cleanupLobby(host, members, lobbyId): Promise<void> {
-    for (const m of members) {
-        try { await m.call.leaveLobby({ lobbyId }); } catch (_) {}
-    }
-    try { await host.call.closeLobby({ lobbyId }); } catch (_) {}
-}
-```
-Cleanup helpers swallow all errors — the test state may already be in a different shape.
-
-## Coverage
-
-**Requirements:** No coverage thresholds enforced — no `--coverage` flag in any npm script
-
-**View Coverage:**
-```bash
-npx vitest run --config test/vitest.config.ts --coverage
-```
-
-**Tracking:** Manual baseline table in `test/README.md` — wall-clock time, file count, pass counts logged per milestone.
-
-## Test Types
-
-**Unit Tests (`*.unit.test.ts`):**
-- Target: pure helper functions in `spacetimedb/src/helpers/`
-- No SpacetimeDB connection, no network
-- Mock `spacetimedb/server` via vitest alias config
-- Mock `ctx.db` with plain objects matching the DB access pattern
-- Run with: `npm test` (fast, CI-safe)
-- Located alongside integration tests in same feature subdirectory
-
-**Integration Tests (`*.test.ts`):**
-- Target: reducer behavior end-to-end against live SpacetimeDB on maincloud
-- Connect via `createTestHarness()` or `createVerifiedTestHarness()` from `test/shared/connection.ts`
-- Run sequentially (`fileParallelism: false`, `sequence.concurrent: false`) — shared DB state
-- Read state via WebSocket subscription cache (`conn.db.TableName.iter()`)
-- Query private (non-public) tables via `spacetime sql` CLI (`queryPrivateTable()` helper)
-- Require `SPACETIMEDB_SERVER_TOKEN` in `.env.local` for verified user harnesses
-- Run with: `npm run test:integration`
-- Timeout: 30s per test, 30s per hook
-
-**E2E Tests:**
-- Not present — `test/frontend/` directory exists with only a README placeholder
 
 ## Common Patterns
 
@@ -320,17 +288,16 @@ npx vitest run --config test/vitest.config.ts --coverage
 ```typescript
 await h.call.createHsrAccount({ uid, displayLabel: 'Label' });
 await h.sync();  // waits 500ms for subscription cache to update
-const row = [...h.conn.db.TableName.iter()].find(r => r.field === value);
+const row = [...h.conn.db.HsrAccount.iter()].find(r => r.uid === uid);
 expect(row).toBeDefined();
 ```
 
-**Private Table Query:**
+**Private Table Query (non-public tables):**
 ```typescript
 const rows = await queryPrivateTable(
     `SELECT * FROM hsr_account WHERE user_id = ${h.userId}`
 );
 // Parse string values from raw CLI output:
-const account = rows[0];
 expect(account.is_active).toBe('true');          // boolean comes as string
 expect(account.uid.replace(/"/g, '')).toBe(uid); // strings may have quotes
 ```
@@ -340,7 +307,7 @@ expect(account.uid.replace(/"/g, '')).toBe(uid); // strings may have quotes
 const msg = await expectReducerError(
     h.call.createHsrAccount({ uid: '8001234', displayLabel: 'Bad' })
 );
-expect(msg).toContain('9 digits');  // partial string match
+expect(msg).toContain('9 digits');
 ```
 
 **Multi-User Setup:**
@@ -352,7 +319,7 @@ beforeAll(async () => {
     await host.sync();
     await joiner.sync();
     await guest.sync();
-}, 30000);  // 30s hook timeout for connection establishment
+}, 30000);
 ```
 
 **Conditional Suite Skip:**
@@ -362,8 +329,15 @@ describe.skipIf(!hasServerToken())('Suite Name', () => {
 });
 ```
 
+**Idempotent Seeding:**
+```typescript
+export async function ensureEloConfig(admin: TestHarness): Promise<void> {
+    try { await admin.call.adminSeedEloConfig({}); } catch (_) {}
+    await admin.sync(500);
+}
+```
+
 **Local Query Helpers (per-test file):**
-Integration tests often define local query helpers at the top of the file for filtering subscription cache rows to the current user's data:
 ```typescript
 function myLobbies(h: TestHarness) {
     return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
@@ -371,17 +345,33 @@ function myLobbies(h: TestHarness) {
 ```
 Reusable versions live in `test/shared/helpers/queries.ts`.
 
-**Idempotent Seeding:**
-```typescript
-// Seed singleton rows without caring if they already exist
-await admin.call.adminSeedEloConfig({});
-// Wrap in try/catch — subsequent inserts throw on duplicate
-export async function ensureEloConfig(admin: TestHarness): Promise<void> {
-    try { await admin.call.adminSeedEloConfig({}); } catch (_) {}
-    await admin.sync(500);
-}
-```
+## Coverage
+
+**Requirements:** No coverage thresholds enforced — no `--coverage` flag in any npm script
+
+**Manual baseline:** Tracked in `test/README.md` — wall-clock time, file count, pass counts logged per milestone
+
+## Test Types
+
+**Unit Tests (`*.unit.test.ts`):**
+- Target: pure helper functions in `spacetimedb/src/helpers/`
+- No SpacetimeDB connection, no network
+- Mock `spacetimedb/server` via vitest alias config
+- Run with: `npm test` (fast, CI-safe)
+
+**Integration Tests (`*.test.ts`):**
+- Target: reducer behavior end-to-end against live SpacetimeDB on maincloud
+- Connect via `createTestHarness()` or `createVerifiedTestHarness()` from `test/shared/connection.ts`
+- Run sequentially — shared DB state
+- Read state via WebSocket subscription cache (`conn.db.TableName.iter()`)
+- Query private (non-public) tables via `spacetime sql` CLI (`queryPrivateTable()` helper)
+- Require `SPACETIMEDB_SERVER_TOKEN` in `.env.local` for verified user harnesses
+- Run with: `npm run test:integration`
+- Timeout: 30s per test, 30s per hook
+
+**E2E Tests:**
+- Not present — `test/frontend/` directory exists with only a README placeholder
 
 ---
 
-*Testing analysis: 2026-04-06*
+*Testing analysis: 2026-04-09 (updated from 2026-04-06 to reflect Phase 10.5 shared helpers structure, Phase 12.1 garbage-collector test directory, sequential execution config)*
