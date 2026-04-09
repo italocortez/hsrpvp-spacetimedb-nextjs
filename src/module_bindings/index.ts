@@ -239,7 +239,38 @@ import TournamentTeamMemberRow from "./tournament_team_member_table";
 import TournamentTeamRequestRow from "./tournament_team_request_table";
 import UserRow from "./user_table";
 import UserAchievementRow from "./user_achievement_table";
+import ViewAdminUserPrivateRow from "./view_admin_user_private_table";
+import ViewLobbyBrowserRow from "./view_lobby_browser_table";
+import ViewMatchHistoryRow from "./view_match_history_table";
+import ViewMatchParticipantHistoryRow from "./view_match_participant_history_table";
+import ViewMatchStepHistoryRow from "./view_match_step_history_table";
+import ViewMyCharacterStatsRow from "./view_my_character_stats_table";
+import ViewMyCostSetsRow from "./view_my_cost_sets_table";
+import ViewMyDraftCharacterCostsRow from "./view_my_draft_character_costs_table";
+import ViewMyDraftLightconeCostsRow from "./view_my_draft_lightcone_costs_table";
+import ViewMyDraftSynergyCostsRow from "./view_my_draft_synergy_costs_table";
+import ViewMyIdentityRow from "./view_my_identity_table";
+import ViewMyLobbiesRow from "./view_my_lobbies_table";
+import ViewMyLobbyChatRow from "./view_my_lobby_chat_table";
+import ViewMyLobbyMembersRow from "./view_my_lobby_members_table";
+import ViewMyMatchParticipantsRow from "./view_my_match_participants_table";
+import ViewMyMatchStepsRow from "./view_my_match_steps_table";
+import ViewMyPlayerStatsRow from "./view_my_player_stats_table";
 import ViewMyProfileRow from "./view_my_profile_table";
+import ViewMyRelationshipsRow from "./view_my_relationships_table";
+import ViewMyRosterRow from "./view_my_roster_table";
+import ViewMyRosterVisibilityRow from "./view_my_roster_visibility_table";
+import ViewMyTournamentEnrolledRow from "./view_my_tournament_enrolled_table";
+import ViewMyTournamentGroupStandingsRow from "./view_my_tournament_group_standings_table";
+import ViewMyTournamentLobbiesRow from "./view_my_tournament_lobbies_table";
+import ViewMyTournamentMatchResultsRow from "./view_my_tournament_match_results_table";
+import ViewMyTournamentMatchesRow from "./view_my_tournament_matches_table";
+import ViewMyTournamentTeamMembersRow from "./view_my_tournament_team_members_table";
+import ViewMyTournamentTeamsRow from "./view_my_tournament_teams_table";
+import ViewMyTournamentsRow from "./view_my_tournaments_table";
+import ViewPublicAccountsRow from "./view_public_accounts_table";
+import ViewTournamentRegistrantAccountsRow from "./view_tournament_registrant_accounts_table";
+import ViewUserDirectoryRow from "./view_user_directory_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -1006,6 +1037,125 @@ const tablesSchema = __schema({
       { name: 'user_achievement_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, UserAchievementRow),
+  view_admin_user_private: __table({
+    name: 'view_admin_user_private',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewAdminUserPrivateRow),
+  view_lobby_browser: __table({
+    name: 'view_lobby_browser',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewLobbyBrowserRow),
+  view_match_history: __table({
+    name: 'view_match_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchHistoryRow),
+  view_match_participant_history: __table({
+    name: 'view_match_participant_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchParticipantHistoryRow),
+  view_match_step_history: __table({
+    name: 'view_match_step_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchStepHistoryRow),
+  view_my_character_stats: __table({
+    name: 'view_my_character_stats',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyCharacterStatsRow),
+  view_my_cost_sets: __table({
+    name: 'view_my_cost_sets',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyCostSetsRow),
+  view_my_draft_character_costs: __table({
+    name: 'view_my_draft_character_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftCharacterCostsRow),
+  view_my_draft_lightcone_costs: __table({
+    name: 'view_my_draft_lightcone_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftLightconeCostsRow),
+  view_my_draft_synergy_costs: __table({
+    name: 'view_my_draft_synergy_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftSynergyCostsRow),
+  view_my_identity: __table({
+    name: 'view_my_identity',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyIdentityRow),
+  view_my_lobbies: __table({
+    name: 'view_my_lobbies',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbiesRow),
+  view_my_lobby_chat: __table({
+    name: 'view_my_lobby_chat',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbyChatRow),
+  view_my_lobby_members: __table({
+    name: 'view_my_lobby_members',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbyMembersRow),
+  view_my_match_participants: __table({
+    name: 'view_my_match_participants',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchParticipantsRow),
+  view_my_match_steps: __table({
+    name: 'view_my_match_steps',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchStepsRow),
+  view_my_player_stats: __table({
+    name: 'view_my_player_stats',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyPlayerStatsRow),
   view_my_profile: __table({
     name: 'view_my_profile',
     indexes: [
@@ -1013,6 +1163,104 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ViewMyProfileRow),
+  view_my_relationships: __table({
+    name: 'view_my_relationships',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRelationshipsRow),
+  view_my_roster: __table({
+    name: 'view_my_roster',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRosterRow),
+  view_my_roster_visibility: __table({
+    name: 'view_my_roster_visibility',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRosterVisibilityRow),
+  view_my_tournament_enrolled: __table({
+    name: 'view_my_tournament_enrolled',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentEnrolledRow),
+  view_my_tournament_group_standings: __table({
+    name: 'view_my_tournament_group_standings',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentGroupStandingsRow),
+  view_my_tournament_lobbies: __table({
+    name: 'view_my_tournament_lobbies',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentLobbiesRow),
+  view_my_tournament_match_results: __table({
+    name: 'view_my_tournament_match_results',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentMatchResultsRow),
+  view_my_tournament_matches: __table({
+    name: 'view_my_tournament_matches',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentMatchesRow),
+  view_my_tournament_team_members: __table({
+    name: 'view_my_tournament_team_members',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentTeamMembersRow),
+  view_my_tournament_teams: __table({
+    name: 'view_my_tournament_teams',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentTeamsRow),
+  view_my_tournaments: __table({
+    name: 'view_my_tournaments',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentsRow),
+  view_public_accounts: __table({
+    name: 'view_public_accounts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewPublicAccountsRow),
+  view_tournament_registrant_accounts: __table({
+    name: 'view_tournament_registrant_accounts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewTournamentRegistrantAccountsRow),
+  view_user_directory: __table({
+    name: 'view_user_directory',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewUserDirectoryRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
