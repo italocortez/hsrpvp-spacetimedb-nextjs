@@ -14,11 +14,45 @@ ServerIdentity (singleton — trusted server identity)
 
 Only one row should ever exist. The registered identity is the only caller allowed to invoke server-only reducers (`server_link_provider`, `server_set_role`, `server_delete_user`, `server_set_mmr`).
 
+```
+GcResult (Phase 12.1 — GC audit log)
+|  id (u32 PK autoInc)
+|  gcType (string)          -- 'identity' | 'lobby'
+|  ranAt (timestamp)
+|  itemsScanned (u32)
+|  itemsDeleted (u32)
+|  details (string)         -- JSON breakdown per GC type
+|  + audit columns (createdById, createdDate, lastModifiedById, lastModifiedDate)
+|  (public: false — dashboard-only visibility)
+|  No indexes (small table — one row per GC invocation)
+|  Source: spacetimedb/src/tables/gcResult.ts
+```
+
+### Scheduled Tables (Phase 12.1)
+
+```
+IdentityGcJob (scheduled — weekly identity GC)
+|  scheduledId (u64 PK autoInc)
+|  scheduledAt (ScheduleAt)
+|  Mutable binding pattern for circular-dep avoidance (mirrors LobbyGcJob)
+|  Source: spacetimedb/src/tables/identityGcJob.ts
+```
+
 ## Reducers
 
 | Reducer | File | Permission | Description |
 |---------|------|-----------|-------------|
 | `register_server` | `reducers/server.ts` | Any (first-come-first-served) | Inserts ServerIdentity row + creates SYSTEM user (id=0) + links identity via UserIdentity. Rejects if ServerIdentity already exists. |
+| `server_set_datetime` | `reducers/server.ts` | Server-only | Sets timestamp fields on supported tables (`user_identity/lastSeenAt`, `user_identity/createdDate`, `lobby/createdDate`). Test utility for time-dependent behavior. *(Phase 12.1)* |
+| `server_set_online` | `reducers/server.ts` | Server-only | Forces `User.isOnline` flag. Workaround for maincloud disconnect detection delay in tests. *(Phase 12.1)* |
+| `run_identity_gc` | `reducers/identityGc.ts` | Scheduled (weekly) | Scans all UserIdentity rows, deletes stale (90-day TTL) and orphaned rows. Writes GcResult only when items deleted. Self-requeues 7 days. *(Phase 12.1)* |
+| `admin_gc_identities` | `reducers/identityGc.ts` | Moderator+ | One-shot identity GC with GcResult audit (always writes). No self-requeue. *(Phase 12.1)* |
+| `seed_identity_gc_job` | `reducers/identityGc.ts` | Server-only | Idempotent bootstrap for the weekly identity GC chain. Inserts first IdentityGcJob row. *(Phase 12.1)* |
+| `admin_gc_lobbies` | `reducers/lobbyGc.ts` | Moderator+ | One-shot lobby GC with GcResult audit (always writes). No self-requeue. *(Phase 12.1)* |
+
+### Lobby GC Restructuring (Phase 12.1)
+
+`run_lobby_gc` was restructured to use a shared `performLobbyGc` helper (extracted from the scheduled reducer). Both `run_lobby_gc` and the new `admin_gc_lobbies` call this helper. Both write GcResult audit rows — scheduled writes only when items were deleted, admin always writes. `seed_lobby_gc_job` was also added (server-only, idempotent) to automate the GC chain bootstrap via post-publish.
 
 ### `requireServer(ctx)` helper
 
@@ -47,7 +81,9 @@ Steps:
 3. Writes the connection token to `.env.local` as `SPACETIMEDB_SERVER_TOKEN`
 4. Calls `seedAll()` -- upserts HsrCharacter, HsrLightcone, costs, archetypes, synergies
 5. Seeds starter achievements (MMR Elite, Veteran, Solar First Tournament Winner)
-6. Seeds config tables (EloConfig, AccountRatingConfig)
+6. Seeds identity GC job (`seedIdentityGcJob`) -- first run in 7 days *(Phase 12.1)*
+7. Seeds lobby GC job (`seedLobbyGcJob`) -- first run in 15 minutes *(Phase 12.1)*
+8. Seeds config tables (EloConfig, AccountRatingConfig)
 
 Configuration is read from `spacetime.json` (database name, server) and env vars (host override).
 

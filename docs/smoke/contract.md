@@ -177,6 +177,53 @@ interface TestHarness {
 **When:** `verifyUserViaServerConnection(identityHex)` is called internally
 **Then:** Second connection opens with server token. Calls `serverLinkProvider` with test Discord ID. Disconnects server connection. Original user is upgraded to verified in the database.
 
+## Identity Garbage Collection (Phase 12.1)
+
+### Scheduled Identity GC Run
+**Given:** `IdentityGcJob` row exists with a past `scheduledAt`
+**When:** `run_identity_gc` fires (scheduled reducer)
+**Then:** Scans all UserIdentity rows, applies guard logic (skip guests, skip online, preserve newest, delete orphans), deletes qualifying rows, writes `GcResult` (gcType='identity') only when items deleted, self-requeues 7 days out via new `IdentityGcJob` row.
+
+### GC Guard: Skip Guests (D-06)
+**Given:** A guest user (isGuest=true) with an identity whose `lastSeenAt` is older than 90 days
+**When:** Identity GC runs
+**Then:** Guest's identity is NOT deleted — guest users are excluded from GC regardless of staleness.
+
+### GC Guard: Skip Online Users (D-08)
+**Given:** An online user (isOnline=true) with an identity whose `lastSeenAt` is older than 90 days
+**When:** Identity GC runs
+**Then:** Online user's identity is NOT deleted — actively connected identities are never collected.
+
+### GC Guard: Preserve Newest (D-07)
+**Given:** A user with 2+ identities, all past the 90-day TTL
+**When:** Identity GC runs
+**Then:** The newest identity (by `lastSeenAt`) is preserved; remaining stale identities are deleted.
+
+### GC Guard: Orphan Cleanup (D-12)
+**Given:** A UserIdentity row exists with no matching User row (orphaned)
+**When:** Identity GC runs
+**Then:** Orphaned identity deleted immediately regardless of age — no TTL check needed.
+
+### Admin GC Trigger
+**Given:** Caller has Moderator or Admin role
+**When:** `admin_gc_identities` is called
+**Then:** Runs same GC logic as scheduled. Writes `GcResult` unconditionally (even if zero items deleted). Does NOT self-requeue a new `IdentityGcJob`.
+
+### Admin GC Auth Guard
+**Given:** Caller has role=User (not Moderator or Admin)
+**When:** `admin_gc_identities` or `admin_gc_lobbies` is called
+**Then:** Rejected with "Requires Moderator or Admin privileges".
+
+### Seed Identity GC Job Idempotency
+**Given:** `IdentityGcJob` table already has a row
+**When:** `seed_identity_gc_job` is called
+**Then:** No-op — no duplicate row created. Existing schedule preserved.
+
+### lastSeenAt Bump on Connect
+**Given:** A user connects via WebSocket, UserIdentity exists for `ctx.sender`
+**When:** `clientConnected` lifecycle hook fires
+**Then:** `UserIdentity.lastSeenAt` updated to `ctx.timestamp`. This keeps active users' identities fresh for GC TTL calculation.
+
 ## Edge Cases
 
 | Case | Expected Behavior | Notes |
@@ -189,6 +236,13 @@ interface TestHarness {
 | Connection to wrong database name | `onConnectError` fires; harness rejects | Database name comes from `SPACETIMEDB_DB` env var or default |
 | Multiple harnesses in one test file | Each gets a unique identity and userId | `afterAll` should disconnect all harnesses to avoid connection leaks |
 | `sync()` timing insufficient | Subscription cache may not reflect reducer changes | Increase `sync(ms)` parameter for slow operations; default is 500ms |
+| Identity GC with only one identity per user | That identity is preserved even if past TTL | D-07: preserve-newest guard keeps at least one identity per user |
+| Identity GC on user with no identities | No-op for that user — nothing to scan | Shouldn't happen (User always has ≥1 UserIdentity) |
+| Orphaned UserIdentity with valid lastSeenAt | Deleted immediately — orphan guard ignores TTL | D-12: no matching User row = unconditional delete |
+| Admin GC on empty database | GcResult written with identitiesDeleted=0 | Admin always writes audit row, even for no-op runs |
+| Scheduled GC on empty database | No GcResult written; silently self-requeues | Scheduled writes GcResult only when items were actually deleted |
+| Two seed_identity_gc_job calls | Second call is no-op | Idempotent — checks for existing row before insert |
+| clientConnected for unknown identity | lastSeenAt NOT updated (no UserIdentity row) | No-op path in clientConnected; user must call login_as_guest first |
 
 ## Integration Points
 
@@ -205,6 +259,16 @@ interface TestHarness {
 | `vitest.integration.config.ts` | `.env.local` | Loads `SPACETIMEDB_*` env vars at config time | reads |
 | `test/shared/load-env.ts` | `.env.local` | Parses env vars for standalone scripts outside vitest | reads |
 | All scripts | `spacetime.json` | Database name + server (single source of truth) | reads |
+| `run_identity_gc` | `UserIdentity` table | Scans all rows, deletes stale/orphaned | reads/writes |
+| `run_identity_gc` | `User` table | Checks isGuest, isOnline, existence (orphan detection) | reads |
+| `run_identity_gc` | `GcResult` table | Writes audit row when identities deleted | writes |
+| `run_identity_gc` | `IdentityGcJob` table | Self-requeues 7 days out | writes |
+| `admin_gc_identities` | Same as `run_identity_gc` | Same GC logic, always writes GcResult, no self-requeue | reads/writes |
+| `admin_gc_lobbies` | `performLobbyGc` helper | On-demand lobby GC trigger | reads/writes |
+| `seed_identity_gc_job` | `IdentityGcJob` table | Idempotent bootstrap insert | writes |
+| `clientConnected` | `UserIdentity.lastSeenAt` | Bumps timestamp on WebSocket connect | writes |
+| `post-publish.ts` | `seed_identity_gc_job` | Seeds weekly identity GC schedule | writes |
+| `post-publish.ts` | `seed_lobby_gc_job` | Seeds lobby GC schedule | writes |
 
 ## Integration Test Configuration
 
@@ -229,3 +293,9 @@ interface TestHarness {
 | `server_link_provider` replaces `server_link_discord` in test harness | Phase 12 execution | 2026-04-08 |
 | UserIdentity made private; harness resolves userId from User table patterns | Phase 12 execution | 2026-04-08 |
 | `getTestDiscordId` uses `queryPrivateTable` (UserPrivate is private) | Phase 12 execution | 2026-04-08 |
+| Identity GC: 90-day TTL with guards (skip guests, skip online, preserve newest, orphan cleanup) | Phase 12.1 execution | 2026-04-08 |
+| GcResult audit table for identity and lobby GC runs | Phase 12.1 execution | 2026-04-08 |
+| IdentityGcJob scheduled table with 7-day self-requeue | Phase 12.1 execution | 2026-04-08 |
+| admin_gc_identities / admin_gc_lobbies: Moderator+ on-demand GC with unconditional audit | Phase 12.1 execution | 2026-04-08 |
+| seed_identity_gc_job / seed_lobby_gc_job: idempotent bootstrap in post-publish | Phase 12.1 execution | 2026-04-08 |
+| clientConnected bumps UserIdentity.lastSeenAt for GC freshness | Phase 12.1 execution | 2026-04-08 |

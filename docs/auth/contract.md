@@ -195,7 +195,7 @@ Authentication manages how users connect to the SpacetimeDB module, create accou
 | Guest calls privileged reducer | `ensureVerifiedUser` rejects with error | Per-reducer guard, not auth-level |
 | Banned user tries to link again | `rejectIfBanned` blocks at link-time | BanRecord + hasDiscordLinked=false prevents re-entry |
 | Stale cached userId after DB clear | Strategy 1 miss → clears cache → falls through to Strategy 2/3 | Self-healing: no manual localStorage clear needed |
-| Multiple identities for same user | All map to same User.id in UserIdentity | Accumulate over logouts/new browsers; cleanup planned in Phase 12.1 |
+| Multiple identities for same user | All map to same User.id in UserIdentity | Accumulate over logouts/new browsers; GC implemented in Phase 12.1 (see [smoke/contract.md](../smoke/contract.md#identity-garbage-collection-phase-121)) |
 | `getServerSession` returns null in POST handler | Direct cookie read + JWT decode bypasses next-auth pipeline | Known next-auth 4.x bug in App Router POST routes |
 | Client/server database name mismatch | Server imports from shared `lib/spacetimedb.ts` | Single source of truth prevents silent WebSocket failures |
 | DiscordLink component bypasses intent flag | Uses `loginDiscord()` from auth context (not direct `signIn`) | Ensures `hasDiscordIntent` is set for Step B |
@@ -237,4 +237,4 @@ Authentication manages how users connect to the SpacetimeDB module, create accou
 | hasDiscordIntent gates Discord linking — stale NextAuth sessions don't auto-link | Phase 12 execution | 2026-04-08 |
 | DiscordLink.tsx uses loginDiscord() instead of direct signIn("discord") | Phase 12 execution | 2026-04-08 |
 | server_link_provider Case 1b: identity merge (re-point identity, delete orphaned guest) verified across all 4 auth paths | Phase 12 execution | 2026-04-08 |
-| Phase 12.1 planned: Identity garbage collection — cleanup stale UserIdentity rows after 30 days inactivity | Phase 12 execution | 2026-04-08 |
+| Phase 12.1 implemented: Identity GC with 90-day TTL, guards (guests, online, preserve-newest, orphans), GcResult audit — see [smoke/contract.md](../smoke/contract.md#identity-garbage-collection-phase-121) | Phase 12.1 execution | 2026-04-08 |

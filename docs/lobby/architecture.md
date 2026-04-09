@@ -210,6 +210,10 @@ SpacetimeDB scheduled table. One row = one scheduled run of `lobby_gc`.
 
 Active stages (Drafting, Equipping, Scoring, AwaitingResult) are never auto-cleaned. AwaitingResult lobbies are cleaned up by finalization cascade-delete, not GC.
 
+**Phase 12.1 restructuring:** `run_lobby_gc` was refactored to extract a shared `performLobbyGc` helper function. Both the scheduled reducer (`run_lobby_gc`) and the admin on-demand reducer (`admin_gc_lobbies`) call `performLobbyGc`, which returns `{ lobbiesScanned, lobbiesDeleted, deletedByStage }`. Each caller writes a `GcResult` audit row (`gcType='lobby'`) after the run:
+- **Scheduled (`run_lobby_gc`):** writes `GcResult` only when `lobbiesDeleted > 0` (no-op runs are silent)
+- **Admin (`admin_gc_lobbies`):** writes `GcResult` unconditionally (audit trail for every manual trigger, even if nothing was deleted)
+
 ---
 
 ## Lobby Browser View
@@ -376,6 +380,7 @@ AwaitingResult lobbies are NEVER GC'd (D-48) — admin-only resolution via `admi
 | `create_tournament_lobby` | tournamentLobby.ts | Participants / TO / assistant / Admin / Moderator | Tournament-linked lobby with inherited settings |
 | `approve_stand_in` | tournamentLobby.ts | TO / assistant / Admin / Moderator | Approves stand-in player for a bracket match |
 | `lobby_gc` | lobbyGc.ts | Scheduled (LobbyGcJob) | Hard-deletes idle Waiting/Finished/abandoned-active lobbies |
+| `admin_gc_lobbies` | lobbyGc.ts | Moderator+ | On-demand lobby GC trigger; one-shot (no self-requeue); writes GcResult audit row unconditionally (Phase 12.1) |
 | `concede_match` | concede.ts | Any non-spectator/non-coach member (or exclusive referee) | Surrender own side; creates MatchResultRecord with Concede outcome (D-26, D-62) |
 | `claim_forfeit` | concede.ts | Any non-spectator/non-coach member (or exclusive referee) | Claim forfeit when all opposing team offline > grace; Standard policy only (D-15, D-61) |
 | `defer_match` | concede.ts | Any non-spectator/non-coach member (or exclusive referee) | Shelve match to AwaitingResult for TO/admin resolution; Deferred policy only (D-18, D-63) |
