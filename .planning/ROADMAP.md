@@ -406,3 +406,21 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 12.1 to break down)
+
+### Phase 13: Documentation Hydration — contracts, architecture, and codebase docs
+
+**Goal:** Bring all docs and .planning/codebase/ files up to date for backend milestone wrap. Docs-only phase — no code changes.
+**Requirements**: All backend phases complete
+**Depends on:** Phase 12.1
+**Plans:** 0 plans
+
+**Scope:**
+1. **Contract hydration (8 files):** Standardize to reducer-first format (roster/archetypes as reference)
+   - Partial (missing Reducers section): brackets, match-results, tournament, smoke, views
+   - Stub (missing Reducers + Overview): anonymous-play, cost-sets, player-stats
+2. **Architecture audit (19 files):** Verify all docs/{feature}/architecture.md reflect current tables/reducers/indexes
+3. **Codebase docs refresh (7 files):** Update .planning/codebase/*.md (ARCHITECTURE, CONCERNS, CONVENTIONS, INTEGRATIONS, STACK, STRUCTURE, TESTING) to reflect current state
+4. **FRONTEND-HANDOFF.md:** Create comprehensive reference for v1 frontend milestone — all available tables, reducers, subscription strategy, auth flow, data patterns, and integration points the frontend can build against
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 13 to break down)

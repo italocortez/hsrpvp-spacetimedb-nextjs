@@ -17,6 +17,7 @@ Read `references/api-guide.md` when you need detailed syntax for any of:
 - Table definitions, column types, index configuration
 - Reducer/procedure definitions and patterns
 - Client-side React integration (useTable, subscriptions, provider setup)
+- Subscription semantics, cache guarantees, query builder operators (eq/ne/lt/gt/lte/gte, and/or/not), semijoins
 - Views (procedural and query-builder)
 - Scheduled tables and timestamps
 - Common mistakes table (server-side and client-side)
@@ -120,8 +121,9 @@ SpacetimeDB's reconnect API is being improved. For the current workaround (unmou
 ```typescript
 const [rows, isReady] = useTable(tables.myTable);  // Tuple!
 
-// With query builder filter
+// With query builder filter (operators: eq, ne, lt, gt, lte, gte)
 const [online, isReady] = useTable(tables.user.where(r => r.online.eq(true)));
+const [highLevel, isReady] = useTable(tables.user.where(r => r.level.gte(10).and(r.online.eq(true))));
 
 // With callbacks
 const [users, isReady] = useTable(tables.user, {
@@ -129,9 +131,46 @@ const [users, isReady] = useTable(tables.user, {
 });
 ```
 
+**Client-side index-first rule:** The same index-first principle from the server applies on the client. Use `conn.db.Table.pk.find()` / `conn.db.Table.idx.filter()` before falling back to `[...table.iter()].filter()`. Test files use `iter().filter()` as a convenience on small datasets — don't copy that pattern into production code.
+
+### Subscription SQL restrictions
+
+Subscription queries are a **strict subset** of SpacetimeDB SQL. Because they're evaluated in real-time on every transaction, additional restrictions apply:
+
+| Rule | Detail |
+|------|--------|
+| **`SELECT *` only** | No individual column projections (`SELECT name FROM ...` is invalid) |
+| **Max 2 tables** | JOINs support at most 2 tables — no 3+ table joins |
+| **JOIN columns must be qualified** | `ON o.product_id = product.id`, not `ON product_id = id` |
+| **Both JOIN columns need indexes** | Define btree indexes on both sides of the ON clause |
+| **No arithmetic** | `WHERE price * 2 > 100` is invalid |
+| **No aggregation** | COUNT, SUM, etc. are not supported in subscriptions |
+| **No subqueries** | Only simple SELECT...FROM...WHERE...JOIN |
+| **Supported WHERE ops** | `=`, `<`, `>`, `<=`, `>=`, `!=`, `<>`, `AND`, `OR` |
+| **Supported literals** | INTEGER, STRING, HEX, TRUE, FALSE |
+
+The ad-hoc query language (`spacetime sql`, HTTP API) is a strict superset — it allows column projections, `COUNT(*)`, unlimited joins, and `LIMIT`.
+
+### No event-driven post-reducer sync
+
+The TypeScript SDK has no `awaitNextUpdate()` API. After calling a reducer, there's no way to wait for the corresponding subscription update to arrive — you either use `_then()` for the reducer callback (confirms commit, but cache may still be updating) or sleep. This project's test harness uses tiered sleep values:
+
+| Operation type | Sleep (ms) | Example |
+|---|---|---|
+| Simple action (pick, ban, leave) | 300 | `await h.sync(300)` |
+| Default / single reducer | 500 | `await h.sync()` |
+| State transition (start_draft, advance_stage) | 1500 | `await h.sync(1500)` |
+| Initial connection (subscribeToAllTables) | 2000 | `setTimeout(resolve, 2000)` |
+
+In production, prefer reactive patterns (`useTable`, `onInsert`, `onUpdate`) over sleeping.
+
+### Subscription swap best practice
+
+When changing subscriptions (e.g. user navigates to a different view), **subscribe to the new set first, then unsubscribe from the old**. This avoids unnecessary deserialization/reserialization of rows that appear in both the old and new query sets.
+
 ### Subscription pitfalls
 
-**Combined `subscribe([...])` vs separate subscriptions:** When subscribing to multiple queries, `subscribe(['SELECT * FROM a', 'SELECT * FROM b'])` fires `onApplied` when the subscription message is acknowledged — NOT when all table data has arrived. If your `onApplied` callback reads from table B, the data may not be there yet.
+**Combined `subscribe([...])` vs separate subscriptions:** When subscribing to multiple queries, `subscribe(['SELECT * FROM a', 'SELECT * FROM b'])` fires `onApplied` when the subscription message is acknowledged — NOT when all table data has arrived. If your `onApplied` callback reads from table B, the data may not be there yet. (Note: official docs state `on_applied` fires after all rows are cached atomically — see api-guide.md § 7 "Subscription semantics". This project's test harness uses a 2s sleep instead of `onApplied`, suggesting the behavior may differ in practice with combined multi-query subscriptions.)
 
 Use separate subscriptions with individual `onApplied` callbacks when you need to read from specific tables:
 ```typescript
@@ -149,6 +188,8 @@ conn.subscriptionBuilder()
     .onApplied(() => { const users = [...conn.db.User.iter()]; /* may be 0! */ })
     .subscribe(['SELECT * FROM view_my_profile', 'SELECT * FROM user']);
 ```
+
+**Overlapping queries hurt performance:** Subscribing to datasets that overlap (e.g. `tables.user` AND `tables.user.where(r => r.id.ne(5))`) forces the server to serialize nearly all rows twice. Keep subscription queries disjoint. Subscribing to the *same* query more than once is fine — it's zero-copy with no additional processing overhead.
 
 **Views have no typed client bindings:** `spacetime generate` does NOT create typed table accessors for views. `conn.db.ViewMyProfile` is always `undefined`, even when subscribing via `subscribe('SELECT * FROM view_my_profile')`. The subscription delivers data but it has nowhere to land in the typed `conn.db`. Use regular table subscriptions + index lookups instead of relying on view accessors.
 

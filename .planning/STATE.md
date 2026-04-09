@@ -178,6 +178,7 @@ See: .planning/PROJECT.md
 - Phase 10.4 inserted after Phase 10.3: Account Selection Per Match — multi-account per match, account switching between games, drop TournamentEnrolled.hsrAccountId
 - Phase 10.5 inserted after Phase 10.4: Test Suite Stabilization — audit cross-file failures, test isolation, cleanup hygiene exposed after 10.4 schema changes
 - Phase 12.1 inserted after Phase 12: Identity Garbage Collection — scheduled cleanup of stale UserIdentity rows (orphaned after logout) based on lastSeenAt age (INSERTED)
+- Phase 13 added: Contract Hydration — standardize all contract.md files to reducer-first format (docs-only, no code changes)
 
 ## Session Log
 

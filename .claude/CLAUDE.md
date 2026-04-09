@@ -1,10 +1,7 @@
 # Git Rules
 
-- **Do NOT auto-commit code changes.** Leave all file changes unstaged so the user can review diffs in VS Code before committing. Only commit when the user explicitly asks.
-- Planning/docs files (.planning/) may be committed by GSD workflows, but code files (spacetimedb/, src/, app/, components/) must NEVER be committed without user review.
-- You are to NEVER delete .env.local
-- You are to NEVER commit .env.local
-- If you need to edit .evn.local, ask for permission
+- Worktrees spawn from the last commit — uncommitted changes are invisible to them and cause merge conflicts. Revert with `git reset --soft HEAD~1` if needed.
+- NEVER delete or commit `.env.local` or `.env`. These files are only edited by `post-publish.ts` after `--clear-database`.
 
 ---
 
@@ -109,9 +106,3 @@ During `/gsd:verify-work`, present ONE test at a time using this exact format:
 - After all steps: show checkpoint box, wait for user response
 - Do NOT batch multiple tests — one test per checkpoint, one response before the next
 
-## Debugging Checklist
-
-1. Is the module published to maincloud? (`spacetime publish`) — this is a maincloud project, there is no local server
-2. Are client bindings generated? (`spacetime generate`)
-3. Check server logs for errors (`spacetime logs <db-name>`)
-4. **Is the reducer actually being called from the client?**

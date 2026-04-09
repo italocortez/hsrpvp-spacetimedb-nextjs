@@ -17,7 +17,7 @@
 | 4 | [Reducers](#4-reducers) | Definition syntax, update/delete patterns, lifecycle hooks |
 | 5 | [Scheduled Tables](#5-scheduled-tables) | Scheduled reducers, ScheduleAt |
 | 6 | [Timestamps](#6-timestamps) | Server and client timestamp handling |
-| 7 | [Data Visibility & Subscriptions](#7-data-visibility--subscriptions) | Public/private tables, views, query builder, subscription handles |
+| 7 | [Data Visibility & Subscriptions](#7-data-visibility--subscriptions) | Public/private tables, views, query builder, subscription handles, semantics & cache guarantees |
 | 8 | [React Integration](#8-react-integration) | Provider, useTable, useReducer, callbacks, event tables |
 | 9 | [Procedures (Beta)](#9-procedures-beta) | HTTP/side effects, ctx.withTx(), timeouts |
 | 10 | [Project Structure & Commands](#10-project-structure--commands) | Defers to SKILL.md (always in context) |
@@ -597,6 +597,33 @@ conn.subscriptionBuilder().subscribe(
 );
 conn.subscriptionBuilder().subscribe([tables.user, tables.message]);
 
+// Query builder filter operators: eq, ne, lt, gt, lte, gte
+conn.subscriptionBuilder().subscribe(
+  tables.user.where(r => r.level.gte(10).and(r.online.eq(true)))
+);
+
+// Composing filters — chainable methods or standalone imports
+import { and, or, not } from './module_bindings';
+tables.user.where(r => r.age.gte(18).and(r.age.lt(65)))   // chainable
+tables.user.where(r => and(r.age.gte(18), r.age.lt(65)))   // standalone
+tables.user.where(r => r.online.eq(true).or(r.name.eq('Admin')))
+tables.user.where(r => r.online.eq(true).not())
+
+// Semijoins — typed cross-table subscriptions (max 2 tables, join columns must be indexed)
+// leftSemijoin: returns rows from the LEFT table matching at least one row on the right
+conn.subscriptionBuilder().subscribe(
+  tables.player
+    .where(p => p.score.gte(1000))                                        // pre-join filter
+    .leftSemijoin(tables.playerLevel, (p, pl) => p.id.eq(pl.playerId))   // join predicate
+    .where(p => p.online.eq(true))                                        // post-join filter
+);
+// rightSemijoin: returns rows from the RIGHT table
+conn.subscriptionBuilder().subscribe(
+  tables.player
+    .rightSemijoin(tables.playerLevel, (p, pl) => p.id.eq(pl.playerId))
+    .where(pl => pl.level.gte(10))
+);
+
 // Handle subscription lifecycle
 conn.subscriptionBuilder()
   .onApplied(() => console.log('Initial data loaded'))
@@ -616,6 +643,26 @@ handle.unsubscribeThen((ctx) => {
   console.log('Unsubscribe confirmed');
 });
 ```
+
+### Subscription semantics (from official docs)
+
+**Ordering guarantees:**
+- Responses to client requests are sent back in the **same order** the requests were received
+- Each database transaction produces **exactly 0 or 1** update message per client
+- Updates reflect the exact committed transaction order
+
+**Atomic subscription initialization:**
+- Client receives exactly one `SubscribeApplied` message containing **all** initially matching rows from a consistent database state snapshot taken between two transactions
+- SDK locks the cache, inserts all rows atomically, then fires callbacks: `on_insert` per row, then `on_applied`
+
+**Cache consistency during callbacks:**
+- Callbacks are **deferred** until cache updates complete — they always observe fully consistent state
+- During callback execution, the client cache reflects the database state immediately **after** the triggering transaction
+- Cache reads are effectively free (local data)
+
+**Multiple active subscriptions:**
+- Updates across all active subscription sets are bundled into a single `TransactionUpdate` message
+- No duplicate row deliveries across overlapping subscriptions
 
 ### Private table + view pattern (RECOMMENDED)
 
