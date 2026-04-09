@@ -1,145 +1,77 @@
-# Chat
+# Chat -- Architecture
 
-## Tables
+Last updated: 2026-04-09
+
+## Overview
+
+Chat provides ephemeral per-lobby messaging. Messages are bounded to 50 per lobby via a rolling window -- the oldest message is deleted before inserting a new one once the limit is reached. Messages are never archived or replayed. On lobby close, all ChatMessage rows for that lobby are hard-deleted in the same transaction. The real `senderUserId` is always stored; anonymous enforcement is applied at read-time via `view_my_lobby_chat`.
+
+## Table Relationships
 
 ```
-Lobby
-│
-└── ChatMessage (ephemeral per-lobby chat)
-      id (PK, autoInc)
-      lobbyId        → Lobby.id
-      senderUserId   → User.id  (real userId stored; view anonymizes)
-      senderType     → ChatSenderType (Player / System)
-      content        → raw text up to 500 chars
-      metadata?      → JSON string: { type, replyToMessageId? }
-      anonymousLabel? → computed label when lobby has anonymous mode
+Lobby (id: u32 autoInc PK)
+  +-- ChatMessage (id: u32 autoInc PK)
+        lobbyId -> Lobby.id  [btree: lobby_id]
+        senderUserId: u32 -> User.id (real userId; 0=System)
+        senderType: ChatSenderType (Player | System)
+        content: string (max 500 chars, server-enforced)
+        metadata: string? (JSON: { type, replyToMessageId? })
+        anonymousLabel: string? (pre-computed label e.g. "Blue-1" when anonymous)
+        createdById: u32
+        createdDate: Timestamp
+        lastModifiedById: u32
+        lastModifiedDate: Timestamp
+        Indexes: lobby_id (btree, lobbyId)
 ```
 
----
+## Reducer Flows
 
-## Rolling Window (D-13)
+### send_chat_message(lobbyId, content, metadata?)
+1. `getAuthenticatedUser(ctx)` -- resolve caller; find `LobbyMember` for caller in this lobby
+2. Validate `content.length <= 500` (D-12)
+3. If `metadata` provided: validate parses as JSON with valid `type` field (`text` | `reply` | `emoji_only`) -- reject with `SenderError` if invalid (D-14)
+4. Rolling window (D-13): count messages via `lobby_id` index; if >= 50, delete oldest by `createdDate`
+5. Anonymous enforcement: if `lobby.isAnonymousPlayers || lobby.isAnonymousSpectators`:
+   - Compute `computeAnonymousLabel(ctx, lobbyId, userId)`
+   - Write `senderUserId=0`, `anonymousLabel=computedLabel`
+6. Otherwise: write `senderUserId=userId`, `anonymousLabel=undefined`
+7. Insert `ChatMessage` row with `senderType=Player`
 
-The chat table is bounded to **50 messages per lobby**. When `send_chat_message` would push the count to 51, the oldest message (by `createdDate`) is deleted first, then the new message is inserted. This keeps per-lobby chat memory constant regardless of lobby duration, and reduces reconnect egress for clients that subscribe fresh.
+### delete_chat_message(messageId)
+1. `getAuthenticatedUser(ctx)` -- resolve caller
+2. Find `ChatMessage` by id -- reject if not found
+3. Permission check -- any of:
+   - `lobby.hostUserId === caller.id`
+   - `LobbyMember.isReferee === true` for caller in this lobby
+   - `isRoleAtLeast(caller.role, 'Moderator')`
+4. Hard-delete the message row
 
-- Maximum rows per lobby at any time: 50
-- Enforcement: in `send_chat_message` reducer before insert
-- System messages from `advance_stage` also apply this rolling window
+### System messages (inserted by other reducers)
+Inserted by: `join_lobby`, `leave_lobby`, `kick_member`, `ban_member`, `advance_stage` (Drafting->Equipping, Equipping->Scoring), `start_draft`.
+- `senderType=System`, `senderUserId=0`, no `anonymousLabel`
+- Subject to the same 50-message rolling window
 
----
+### Lifecycle cleanup (close_lobby / auto-close)
+- All `ChatMessage` rows for the lobby are hard-deleted via `lobby_id` index before the Lobby row is deleted (D-19, CHAT-03)
+- No archival -- chat is not written to any history table
 
-## Metadata JSON Schema (D-14)
+## Phase History
 
-The `metadata` column stores a JSON string following this schema:
-
-```json
-{
-  "type": "text" | "reply" | "emoji_only",
-  "replyToMessageId": 123   // optional, only for type="reply"
-}
-```
-
-The reducer validates that `metadata` parses as valid JSON with a valid `type` field. Invalid metadata rejects the message with a `SenderError`.
-
-- `text`: plain text message (default)
-- `reply`: message is a reply to another; `replyToMessageId` contains the target `ChatMessage.id`
-- `emoji_only`: message consists entirely of emoji characters
-
-Reply to a deleted message: backend stores the dangling `replyToMessageId`. Frontend renders "Reply to deleted message" gracefully (D-17).
-
----
-
-## Emoji Storage (D-15)
-
-- **Standard OS Unicode emojis:** Stored as-is in the `content` string. No special encoding.
-- **Custom shortcodes:** Stored as `:shortcode:` syntax in `content`. Frontend resolves to images from `public/emojis/` in v1. Backend is unaware of custom emoji semantics.
-
----
-
-## Anonymous Enforcement (D-18, D-92)
-
-The **real** `senderUserId` is always stored on the `ChatMessage` row. Anonymous label computation happens server-side:
-
-1. **On insert:** `send_chat_message` computes `computeAnonymousLabel()` when `lobby.isAnonymousPlayers || lobby.isAnonymousSpectators`. The result is stored in `anonymousLabel`.
-2. **On read:** `view_my_lobby_chat` further enforces anonymization per-viewer. If the message's sender should be anonymous from the caller's perspective (based on lobby settings and team membership), the view returns `senderUserId=0` and the pre-stored `anonymousLabel`. System messages are never anonymized (`senderType=System`).
-
-Pattern: real data stored, views anonymize. Same approach as cursor events (Phase 6).
+| Decision | Source | Date |
+|----------|--------|------|
+| Ephemeral chat -- messages not persisted after lobby close (CHAT-03) | Phase 09 CONTEXT.md | 2026-03-28 |
+| 500 character limit per message, enforced server-side (D-12) | Phase 09 CONTEXT.md | 2026-03-28 |
+| Rolling window of 50 -- oldest deleted on insert when limit reached (D-13) | Phase 09 CONTEXT.md | 2026-03-28 |
+| Metadata JSON validates against { type, replyToMessageId? } schema (D-14) | Phase 09 CONTEXT.md | 2026-03-28 |
+| Real senderUserId stored; view layer anonymizes (D-18, D-92) | Phase 09 CONTEXT.md | 2026-03-28 |
+| System messages share same table with senderType=System flag (D-11) | Phase 09 CONTEXT.md | 2026-03-28 |
+| delete_chat_message added for host/referee/mod moderation (D-26) | Phase 09 execution | 2026-03-28 |
+| Reply to deleted message: backend stores dangling replyToMessageId; frontend handles gracefully (D-17) | Phase 09 CONTEXT.md | 2026-03-28 |
+| Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-## Moderation (D-26)
+*Last updated: 2026-04-09*
+*Feature owner: Phase 09*
 
-Host, referee, and admin/moderator can delete individual messages via `delete_chat_message(messageId)`.
-
-**Permission check:**
-- `lobby.hostUserId === user.id` (host)
-- `LobbyMember.isReferee === true` for the caller in this lobby
-- `isRoleAtLeast(user.role, 'Moderator')` (admin or moderator)
-
-Deleted messages leave dangling `replyToMessageId` references. Frontend responsibility to handle gracefully.
-
----
-
-## System Messages (D-11)
-
-System messages use `senderType: System`, `senderUserId: 0`, no anonymousLabel. Inserted on:
-
-- Player **joined** the lobby (`join_lobby`)
-- Player **left** the lobby (`leave_lobby`)
-- Player was **kicked** (`kick_member`)
-- Player was **banned** (`ban_member`)
-- Stage changed to **Equipping** (`advance_stage` Drafting→Equipping)
-- Stage changed to **Scoring** (`advance_stage` Equipping→Scoring)
-- **Draft started** (`start_draft`)
-
-System messages are subject to the rolling window (50-message cap).
-
----
-
-## Lifecycle & Cleanup (CHAT-03)
-
-Chat messages are **ephemeral** — they do not persist after lobby close.
-
-**Hard delete cascade (D-19):** When `close_lobby` or auto-close (empty Waiting lobby) fires, all `ChatMessage` rows for that lobby are deleted in the same transaction via `lobby_id` btree index. This happens before the Lobby row itself is deleted.
-
-**No archival:** Chat messages are NOT written to any history table. They are not part of match replay or match history.
-
----
-
-## ChatMessage Table Reference
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | u32 autoInc PK | Primary key |
-| lobbyId | u32 | FK to Lobby.id |
-| senderUserId | u32 | Real user ID (0 = system) |
-| senderType | ChatSenderType | Player or System |
-| content | string | Message text (max 500 chars, server-enforced) |
-| metadata | string? | JSON: `{ type, replyToMessageId? }` |
-| anonymousLabel | string? | Pre-computed label (e.g. "Blue-1") when anonymous mode active |
-| createdById | u32 | Audit |
-| createdDate | timestamp | Audit |
-| lastModifiedById | u32 | Audit |
-| lastModifiedDate | timestamp | Audit |
-
-**Indexes:** `lobby_id` btree
-
----
-
-## Reducer Reference
-
-| Reducer | Permission | Description |
-|---------|-----------|-------------|
-| `send_chat_message` | Any lobby member (D-10) | Inserts message; rolling window; metadata validation; anonymous label |
-| `delete_chat_message` | Host, referee, admin, moderator (D-26) | Hard-deletes a single message by id |
-
----
-
-## Key Decisions
-
-- Ephemeral — messages are NOT persisted after lobby close (CHAT-03)
-- 500 character limit per message, enforced server-side (D-12)
-- Rolling window of 50 — oldest deleted on insert when limit reached (D-13)
-- Real `senderUserId` stored; view layer anonymizes (D-18, D-92)
-- Metadata JSON validates against `{ type, replyToMessageId? }` schema (D-14)
-- System messages share same table with `senderType=System` flag (D-11)
-- All 4 audit columns present for redundancy/security despite ephemeral nature
+**Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
