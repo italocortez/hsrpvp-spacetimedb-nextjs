@@ -412,20 +412,11 @@ Plans:
 **Goal:** Verify that the SpacetimeDB SDK upgrade from 2.0.3 to 2.1.0 hasn't broken existing behavior — tests, subscription semantics, reducer calls, or frontend auth flow. Export all views so they register properly (only view_my_profile was proven; 23+ views remain). Confirm confirmed-reads default change doesn't degrade UX. Audit all code that relies on SDK internals or worked around SDK bugs that may now be fixed.
 **Depends on:** Phase 12.1
 **Requirements**: SDK-COMPAT-01 (all existing tests pass on 2.1.0), SDK-COMPAT-02 (all views exported and registered in st_view), SDK-COMPAT-03 (view client bindings generated and accessible), SDK-COMPAT-04 (frontend auth flow works with view data)
-**Plans:** 0 plans
-
-**Scope:**
-1. **Test suite pass** — Run full backend test suite against SDK 2.1.0, fix any regressions
-2. **View export migration** — Export all 24 views from securityViews.ts and anonymousViews.ts, re-export from index.ts, verify all appear in st_view
-3. **Binding regeneration** — Regenerate client bindings, verify all view types are generated with correct schemas
-4. **Frontend auth rework** — Update useAuth.ts to read from typed view bindings (conn.db.ViewMyProfile) instead of conn.db.User for profile data, populate discordId/discordUsername from view
-5. **Subscription cleanup** — Remove dead view_my_identity SQL subscription if now accessible via typed binding, audit all SQL string subscriptions for typed alternatives
-6. **Confirmed reads audit** — v2.1.0 defaults confirmed reads to ON; verify providers.tsx builder config and assess latency impact
-7. **Breaking changes scan** — Review v2.0.4, v2.0.5, v2.1.0 changelogs for breaking changes affecting our patterns (useTable isReady fix, subscription cleanup, etc.)
-8. **Error handling** — Add _then() callbacks to reducer calls in useAuth.ts (loginAsGuest, deleteGuestAccount) per skill guidance
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 12.2 to break down)
+- [ ] 12.2-01-PLAN.md — Export all 32 views, publish module, regenerate bindings, run full test suite, SDK changelog audit
+- [ ] 12.2-02-PLAN.md — Frontend auth rework (view-based profile resolution), confirmed reads disable, _then() error callbacks, human verification
 
 ### Phase 13: Documentation Hydration — contracts, architecture, and codebase docs
 
