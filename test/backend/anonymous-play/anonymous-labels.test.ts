@@ -28,9 +28,23 @@ import { defaultLobbyArgs, cleanupLobby } from '../../shared/helpers/lobbies';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+function hostLobbies(h: TestHarness) {
+    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
+}
+
 function latestLobby(h: TestHarness) {
-    const lobbies = [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-    return lobbies[lobbies.length - 1];
+    return hostLobbies(h)[hostLobbies(h).length - 1];
+}
+
+/** Wait for a new lobby to appear after creation (robust against subscription backlog). */
+async function waitForNewLobby(h: TestHarness, countBefore: number, timeoutMs = 5000): Promise<number> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        await h.sync(200);
+        const lobbies = hostLobbies(h);
+        if (lobbies.length > countBefore) return lobbies[lobbies.length - 1].id;
+    }
+    throw new Error(`Timed out waiting for new lobby (had ${countBefore}, still ${hostLobbies(h).length})`);
 }
 
 function playerMessages(h: TestHarness, lobbyId: number) {
@@ -169,12 +183,12 @@ describe.skipIf(!hasServerToken())('Anonymous Play', () => {
     describe('write-time anonymous label gate', () => {
         it('isAnonymousSpectators=true only → label still computed for all members', async () => {
             // Only spectators toggle on, players off — but labels computed for everyone at write time
+            const countBefore = hostLobbies(host).length;
             await host.call.createLobby(defaultLobbyArgs({
                 isAnonymousPlayers: false,
                 isAnonymousSpectators: true,
             }));
-            await host.sync(1500);
-            const lobbyId = latestLobby(host).id;
+            const lobbyId = await waitForNewLobby(host, countBefore);
 
             await blue.call.joinLobby({ lobbyId, joinCode: '', password: '' });
             await blue.sync();
@@ -198,12 +212,12 @@ describe.skipIf(!hasServerToken())('Anonymous Play', () => {
         });
 
         it('both toggles off → no label on any messages', async () => {
+            const countBefore = hostLobbies(host).length;
             await host.call.createLobby(defaultLobbyArgs({
                 isAnonymousPlayers: false,
                 isAnonymousSpectators: false,
             }));
-            await host.sync(1500);
-            const lobbyId = latestLobby(host).id;
+            const lobbyId = await waitForNewLobby(host, countBefore);
 
             await blue.call.joinLobby({ lobbyId, joinCode: '', password: '' });
             await blue.sync();
