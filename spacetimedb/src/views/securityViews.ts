@@ -50,7 +50,7 @@ const LobbyBrowserRow = t.object('LobbyBrowserRow', {
     costSetName: t.string().optional(),
 });
 
-spacetimedb.anonymousView(
+export const view_lobby_browser = spacetimedb.anonymousView(
     { name: 'view_lobby_browser', public: true },
     t.array(LobbyBrowserRow),
     (ctx) => {
@@ -112,7 +112,7 @@ spacetimedb.anonymousView(
 //    Resolves ctx.sender → userId via UserIdentity, then looks up LobbyMember
 //    rows by userId index, then fetches each Lobby by PK.
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_lobbies = spacetimedb.view(
     { name: 'view_my_lobbies', public: true },
     t.array(Lobby.rowType),
     (ctx) => {
@@ -138,7 +138,7 @@ spacetimedb.view(
 // 3. My Identity (per-user view) — only the caller's own identity mapping(s)
 //    Uses ctx.sender directly on the PK (identity column).
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_identity = spacetimedb.view(
     { name: 'view_my_identity', public: true },
     t.option(UserIdentity.rowType),
     (ctx) => {
@@ -163,7 +163,7 @@ const UserDirectoryRow = t.object('UserDirectoryRow', {
     displayedAchievementId: t.u32().optional(),
 });
 
-spacetimedb.anonymousView(
+export const view_user_directory = spacetimedb.anonymousView(
     { name: 'view_user_directory', public: true },
     t.array(UserDirectoryRow),
     (ctx) => {
@@ -255,7 +255,7 @@ export const view_my_profile = spacetimedb.view(
 //     when caller has role >= Moderator (level 75). Enables admins and
 //     moderators to look up discordUsername for moderation. (D-05)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_admin_user_private = spacetimedb.view(
     { name: 'view_admin_user_private', public: true },
     t.array(UserPrivate.rowType),
     (ctx) => {
@@ -273,7 +273,7 @@ spacetimedb.view(
 // 6. My Cost Sets (per-user view) — CostSet rows owned by the requesting user
 //    Used by TOs to manage their own cost sets in the draft/publish workflow.
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_cost_sets = spacetimedb.view(
     { name: 'view_my_cost_sets', public: true },
     t.array(CostSet.rowType),
     (ctx) => {
@@ -290,7 +290,7 @@ spacetimedb.view(
 //    for all cost sets owned by the requesting user. Draft tables are private
 //    (not broadcast to clients), so this view is the only way to read them.
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_draft_character_costs = spacetimedb.view(
     { name: 'view_my_draft_character_costs', public: true },
     t.array(CostSetDraftCharacter.rowType),
     (ctx) => {
@@ -314,7 +314,7 @@ spacetimedb.view(
 // 8. My Draft Lightcone Costs (per-user view) — CostSetDraftLightcone rows
 //    for all cost sets owned by the requesting user.
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_draft_lightcone_costs = spacetimedb.view(
     { name: 'view_my_draft_lightcone_costs', public: true },
     t.array(CostSetDraftLightcone.rowType),
     (ctx) => {
@@ -337,7 +337,7 @@ spacetimedb.view(
 // 9. My Draft Synergy Costs (per-user view) — CostSetDraftSynergy rows
 //    for all cost sets owned by the requesting user.
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_draft_synergy_costs = spacetimedb.view(
     { name: 'view_my_draft_synergy_costs', public: true },
     t.array(CostSetDraftSynergy.rowType),
     (ctx) => {
@@ -361,7 +361,7 @@ spacetimedb.view(
 //     PlayerStat is private (public: false), so this view is the only way
 //     for clients to access their own stats. (D-33)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_player_stats = spacetimedb.view(
     { name: 'view_my_player_stats', public: true },
     t.array(PlayerStat.rowType),
     (ctx) => {
@@ -375,7 +375,7 @@ spacetimedb.view(
 // 11. My Character Stats (per-user view) — returns caller's own
 //     PlayerCharacterStat rows. Private table accessible via this view. (D-33)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_character_stats = spacetimedb.view(
     { name: 'view_my_character_stats', public: true },
     t.array(PlayerCharacterStat.rowType),
     (ctx) => {
@@ -389,7 +389,7 @@ spacetimedb.view(
 // 12. My Relationships (per-user view) — returns caller's own
 //     PlayerRelationship rows. Private table accessible via this view. (D-33)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_relationships = spacetimedb.view(
     { name: 'view_my_relationships', public: true },
     t.array(PlayerRelationship.rowType),
     (ctx) => {
@@ -421,7 +421,7 @@ const RosterVisibilityRow = t.object('RosterVisibilityRow', {
     accountRating: t.u32().optional(),
 });
 
-spacetimedb.view(
+export const view_my_roster_visibility = spacetimedb.view(
     { name: 'view_my_roster_visibility', public: true },
     t.array(RosterVisibilityRow),
     (ctx) => {
@@ -542,7 +542,7 @@ const MyRosterAccountRow = t.object('MyRosterAccountRow', {
     eidolonLevel: t.u8().optional(),
 });
 
-spacetimedb.view(
+export const view_my_roster = spacetimedb.view(
     { name: 'view_my_roster', public: true },
     t.array(MyRosterAccountRow),
     (ctx) => {
@@ -621,7 +621,7 @@ function getMyTournamentIds(ctx: any): { userId: number; tournamentIds: Set<numb
 //     organizer or an assistant. Resolves both paths via getMyTournamentIds.
 //     (TO-VIEW-01)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_tournaments = spacetimedb.view(
     { name: 'view_my_tournaments', public: true },
     t.array(Tournament.rowType),
     (ctx) => {
@@ -641,7 +641,7 @@ spacetimedb.view(
 //     tournaments where the caller is the organizer or an assistant.
 //     Direct tournament_id btree filter. (TO-VIEW-02)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_tournament_enrolled = spacetimedb.view(
     { name: 'view_my_tournament_enrolled', public: true },
     t.array(TournamentEnrolled.rowType),
     (ctx) => {
@@ -662,7 +662,7 @@ spacetimedb.view(
 //     tournaments where the caller is the organizer or an assistant.
 //     Direct tournament_id btree filter. (TO-VIEW-02)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_tournament_teams = spacetimedb.view(
     { name: 'view_my_tournament_teams', public: true },
     t.array(TournamentTeam.rowType),
     (ctx) => {
@@ -684,7 +684,7 @@ spacetimedb.view(
 //     Navigates via TournamentTeam.tournament_id -> TournamentTeamMember.team_id
 //     (no single-column tournament_id index on TournamentTeamMember). (TO-VIEW-02)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_tournament_team_members = spacetimedb.view(
     { name: 'view_my_tournament_team_members', public: true },
     t.array(TournamentTeamMember.rowType),
     (ctx) => {
@@ -707,7 +707,7 @@ spacetimedb.view(
 //     tournaments where the caller is the organizer or an assistant.
 //     Direct tournament_id btree filter. (TO-VIEW-03)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_tournament_matches = spacetimedb.view(
     { name: 'view_my_tournament_matches', public: true },
     t.array(BracketMatch.rowType),
     (ctx) => {
@@ -729,7 +729,7 @@ spacetimedb.view(
 //     Navigates via BracketMatch.tournament_id -> MatchResultRecord.bracket_match_id
 //     (MatchResultRecord has no tournament_id column — D-07). (TO-VIEW-03)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_tournament_match_results = spacetimedb.view(
     { name: 'view_my_tournament_match_results', public: true },
     t.array(MatchResultRecord.rowType),
     (ctx) => {
@@ -752,7 +752,7 @@ spacetimedb.view(
 //     where the caller is the organizer or an assistant.
 //     Uses direct Lobby.tournament_id btree index. (TO-VIEW-03)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_tournament_lobbies = spacetimedb.view(
     { name: 'view_my_tournament_lobbies', public: true },
     t.array(Lobby.rowType),
     (ctx) => {
@@ -773,7 +773,7 @@ spacetimedb.view(
 //     all tournaments where the caller is the organizer or an assistant.
 //     Direct tournament_id btree filter. (TO-VIEW-02)
 // ---------------------------------------------------------------------------
-spacetimedb.view(
+export const view_my_tournament_group_standings = spacetimedb.view(
     { name: 'view_my_tournament_group_standings', public: true },
     t.array(GroupPhaseRecord.rowType),
     (ctx) => {
@@ -805,7 +805,7 @@ const TournamentRegistrantAccountRow = t.object('TournamentRegistrantAccountRow'
     eidolonLevel: t.u8().optional(),
 });
 
-spacetimedb.view(
+export const view_tournament_registrant_accounts = spacetimedb.view(
     { name: 'view_tournament_registrant_accounts', public: true },
     t.array(TournamentRegistrantAccountRow),
     (ctx) => {

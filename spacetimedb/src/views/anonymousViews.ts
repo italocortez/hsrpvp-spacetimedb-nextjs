@@ -40,7 +40,7 @@ const AnonymousChatRow = t.object('AnonymousChatRow', {
     createdDate: t.timestamp(),
 });
 
-spacetimedb.view(
+export const view_my_lobby_chat = spacetimedb.view(
     { name: 'view_my_lobby_chat', public: true },
     t.array(AnonymousChatRow),
     (ctx) => {
@@ -99,7 +99,7 @@ const AnonymousLobbyMemberRow = t.object('AnonymousLobbyMemberRow', {
     anonymousLabel: t.string().optional(),
 });
 
-spacetimedb.view(
+export const view_my_lobby_members = spacetimedb.view(
     { name: 'view_my_lobby_members', public: true },
     t.array(AnonymousLobbyMemberRow),
     (ctx) => {
@@ -165,7 +165,7 @@ const AnonymousMatchStepRow = t.object('AnonymousMatchStepRow', {
     timestamp: t.timestamp(),
 });
 
-spacetimedb.view(
+export const view_my_match_steps = spacetimedb.view(
     { name: 'view_my_match_steps', public: true },
     t.array(AnonymousMatchStepRow),
     (ctx) => {
@@ -218,7 +218,7 @@ const AnonymousMatchParticipantRow = t.object('AnonymousMatchParticipantRow', {
     anonymousLabel: t.string().optional(),
 });
 
-spacetimedb.view(
+export const view_my_match_participants = spacetimedb.view(
     { name: 'view_my_match_participants', public: true },
     t.array(AnonymousMatchParticipantRow),
     (ctx) => {
@@ -276,7 +276,7 @@ spacetimedb.view(
 //    combine with participated matchHistoryIds from MatchParticipantHistory.
 // ---------------------------------------------------------------------------
 
-spacetimedb.view(
+export const view_match_history = spacetimedb.view(
     { name: 'view_match_history', public: true },
     t.array(MatchSessionHistory.rowType),
     (ctx) => {
@@ -311,7 +311,7 @@ spacetimedb.view(
 //    Prevents tournament scouting — opponent identities hidden until reveal.
 // ---------------------------------------------------------------------------
 
-spacetimedb.view(
+export const view_match_participant_history = spacetimedb.view(
     { name: 'view_match_participant_history', public: true },
     t.array(MatchParticipantHistory.rowType),
     (ctx) => {
@@ -335,7 +335,7 @@ spacetimedb.view(
 //    Contains the full draft replay (picks, bans, bids, pauses, undos).
 // ---------------------------------------------------------------------------
 
-spacetimedb.view(
+export const view_match_step_history = spacetimedb.view(
     { name: 'view_match_step_history', public: true },
     t.array(MatchSessionStepHistory.rowType),
     (ctx) => {
@@ -370,7 +370,7 @@ const PublicAccountRow = t.object('PublicAccountRow', {
     eidolonLevel: t.u8().optional(),
 });
 
-spacetimedb.anonymousView(
+export const view_public_accounts = spacetimedb.anonymousView(
     { name: 'view_public_accounts', public: true },
     t.array(PublicAccountRow),
     (ctx) => {
