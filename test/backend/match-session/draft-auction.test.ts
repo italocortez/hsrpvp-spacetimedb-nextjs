@@ -9,6 +9,9 @@
  *
  * Requires: SPACETIMEDB_SERVER_TOKEN in .env.local (post-publish bootstrap)
  *
+ * Known flaky: "banned character cannot be nominated" can timeout (60s) under
+ * full-suite load due to heavy lobby+draft setup on maincloud. Passes in isolation.
+ *
  * Contract: docs/match-session/contract.md — Match Session (Draft System)
  */
 

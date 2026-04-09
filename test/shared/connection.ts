@@ -85,34 +85,24 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
         }
 
         clearTimeout(timeout);
-        // Wait for subscription sync, then resolve userId from cache
-        setTimeout(() => {
-          // UserIdentity is now private — cannot iterate it from client.
-          // Resolve userId from the User table via guest username pattern or verified user lookup.
+        // Wait for subscription sync, then resolve userId deterministically
+        setTimeout(async () => {
           let userId = 0;
 
-          const shortId = identityHex.slice(0, 8);
-          const guestUsername = `Guest_${shortId}`;
-
-          const allUsers = [...connInner.db.User.iter()];
-          // If guest, exact match on Guest_<shortId>
-          // If verified, match the most recent TestUser_* (sorted by ID desc)
-          // to avoid picking up a previously created/banned user from another test
-          const myUser = opts.verify
-            ? allUsers
-                .filter((u: any) => (u.username as string).startsWith('TestUser_'))
-                .sort((a: any, b: any) => (b as any).id - (a as any).id)[0]
-              ?? allUsers.find((u: any) => u.username === guestUsername)
-            : allUsers.find((u: any) => u.username === guestUsername);
-
-          if (myUser) {
-            userId = (myUser as any).id;
+          if (opts.verify) {
+            // Deterministic: PK lookup on UserIdentity by this connection's identity
+            const idRows = await queryPrivateTable(
+              `SELECT user_id FROM user_identity WHERE identity = X'${identityHex}'`
+            );
+            userId = idRows.length > 0 ? parseInt(idRows[0].user_id, 10) : 0;
           } else {
-            // Fallback: use the most recently inserted non-SYSTEM user
-            const nonSystemUsers = allUsers.filter((u: any) => (u as any).id !== 0);
-            if (nonSystemUsers.length > 0) {
-              nonSystemUsers.sort((a: any, b: any) => (b as any).id - (a as any).id);
-              userId = (nonSystemUsers[0] as any).id;
+            // Guest path: match Guest_<shortId> in subscription cache (works fine)
+            const shortId = identityHex.slice(0, 8);
+            const guestUsername = `Guest_${shortId}`;
+            const allUsers = [...connInner.db.User.iter()];
+            const myUser = allUsers.find((u: any) => u.username === guestUsername);
+            if (myUser) {
+              userId = (myUser as any).id;
             }
           }
 
