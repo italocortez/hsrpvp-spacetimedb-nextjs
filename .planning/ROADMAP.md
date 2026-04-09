@@ -412,11 +412,11 @@ Plans:
 **Goal:** Verify that the SpacetimeDB SDK upgrade from 2.0.3 to 2.1.0 hasn't broken existing behavior — tests, subscription semantics, reducer calls, or frontend auth flow. Export all views so they register properly (only view_my_profile was proven; 23+ views remain). Confirm confirmed-reads default change doesn't degrade UX. Audit all code that relies on SDK internals or worked around SDK bugs that may now be fixed.
 **Depends on:** Phase 12.1
 **Requirements**: SDK-COMPAT-01 (all existing tests pass on 2.1.0), SDK-COMPAT-02 (all views exported and registered in st_view), SDK-COMPAT-03 (view client bindings generated and accessible), SDK-COMPAT-04 (frontend auth flow works with view data)
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 12.2-01-PLAN.md — Export all 32 views, publish module, regenerate bindings, run full test suite, SDK changelog audit
-- [ ] 12.2-02-PLAN.md — Frontend auth rework (view-based profile resolution), confirmed reads disable, _then() error callbacks, human verification
+- [x] 12.2-01-PLAN.md — Export all 32 views, publish module, regenerate bindings, run full test suite, SDK changelog audit
+- [x] 12.2-02-PLAN.md — Frontend auth rework (view-based profile resolution), confirmed reads disable, _then() error callbacks, human verification
 
 ### Phase 13: Documentation Hydration — contracts, architecture, and codebase docs
 
