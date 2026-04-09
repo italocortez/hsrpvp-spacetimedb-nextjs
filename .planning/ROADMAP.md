@@ -418,20 +418,19 @@ Plans:
 - [x] 12.2-01-PLAN.md — Export all 32 views, publish module, regenerate bindings, run full test suite, SDK changelog audit
 - [x] 12.2-02-PLAN.md — Frontend auth rework (view-based profile resolution), confirmed reads disable, _then() error callbacks, human verification
 
-### Phase 13: Documentation Hydration — contracts, architecture, and codebase docs
+### Phase 13: Documentation Normalization — full doc update with standardized structure
 
-**Goal:** Bring all docs and .planning/codebase/ files up to date for backend milestone wrap. Docs-only phase — no code changes.
+**Goal:** Normalize all documentation to a consistent structure, fully hydrate from current codebase, regenerate codebase maps, rewrite FRONTEND-HANDOFF.md, and update ERD. Docs-only phase — no code changes.
 **Requirements**: All backend phases complete
 **Depends on:** Phase 12.2
 **Plans:** 0 plans
 
 **Scope:**
-1. **Contract hydration (8 files):** Standardize to reducer-first format (roster/archetypes as reference)
-   - Partial (missing Reducers section): brackets, match-results, tournament, smoke, views
-   - Stub (missing Reducers + Overview): anonymous-play, cost-sets, player-stats
-2. **Architecture audit (19 files):** Verify all docs/{feature}/architecture.md reflect current tables/reducers/indexes
-3. **Codebase docs refresh (7 files):** Update .planning/codebase/*.md (ARCHITECTURE, CONCERNS, CONVENTIONS, INTEGRATIONS, STACK, STRUCTURE, TESTING) to reflect current state
-4. **FRONTEND-HANDOFF.md:** Create comprehensive reference for v1 frontend milestone — all available tables, reducers, subscription strategy, auth flow, data patterns, and integration points the frontend can build against
+1. **Templates + ROADMAP scope update:** Create architecture.md and contract.md templates, update Phase 13 scope in ROADMAP.md, cleanup pass on completed phase descriptions
+2. **Architecture normalization (19 files):** Standardize all docs/{feature}/architecture.md to "Feature — Architecture" header, Overview → Table Relationships (tree ├── └──) → Reducer Flows → Phase History, with Last updated timestamp
+3. **Contract full hydration (18 files):** Standardize all docs/{feature}/contract.md to reducer-first format: Architecture link → Feature Overview → Reducers (Purpose/Permission/Params/Flow/State Changes/Errors) → Acceptance Scenarios → Edge Cases → Integration Points → Phase History. Read actual reducers from codebase.
+4. **Codebase docs full regeneration (7 files):** Regenerate .planning/codebase/*.md (ARCHITECTURE, CONCERNS, CONVENTIONS, INTEGRATIONS, STACK, STRUCTURE, TESTING) from scratch
+5. **FRONTEND-HANDOFF.md rewrite + ERD mermaid update:** Rewrite docs/FRONTEND-HANDOFF.md from final normalized docs. Update notes/erd-mermaid.md with all tables, PKs/FKs, and cardinality annotations (one-to-one, one-to-many, etc.)
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 13 to break down)
