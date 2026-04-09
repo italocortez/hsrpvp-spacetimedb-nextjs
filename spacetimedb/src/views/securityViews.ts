@@ -214,7 +214,7 @@ const MyProfileRow = t.object('MyProfileRow', {
     lastModifiedDate: t.timestamp(),
 });
 
-spacetimedb.view(
+export const view_my_profile = spacetimedb.view(
     { name: 'view_my_profile', public: true },
     t.option(MyProfileRow),
     (ctx) => {

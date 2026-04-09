@@ -1209,6 +1209,31 @@ export const MmrRating = __t.object("MmrRating", {
 });
 export type MmrRating = __Infer<typeof MmrRating>;
 
+export const MyProfileRow = __t.object("MyProfileRow", {
+  id: __t.u32(),
+  username: __t.string(),
+  displayName: __t.string(),
+  isGuest: __t.bool(),
+  isOnline: __t.bool(),
+  isPrivate: __t.bool(),
+  lastLoginAt: __t.timestamp(),
+  get role() {
+    return Role;
+  },
+  hasDiscordLinked: __t.bool(),
+  avatarCharacterName: __t.string(),
+  displayedAchievementId: __t.option(__t.u32()),
+  deletedAt: __t.option(__t.timestamp()),
+  discordId: __t.option(__t.string()),
+  discordUsername: __t.option(__t.string()),
+  email: __t.option(__t.string()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type MyProfileRow = __Infer<typeof MyProfileRow>;
+
 export const NominatePayload = __t.object("NominatePayload", {
   characterName: __t.string(),
   eidolon: __t.u8(),
@@ -1704,4 +1729,7 @@ export const ValidationStatus = __t.enum("ValidationStatus", {
   Disputed: __t.unit(),
 });
 export type ValidationStatus = __Infer<typeof ValidationStatus>;
+
+export const ViewMyProfile = __t.object("ViewMyProfile", {});
+export type ViewMyProfile = __Infer<typeof ViewMyProfile>;
 

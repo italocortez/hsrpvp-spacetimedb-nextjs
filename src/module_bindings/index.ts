@@ -239,6 +239,7 @@ import TournamentTeamMemberRow from "./tournament_team_member_table";
 import TournamentTeamRequestRow from "./tournament_team_request_table";
 import UserRow from "./user_table";
 import UserAchievementRow from "./user_achievement_table";
+import ViewMyProfileRow from "./view_my_profile_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -1005,6 +1006,13 @@ const tablesSchema = __schema({
       { name: 'user_achievement_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, UserAchievementRow),
+  view_my_profile: __table({
+    name: 'view_my_profile',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyProfileRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */

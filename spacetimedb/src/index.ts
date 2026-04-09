@@ -6,8 +6,8 @@ import { checkProviderBan } from './helpers/banHelper';
 // Private auth tables — imported for schema registration
 import './tables/userPrivate';
 import './tables/banRecord';
-// Security views — must be imported so they register with the module
-import './views/securityViews';
+// Security views — must be exported so [registerExport] fires during module init
+export { view_my_profile } from './views/securityViews';
 // Anonymous + history views — imported so they register with the module
 import './views/anonymousViews';
 export { broadcast_cursor } from './reducers/cursor';
