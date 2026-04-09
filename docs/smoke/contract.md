@@ -299,3 +299,8 @@ interface TestHarness {
 | admin_gc_identities / admin_gc_lobbies: Moderator+ on-demand GC with unconditional audit | Phase 12.1 execution | 2026-04-08 |
 | seed_identity_gc_job / seed_lobby_gc_job: idempotent bootstrap in post-publish | Phase 12.1 execution | 2026-04-08 |
 | clientConnected bumps UserIdentity.lastSeenAt for GC freshness | Phase 12.1 execution | 2026-04-08 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+
+---
+
+*Last updated: 2026-04-09*

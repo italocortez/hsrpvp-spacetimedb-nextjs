@@ -922,8 +922,9 @@ D-50 applies to ALL Drafting→Equipping transitions: auto (last Classic pick, l
 | MatchResultParticipant created at start_draft for all non-coach team members | Phase 9 execution | 2026-03-29 |
 | runFinalization step 19: cascade-deletes lobby after ephemeral cleanup (was set Finished, changed to cascade-delete) | Phase 9 execution | 2026-03-29 |
 | AwaitingResult stage: submit_match_result sets AwaitingResult (frees players), finalization cascade-deletes lobby | Phase 9 execution | 2026-03-29 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-09*
 *Feature owner: Phase 9*

@@ -554,8 +554,9 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 | "my" prefix naming convention: strictly caller-scoped vs. combined public+personal | Phase 9 execution | 2026-03-29 |
 | view_user_directory as stepping stone: returns all User rows until frontend migration | Phase 9 execution | 2026-03-29 |
 | anonymousView type for unauthenticated access (lobby browser, user directory) | Phase 9 execution | 2026-03-29 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-09*
 *Feature owner: Phase 9*

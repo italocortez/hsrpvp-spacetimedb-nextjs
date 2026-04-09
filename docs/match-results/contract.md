@@ -2,220 +2,436 @@
 
 **Architecture:** [architecture.md](architecture.md)
 
+## Feature Overview
+
+Match results manage the full lifecycle of determining a match outcome: per-game score entry, captain confirmation, referee submission, dispute handling, and finalization that writes stats and MMR. Casual matches auto-validate on submit and auto-finalize inline. Ranked matches go through a two-step flow: submission by referee puts the result in Submitted status; a moderator, referee, or tournament organizer then validates it. Admin tools handle exceptional cases: force-finalization of stuck matches, voiding matches without stats, setting bracket winners post-rollback, and overriding disputed results.
+
+## Reducers
+
+### record_game_scores
+
+**Purpose:** Record or update per-game scores for a match result. Composite PK upsert (delete + insert on existing row).
+
+**Permission:** Participant captain (own side only) OR spectator referee with `refereeFullControl=true` (both sides)
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| matchResultId | u32 | Yes | Target MatchResultRecord |
+| gameNumber | u8 | Yes | Game number (1-based) |
+| winnerTeamSide | string | Yes | "Blue" or "Red" |
+| teamBlueCyclesUsed | u32? | No | Blue team cycle count |
+| teamRedCyclesUsed | u32? | No | Red team cycle count |
+| teamBlueScore | u64? | No | Blue team score |
+| teamRedScore | u64? | No | Red team score |
+| teamBlueBoss1Score | u64? | No | Blue boss 1 score |
+| teamBlueBoss2Score | u64? | No | Blue boss 2 score |
+| teamRedBoss1Score | u64? | No | Red boss 1 score |
+| teamRedBoss2Score | u64? | No | Red boss 2 score |
+| teamBlueScreenshotUrl | string? | No | Blue screenshot URL |
+| teamRedScreenshotUrl | string? | No | Red screenshot URL |
+
+**Flow:**
+1. Authenticate caller via `getAuthenticatedUser(ctx)`
+2. Look up `MatchResultRecord` by id; throw if not found
+3. Validate status is `Pending`; throw if not
+4. Liveness guard: `ensureMatchAlive` — blocks scoring after concede
+5. Validate `winnerTeamSide` is "Blue" or "Red"
+6. Authority check:
+   - If participant: must be `isCaptain=true`; Blue captain rejects Red-side fields, Red captain rejects Blue-side fields
+   - If non-participant: must be `isReferee=true` on the lobby AND `matchResult.refereeFullControl=true`
+7. Upsert `MatchResultGame` row: if row exists for `[matchResultId, gameNumber]`, delete then insert (composite PK); otherwise insert fresh
+
+**Expected State Changes:**
+- `MatchResultGame` row inserted or replaced for `[matchResultId, gameNumber]`
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Match result not found | "Match result not found." |
+| Status is not Pending | "Scores can only be recorded when the match is in Pending status." |
+| `winnerTeamSide` invalid | "winnerTeamSide must be \"Blue\" or \"Red\"." |
+| Caller not captain | "Only the team captain can record game scores." |
+| Blue captain provides Red-side fields | "Captains can only enter scores for their own side." |
+| Non-participant, not referee | "You are not a participant or authorized referee of this match." |
+| Non-participant referee, no `refereeFullControl` | "You are not a participant or authorized referee of this match." |
+| Associated lobby not found | "Associated lobby not found." |
+
+---
+
+### confirm_match_scores
+
+**Purpose:** Confirm scores for a team side. Captains confirm their own side; spectator referees with `refereeFullControl=true` confirm both sides at once.
+
+**Permission:** Participant captain OR spectator referee with `refereeFullControl=true`
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| matchResultId | u32 | Yes | Target MatchResultRecord |
+
+**Flow:**
+1. Authenticate caller
+2. Look up `MatchResultRecord`; throw if not found
+3. Validate status is `Pending`
+4. Liveness guard: block after concede
+5. Participant path: caller must be `isCaptain=true`; sets `blueConfirmed` or `redConfirmed`
+6. Non-participant path: requires `refereeFullControl=true` and `isReferee=true`; sets both `blueConfirmed` and `redConfirmed`
+
+**Expected State Changes:**
+- `MatchResultRecord.blueConfirmed` and/or `redConfirmed` set to `true`
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Match result not found | "Match result not found." |
+| Status is not Pending | "Scores can only be confirmed when the match is in Pending status." |
+| Participant but not captain | "Only the team captain can confirm match scores." |
+| Non-participant, `refereeFullControl` disabled | "Referee full control is not enabled for this match." |
+| Non-participant, not referee | "You are not a participant or referee of this match." |
+
+---
+
+### submit_match_result
+
+**Purpose:** Submit the final match result with a winner (or 0 for draw). Casual matches auto-validate; Ranked matches transition to Submitted status for later validation.
+
+**Permission:** Lobby referee, Moderator+, or tournament TO/assistant with `canValidateResults=true`
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| matchResultId | u32 | Yes | Target MatchResultRecord |
+| winnerId | u32 | Yes | Winner's userId, or 0 for draw |
+
+**Flow:**
+1. Authenticate caller
+2. Look up `MatchResultRecord`; throw if not found
+3. Validate status is `Pending`
+4. Liveness guard: block after concede
+5. Require both `blueConfirmed` and `redConfirmed` to be `true`
+6. Validate `winnerId`: must be a participant userId, or 0 for draw
+7. Authority check: caller is lobby referee, OR Moderator+, OR tournament TO/assistant (derived via BracketMatch since `tournamentId` removed from MatchResultRecord per D-42)
+8. Set status: `Validated` for Casual, `Submitted` for Ranked
+9. Set `winnerTeamSide`, `matchEndReason` (Completed or Draw), `refereeUserId`
+10. Transition lobby to `AwaitingResult` if not already there or Finished
+11. Casual auto-finalize: call `runFinalization` inline
+
+**Expected State Changes:**
+- `MatchResultRecord.status` → Validated (Casual) or Submitted (Ranked)
+- `MatchResultRecord.winnerTeamSide`, `matchEndReason`, `refereeUserId` set
+- `Lobby.stage` → AwaitingResult (if applicable)
+- Casual: full finalization pipeline runs inline (stats, MMR, lobby delete)
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Match result not found | "Match result not found." |
+| Status is not Pending | "Match result can only be submitted when in Pending status." |
+| Both sides not confirmed | "All team captains must confirm scores before submission." |
+| `winnerId` not a participant | "Invalid winner: must be a match participant or 0 for a draw." |
+| Caller has no authority | "You do not have referee authority to submit this match result." |
+
+---
+
+### dispute_match_result
+
+**Purpose:** Allow a match participant to dispute a submitted result.
+
+**Permission:** Match participant only
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| matchResultId | u32 | Yes | Target MatchResultRecord |
+| reason | string | Yes | Dispute reason (1-1000 chars) |
+
+**Flow:**
+1. Authenticate caller
+2. Look up `MatchResultRecord`; throw if not found
+3. Check idempotency: throw if already `Disputed`
+4. Validate status is `Submitted` (not Pending, not Validated)
+5. Block after concede (matchEndReason=Concede)
+6. Verify caller is a `MatchResultParticipant`
+7. Validate reason: non-empty after trim, max 1000 chars
+8. Update status to `Disputed`, set `disputedByUserId`, `disputeReason`
+
+**Expected State Changes:**
+- `MatchResultRecord.status` → Disputed
+- `MatchResultRecord.disputedByUserId`, `disputeReason` set
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Match result not found | "Match result not found." |
+| Already disputed | "This match result has already been disputed." |
+| Status is not Submitted | "A match result can only be disputed after it has been submitted." |
+| Match conceded | "Match has been conceded." |
+| Caller not a participant | "You are not a participant of this match." |
+| Empty reason | "Dispute reason cannot be empty." |
+| Reason > 1000 chars | "Dispute reason cannot exceed 1000 characters." |
+
+---
+
+### finalize_match_result
+
+**Purpose:** Finalize a Validated match result, running the full 19-step finalization pipeline (stats, MMR, leaderboard, lobby cleanup).
+
+**Permission:** Moderator+, the match referee, or tournament TO/assistant
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| matchResultId | u32 | Yes | Target MatchResultRecord |
+
+**Flow:**
+1. Authenticate caller
+2. Look up `MatchResultRecord`; throw if not found
+3. Validate status is `Validated`
+4. Authority check: Moderator+, OR `refereeUserId === user.id`, OR tournament access via BracketMatch
+5. Delegate to `runFinalization(ctx, matchResult, user.id)`
+
+**Expected State Changes:**
+- Full finalization: `MatchHistory` row inserted, `PlayerStats` updated, `MmrHistory` rows written, leaderboard rebuilt, lobby hard-deleted
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Match result not found | "Match result not found." |
+| Status is not Validated | "Match result must be Validated before finalization." |
+| No authority | "You do not have authority to finalize this match result." |
+
+---
+
+### admin_force_finalize
+
+**Purpose:** Resolve a stuck AwaitingResult match by setting a winner and running the full finalization pipeline. Per D-52.
+
+**Permission:** Moderator+, tournament organizer, or tournament assistant
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| lobbyId | u32 | Yes | Target lobby in AwaitingResult |
+| winnerTeamId | u32 | Yes | Winner team ID (tournament: actual team ID; non-tournament: 1=Blue wins, 2=Red wins) |
+
+**Flow:**
+1. Authenticate caller
+2. Look up `Lobby`; throw if not found
+3. Permission check via `ensureAdminOrOrganizer`
+4. Validate lobby stage is `AwaitingResult`
+5. Find `MatchResultRecord` for lobby; throw if not found
+6. Reject if `mmrProcessedAt` already set (already processed)
+7. Determine `winnerTeamSide` from `winnerTeamId` (tournament: via BracketMatch team1Id/team2Id; non-tournament: 1=Blue, 2=Red)
+8. Update `MatchResultRecord` with winner, status=Validated, preserve existing `matchEndReason` if already set (e.g., Concede)
+9. Call `runFinalization`
+
+**Expected State Changes:**
+- `MatchResultRecord.status` → Validated with winner set
+- Full finalization pipeline runs
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Lobby not found | "Lobby not found." |
+| No authority | "Only moderators, admins, or the tournament organizer can perform this action." |
+| Stage is not AwaitingResult | "Can only force-finalize matches in AwaitingResult stage." |
+| No match result record | "No match result record found for this lobby." |
+| Already processed | "This match has already been processed. Cannot force-finalize." |
+
+---
+
+### admin_void_match
+
+**Purpose:** Erase an AwaitingResult match completely without running finalization. No stats written. Per D-53, D-55.
+
+**Permission:** Moderator+, tournament organizer, or tournament assistant
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| lobbyId | u32 | Yes | Target lobby in AwaitingResult |
+
+**Flow:**
+1. Authenticate caller
+2. Look up `Lobby`; throw if not found
+3. Permission check via `ensureAdminOrOrganizer`
+4. Validate lobby stage is `AwaitingResult`
+5. Reject if `matchResult.mmrProcessedAt` set
+6. Call `hardDeleteLobby` — deletes lobby + all MatchResult* rows
+
+**Expected State Changes:**
+- Lobby and all associated `MatchResultRecord`, `MatchResultParticipant`, `MatchResultGame` rows hard-deleted
+- No stats, MMR, or history written
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Lobby not found | "Lobby not found." |
+| No authority | "Only moderators, admins, or the tournament organizer can perform this action." |
+| Stage is not AwaitingResult | "Can only void matches in AwaitingResult stage." |
+| Already processed | "This match has already been processed. Cannot void." |
+
+---
+
+### admin_set_bracket_winner
+
+**Purpose:** Directly set a bracket match winner and advance the bracket. Used post-finalization for bracket fixes. Per D-54.
+
+**Permission:** Moderator+, tournament organizer, or tournament assistant
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| bracketMatchId | u32 | Yes | Target BracketMatch |
+| winnerTeamId | u32 | Yes | Winner's team ID |
+
+**Flow:**
+1. Authenticate caller
+2. Look up `BracketMatch`; throw if not found
+3. Permission check: Moderator+ OR tournament organizer OR assistant
+4. Validate no winner already set (must call `rollback_bracket_match` first)
+5. Validate `winnerTeamId` is `team1Id` or `team2Id`
+6. Call `advanceBracketMatch`
+
+**Expected State Changes:**
+- `BracketMatch.winnerTeamId` set, winner advanced to next match
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Bracket match not found | "Bracket match not found." |
+| No authority | "Only moderators, admins, or the tournament organizer can set bracket winners." |
+| Winner already set | "Bracket match already has a winner. Call rollback_bracket_match first." |
+| Winner not a participant | "Winner team must be one of the bracket match participants." |
+
+---
+
+### override_match_result
+
+**Purpose:** Override a match result status to Validated or Rejected. Per D-30, D-31, D-42.
+
+**Permission:** Tournament TO/assistant (tournament matches) or Moderator+ (non-tournament matches)
+
+**Parameters:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| matchResultId | u32 | Yes | Target MatchResultRecord |
+| newStatusTag | string | Yes | "Validated" or "Rejected" |
+| winnerTeamSideTag | string | Yes | "Blue", "Red", or "" for draw |
+| reason | string | Yes | Override reason (stored in disputeReason field) |
+
+**Flow:**
+1. Validate `newStatusTag` is "Validated" or "Rejected"
+2. Look up `MatchResultRecord`; throw if not found
+3. Permission check: tournament matches use `ensureTournamentAccess` (TO/assistant), non-tournament use `ensureModerator`
+4. For Validated: parse `winnerTeamSideTag`; "" / "Draw" / "Spectator" = draw
+5. For Ranked + Validated: require all games have both screenshots
+6. Update record: status, `winnerTeamSide`, `matchEndReason`, store reason in `disputeReason`
+
+**Expected State Changes:**
+- `MatchResultRecord.status`, `winnerTeamSide`, `matchEndReason` updated
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Invalid `newStatusTag` | "Invalid status override: \"...\". Must be one of: Validated, Rejected" |
+| Match result not found | "Match result not found." |
+| Invalid `winnerTeamSideTag` for Validated | "Invalid winnerTeamSideTag: must be \"Blue\", \"Red\", or \"\" for a draw." |
+| Ranked match missing screenshots | "Cannot validate: no game scores have been recorded." / "Cannot validate Ranked match: game N is missing screenshot(s). All games must have both teamBlueScreenshotUrl and teamRedScreenshotUrl." |
+
 ## Acceptance Scenarios
 
-### Score Confirmation (Captain)
-**Given:** MatchResultRecord in Pending status, caller is a captain (MatchResultParticipant.isCaptain=true)
-**When:** `confirm_match_scores(matchResultId)`
-**Then:** Caller's side flag set on MatchResultRecord (blueConfirmed or redConfirmed based on teamSide). In 1v1, both participants have isCaptain=true. In team formats, only the designated team captain confirms on behalf of their side.
+### Happy Path: Captain Records and Confirms Scores, Referee Submits
 
-### Score Confirmation (Spectator Referee)
-**Given:** MatchResultRecord in Pending status with refereeFullControl=true, caller is a spectator referee (isReferee=true on LobbyMember, no MatchResultParticipant row)
-**When:** `confirm_match_scores(matchResultId)`
-**Then:** Both blueConfirmed and redConfirmed set to true on MatchResultRecord.
+**Given:** MatchResultRecord in Pending status, Blue captain and Red captain exist
+**When:** Blue captain calls `record_game_scores(matchResultId, 1, "Blue", ...)`, Red captain records their side, both call `confirm_match_scores`, referee calls `submit_match_result(matchResultId, blueCaptainId)`
+**Then:** MatchResultRecord transitions to Validated (Casual) or Submitted (Ranked). Lobby stage → AwaitingResult.
 
-### Score Confirmation by Participant Referee (own side only)
-**Given:** MatchResultRecord in Pending status, caller is both a participant AND referee
-**When:** `confirm_match_scores(matchResultId)`
-**Then:** Only their own side's flag is set (same as captain path). refereeFullControl is ignored for participant referees.
+### Casual Match Auto-Finalizes
 
-### Submit Match Result
-**Given:** MatchResultRecord with all captains confirmed, caller has referee authority
-**When:** `submit_match_result(matchResultId, winnerId)` — winnerId is u32, mapped to winnerTeamSide server-side via MatchResultParticipant lookup
-**Then:** Status changes to Submitted. winnerTeamSide and refereeUserId set.
-
-### Submit Without All Confirmations (blocked)
-**Given:** MatchResultRecord where blueConfirmed or redConfirmed is false
+**Given:** Casual MatchResultRecord, both sides confirmed
 **When:** Referee calls `submit_match_result`
-**Then:** Throws "All team captains must confirm scores before submission."
+**Then:** Status → Validated, `runFinalization` runs inline. Stats written. Lobby hard-deleted.
 
-### Dispute Match Result
-**Given:** MatchResultRecord in Submitted status, caller is a match participant (has MatchResultParticipant row)
-**When:** `dispute_match_result(matchResultId, reason)`
-**Then:** Status changes to Disputed. disputedByUserId and disputeReason set.
+### Dispute After Submission
 
-### Double Dispute (blocked)
-**Given:** MatchResultRecord already disputed
-**When:** Another participant calls `dispute_match_result`
-**Then:** Throws "This match result has already been disputed"
+**Given:** Ranked MatchResultRecord in Submitted status
+**When:** Participant calls `dispute_match_result(matchResultId, "Scores are wrong")`
+**Then:** Status → Disputed. `disputedByUserId`, `disputeReason` set.
 
-### Override Match Result
-**Given:** MatchResultRecord exists, caller is TO/Mod/Admin
-**When:** `override_match_result(matchResultId, "Validated", winnerTeamSideTag, reason)` — winnerTeamSideTag is string: 'Blue'/'Red'/'' for draw
-**Then:** Status changes to Validated. winnerTeamSide updated. disputeReason stores override reason.
+### Admin Force-Finalizes Stuck Match
 
-### Match Finalization (Phase 5)
-**Given:** MatchResultRecord in Validated status, MMR processed (or matchType=Casual)
-**When:** `finalize_match_result(matchResultId)` is called
-**Then:** MatchSessionHistory row written with match outcome. MatchParticipantHistory rows written for each participant. PlayerStat and PlayerCharacterStat incremented. PlayerRelationship updated for ally/opponent pairs. MatchResultRecord, MatchResultParticipant, and MatchResultGame rows all deleted.
+**Given:** Lobby in AwaitingResult, `mmrProcessedAt` is undefined
+**When:** Moderator calls `admin_force_finalize(lobbyId, winnerTeamId)`
+**Then:** MatchResultRecord status → Validated with winner. Full finalization runs.
 
-**Note:** This reducer is a stub in Phase 04.1. Full implementation in Phase 5. Documenting the contract here so Phase 5 has a behavioral spec to implement against.
+### Admin Voids a Match
 
-### Casual Auto-Validation (Phase 5)
-**Given:** MatchResultRecord with matchType=Casual, all captains confirmed
-**When:** `submit_match_result(matchResultId, winnerId)` is called
-**Then:** Status changes directly to Validated (skips Submitted). Finalization can proceed immediately (no MMR gate).
+**Given:** Lobby in AwaitingResult, `mmrProcessedAt` is undefined
+**When:** Moderator calls `admin_void_match(lobbyId)`
+**Then:** Lobby and all MatchResult* rows hard-deleted. No stats written.
 
-### Ranked Screenshot Requirement (Phase 5)
-**Given:** MatchResultRecord with matchType=Ranked, status=Submitted
-**When:** Admin/Mod/TO calls `override_match_result(matchResultId, "Validated", ...)`
-**Then:** Validation rejects if any MatchResultGame row is missing teamBlueScreenshotUrl or teamRedScreenshotUrl. All games must have both screenshots before a Ranked match can be validated.
+### Spectator Referee Records Both Sides
 
-### Casual Auto-Finalize (Phase 6)
-**Given:** MatchResultRecord with matchType=Casual, all captains confirmed
-**When:** `submit_match_result(matchResultId, winnerId)` is called
-**Then:** Status changes to Validated AND finalization runs inline in same transaction -- stats, history, MMR all written atomically. No separate finalize_match_result call needed. (D-37)
+**Given:** `refereeFullControl=true` on MatchResultRecord, spectator referee in lobby
+**When:** Referee calls `record_game_scores` with both Blue and Red fields
+**Then:** MatchResultGame row inserted for both sides. Referee may also call `confirm_match_scores` to confirm both sides at once.
 
-### Finalization Pipeline (Phase 6)
-**Given:** MatchResultRecord in Validated status
-**When:** `finalize_match_result` (ranked) or auto-finalize (casual)
-**Then:** 19-step pipeline runs: reads participants/games/lobby/steps/season, then writes MatchSessionHistory, MatchSessionStepHistory (individual rows), MatchResultGameHistory, MatchParticipantHistory (with displayName), processes MMR (ranked only), increments PlayerStat, PlayerCharacterStat, PlayerRelationship, GlobalCharacterStat, advances bracket (tournament), deletes ephemeral records, cascade-deletes lobby. Single transaction -- full rollback on failure. (D-56)
+### Ranked Override (Disputed Match)
 
-### Referee Transfer
-**Given:** Lobby with host and members, host has isReferee=true
-**When:** Host calls `transfer_referee(lobbyId, targetUserId)`
-**Then:** Host's isReferee=false, target's isReferee=true
-
-### Referee Reclaim
-**Given:** Lobby where referee was transferred to another member
-**When:** Host calls `reclaim_referee(lobbyId)`
-**Then:** Current referee's isReferee=false, host's isReferee=true
-
-### Record Game Scores — Captain Own-Side Scoring
-**Given:** MatchResultRecord in Pending status, caller is a Blue captain (MatchResultParticipant.isCaptain=true, teamSide=Blue)
-**When:** `record_game_scores(matchResultId, gameNumber, winnerTeamSide, teamBlueCyclesUsed, teamBlueScore, teamBlueScreenshotUrl)` — providing only Blue-side fields
-**Then:** MatchResultGame row created (or updated via delete+insert upsert) with Blue-side values set. Red-side fields remain empty (or preserved from prior entry if updating). gameMode inherited from Lobby. validationStatus defaults to Pending.
-
-**Rejection:** Blue captain provides any Red-side field (teamRedCyclesUsed, teamRedScore, teamRedBoss1Score, teamRedBoss2Score, teamRedScreenshotUrl) → error "Captains can only enter scores for their own side." Same logic for Red captain providing Blue-side fields.
-
-**Rejection:** Non-captain participant calls record_game_scores → error "Only the team captain can record game scores."
-
-### Record Game Scores — Spectator Referee Full Control
-**Given:** MatchResultRecord in Pending status with refereeFullControl=true, caller is a spectator referee (LobbyMember.isReferee=true, no MatchResultParticipant row)
-**When:** `record_game_scores(matchResultId, gameNumber, winnerTeamSide, teamBlueCyclesUsed, teamRedCyclesUsed, teamBlueScore, teamRedScore, teamBlueScreenshotUrl, teamRedScreenshotUrl)` — providing BOTH Blue and Red side fields
-**Then:** All fields set in one call on MatchResultGame row. Existing row updated (delete+insert), new row inserted if first entry. gameMode inherited from Lobby.
-
-**Rejection:** Non-participant who is NOT the lobby referee → error "You are not a participant or authorized referee of this match."
-
-**Rejection:** Spectator referee when refereeFullControl=false → error "You are not a participant or authorized referee of this match."
-
-### Process Tournament MMR — Batch MMR
-**Given:** Ranked tournament (countTowardsMmr=true) at Completed or Cancelled stage with multiple Validated MatchResultRecords where mmrProcessedAt is undefined
-**When:** TO/assistant/Mod/Admin calls `process_tournament_mmr(tournamentId)`
-**Then:** All unprocessed Validated matches for that tournament are iterated. For each match: participants and games read, `processMatchMmr` called with matchHistoryId=0 as sentinel (back-filled later by runFinalization step 12), mmrProcessedAt stamped with current timestamp. After all matches processed, leaderboard rebuilt once with active seasonId.
-
-**Rejection:** Tournament stage is not Completed or Cancelled → error "Tournament must be Completed or Cancelled to process MMR."
-
-**Rejection:** Tournament has countTowardsMmr=false → error "This tournament does not count toward MMR (countTowardsMmr=false)."
-
-**No-op:** Zero unprocessed matches found → logs and returns silently (no error).
-
-### Coach Assignment
-**Given:** Lobby with host and members
-**When:** Host or referee calls `set_team_slot(lobbyId, targetUserId, BlueCoach)` or `set_team_slot(lobbyId, targetUserId, RedCoach)`
-**Then:** Target's lobbySlot set to BlueCoach/RedCoach (coach role encoded in slot)
-**When:** Host or referee calls `set_team_slot(lobbyId, targetUserId, BluePlayer)` or `set_team_slot(lobbyId, targetUserId, RedPlayer)`
-**Then:** Target's lobbySlot set to BluePlayer/RedPlayer (coach role removed)
+**Given:** Ranked MatchResultRecord in Disputed status
+**When:** Moderator calls `override_match_result(matchResultId, "Validated", "Blue", "Screenshot confirms Blue win")`
+**Then:** Status → Validated, winnerTeamSide=Blue, matchEndReason=Completed, disputeReason set.
 
 ## Edge Cases
 
-| Case | Expected Behavior |
-|------|-------------------|
-| Confirm scores on non-Pending match | Throws "Scores can only be confirmed when Pending" |
-| Non-participant, non-referee confirms scores | Throws "You are not a participant or referee of this match." |
-| Confirm by non-captain participant | Throws "Only the team captain can confirm match scores." |
-| Non-spectator referee tries full control confirm | Confirms own side only (participant path) |
-| Spectator referee confirms without refereeFullControl | Throws "Referee full control is not enabled for this match." |
-| Submit without referee authority | Throws "You do not have referee authority" |
-| Dispute a Pending match | Throws "Can only dispute after submission" |
-| Dispute with empty reason | Throws "Dispute reason cannot be empty" |
-| Dispute reason > 1000 chars | Throws "Dispute reason cannot exceed 1000 characters" |
-| Transfer referee to self | Throws "Cannot transfer referee to yourself" |
-| Transfer referee when not referee | Throws "You are not the referee" |
-| Reclaim referee when not host | Throws "Only the lobby host can reclaim" |
-| Self-assign coach slot (BlueCoach/RedCoach) | Throws "Only the lobby host or referee can assign the coach role." |
-| Override with invalid status tag | Throws "Invalid status override" |
-| Record scores on non-Pending match | Throws "Scores can only be recorded when the match is in Pending status." |
-| Record scores — invalid winnerTeamSide | Throws "winnerTeamSide must be \"Blue\" or \"Red\"." |
-| Draw outcome (winnerId=0 on submit) | winnerTeamSide stored as undefined on MatchResultRecord. Finalization sets matchEndReason=Draw. Stats increment with isDraw=true (draws+1, no win/loss). MMR uses 0.5 actual result for both sides. |
-| Handicap — Classic mode | handicapApplied = rosterDiffAdvantage × (teamBlueAccountRating − teamRedAccountRating). Stored on MatchSessionHistory.handicapApplied. teamBlueSpent/teamRedSpent are null for Classic. |
-| Handicap — Auction mode | teamBlueSpent = characterBudget + lightconeBudget − remainingLcBudget (after carryover). teamRedSpent calculated identically. Both stored on MatchSessionHistory. handicapApplied = delta between spent amounts applied via same MoC/AS formula as Classic. |
-| process_tournament_mmr — sentinel back-fill | MmrHistory rows written with matchHistoryId=0 during batch MMR. Finalization step 12 finds these sentinel rows per participant and updates the latest one with the real historyRow.id. |
-
-## Testing Notes
-
-**Deferred to Phase 9 UAT:** Tests for score confirmation (13), dispute (14), override (15), referee transfer (12), and coach management (17) require lobby CRUD reducers and MatchResultRecord insert -- both unavailable until Phase 9. Scenarios are documented here for test generation once prerequisites exist.
+| Case | Expected Behavior | Notes |
+|------|-------------------|-------|
+| `winnerId=0` on submit | Draw: no `winnerTeamSide` set, `matchEndReason=Draw` | 0 is sentinel for draw |
+| Submit before both sides confirmed | Rejected: "All team captains must confirm scores..." | Both flags required |
+| Dispute already-disputed match | Rejected: "This match result has already been disputed." | Idempotent check |
+| Captain tries to enter opponent's scores | Rejected: "Captains can only enter scores for their own side." | Side isolation |
+| Force-finalize already processed match | Rejected: "This match has already been processed..." | `mmrProcessedAt` guard |
+| Void already processed match | Rejected: "This match has already been processed. Cannot void." | Same guard |
+| `admin_set_bracket_winner` before rollback | Rejected: "Bracket match already has a winner." | Must rollback first |
+| Override non-tournament match as non-moderator | Rejected by `ensureModerator` | Tournament vs non-tournament permission split |
+| Ranked override without screenshots | Rejected: "Cannot validate Ranked match: game N is missing screenshot(s)." | All games must have both URLs |
 
 ## Integration Points
 
-| This Feature | Connects To | Direction |
-|-------------|------------|-----------|
-| MatchResultRecord.lobbyId | Lobby.id | Reads |
-| MatchResultParticipant.userId | User.id | Reads |
-| MatchResultRecord.bracketMatchId → BracketMatch.tournamentId | Tournament.id | Derived (D-42) |
-| MatchResultRecord.bracketMatchId | BracketMatch.id | Phase 4 |
-| LobbyMember.isReferee | Referee authority check | Reads |
-| LobbyMember.lobbySlot | Coach encoded as BlueCoach/RedCoach | Reads |
-| MmrRating | MMR calculation | Phase 5 reads |
-| MatchSessionHistory | Finalization writes history | Phase 5 writes |
-| MatchParticipantHistory | Finalization writes participant records | Phase 5 writes |
-| PlayerStat / PlayerCharacterStat | Finalization increments stats | Phase 5 writes |
-| GlobalCharacterStat | Finalization increments community stats | Phase 6 writes |
-| PlayerRelationship | Finalization increments ally/opponent stats | Phase 6 writes |
-| Season.id | Active season read at finalization | Phase 6 reads |
-| TournamentPlayerAccount | Ownership validation for picks | Phase 6 reads |
+| This Feature | Connects To | How | Direction |
+|-------------|------------|-----|-----------|
+| `MatchResultRecord.lobbyId` | `Lobby.id` | FK reference | Reads |
+| `MatchResultParticipant.matchResultId` | `MatchResultRecord.id` | FK reference | Reads |
+| `record_game_scores` | `MatchResultGame` | Composite PK upsert (delete+insert) | Writes |
+| `submit_match_result` | `Lobby.stage` | Sets AwaitingResult | Writes |
+| `submit_match_result` (Casual) | `runFinalization` | Inline finalization | Calls |
+| `finalize_match_result` | `runFinalization` | Full pipeline | Calls |
+| `admin_force_finalize` | `runFinalization` | Full pipeline | Calls |
+| `admin_void_match` | `hardDeleteLobby` | Hard-deletes lobby + results | Calls |
+| `admin_set_bracket_winner` | `BracketMatch`, `advanceBracketMatch` | Bracket advancement | Writes |
+| `override_match_result` | `BracketMatch.tournamentId` | Permission derivation (D-42) | Reads |
+| `MatchResultRecord.bracketMatchId` | `BracketMatch.id` | FK derivation for tournamentId (D-42) | Reads |
 
 ## Phase History
 
 | Decision | Source | Date |
 |----------|--------|------|
-| Both teams must confirm before submit | Phase 3 CONTEXT.md | 2026-03-17 |
-| One dispute per match | Phase 3 CONTEXT.md | 2026-03-17 |
-| Referee is per-lobby (isReferee on LobbyMember) | Phase 3 CONTEXT.md | 2026-03-17 |
-| Referee auto-assign at lobby creation deferred to Phase 9 | Phase 3 execution | 2026-03-19 |
-| disputeReason reused for admin override reason | Phase 3 execution | 2026-03-19 |
-| Coach set/remove by host or referee only | Phase 3 execution | 2026-03-19 |
-| All match result/referee/coach tests deferred to Phase 9 (no lobby CRUD) | Phase 3 execution | 2026-03-19 |
-| MatchResultRecord becomes ephemeral (deleted after finalization) | Phase 04.1 execution | 2026-03-20 |
-| Captain-based confirmation replaces team1Confirmed/team2Confirmed | Phase 04.1 execution | 2026-03-20 |
-| isTournamentControlled replaces isTournamentMatch (behavioral flag) | Phase 04.1 execution | 2026-03-20 |
-| Match Finalization scenario documented (Phase 5 contract) | Phase 04.1 execution | 2026-03-20 |
-| winnerTeamSide (TeamSide, renamed from TeamLabel) replaces winnerId on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
-| teamBlue*/teamRed* replaces player1*/player2* on MatchResultGame | Phase 04.1 execution | 2026-03-20 |
-| MatchType.Tournament variant removed — only Casual and Ranked remain | Phase 5 discussion | 2026-03-20 |
-| Tournament matchType derived from tournament.countTowardsMmr (true=Ranked, false=Casual) | Phase 5 discussion | 2026-03-20 |
-| Casual auto-validates on submit, no MMR, screenshots optional | Phase 5 discussion | 2026-03-20 |
-| Ranked requires Admin/Mod/TO validation, screenshots required for validation | Phase 5 discussion | 2026-03-20 |
-| EloConfig becomes single-row admin-tunable table (not hardcoded) | Phase 5 discussion | 2026-03-20 |
-| Initial MMR rating = 1000, higher = better | Phase 5 discussion | 2026-03-20 |
-| Team size modifier: sizeBonus(150) per extra player, spread penalty stdev/spreadDivisor(2) | Phase 5 discussion | 2026-03-20 |
-| Account rating modifier: maxAccountBonus(200), whale chooses Fair MMR or Handicap Play per match | Phase 5 discussion | 2026-03-20 |
-| isConfirmed moved from MatchResultParticipant to MatchResultRecord (blueConfirmed/redConfirmed) | Phase 5 discussion | 2026-03-20 |
-| refereeFullControl (default true): spectator referee can fill scores + confirm both sides | Phase 5 discussion | 2026-03-20 |
-| Participant referee ignores refereeFullControl — confirms own side only | Phase 5 discussion | 2026-03-20 |
-| Casual auto-finalize inline in submit_match_result (D-37) | Phase 6 CONTEXT.md | 2026-03-21 |
-| 19-step finalization pipeline extracted to shared helper (step 19: cascade-deletes lobby) | Phase 6 execution / Phase 9 execution | 2026-03-22 / 2026-03-29 |
-| Character stat increments (pick/ban/faced) during finalization | Phase 6 execution | 2026-03-22 |
-| GlobalCharacterStat increments during finalization | Phase 6 execution | 2026-03-22 |
-| Match replay archival: step rows + game history + participant history | Phase 6 execution | 2026-03-22 |
-| Spectated count increment at finalization | Phase 6 execution | 2026-03-22 |
-| requireOwnership on Lobby for pick validation helper | Phase 6 CONTEXT.md | 2026-03-21 |
-| LobbySlot refactor: set_coach/remove_coach eliminated — coach via set_team_slot(BlueCoach/RedCoach) | Phase 9 execution | 2026-03-29 |
-| TeamLabel renamed to TeamSide (same values: Blue, Red, Spectator) | Phase 9 execution | 2026-03-29 |
-| Added record_game_scores (captain own-side, spectator referee full control), process_tournament_mmr (batch), handicap, draw scenarios | Phase 9 execution | 2026-03-29 |
-| runFinalization step 19: cascade-deletes lobby after ephemeral cleanup | Phase 9 execution | 2026-03-29 |
-| Finalization step 19 cascade-deletes lobby (not set Finished). submit_match_result transitions to AwaitingResult first. | Phase 9 execution | 2026-03-29 |
-| MatchEndReason.Concede + ConcedeTrigger enum (Disconnect/VoluntaryLeave/RefereeDecision) (D-69, D-70, D-91) | Phase 10 execution | 2026-04-03 |
-| MatchResultRecord: matchEndReason, concedeTrigger, concedeSummary, concedeAtStage columns added (D-58, D-71) | Phase 10 execution | 2026-04-03 |
-| Concede finalization matrix: 3-tier (casual-nontourn/casual-tourn/ranked) x 3-stage (Drafting/Equipping/Scoring) branching in runFinalization (D-74, D-77-79) | Phase 10 execution | 2026-04-03 |
-| Achievement check ALWAYS skipped for concede outcomes (D-76) | Phase 10 execution | 2026-04-03 |
-| Bracket advancement NEVER auto-triggers for concede outcomes (D-80) — winnerTeamId set but placeParticipantInNextMatch not called | Phase 10 execution | 2026-04-03 |
-| admin_force_finalize: resolves AwaitingResult match with winner via runFinalization (D-52) | Phase 10 execution | 2026-04-03 |
-| admin_void_match: erases AwaitingResult match via hardDeleteLobby without finalization (D-53) | Phase 10 execution | 2026-04-03 |
-| admin_set_bracket_winner: directly sets BracketMatch.winnerTeamId and advances bracket; requires winnerTeamId=0 (D-54) | Phase 10 execution | 2026-04-03 |
-| Processed match protection: mmrProcessedAt blocks force-finalize and void (D-56) | Phase 10 execution | 2026-04-03 |
-| submit_match_result param renamed to winnerId (u32, mapped to winnerTeamSide via MatchResultParticipant); override_match_result param renamed to winnerTeamSideTag (string); matchOutcome renamed to matchEndReason (Completed/Draw/Concede); tournamentId column removed from MatchResultRecord (derived via bracketMatchId FK) | Phase 10.1 execution | 2026-04-03 |
+| MatchResultRecord, MatchResultParticipant, MatchResultGame table design | Phase 7 discussion | 2026-03-28 |
+| Captain-only confirmation (blueConfirmed/redConfirmed) | Phase 7 execution | 2026-03-28 |
+| Dispute flow for Ranked matches | Phase 7 execution | 2026-03-28 |
+| Casual auto-validate on submit (D-04) | Phase 7 discussion | 2026-03-28 |
+| Ranked two-step: submit → referee validates (MTCH-05) | Phase 7 discussion | 2026-03-28 |
+| Liveness guard (D-12) — block actions after concede | Phase 10 execution | 2026-04-03 |
+| admin_force_finalize (D-52), admin_void_match (D-53), admin_set_bracket_winner (D-54) | Phase 11 discussion | 2026-04-06 |
+| D-56: guard against re-processing already-processed matches | Phase 11 discussion | 2026-04-06 |
+| tournamentId removed from MatchResultRecord; derived via BracketMatch (D-42) | Phase 11 execution | 2026-04-06 |
+| override_match_result uses winnerTeamSide + matchEndReason (D-30, D-31) | Phase 11 execution | 2026-04-06 |
+| Ranked override requires screenshots (D-07) | Phase 11 execution | 2026-04-06 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-09*
+*Feature owner: Phase 7*

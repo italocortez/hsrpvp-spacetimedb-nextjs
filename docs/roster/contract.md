@@ -409,8 +409,9 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 | delete_hsr_account blocked by TournamentPlayerAccount rows for non-terminal tournaments | Phase 10.4 execution | 2026-04-04 |
 | admin_delete_hsr_account has identical deletion guards (D-25) | Phase 10.4 execution | 2026-04-04 |
 | HsrAccount and HsrAccountCharacter made private — view_my_roster and view_public_accounts replace raw subscriptions (D-20) | Phase 10.4 execution | 2026-04-04 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-09*
 *Feature owner: Phase 2*

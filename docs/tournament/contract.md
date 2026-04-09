@@ -2,6 +2,169 @@
 
 **Architecture:** [architecture.md](architecture.md)
 
+## Feature Overview
+
+Tournaments are multi-stage competitive events managed by Tournament Hosts and their assistants. A tournament moves through stages (Draft → Registration → CheckIn → Seeding → InProgress → Completed/Cancelled) with validated forward-only transitions. Players register as individuals; team formation happens through explicit join requests and captain acceptance (or auto-creation for solo tournaments). The bracket (generated in Seeding stage) drives match scheduling. Tournament lobbies inherit all settings from the parent tournament and are locked once created. Assistants can be granted granular permissions (validate results, override results, DQ participants, manage bracket, assign seeds). Match history is hidden until the tournament completes or is cancelled (D-91).
+
+## Reducers
+
+### Tournament Lifecycle
+
+| Reducer | Permission | Description |
+|---------|-----------|-------------|
+| `create_tournament` | TournamentHost+ | Create tournament in Draft stage with all settings |
+| `update_tournament` | TO/Assistant/Mod+ | Update settings (Draft or Registration stage only) |
+| `advance_tournament_stage` | TO/Assistant/Mod+ | Forward-only stage transition with validation |
+| `cancel_tournament` | TO/Assistant/Mod+ | Cancel from any non-terminal stage; cascade-deletes infrastructure; reveals match history (D-91) |
+
+**Key validation for `create_tournament`:**
+- Name: 1-100 chars; description: max 2000 chars
+- `teamSize` must be 1, 2, or 3
+- `defaultBestOf` must be 1, 3, 5, or 7
+- `winnerAdvantage` must be 0-3
+- `groupSize` must be at least 3
+- `maxAccountsPerPlayer` must be 0-10
+- `format`, `defaultGameMode`, `rosterVisibility`, `disconnectPolicy` must be valid enum tags
+- `costSetId !== 0` requires a Published cost set to exist
+- `scheduledStartAt` and `registrationDeadline` must be in the future; deadline must be before start
+
+**Key validation for `advance_tournament_stage`:**
+- Registration → Seeding: validates minimum team count, cleans up pending team requests
+- CheckIn → Seeding: auto-removes unchecked-in participants, cleans up team requests
+- Seeding → InProgress: validates bracket rows exist; bulk-sets Enrolled status to Active
+- Any → Completed: triggers `revealTournamentHistory` (D-91)
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Name out of range | "Tournament name must be 1-100 characters." |
+| Description too long | "Description cannot exceed 2000 characters." |
+| Invalid teamSize | "teamSize must be 1, 2, or 3." |
+| Invalid defaultBestOf | "defaultBestOf must be 1, 3, 5, or 7." |
+| Invalid winnerAdvantage | "winnerAdvantage must be 0-3." |
+| Invalid groupSize | "groupSize must be at least 3." |
+| Invalid maxAccountsPerPlayer | "maxAccountsPerPlayer must be 0-10." |
+| Invalid format/gameMode/etc. | "Invalid {field}: \"...\". Must be one of: ..." |
+| Cost set not found | "Cost set {id} not found." |
+| Cost set not published | "Cost set {id} is not published." |
+| scheduledStartAt in the past | "scheduledStartAt must be in the future." |
+| registrationDeadline in the past | "registrationDeadline must be in the future." |
+| deadline not before start | "registrationDeadline must be before scheduledStartAt." |
+| Update during wrong stage | "Tournament can only be updated in Draft or Registration stage." |
+
+---
+
+### Registration and Enrollment
+
+| Reducer | Permission | Description |
+|---------|-----------|-------------|
+| `register_for_tournament` | Any authenticated | Enroll in Registration/Seeding stage; handles waitlist; auto-creates team for solo tournaments; locks HSR accounts |
+| `withdraw_from_tournament` | Self | Set status to Withdrawn; transfer/destroy team; clean up TPA rows |
+| `approve_participant` | TO/Assistant/Mod+ | Set `approvedByToAt` for pending approval |
+| `waitlist_promote` | TO/Assistant/Mod+ | Move waitlisted participant to active |
+| `check_in_tournament` | Self | Set status Registered→CheckedIn during CheckIn stage |
+
+**Key validation for `register_for_tournament`:**
+- Tournament must be in Registration or Seeding stage
+- Player must not already be enrolled
+- `requireVerified` rejects guests
+- `requireRoster` requires an active `HsrAccount`
+- Full tournament (no waitlist) throws "Tournament is full."
+- Full tournament (waitlist enabled) inserts with `isWaitlisted=true`
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Tournament not found | "Tournament not found." |
+| Wrong stage | "Tournament is not accepting registrations." |
+| Already registered | "You are already registered for this tournament." |
+| Guest on verified-only tournament | "This tournament requires a verified account. Link your Discord first." |
+| No active HSR account | "This tournament requires an active HSR account in your roster." |
+| Full, no waitlist | "Tournament is full." |
+| Withdraw wrong stage | "Cannot withdraw during this stage. Contact the organizer to be disqualified." |
+| Already withdrawn | "Already withdrawn." |
+| Check-in wrong stage | "Tournament is not in the CheckIn stage." |
+| Not enrolled | "You are not enrolled in this tournament." |
+| Already checked in | "You have already checked in." |
+| Cannot check in (wrong status) | "Cannot check in: enrollment status is not Registered." |
+
+---
+
+### Team Management
+
+| Reducer | Permission | Description |
+|---------|-----------|-------------|
+| `create_tournament_team` | Enrolled participant | Create team (Registration stage only, teamSize > 1) |
+| `request_join_team` | Enrolled participant | Submit join request to existing team |
+| `accept_team_request` | Team captain | Accept player; inserts TournamentTeamMember; cleans up player's other requests |
+| `reject_team_request` | Team captain | Delete request row |
+| `leave_tournament_team` | Team member | Delete own TournamentTeamMember; captain transfers or team destroyed |
+| `disband_tournament_team` | Team captain | Destroy team + all member rows (Registration stage only) |
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Team not found | "Team not found." |
+| Tournament wrong stage (create/disband) | "Teams can only be created/disbanded during the Registration stage." |
+| Solo tournament team create | "Cannot create teams in a solo tournament." |
+| Not enrolled | "You must be registered in the tournament before creating/joining a team." |
+| Already on a team | "You are already on a team in this tournament." |
+| Team name out of range | "Team name must be 1-50 characters." |
+| Duplicate request | "You already have a pending request to join this team." |
+| Team full on accept | "Team is already full." |
+| Not captain | "Only the team captain can accept/reject join requests." / "Only the team captain can disband the team." |
+| Not a team member | "You are not a member of this team." |
+
+---
+
+### Admin and Moderation
+
+| Reducer | Permission | Description |
+|---------|-----------|-------------|
+| `dq_participant` | TO/Assistant/Mod+ | Disqualify; handle team cascade, active lobby concede/void, bracket auto-advance |
+| `override_match_result` | TO/Assistant (tournament), Mod+ (non-tournament) | Override MatchResultRecord status (D-30, D-31, D-42) |
+| `assign_tournament_assistant` | TO or Mod+ | Upsert assistant with granular permissions |
+| `remove_tournament_assistant` | TO or Mod+ | Delete assistant row |
+| `mod_promote_to_host` | Moderator+ | Promote User role to TournamentHost |
+| `mod_demote_from_host` | Moderator+ | Demote TournamentHost to User |
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Participant not found for DQ | "Participant not found in this tournament." |
+| Already disqualified | "Participant is already disqualified." |
+| DQ withdrawn participant | "Cannot disqualify a participant who has already withdrawn." |
+| Self-assign assistant | "You cannot assign yourself as a tournament assistant." |
+| Target user not found | "Target user not found." |
+| Assistant not found on remove | "Tournament assistant not found." |
+| Promote non-User role | "Can only promote users with the \"User\" role to TournamentHost. Current role: {role}" |
+| Demote non-TournamentHost | "Can only demote users with the \"TournamentHost\" role to User. Current role: {role}" |
+| Self-promote/demote | "You cannot change your own role via this reducer." |
+
+---
+
+### Tournament Lobby
+
+| Reducer | Permission | Description |
+|---------|-----------|-------------|
+| `create_tournament_lobby` | Match participant, TO, assistant, Mod+ | Create lobby linked to BracketMatch; inherits all tournament settings |
+| `approve_stand_in` | TO/assistant/Mod+ | Insert TournamentStandIn row for a bracket match |
+
+**Key validation for `create_tournament_lobby`:**
+- D-45: Only one non-Finished lobby per bracketMatchId at a time
+- D-22: Caller must not already be in a lobby
+- D-67: `matchType` derived from `tournament.countTowardsMmr` (true=Ranked, false=Casual)
+- D-65: All settings inherited from Tournament (gameMode, teamSize, costSet, anonymous, rosterVisibility, disconnectPolicy)
+
+**Error Cases:**
+| Condition | Error Message |
+|-----------|--------------|
+| Bracket match not found | "Bracket match not found." |
+| Tournament not found | "Tournament not found." |
+| Not authorized | "You are not authorized to create a lobby for this bracket match." |
+| Duplicate lobby for bracket match | "A lobby already exists for this bracket match." |
+| Stand-in already approved | "Stand-in already approved for this bracket match." |
+
 ## Acceptance Scenarios
 
 ### Tournament Creation
@@ -314,7 +477,8 @@ Note: TournamentEnrolled row does NOT contain hsrAccountId — that column was r
 | select_match_account: tournament path additive (up to maxAccountsPerPlayer), non-tournament path replace (always 1) | Phase 10.4 execution | 2026-04-04 |
 | Stand-in TPA snapshot conditional on bracketMatchId being truthy | Phase 10.4 execution | 2026-04-04 |
 | view_tournament_registrant_accounts new view: locked accounts per tournament respecting rosterVisibility | Phase 10.4 execution | 2026-04-04 |
+| Full hydration from codebase; Feature Overview and Reducers section added | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-09*

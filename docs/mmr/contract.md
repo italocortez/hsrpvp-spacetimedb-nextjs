@@ -480,3 +480,8 @@ All functions are pure math with zero database access.
 | admin_recalculate_all_ratings for bulk recomputation after config/archetype changes (D-32) | Phase 11 execution | 2026-04-03 |
 | Concede finalization matrix: Ranked non-tournament concedes process MMR (D-77/D-78/D-79) | Phase 10 execution | 2026-04-03 |
 | D-42: tournamentId removed from MatchResultRecord; derived via BracketMatch chain | Phase 7 execution | 2026-03-25 |
+| Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+
+---
+
+*Last updated: 2026-04-09*
