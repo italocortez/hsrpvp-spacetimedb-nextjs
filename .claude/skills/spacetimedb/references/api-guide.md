@@ -689,22 +689,29 @@ export const PrivateData = table(
   }
 );
 
-// ❌ BAD — .iter() causes performance issues (re-evaluates on ANY row change)
-spacetimedb.view(
-  { name: 'my_data_slow', public: true },
-  t.array(PrivateData.rowType),
-  (ctx) => [...ctx.db.privateData.iter()]  // Works but VERY slow at scale
-);
-
-// ✅ GOOD — index lookup enables targeted invalidation (returns multiple rows)
+// ❌ BAD — not exported, view never registers (st_view empty, no client bindings)
 spacetimedb.view(
   { name: 'my_data', public: true },
   t.array(PrivateData.rowType),
   (ctx) => [...ctx.db.privateData.owner_id.filter(ctx.sender)]
 );
 
+// ❌ BAD — .iter() causes performance issues (re-evaluates on ANY row change)
+export const my_data_slow = spacetimedb.view(
+  { name: 'my_data_slow', public: true },
+  t.array(PrivateData.rowType),
+  (ctx) => [...ctx.db.privateData.iter()]  // Works but VERY slow at scale
+);
+
+// ✅ GOOD — exported + index lookup enables targeted invalidation
+export const my_data = spacetimedb.view(
+  { name: 'my_data', public: true },
+  t.array(PrivateData.rowType),
+  (ctx) => [...ctx.db.privateData.owner_id.filter(ctx.sender)]
+);
+
 // ✅ GOOD — t.option() for at-most-one row (e.g. "get my player")
-spacetimedb.view(
+export const my_player = spacetimedb.view(
   { name: 'my_player', public: true },
   t.option(Player.rowType),
   (ctx) => {
@@ -712,6 +719,7 @@ spacetimedb.view(
     return row ?? undefined;
   }
 );
+// Then in index.ts: export { my_data, my_player } from './views/myViews';
 ```
 
 ### Query builder view pattern (can scan)
@@ -719,7 +727,8 @@ spacetimedb.view(
 ```typescript
 // Query-builder views return a query; the SQL engine maintains the result incrementally.
 // This can scan the whole table if needed (e.g. leaderboard-style queries).
-spacetimedb.anonymousView(
+// MUST be exported — same rule as procedural views.
+export const top_players = spacetimedb.anonymousView(
   { name: 'top_players', public: true },
   t.array(Player.rowType),
   (ctx) =>
@@ -737,13 +746,14 @@ spacetimedb.anonymousView(
 ### ViewContext vs AnonymousViewContext
 ```typescript
 // ViewContext — has ctx.sender, result varies per user (computed separately per subscriber)
-spacetimedb.view({ name: 'my_items', public: true }, t.array(Item.rowType), (ctx) => {
+// MUST be exported + re-exported from index.ts
+export const my_items = spacetimedb.view({ name: 'my_items', public: true }, t.array(Item.rowType), (ctx) => {
   return [...ctx.db.item.owner_id.filter(ctx.sender)];
 });
 
 // AnonymousViewContext — no ctx.sender, same result for everyone
 // SpacetimeDB materializes the view ONCE and serves that result to all subscribers (much better perf)
-spacetimedb.anonymousView({ name: 'leaderboard', public: true }, t.array(LeaderboardRow), (ctx) => {
+export const leaderboard = spacetimedb.anonymousView({ name: 'leaderboard', public: true }, t.array(LeaderboardRow), (ctx) => {
   return [...ctx.db.player.by_score.filter(/* top scores */)];
 });
 ```

@@ -191,7 +191,18 @@ conn.subscriptionBuilder()
 
 **Overlapping queries hurt performance:** Subscribing to datasets that overlap (e.g. `tables.user` AND `tables.user.where(r => r.id.ne(5))`) forces the server to serialize nearly all rows twice. Keep subscription queries disjoint. Subscribing to the *same* query more than once is fine — it's zero-copy with no additional processing overhead.
 
-**Views have no typed client bindings:** `spacetime generate` does NOT create typed table accessors for views. `conn.db.ViewMyProfile` is always `undefined`, even when subscribing via `subscribe('SELECT * FROM view_my_profile')`. The subscription delivers data but it has nowhere to land in the typed `conn.db`. Use regular table subscriptions + index lookups instead of relying on view accessors.
+**Views require export to register (CRITICAL):** Views must be **exported** from the module entry point — just like reducers. `spacetimedb.view()` returns a function with a `[registerExport]` symbol; the runtime only calls it when walking module exports. A side-effect import (`import './views/myViews'`) executes the code but discards the return value — the view never registers, `st_view` stays empty, and `spacetime generate` produces no bindings.
+
+```typescript
+// ❌ WRONG — view defined but never exported, [registerExport] never fires
+spacetimedb.view({ name: 'view_my_profile', public: true }, ret, fn);
+
+// ✅ CORRECT — exported, runtime finds and registers it
+export const view_my_profile = spacetimedb.view({ name: 'view_my_profile', public: true }, ret, fn);
+// Then in index.ts: export { view_my_profile } from './views/securityViews';
+```
+
+Once exported, `spacetime generate` creates typed view bindings (e.g. `view_my_profile_table.ts`). Views appear in `tablesSchema` alongside tables, accessible via `conn.db.view_my_profile` with `.count()`, `.iter()`, and row callbacks. View accessors use snake_case (matching the view name), not PascalCase like tables.
 
 ### Handling reducer errors on the client
 Reducers don't return data, so errors surface via callbacks. Use `_then()` to detect failures from a specific call, and `ctx.event.status` to read the `SenderError` message:
@@ -386,7 +397,7 @@ These are APIs that don't exist — LLMs hallucinate them frequently:
 | `ctx.db.Table.pkCol.filter(val)` | `ctx.db.Table.pkCol.find(val)` — PK/unique columns only have `.find()`, not `.filter()` (TypeError) |
 | `{ microsSinceUnixEpoch: BigInt }` in server insert/update | `new Timestamp(BigInt)` — plain objects lack the internal `__timestamp_micros_since_unix_epoch__` property, causing PANIC |
 | `null` / `undefined` for optional struct fields | Use sentinel values (e.g. `255` for u8, `new Timestamp(0n)` for timestamp) — optional inside `t.object()` can't serialize null/undefined |
-| `conn.db.ViewMyProfile.iter()` (view accessor on client) | Views have NO typed client bindings — `conn.db.ViewName` is always `undefined`. Subscribe via SQL string, read data from regular table subscriptions instead |
+| `conn.db.ViewMyProfile.iter()` (PascalCase view accessor) | View accessors use snake_case matching the view name: `conn.db.view_my_profile.iter()`. Views must be exported from the module for bindings to generate |
 | `subscribe([...]).onApplied(() => read all tables)` | Combined array subscribe fires `onApplied` before all table data arrives — use separate subscriptions with individual `onApplied` callbacks per table |
 
 ## Feature implementation checklist
