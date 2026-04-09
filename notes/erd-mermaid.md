@@ -1,10 +1,10 @@
 # HSRPVP SpacetimeDB ERD
 
-66 tables. Paste into [mermaid.live](https://mermaid.live) to preview.
+67 tables. All v0.5 tables included. Updated 2026-04-09. Paste into [mermaid.live](https://mermaid.live) to preview.
 
 | Color | Tables |
 |-------|--------|
-| blue | user, user_identity (PRIVATE Phase 12), user_private (PRIVATE Phase 12), ban_record (PRIVATE Phase 12), server_identity, user_deletion_job |
+| blue | user, user_identity (PRIVATE Phase 12), user_private (PRIVATE Phase 12), ban_record (PRIVATE Phase 12), server_identity, user_deletion_job, identity_gc_job (Phase 12.1), gc_result (PRIVATE Phase 12.1) |
 | green | hsr_character, hsr_lightcone, archetype, hsr_character_archetype, season |
 | orange | hsr_account (PRIVATE D-20), hsr_account_character (PRIVATE D-20), hsr_account_lightcone, cost_set, hsr_character_cost, hsr_lightcone_cost, hsr_synergy_cost, cost_set_draft_character, cost_set_draft_lightcone, cost_set_draft_synergy |
 | purple | tournament, tournament_enrolled, tournament_team_member, tournament_assistant, tournament_team, tournament_team_request, tournament_stand_in, tournament_player_account, bracket_match, group_phase_record |
@@ -40,6 +40,14 @@ erDiagram
     user_deletion_job {
         u64 scheduledId PK
         u32 userId FK
+    }
+    identity_gc_job {
+        u64 scheduledId PK
+    }
+    gc_result {
+        u32 id PK
+        string gcType
+        u32 createdById FK
     }
 
     %% green
@@ -489,4 +497,7 @@ erDiagram
     %% Phase 12: Auth Security Hardening
     user_private ||--|| user : "userId (one-to-one)"
     ban_record }o--|| user : "bannedByUserId (many-to-one)"
+
+    %% Phase 12.1: Identity GC + GC audit log
+    gc_result }o--|| user : "createdById (many-to-one)"
 ```
