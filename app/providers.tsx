@@ -33,6 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       DbConnection.builder()
         .withUri(HOST)
         .withDatabaseName(DB_NAME)
+        .withConfirmedReads(false)
         .withToken(
           typeof window !== 'undefined'
             ? localStorage.getItem(TOKEN_KEY) || undefined

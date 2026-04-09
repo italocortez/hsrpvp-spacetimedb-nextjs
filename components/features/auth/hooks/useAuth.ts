@@ -31,8 +31,6 @@ export function useAuth() {
             })
             .subscribe('SELECT * FROM view_my_profile');
 
-        conn.subscriptionBuilder().subscribe('SELECT * FROM view_my_identity');
-
         conn.subscriptionBuilder()
             .onApplied(() => {
                 readProfileFromConnection(conn);
@@ -46,6 +44,22 @@ export function useAuth() {
             const tag = ctx?.event?.tag;
             return tag === 'Reducer' || tag === 'Transaction';
         };
+
+        // view_my_profile callbacks — primary data source for profile changes
+        const onViewProfileInsert = (ctx: any, row: any) => {
+            if (!isLiveChange(ctx)) return;
+            console.log(`[useAuth] view_my_profile.onInsert: id=${row?.id}`);
+            readProfileRef.current(conn);
+        };
+        const onViewProfileUpdate = (ctx: any, oldRow: any, row: any) => {
+            if (!isLiveChange(ctx)) return;
+            console.log(`[useAuth] view_my_profile.onUpdate: id=${row?.id}`);
+            readProfileRef.current(conn);
+        };
+        conn.db.view_my_profile.onInsert(onViewProfileInsert);
+        conn.db.view_my_profile.onUpdate(onViewProfileUpdate);
+
+        // User table callbacks — fallback for connection recovery paths
         const onUserInsert = (ctx: any, row: any) => {
             if (!isLiveChange(ctx)) return;
             console.log(`[useAuth] User.onInsert: id=${row?.id} username=${row?.username}`);
@@ -60,6 +74,8 @@ export function useAuth() {
         conn.db.User.onUpdate(onUserUpdate);
 
         return () => {
+            conn.db.view_my_profile.removeOnInsert(onViewProfileInsert);
+            conn.db.view_my_profile.removeOnUpdate(onViewProfileUpdate);
             conn.db.User.removeOnInsert(onUserInsert);
             conn.db.User.removeOnUpdate(onUserUpdate);
             subscribedRef.current = false;
@@ -97,7 +113,19 @@ export function useAuth() {
     const readProfileFromConnection = useCallback((conn: any) => {
         if (!identity) return;
 
-        // Strategy 1: Cached userId from previous session → PK lookup
+        // PRIMARY: Read from view_my_profile — has private fields (discordId, discordUsername)
+        const profileRows = [...conn.db.view_my_profile.iter()];
+        const profile = profileRows[0]; // At most 1 row (filtered by ctx.sender server-side)
+        if (profile) {
+            console.log(`[useAuth] View hit: view_my_profile → id=${profile.id} username=${profile.username}`);
+            setResolvedUser(profile);
+            return;
+        }
+
+        // FALLBACK: User table strategies (connection recovery paths)
+        // View subscription may not have data yet during rapid connection/reconnection.
+
+        // Strategy 1: Cached userId from previous session → PK lookup on User table
         const cachedId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_KEY) : null;
         if (cachedId) {
             const user = conn.db.User.id.find(Number(cachedId));
@@ -111,7 +139,7 @@ export function useAuth() {
             clearSessionCookie();
         }
 
-        // Strategy 2: Guest username → unique index lookup
+        // Strategy 2: Guest username → unique index lookup on User table
         const shortId = identity.toHexString().slice(0, 8);
         const guestUsername = `Guest_${shortId}`;
         const guestUser = conn.db.User.username.find(guestUsername);
@@ -120,7 +148,7 @@ export function useAuth() {
             setResolvedUser(guestUser); return;
         }
 
-        // Strategy 3: NextAuth session username → unique index lookup
+        // Strategy 3: NextAuth session username → unique index lookup on User table
         // Handles post-merge recovery: after server_link_provider re-points identity
         // to an existing user (Case 1b), the guest is deleted and Strategies 1+2 fail.
         // The Discord username from NextAuth matches the existing user's username.
@@ -135,7 +163,7 @@ export function useAuth() {
 
         // No user found — clear stale session cookie and force profileReady
         // so isOrphanedIdentity triggers and LOGIN shows
-        console.log(`[useAuth] No user found (strategies 1-3 failed). identity=${shortId}, sessionName=${sessionName ?? 'none'}`);
+        console.log(`[useAuth] No user found (view + strategies 1-3 failed). identity=${shortId}, sessionName=${sessionName ?? 'none'}`);
         clearSessionCookie();
         setProfileReady(true);
         setCurrentUser(null);
