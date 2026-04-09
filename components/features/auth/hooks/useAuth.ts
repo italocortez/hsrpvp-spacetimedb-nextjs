@@ -217,12 +217,12 @@ export function useAuth() {
         if (!hasMapping && !autoRegisteredRef.current) {
             autoRegisteredRef.current = true;
             console.log('[useAuth] Discord flow Step A: calling loginAsGuest (no mapping yet)');
-            try {
-                conn.reducers.loginAsGuest({});
-            } catch (err) {
-                console.error("Auto-register loginAsGuest failed:", err);
-                autoRegisteredRef.current = false;
-            }
+            conn.reducers.loginAsGuest({})._then((ctx: any) => {
+                if (ctx.event.status.tag === 'Failed') {
+                    console.error('[useAuth] Discord auto-register loginAsGuest failed:', ctx.event.status.value);
+                    autoRegisteredRef.current = false;
+                }
+            });
             return;
         }
 
@@ -312,11 +312,11 @@ export function useAuth() {
             console.error("SpacetimeDB connection not active.");
             return;
         }
-        try {
-            conn.reducers.loginAsGuest({});
-            // onInsert callback handles re-read reactively — no setTimeout needed
-        }
-        catch (err) { console.error("Failed loginAsGuest:", err); }
+        conn.reducers.loginAsGuest({})._then((ctx: any) => {
+            if (ctx.event.status.tag === 'Failed') {
+                console.error('[useAuth] loginGuest failed:', ctx.event.status.value);
+            }
+        });
     }, [getConnection, readProfileFromConnection]);
 
     const loginDiscord = useCallback(() => {
@@ -335,8 +335,11 @@ export function useAuth() {
     const deleteGuestAccount = useCallback(() => {
         const conn = getConnection();
         if (!conn) return;
-        try { conn.reducers.deleteGuestAccount({}); }
-        catch (err) { console.error("Failed to delete guest account:", err); }
+        conn.reducers.deleteGuestAccount({})._then((ctx: any) => {
+            if (ctx.event.status.tag === 'Failed') {
+                console.error('[useAuth] deleteGuestAccount failed:', ctx.event.status.value);
+            }
+        });
         localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
         localStorage.removeItem(USER_ID_KEY);
         clearSessionCookie();
