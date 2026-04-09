@@ -233,20 +233,6 @@ conn.reducers.joinLobby(lobbyId).catch(err => {
 
 ---
 
-## Missing from Backend (v1 Frontend Tasks)
-
-The following were descoped from v0.5 backend; schema may exist but logic was not implemented:
-
-| Item | Status |
-|------|--------|
-| Seasons implementation | Schema exists (Season table, seasonId on stats/MMR), logic deferred |
-| HoYoverse API roster import | Deferred to v1+ (API availability uncertain) |
-| Computer vision screenshot import | Deferred to v1+ (high complexity) |
-| Swiss-system brackets | Deferred (only single/double elim + group phase implemented) |
-| Persistent teams (TEAM-01/02/03) | Reclassified Out of Scope; TournamentTeam covers v0.5 needs |
-
----
-
 ## Project Planning References
 
 | What | File |
