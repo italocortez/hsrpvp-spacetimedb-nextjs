@@ -13,7 +13,7 @@ import './views/anonymousViews';
 export { broadcast_cursor } from './reducers/cursor';
 export { login_as_guest } from './reducers/auth';
 export { delete_guest_account, update_display_name, update_username, update_avatar } from './reducers/profile';
-export { register_server, server_link_provider, server_set_role, server_delete_user, server_set_mmr } from './reducers/server';
+export { register_server, server_link_provider, server_set_role, server_delete_user, server_set_datetime, server_set_online, server_set_mmr } from './reducers/server';
 export { admin_ban_user, admin_unban_user } from './reducers/banAdmin';
 export { admin_delete_row, admin_bulk_upsert, admin_update_user } from './reducers/admin';
 export { admin_update_elo_config, admin_seed_elo_config } from './reducers/eloAdmin';

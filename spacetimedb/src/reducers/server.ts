@@ -1,6 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
-import { Identity } from 'spacetimedb';
+import { Identity, Timestamp } from 'spacetimedb';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
 import { performUserDeletion } from '../helpers/userDeletionHelper';
 import { rejectIfBanned } from '../helpers/banHelper';
@@ -264,6 +264,93 @@ export const server_delete_user = spacetimedb.reducer({
  *
  * Called via server-token connection (e.g. test harness or manage-user.ts).
  */
+/**
+ * Server-only reducer: set a datetime field on a supported table.
+ * General-purpose timestamp manipulation for testing time-dependent behavior
+ * (e.g. aging identities past GC TTL, backdating lobby creation).
+ *
+ * Supported table/field combos:
+ *   user_identity / lastSeenAt    — GC TTL testing
+ *   user_identity / createdDate   — creation age testing
+ *   lobby / createdDate           — lobby GC age testing
+ *
+ * Called via server-token connection (test harness scripts).
+ */
+export const server_set_datetime = spacetimedb.reducer({
+    tableName: t.string(),
+    primaryKey: t.string(),
+    field: t.string(),
+    timestampMicros: t.string(),  // BigInt micros as string
+}, (ctx, { tableName, primaryKey, field, timestampMicros }) => {
+    requireServer(ctx);
+
+    const ts = new Timestamp(BigInt(timestampMicros));
+
+    if (tableName === 'user_identity') {
+        const identity = Identity.fromString(primaryKey);
+        const row = ctx.db.UserIdentity.identity.find(identity);
+        if (!row) throw new SenderError(`UserIdentity not found for identity ${primaryKey.slice(0, 16)}...`);
+
+        if (field === 'lastSeenAt') {
+            ctx.db.UserIdentity.identity.update({
+                ...row,
+                lastSeenAt: ts,
+                lastModifiedById: SYSTEM_USER_ID,
+                lastModifiedDate: ctx.timestamp,
+            });
+        } else if (field === 'createdDate') {
+            ctx.db.UserIdentity.identity.update({
+                ...row,
+                createdDate: ts,
+                lastModifiedById: SYSTEM_USER_ID,
+                lastModifiedDate: ctx.timestamp,
+            });
+        } else {
+            throw new SenderError(`Unsupported field "${field}" for user_identity. Supported: lastSeenAt, createdDate`);
+        }
+    } else if (tableName === 'lobby') {
+        const lobbyId = parseInt(primaryKey, 10);
+        if (isNaN(lobbyId)) throw new SenderError(`Invalid lobby ID: ${primaryKey}`);
+        const row = ctx.db.Lobby.id.find(lobbyId);
+        if (!row) throw new SenderError(`Lobby #${lobbyId} not found`);
+
+        if (field === 'createdDate') {
+            ctx.db.Lobby.id.update({
+                ...row,
+                createdDate: ts,
+                lastModifiedById: SYSTEM_USER_ID,
+                lastModifiedDate: ctx.timestamp,
+            });
+        } else {
+            throw new SenderError(`Unsupported field "${field}" for lobby. Supported: createdDate`);
+        }
+    } else {
+        throw new SenderError(`Unsupported table "${tableName}". Supported: user_identity, lobby`);
+    }
+});
+
+/**
+ * Server-only reducer: force a user's isOnline flag.
+ * Test utility — maincloud disconnect detection can be delayed 30-60s,
+ * making it unreliable in test windows. This lets tests explicitly
+ * set a user offline before running GC or other online-sensitive logic.
+ */
+export const server_set_online = spacetimedb.reducer({
+    userId: t.u32(),
+    isOnline: t.bool(),
+}, (ctx, { userId, isOnline }) => {
+    requireServer(ctx);
+
+    const user = ctx.db.User.id.find(userId);
+    if (!user) throw new SenderError(`User #${userId} not found`);
+
+    ctx.db.User.id.update({
+        ...user,
+        isOnline,
+        ...auditUpdate(ctx, user, SYSTEM_USER_ID),
+    });
+});
+
 export const server_set_mmr = spacetimedb.reducer({
     userId: t.u32(),
     gameMode: t.string(),

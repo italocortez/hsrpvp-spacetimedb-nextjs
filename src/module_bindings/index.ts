@@ -46,6 +46,8 @@ import AdminDeleteArchetypeReducer from "./admin_delete_archetype_reducer";
 import AdminDeleteHsrAccountReducer from "./admin_delete_hsr_account_reducer";
 import AdminDeleteRowReducer from "./admin_delete_row_reducer";
 import AdminForceFinalizeReducer from "./admin_force_finalize_reducer";
+import AdminGcIdentitiesReducer from "./admin_gc_identities_reducer";
+import AdminGcLobbiesReducer from "./admin_gc_lobbies_reducer";
 import AdminRecalculateAllRatingsReducer from "./admin_recalculate_all_ratings_reducer";
 import AdminRemoveCharacterArchetypesReducer from "./admin_remove_character_archetypes_reducer";
 import AdminSeedEloConfigReducer from "./admin_seed_elo_config_reducer";
@@ -144,11 +146,15 @@ import ResumeSeriesReducer from "./resume_series_reducer";
 import RollbackBracketMatchReducer from "./rollback_bracket_match_reducer";
 import SaveCalendarReducer from "./save_calendar_reducer";
 import SeedBracketReducer from "./seed_bracket_reducer";
+import SeedIdentityGcJobReducer from "./seed_identity_gc_job_reducer";
+import SeedLobbyGcJobReducer from "./seed_lobby_gc_job_reducer";
 import SelectMatchAccountReducer from "./select_match_account_reducer";
 import SendChatMessageReducer from "./send_chat_message_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkProviderReducer from "./server_link_provider_reducer";
+import ServerSetDatetimeReducer from "./server_set_datetime_reducer";
 import ServerSetMmrReducer from "./server_set_mmr_reducer";
+import ServerSetOnlineReducer from "./server_set_online_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
 import SetActiveSeasonReducer from "./set_active_season_reducer";
@@ -1015,6 +1021,8 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_delete_hsr_account", AdminDeleteHsrAccountReducer),
   __reducerSchema("admin_delete_row", AdminDeleteRowReducer),
   __reducerSchema("admin_force_finalize", AdminForceFinalizeReducer),
+  __reducerSchema("admin_gc_identities", AdminGcIdentitiesReducer),
+  __reducerSchema("admin_gc_lobbies", AdminGcLobbiesReducer),
   __reducerSchema("admin_recalculate_all_ratings", AdminRecalculateAllRatingsReducer),
   __reducerSchema("admin_remove_character_archetypes", AdminRemoveCharacterArchetypesReducer),
   __reducerSchema("admin_seed_elo_config", AdminSeedEloConfigReducer),
@@ -1113,11 +1121,15 @@ const reducersSchema = __reducers(
   __reducerSchema("rollback_bracket_match", RollbackBracketMatchReducer),
   __reducerSchema("save_calendar", SaveCalendarReducer),
   __reducerSchema("seed_bracket", SeedBracketReducer),
+  __reducerSchema("seed_identity_gc_job", SeedIdentityGcJobReducer),
+  __reducerSchema("seed_lobby_gc_job", SeedLobbyGcJobReducer),
   __reducerSchema("select_match_account", SelectMatchAccountReducer),
   __reducerSchema("send_chat_message", SendChatMessageReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_provider", ServerLinkProviderReducer),
+  __reducerSchema("server_set_datetime", ServerSetDatetimeReducer),
   __reducerSchema("server_set_mmr", ServerSetMmrReducer),
+  __reducerSchema("server_set_online", ServerSetOnlineReducer),
   __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
   __reducerSchema("set_active_season", SetActiveSeasonReducer),

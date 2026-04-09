@@ -445,6 +445,14 @@ The test harness's `sync(ms?)` method (from `test/shared/connection.ts`) is a `s
 
 When SpacetimeDB adds a subscription sync primitive, `sync()` should be replaced. Until then, treat flaky tests that pass on retry as a `sync()` timing issue, not a backend bug — categorize as **test-logic** in the failure report.
 
+### Maincloud disconnect detection delay
+
+`conn.disconnect()` closes the WebSocket, but maincloud can take **30-60 seconds** to detect the closure and fire `clientDisconnected`. This means `User.isOnline` stays `true` long after the harness disconnects — far too slow for tests that depend on a user being offline (e.g., GC guard tests checking `isOnline`).
+
+- **Workaround:** Call `server_set_online({ userId, isOnline: false })` via a server-token connection to force the flag immediately. Do NOT poll `isOnline` waiting for natural disconnect — it will timeout.
+- **Helper pattern:** See `test/backend/garbage-collector/identity-gc.test.ts` for the `setOnline()` helper.
+- **When it matters:** Any test that runs GC, checks offline status, or tests disconnect-triggered behavior. Tests that don't care about `isOnline` can ignore this — just disconnect normally in `afterAll`.
+
 ## DB Snapshot Requirements
 
 During UAT verification (`/gsd:verify-work`), every reducer call MUST be followed by a live database query showing the actual state of the tables that action touched. Snapshots are the proof that the reducer did what it claims.

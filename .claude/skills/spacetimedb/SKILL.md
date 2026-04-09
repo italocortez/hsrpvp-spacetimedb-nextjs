@@ -403,6 +403,10 @@ spacetime call <name> <reducer_name> [args...]     # Call a reducer
 
 **When in doubt, use `SELECT * FROM table LIMIT 1`** to see the actual column names before writing filtered queries.
 
+### `spacetime sql` string comparison gotcha
+
+The CLI displays string values with double quotes (e.g., `"identity"`), but SQL WHERE clauses must use **single quotes only**: `WHERE gc_type = 'identity'`. Using `WHERE gc_type = '"identity"'` matches nothing — it looks for a string literally containing double quotes.
+
 ## Project structure (this repo)
 
 ### Backend (`spacetimedb/src/`)

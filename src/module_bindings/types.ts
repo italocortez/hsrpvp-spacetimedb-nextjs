@@ -446,6 +446,20 @@ export const GameMode = __t.enum("GameMode", {
 });
 export type GameMode = __Infer<typeof GameMode>;
 
+export const GcResult = __t.object("GcResult", {
+  id: __t.u32(),
+  gcType: __t.string(),
+  ranAt: __t.timestamp(),
+  itemsScanned: __t.u32(),
+  itemsDeleted: __t.u32(),
+  details: __t.string(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type GcResult = __Infer<typeof GcResult>;
+
 export const GlobalCharacterStat = __t.object("GlobalCharacterStat", {
   characterName: __t.string(),
   get gameMode() {
@@ -639,6 +653,12 @@ export const HsrSynergyCost = __t.object("HsrSynergyCost", {
   lastModifiedDate: __t.timestamp(),
 });
 export type HsrSynergyCost = __Infer<typeof HsrSynergyCost>;
+
+export const IdentityGcJob = __t.object("IdentityGcJob", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type IdentityGcJob = __Infer<typeof IdentityGcJob>;
 
 // The tagged union or sum type for the algebraic type `InviteStatus`.
 export const InviteStatus = __t.enum("InviteStatus", {
