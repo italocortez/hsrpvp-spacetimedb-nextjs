@@ -71,24 +71,7 @@ Entry point for any agent or human working with behavior specs and tests. Maps e
 
 ### Shared Helpers (`test/shared/helpers/`)
 
-Phase 10.5 extracted ~70 inline helpers to eliminate duplication and typecheck drift.
-
-| Helper | File | What it provides |
-|--------|------|-----------------|
-| `promoteUser`, `promoteToRole` | `promoteUser.ts` | Promote a user to a role via server connection |
-| `defaultLobbyArgs` | `lobbies.ts` | Union-superset defaults for `create_lobby` (includes all required fields) |
-| `defaultSettingsArgs` | `lobbies.ts` | Union-superset defaults for `update_lobby_settings` |
-| `cleanupLobby` | `lobbies.ts` | Leave all members + close lobby (swallows errors) |
-| `gameScoreArgs` | `scores.ts` | Defaults for `record_game_scores` with all optional fields as `undefined` |
-| `createTournamentArgs` | `tournaments.ts` | Union-superset defaults for `create_tournament` (includes `maxAccountsPerPlayer`) |
-| `setupRegistrationTournament` | `tournaments.ts` | Create tournament -> Registration -> register players |
-| `advanceToInProgress` | `tournaments.ts` | Registration -> Seeding -> seed -> generate -> InProgress |
-| `cleanupTournament` | `tournaments.ts` | Cancel tournament (swallows errors) |
-| `completeDraft`, `advanceToScoring` | `drafts.ts` | Run a full draft sequence to completion |
-| `ensureHsrAccount` | `hsrAccounts.ts` | Idempotent HSR account creation per user |
-| `ensureEloConfig` | `seed.ts` | Idempotent Elo config seeding |
-| `getUsername` | `users.ts` | Get username from harness user ID |
-| `myLobbies`, `lobbyMembers` | `queries.ts` | Common query shortcuts |
+See `test-writing-guide.md` for the full helpers reference table. Phase 10.5 extracted ~70 inline helpers to eliminate duplication -- always import from there instead of writing inline copies.
 
 ## Operational Scripts
 
