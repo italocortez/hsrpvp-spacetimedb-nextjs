@@ -371,7 +371,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 11 -> 12 -> 12.1 -> 12.2 -> 13
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 11 -> 12
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
 Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 as Scope F.
@@ -393,24 +393,19 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.1. Match Schema Rework | 6/6 | Complete    | 2026-04-04 |
 | 10.3. Tournament Organizer Views | 1/1 | Complete    | 2026-04-04 |
 | 10.4. Account Selection Per Match | 3/3 | Complete    | 2026-04-04 |
-| 10.5. Test Suite Stabilization | 5/5 | Complete    | 2026-04-05 |
 | 11. Account Rating Matrix | 2/2 | Complete   | 2026-04-06 |
 | 12. Auth Security Hardening | 3/3 | Complete    | 2026-04-08 |
-| 12.1. Identity Garbage Collection | 2/2 | Complete    | 2026-04-08 |
-| 12.2. SDK Upgrade Audit | 2/2 | Complete    | 2026-04-09 |
-| 13. Documentation Normalization | 0/5 | Planning | — |
 
 
 ### Phase 12.1: Identity Garbage Collection (INSERTED)
 
-**Goal:** Add scheduled identity GC (90-day TTL sweep on UserIdentity rows), GcResult audit table, and admin/on-demand triggers. Restructure lobby GC with GcResult writes. Wire lastSeenAt bump in clientConnected for TTL accuracy.
-**Requirements**: GC-01, GC-02, GC-03, GC-04
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
 **Depends on:** Phase 12
-**Plans:** 2/2 plans complete
+**Plans:** 0 plans
 
 Plans:
-- [x] 12.1-01-PLAN.md — GcResult + IdentityGcJob table schema, lastSeenAt bump in clientConnected, UserPrivate cascade audit
-- [x] 12.1-02-PLAN.md — run_identity_gc scheduled reducer, admin_gc_identities, seed_identity_gc_job, lobby GC restructure with GcResult writes, admin_gc_lobbies
+- [ ] TBD (run /gsd-plan-phase 12.1 to break down)
 
 ### Phase 12.2: SDK Upgrade Audit (2.0.3 → 2.1.0) (INSERTED)
 
