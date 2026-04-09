@@ -423,7 +423,7 @@ Plans:
 **Goal:** Normalize all documentation to a consistent structure, fully hydrate from current codebase, regenerate codebase maps, rewrite FRONTEND-HANDOFF.md, and update ERD. Docs-only phase — no code changes.
 **Requirements**: All backend phases complete
 **Depends on:** Phase 12.2
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 **Scope:**
 1. **Templates + ROADMAP scope update:** Create architecture.md and contract.md templates, update Phase 13 scope in ROADMAP.md, cleanup pass on completed phase descriptions
@@ -433,7 +433,11 @@ Plans:
 5. **FRONTEND-HANDOFF.md rewrite + ERD mermaid update:** Rewrite docs/FRONTEND-HANDOFF.md from final normalized docs. Update notes/erd-mermaid.md with all tables, PKs/FKs, and cardinality annotations (one-to-one, one-to-many, etc.)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 13 to break down)
+- [ ] 13-01-PLAN.md — Templates + ROADMAP scope update
+- [ ] 13-02-PLAN.md — Architecture normalization (19 files)
+- [ ] 13-03-PLAN.md — Contract full hydration (18 files)
+- [ ] 13-04-PLAN.md — Codebase docs full regeneration (7 files)
+- [ ] 13-05-PLAN.md — FRONTEND-HANDOFF rewrite + ERD mermaid update
 
 ### Phase 14: Test Harness Modernization for SDK 2.1.0
 
