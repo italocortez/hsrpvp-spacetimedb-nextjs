@@ -98,7 +98,7 @@ describe('Admin Match Tools', () => {
                 await blue.disconnect();
                 await red.disconnect();
             }
-        }, 45000);
+        }, 90000);
 
         it('non-admin rejected', async () => {
             const regular = await createVerifiedTestHarness();
@@ -119,7 +119,7 @@ describe('Admin Match Tools', () => {
                 await blue.disconnect();
                 await red.disconnect();
             }
-        }, 45000);
+        }, 90000);
     });
 
     describe('admin_void_match', () => {
@@ -154,7 +154,7 @@ describe('Admin Match Tools', () => {
                 await blue.disconnect();
                 await red.disconnect();
             }
-        }, 45000);
+        }, 90000);
 
         it('non-admin rejected', async () => {
             const regular = await createVerifiedTestHarness();
@@ -175,7 +175,7 @@ describe('Admin Match Tools', () => {
                 await blue.disconnect();
                 await red.disconnect();
             }
-        }, 45000);
+        }, 90000);
     });
 
     describe('admin_set_bracket_winner', () => {

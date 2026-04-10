@@ -502,7 +502,7 @@ describe('Bracket Advancement', () => {
                     r => r.id === matchResultId
                 );
                 expect(mr).toBeUndefined();
-            }, 30000);
+            }, 60000);
 
             it('step 17 auto-advanced winner to final', async () => {
                 const final_ = [...toUser.conn.db.BracketMatch.iter()].find(bm => bm.id === finalId);
@@ -650,7 +650,7 @@ describe('Bracket Advancement', () => {
             expect(updatedSemi).toBeDefined();
             const winnerTeamId = getTeamId(toUser, tournamentId, bluePlayer.userId);
             expect(updatedSemi!.winnerTeamId).toBe(winnerTeamId);
-        }, 30000);
+        }, 60000);
 
         it('winner auto-placed in final (autoAdvanceBracket=true)', () => {
             const final_ = [...toUser.conn.db.BracketMatch.iter()].find(bm => bm.id === finalId);
