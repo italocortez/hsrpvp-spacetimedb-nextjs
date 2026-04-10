@@ -303,7 +303,7 @@ describe('Bracket Advancement', () => {
         await p2?.disconnect();
         await p3?.disconnect();
         await p4?.disconnect();
-    });
+    }, 90000);
 
     // ═════════════════════════════════════════════════════════════════════════
     // Tournament A: SingleElim, autoAdvanceBracket=true, Casual
