@@ -66,7 +66,8 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
 
     const builder = DbConnection.builder()
       .withUri(getUri())
-      .withDatabaseName(getDb());
+      .withDatabaseName(getDb())
+      .withConfirmedReads(false);
 
     builder
       .onConnect(async (connInner, identity, _token) => {
@@ -149,6 +150,7 @@ function verifyUserViaServerConnection(targetIdentityHex: string): Promise<void>
       .withUri(getUri())
       .withDatabaseName(getDb())
       .withToken(getServerToken())
+      .withConfirmedReads(false)
       .onConnect(async (serverConn) => {
         try {
           await serverConn.reducers.serverLinkProvider({

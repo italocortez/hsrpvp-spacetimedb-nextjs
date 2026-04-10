@@ -31,6 +31,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
       DbConnection.builder()
         .withUri(uri).withDatabaseName(db).withToken(serverToken)
+        .withConfirmedReads(false)
         .onConnect(async (serverConn) => {
           try {
             await serverConn.reducers.serverSetRole({ username: user.username, roleTag: 'TournamentHost' });
