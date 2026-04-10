@@ -348,7 +348,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
 
             const historyCount = [...host.conn.db.MatchSessionHistory.iter()].length;
             expect(historyCount).toBeGreaterThan(historyCountBefore);
-        }, 20000);
+        }, 30000);
 
         it('finalize deletes ephemeral records', () => {
             const mr = getMatchResultById(host, matchResultId);

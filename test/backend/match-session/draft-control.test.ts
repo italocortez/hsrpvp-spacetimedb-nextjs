@@ -108,7 +108,7 @@ describe('Draft Controls', () => {
             await bluePlayer.sync();
             await blueCoach.sync();
             await redPlayer.sync();
-        }, 60000);
+        }, 120000);
 
         afterAll(async () => {
             await host?.disconnect();

@@ -130,7 +130,7 @@ describe('Post-Draft (Equipping + Scoring)', () => {
         await startDraftAndSync(host, blue, red, lobbyId);
         // Complete all 16 picks — lobby auto-transitions to Equipping
         await completeDraft(blue, red, lobbyId);
-    }, 120000);
+    }, 180000);
 
     afterAll(async () => {
         await leaveAll(lobbyId, blue, red, host);

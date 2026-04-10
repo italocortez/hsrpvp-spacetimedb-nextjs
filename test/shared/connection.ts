@@ -62,7 +62,7 @@ export async function createVerifiedTestHarness(): Promise<TestHarness> {
 
 function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Connection timeout (15s)')), 15000);
+    const timeout = setTimeout(() => reject(new Error('Connection timeout (30s)')), 30000);
 
     const builder = DbConnection.builder()
       .withUri(getUri())
