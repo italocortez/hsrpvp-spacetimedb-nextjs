@@ -67,6 +67,7 @@ Measured baseline for regression detection. Update this entry when the suite com
 |-----|------|-----------------|------------|-------|
 | Pre-stabilization (Phase 10.5 baseline) | 2026-04-05 | 54m39s | 41 integration files (486 tests) + 11 unit files (187 tests) | Captured on fresh `--delete-data=always` + bootstrap + seed — 0 failures, all 673/673 pass |
 | Post-stabilization (Phase 10.5 final) | 2026-04-05 | 54m38s | 41 integration files (486 tests) + 11 unit files (187 tests) | 0 failures, 0 skipped — baseline after audit + cleanup refactor (helpers extracted + afterAll contract + pollution bisect) |
+| Post-harness-modernization (Phase 14) | 2026-04-09 | 56m57s | 47 integration files (531 tests) + 11 unit files (197 tests) | onApplied subscription readiness replaces 2s setTimeout; .withConfirmedReads(false) on all builders; duplicate helpers deduplicated to shared queries.ts. 3 pre-existing bracket-advancement timeouts (210s+ of timeout waits); suite grew +6 files +45 tests vs Phase 10.5 baseline. Per-test time improved. |
 
 **Commands:**
 - Full suite: `npm run test:all`
