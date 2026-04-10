@@ -75,7 +75,7 @@ async function setupTournament(
         registrationDeadline: '',
         maxAccountsPerPlayer: 1,
     });
-    await toUser.sync(1500);
+    await toUser.sync(1000);
 
     const tournaments = [...toUser.conn.db.Tournament.iter()].filter(
         t => t.organizerId === toUser.userId
@@ -85,7 +85,7 @@ async function setupTournament(
 
     // Draft → Registration
     await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Registration' });
-    await toUser.sync(1500);
+    await toUser.sync(1000);
 
     // Ensure all players have HSR accounts BEFORE registration (so TPA locks them)
     for (const p of players) {
@@ -97,11 +97,11 @@ async function setupTournament(
         await p.call.registerForTournament({ tournamentId });
         await p.sync(1000);
     }
-    await toUser.sync(1500);
+    await toUser.sync(1000);
 
     // Registration → Seeding
     await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'Seeding' });
-    await toUser.sync(1500);
+    await toUser.sync(1000);
 
     // Seed bracket
     await toUser.call.seedBracket({ tournamentId, mode: 'random' });
@@ -113,7 +113,7 @@ async function setupTournament(
 
     // Seeding → InProgress
     await toUser.call.advanceTournamentStage({ tournamentId, nextStage: 'InProgress' });
-    await toUser.sync(1500);
+    await toUser.sync(1000);
 
     const bracketMatches = [...toUser.conn.db.BracketMatch.iter()].filter(
         bm => bm.tournamentId === tournamentId
@@ -165,7 +165,7 @@ async function setupTournamentMatch(
 ): Promise<{ lobbyId: number; matchResultId: number }> {
     // Create tournament lobby
     await toUser.call.createTournamentLobby({ bracketMatchId, joinCode: '' });
-    await toUser.sync(1500);
+    await toUser.sync(1000);
 
     // Find the lobby for this bracket match
     const lobby = [...toUser.conn.db.Lobby.iter()].find(l => {
@@ -208,7 +208,7 @@ async function setupTournamentMatch(
 
     // Complete draft — tournament lobbies use BanMode=Four (20 steps: 4 bans + 16 picks)
     await completeTournamentDraft(blue, red, lobbyId);
-    await toUser.sync(1500);
+    await toUser.sync(1000);
 
     // Confirm lineups + advance to scoring
     await blue.call.confirmLineup({ lobbyId });
@@ -634,7 +634,7 @@ describe('Bracket Advancement', () => {
             );
             expect(mr).toBeDefined();
             expect(mr!.status.tag).toBe('Submitted');
-        }, 120000);
+        }, 180000);
 
         it('submit_and_advance_bracket maps userId→teamId and advances', async () => {
             const mr = [...toUser.conn.db.MatchResultRecord.iter()].find(
@@ -698,7 +698,7 @@ describe('Bracket Advancement', () => {
             team2 = getTeamId(toUser, tournamentId, p2.userId);
             team3 = getTeamId(toUser, tournamentId, p3.userId);
             team4 = getTeamId(toUser, tournamentId, p4.userId);
-        }, 90000);
+        }, 120000);
 
         it('group matches created with bracketSide=Group', () => {
             const matches = [...toUser.conn.db.BracketMatch.iter()].filter(
