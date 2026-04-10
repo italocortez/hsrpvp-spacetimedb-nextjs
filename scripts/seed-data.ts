@@ -283,6 +283,7 @@ export async function seedAll(serverToken: string): Promise<void> {
             .withUri(host)
             .withDatabaseName(dbName)
             .withToken(serverToken)
+            .withConfirmedReads(false)
             .onConnect(async (connection, identity) => {
                 clearTimeout(timeout);
                 console.log(`[seed] Connected as: ${identity.toHexString()}`);

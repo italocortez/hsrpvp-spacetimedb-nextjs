@@ -180,6 +180,7 @@ console.log('[bootstrap] Step 1/7: registering server identity');
 const _conn = DbConnection.builder()
     .withUri(host)
     .withDatabaseName(dbName)
+    .withConfirmedReads(false)
     // No token — get a fresh identity on a clean database
     .onConnect(async (connection, identity, token) => {
         console.log(`[bootstrap] Connected with identity: ${identity.toHexString()}`);

@@ -66,12 +66,11 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
 
     const builder = DbConnection.builder()
       .withUri(getUri())
-      .withDatabaseName(getDb());
+      .withDatabaseName(getDb())
+      .withConfirmedReads(false);
 
     builder
       .onConnect(async (connInner, identity, _token) => {
-        connInner.subscriptionBuilder().subscribeToAllTables();
-
         const identityHex = identity.toHexString();
 
         // Login as guest first
@@ -85,44 +84,47 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
         }
 
         clearTimeout(timeout);
-        // Wait for subscription sync, then resolve userId deterministically
-        setTimeout(async () => {
-          let userId = 0;
 
-          if (opts.verify) {
-            // Deterministic: PK lookup on UserIdentity by this connection's identity
-            const idRows = await queryPrivateTable(
-              `SELECT user_id FROM user_identity WHERE identity = X'${identityHex}'`
-            );
-            userId = idRows.length > 0 ? parseInt(idRows[0].user_id, 10) : 0;
-          } else {
-            // Guest path: match Guest_<shortId> in subscription cache (works fine)
-            const shortId = identityHex.slice(0, 8);
-            const guestUsername = `Guest_${shortId}`;
-            const allUsers = [...connInner.db.User.iter()];
-            const myUser = allUsers.find((u: any) => u.username === guestUsername);
-            if (myUser) {
-              userId = (myUser as any).id;
+        // Subscribe with onApplied — resolves when initial data is in client cache
+        connInner.subscriptionBuilder()
+          .onApplied(async () => {
+            let userId = 0;
+
+            if (opts.verify) {
+              // Deterministic: PK lookup on UserIdentity by this connection's identity
+              const idRows = await queryPrivateTable(
+                `SELECT user_id FROM user_identity WHERE identity = X'${identityHex}'`
+              );
+              userId = idRows.length > 0 ? parseInt(idRows[0].user_id, 10) : 0;
+            } else {
+              // Guest path: match Guest_<shortId> in subscription cache
+              const shortId = identityHex.slice(0, 8);
+              const guestUsername = `Guest_${shortId}`;
+              const allUsers = [...connInner.db.User.iter()];
+              const myUser = allUsers.find((u: any) => u.username === guestUsername);
+              if (myUser) {
+                userId = (myUser as any).id;
+              }
             }
-          }
 
-          const harness: TestHarness = {
-            conn: connInner,
-            identity: identityHex,
-            userId,
-            call: connInner.reducers,
+            const harness: TestHarness = {
+              conn: connInner,
+              identity: identityHex,
+              userId,
+              call: connInner.reducers,
 
-            sync(ms = 500): Promise<void> {
-              return new Promise((res) => setTimeout(res, ms));
-            },
+              sync(ms = 500): Promise<void> {
+                return new Promise((res) => setTimeout(res, ms));
+              },
 
-            async disconnect(): Promise<void> {
-              connInner.disconnect();
-            },
-          };
+              async disconnect(): Promise<void> {
+                connInner.disconnect();
+              },
+            };
 
-          resolve(harness);
-        }, 2000);
+            resolve(harness);
+          })
+          .subscribeToAllTables();
       })
       .onConnectError((_ctx, err) => {
         clearTimeout(timeout);
@@ -148,6 +150,7 @@ function verifyUserViaServerConnection(targetIdentityHex: string): Promise<void>
       .withUri(getUri())
       .withDatabaseName(getDb())
       .withToken(getServerToken())
+      .withConfirmedReads(false)
       .onConnect(async (serverConn) => {
         try {
           await serverConn.reducers.serverLinkProvider({

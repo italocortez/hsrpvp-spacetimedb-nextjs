@@ -119,6 +119,7 @@ DbConnection.builder()
   .withUri(uri)
   .withDatabaseName(db)
   .withToken(token)
+  .withConfirmedReads(false)
   .onConnect(async (conn) => {
     const BATCH = 20;
     for (const [tableName, label, rows] of tables) {

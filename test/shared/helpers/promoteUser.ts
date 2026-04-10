@@ -40,6 +40,7 @@ export async function promoteUser(username: string, roleTag: string): Promise<vo
             .withUri(getUri())
             .withDatabaseName(getDb())
             .withToken(token)
+            .withConfirmedReads(false)
             .onConnect((conn) => {
                 conn.reducers.serverSetRole({ username, roleTag });
                 setTimeout(() => {
