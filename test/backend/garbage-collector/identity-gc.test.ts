@@ -45,7 +45,6 @@ function setDatetime(tableName: string, primaryKey: string, field: string, times
             .withUri(getUri())
             .withDatabaseName(getDb())
             .withToken(token)
-            .withConfirmedReads(false)
             .onConnect((conn) => {
                 conn.reducers.serverSetDatetime({
                     tableName,
@@ -77,7 +76,6 @@ function linkIdentityToDiscord(identityHex: string, discordId: string, discordNa
             .withUri(getUri())
             .withDatabaseName(getDb())
             .withToken(token)
-            .withConfirmedReads(false)
             .onConnect((conn) => {
                 conn.reducers.serverLinkProvider({
                     callerIdentityHex: identityHex,
@@ -114,7 +112,6 @@ function setOnline(userId: number, isOnline: boolean): Promise<void> {
             .withUri(getUri())
             .withDatabaseName(getDb())
             .withToken(token)
-            .withConfirmedReads(false)
             .onConnect((conn) => {
                 conn.reducers.serverSetOnline({ userId, isOnline });
                 setTimeout(() => {
@@ -343,7 +340,6 @@ describe('Identity & Lobby GC', () => {
                     .withUri(getUri())
                     .withDatabaseName(getDb())
                     .withToken(token)
-                    .withConfirmedReads(false)
                     .onConnect((conn) => {
                         conn.reducers.seedIdentityGcJob({});
                         setTimeout(() => {

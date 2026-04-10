@@ -406,7 +406,6 @@ describe('Calendar Events & Invites', () => {
                 .withUri(host)
                 .withDatabaseName(DB)
                 .withToken(token)
-                .withConfirmedReads(false)
                 .onConnect((conn) => {
                     conn.reducers.serverDeleteUser({ username: victimUser!.username });
                     setTimeout(() => { clearTimeout(timeout); resolve(); }, 2000);

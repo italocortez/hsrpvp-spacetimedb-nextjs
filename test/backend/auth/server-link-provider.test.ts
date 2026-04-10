@@ -29,7 +29,6 @@ function createServerConnection(): Promise<any> {
       .withUri(getUri())
       .withDatabaseName(getDb())
       .withToken(process.env.SPACETIMEDB_SERVER_TOKEN!)
-      .withConfirmedReads(false)
       .onConnect((conn: any) => {
         clearTimeout(timeout);
         resolve(conn);

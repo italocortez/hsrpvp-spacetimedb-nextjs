@@ -24,7 +24,6 @@ DbConnection.builder()
   .withUri(uri)
   .withDatabaseName(db)
   .withToken(token)
-  .withConfirmedReads(false)
   .onConnect(async (conn) => {
     console.log('Connected. Calling registerServer...');
     conn.reducers.registerServer({});
