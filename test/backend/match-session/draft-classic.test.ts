@@ -23,18 +23,9 @@ import {
 } from '../../shared/connection';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 import { startDraftAndSync } from '../../shared/helpers/drafts';
+import { myLobbies, lobbyMembers } from '../../shared/helpers/queries';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Get lobbies created by this user */
-function myLobbies(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-}
-
-/** Get lobby members for a lobby */
-function lobbyMembers(h: TestHarness, lobbyId: number) {
-    return [...h.conn.db.LobbyMember.iter()].filter(m => m.lobbyId === lobbyId);
-}
 
 /** Get MatchSession for a lobby */
 function getSession(h: TestHarness, lobbyId: number) {

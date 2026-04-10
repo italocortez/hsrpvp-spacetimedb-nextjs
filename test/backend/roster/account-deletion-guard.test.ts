@@ -27,16 +27,12 @@ import {
 import { nextUid, resetUidCounter } from '../../shared/fixtures';
 import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs as sharedDefaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { myLobbies } from '../../shared/helpers/queries';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) =>
     sharedDefaultLobbyArgs({ refereeControlsShelving: true, ...overrides });
-
-/** Get lobbies created by this user */
-function myLobbies(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-}
 
 /** Query LobbyMemberAccount rows for a user via spacetime sql (private table) */
 async function queryLma(userId: number): Promise<Record<string, string>[]> {

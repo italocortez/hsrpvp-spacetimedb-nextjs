@@ -25,26 +25,19 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs, cleanupLobby } from '../../shared/helpers/lobbies';
+import { myLobbies, latestLobby } from '../../shared/helpers/queries';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function hostLobbies(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-}
-
-function latestLobby(h: TestHarness) {
-    return hostLobbies(h)[hostLobbies(h).length - 1];
-}
 
 /** Wait for a new lobby to appear after creation (robust against subscription backlog). */
 async function waitForNewLobby(h: TestHarness, countBefore: number, timeoutMs = 5000): Promise<number> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
         await h.sync(200);
-        const lobbies = hostLobbies(h);
+        const lobbies = myLobbies(h);
         if (lobbies.length > countBefore) return lobbies[lobbies.length - 1].id;
     }
-    throw new Error(`Timed out waiting for new lobby (had ${countBefore}, still ${hostLobbies(h).length})`);
+    throw new Error(`Timed out waiting for new lobby (had ${countBefore}, still ${myLobbies(h).length})`);
 }
 
 function playerMessages(h: TestHarness, lobbyId: number) {
@@ -183,7 +176,7 @@ describe.skipIf(!hasServerToken())('Anonymous Play', () => {
     describe('write-time anonymous label gate', () => {
         it('isAnonymousSpectators=true only → label still computed for all members', async () => {
             // Only spectators toggle on, players off — but labels computed for everyone at write time
-            const countBefore = hostLobbies(host).length;
+            const countBefore = myLobbies(host).length;
             await host.call.createLobby(defaultLobbyArgs({
                 isAnonymousPlayers: false,
                 isAnonymousSpectators: true,
@@ -212,7 +205,7 @@ describe.skipIf(!hasServerToken())('Anonymous Play', () => {
         });
 
         it('both toggles off → no label on any messages', async () => {
-            const countBefore = hostLobbies(host).length;
+            const countBefore = myLobbies(host).length;
             await host.call.createLobby(defaultLobbyArgs({
                 isAnonymousPlayers: false,
                 isAnonymousSpectators: false,

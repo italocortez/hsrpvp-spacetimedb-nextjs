@@ -20,18 +20,9 @@ import {
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultSettingsArgs } from '../../shared/helpers/lobbies';
+import { myLobbies, lobbyMembers } from '../../shared/helpers/queries';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Get lobbies created/hosted by this user */
-function myLobbies(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-}
-
-/** Get lobby members for a lobby */
-function lobbyMembers(h: TestHarness, lobbyId: number) {
-    return [...h.conn.db.LobbyMember.iter()].filter(m => m.lobbyId === lobbyId);
-}
 
 /** Find a lobby by bracketMatchId in the subscription cache */
 function findLobbyByBracketMatch(h: TestHarness, bracketMatchId: number) {

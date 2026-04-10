@@ -21,12 +21,9 @@ import {
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs, cleanupLobby } from '../../shared/helpers/lobbies';
+import { myLobbies } from '../../shared/helpers/queries';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function myLobbies(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-}
 
 function lobbyMessages(h: TestHarness, lobbyId: number) {
     return [...h.conn.db.ChatMessage.iter()].filter(m => m.lobbyId === lobbyId);

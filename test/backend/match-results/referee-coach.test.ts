@@ -19,12 +19,7 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function lobbyMembers(h: TestHarness, lobbyId: number) {
-    return [...h.conn.db.LobbyMember.iter()].filter(m => m.lobbyId === lobbyId);
-}
+import { lobbyMembers } from '../../shared/helpers/queries';
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 

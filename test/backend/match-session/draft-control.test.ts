@@ -22,14 +22,9 @@ import {
 } from '../../shared/connection';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 import { startDraftAndSync } from '../../shared/helpers/drafts';
+import { latestLobby } from '../../shared/helpers/queries';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Get the most recently created lobby by this host */
-function latestLobby(h: TestHarness) {
-    const lobbies = [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-    return lobbies[lobbies.length - 1];
-}
 
 /** Get MatchSession for a lobby */
 function getSession(h: TestHarness, lobbyId: number) {

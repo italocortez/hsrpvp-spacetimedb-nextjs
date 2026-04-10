@@ -25,6 +25,7 @@ import {
 import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs as sharedDefaultLobbyArgs } from '../../shared/helpers/lobbies';
 import { execFileSync } from 'child_process';
+import { myLobbies, lobbyMembers } from '../../shared/helpers/queries';
 
 const DB = process.env.SPACETIMEDB_DB ?? 'hsrpvp-spacetimedb-nextjs-test1';
 
@@ -62,16 +63,6 @@ function getAccountRows(userId: number) {
 
 const defaultLobbyArgs = (overrides: Record<string, unknown> = {}) =>
     sharedDefaultLobbyArgs({ refereeControlsShelving: true, ...overrides });
-
-/** Get lobbies created by this user */
-function myLobbies(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-}
-
-/** Get lobby members for a lobby */
-function lobbyMembers(h: TestHarness, lobbyId: number) {
-    return [...h.conn.db.LobbyMember.iter()].filter(m => m.lobbyId === lobbyId);
-}
 
 /** Find a lobby by bracketMatchId in the subscription cache */
 function findLobbyByBracketMatch(h: TestHarness, bracketMatchId: number) {

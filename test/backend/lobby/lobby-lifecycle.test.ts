@@ -23,23 +23,7 @@ import {
 } from '../../shared/connection';
 import { promoteUser } from '../../shared/helpers/promoteUser';
 import { defaultLobbyArgs, cleanupLobby } from '../../shared/helpers/lobbies';
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Get lobbies created by this user */
-function myLobbies(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-}
-
-/** Get lobby members for a lobby */
-function lobbyMembers(h: TestHarness, lobbyId: number) {
-    return [...h.conn.db.LobbyMember.iter()].filter(m => m.lobbyId === lobbyId);
-}
-
-/** Get bans for a lobby */
-function lobbyBans(h: TestHarness, lobbyId: number) {
-    return [...h.conn.db.LobbyBan.iter()].filter(b => b.lobbyId === lobbyId);
-}
+import { myLobbies, lobbyMembers, lobbyBans } from '../../shared/helpers/queries';
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 

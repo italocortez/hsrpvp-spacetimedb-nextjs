@@ -20,16 +20,9 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs, defaultSettingsArgs } from '../../shared/helpers/lobbies';
+import { myLobbies, lobbyMembers } from '../../shared/helpers/queries';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function myLobbies(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId);
-}
-
-function lobbyMembers(h: TestHarness, lobbyId: number) {
-    return [...h.conn.db.LobbyMember.iter()].filter(m => m.lobbyId === lobbyId);
-}
 
 function getMember(h: TestHarness, lobbyId: number, userId: number) {
     return lobbyMembers(h, lobbyId).find(m => m.userId === userId);

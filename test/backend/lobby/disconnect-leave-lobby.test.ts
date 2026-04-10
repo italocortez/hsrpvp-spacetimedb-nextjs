@@ -20,6 +20,7 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs as sharedDefaultLobbyArgs, defaultSettingsArgs as sharedDefaultSettingsArgs } from '../../shared/helpers/lobbies';
+import { lobbyMembers } from '../../shared/helpers/queries';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,10 +75,6 @@ async function setup2v1Drafting(
     await host.sync(1000);
 
     return lobby.id;
-}
-
-function lobbyMembers(h: TestHarness, lobbyId: number) {
-    return [...h.conn.db.LobbyMember.iter()].filter(m => m.lobbyId === lobbyId);
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
