@@ -124,6 +124,7 @@ import SelectMatchAccountReducer from "../select_match_account_reducer";
 import SendChatMessageReducer from "../send_chat_message_reducer";
 import ServerDeleteUserReducer from "../server_delete_user_reducer";
 import ServerLinkProviderReducer from "../server_link_provider_reducer";
+import ServerNukeTestDataReducer from "../server_nuke_test_data_reducer";
 import ServerSetDatetimeReducer from "../server_set_datetime_reducer";
 import ServerSetMmrReducer from "../server_set_mmr_reducer";
 import ServerSetOnlineReducer from "../server_set_online_reducer";
@@ -277,6 +278,7 @@ export type SelectMatchAccountParams = __Infer<typeof SelectMatchAccountReducer>
 export type SendChatMessageParams = __Infer<typeof SendChatMessageReducer>;
 export type ServerDeleteUserParams = __Infer<typeof ServerDeleteUserReducer>;
 export type ServerLinkProviderParams = __Infer<typeof ServerLinkProviderReducer>;
+export type ServerNukeTestDataParams = __Infer<typeof ServerNukeTestDataReducer>;
 export type ServerSetDatetimeParams = __Infer<typeof ServerSetDatetimeReducer>;
 export type ServerSetMmrParams = __Infer<typeof ServerSetMmrReducer>;
 export type ServerSetOnlineParams = __Infer<typeof ServerSetOnlineReducer>;

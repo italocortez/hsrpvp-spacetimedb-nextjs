@@ -393,3 +393,170 @@ export const server_set_mmr = spacetimedb.reducer({
         } as any);
     }
 });
+
+/**
+ * Server-only reducer: wipe all test state from non-seed tables.
+ *
+ * Fast alternative to `spacetime publish --clear-database` + post-publish.ts
+ * (expected ~100ms vs ~11s) for tests that need a clean slate mid-suite or
+ * for suite-level afterAll cleanup.
+ *
+ * Preserves:
+ *   - ServerIdentity
+ *   - SYSTEM user (id=0) and its UserIdentity mapping
+ *   - Seed data: HsrCharacter, HsrLightcone, HsrCharacterCost, HsrLightconeCost,
+ *     HsrSynergyCost, Archetype, HsrCharacterArchetype
+ *   - Starter achievements: Achievement + AchievementCriteria
+ *   - Config: EloConfigTable, AccountRatingConfig
+ *   - Scheduled jobs: IdentityGcJob, LobbyGcJob (seeded by post-publish.ts)
+ *
+ * Deletes everything else: users (except SYSTEM), rosters, lobbies, tournaments,
+ * match sessions + history, chat, stats, cost sets, calendar events, leaderboards,
+ * pending user deletion jobs, bans, gc audit logs.
+ *
+ * Safety:
+ *   - Gated by requireServer() — only callable with SPACETIMEDB_SERVER_TOKEN
+ *   - Requires confirmation="NUKE_TEST_DATA" to prevent accidental invocation
+ *   - DO NOT CALL IN PRODUCTION
+ */
+export const server_nuke_test_data = spacetimedb.reducer({
+    confirmation: t.string(),
+}, (ctx, { confirmation }) => {
+    requireServer(ctx);
+
+    if (confirmation !== 'NUKE_TEST_DATA') {
+        throw new SenderError(
+            'server_nuke_test_data requires confirmation="NUKE_TEST_DATA". ' +
+            'This reducer wipes all test state and must never be called in production.'
+        );
+    }
+
+    let totalDeleted = 0;
+
+    // Helper: delete all rows from a table. iter() snapshot is spread into an
+    // array first to avoid mutating during iteration.
+    const nuke = (tableAccessor: any, name: string): number => {
+        const rows = [...tableAccessor.iter()];
+        for (const row of rows) {
+            tableAccessor.delete(row);
+        }
+        if (rows.length > 0) {
+            console.log(`[NUKE] ${name}: ${rows.length}`);
+        }
+        return rows.length;
+    };
+
+    // Delete order: children before parents is not strictly required
+    // (SpacetimeDB does not enforce FKs) but follows the natural dependency
+    // graph for readability.
+
+    // ── Match session ephemeral
+    totalDeleted += nuke(ctx.db.MatchSessionStep, 'MatchSessionStep');
+    totalDeleted += nuke(ctx.db.MatchSession, 'MatchSession');
+
+    // ── Match result ephemeral
+    totalDeleted += nuke(ctx.db.MatchResultGame, 'MatchResultGame');
+    totalDeleted += nuke(ctx.db.MatchResultParticipant, 'MatchResultParticipant');
+    totalDeleted += nuke(ctx.db.MatchResultRecord, 'MatchResultRecord');
+
+    // ── Match history (permanent under normal ops; wiped on nuke)
+    totalDeleted += nuke(ctx.db.MatchSessionStepHistory, 'MatchSessionStepHistory');
+    totalDeleted += nuke(ctx.db.MatchSessionHistory, 'MatchSessionHistory');
+    totalDeleted += nuke(ctx.db.MatchParticipantHistory, 'MatchParticipantHistory');
+    totalDeleted += nuke(ctx.db.MatchResultGameHistory, 'MatchResultGameHistory');
+    totalDeleted += nuke(ctx.db.PlayerRelationship, 'PlayerRelationship');
+
+    // ── Lobby ephemeral (children first)
+    totalDeleted += nuke(ctx.db.LobbyCursorEvent, 'LobbyCursorEvent');
+    totalDeleted += nuke(ctx.db.LobbyMemberAccount, 'LobbyMemberAccount');
+    totalDeleted += nuke(ctx.db.LobbyMember, 'LobbyMember');
+    totalDeleted += nuke(ctx.db.LobbyBan, 'LobbyBan');
+    totalDeleted += nuke(ctx.db.LobbyPassword, 'LobbyPassword');
+    totalDeleted += nuke(ctx.db.LobbyPreset, 'LobbyPreset');
+    totalDeleted += nuke(ctx.db.Lobby, 'Lobby');
+
+    // ── Bracket + group phase
+    totalDeleted += nuke(ctx.db.BracketMatch, 'BracketMatch');
+    totalDeleted += nuke(ctx.db.GroupPhaseRecord, 'GroupPhaseRecord');
+
+    // ── Tournaments (children first)
+    totalDeleted += nuke(ctx.db.TournamentStandIn, 'TournamentStandIn');
+    totalDeleted += nuke(ctx.db.TournamentAssistant, 'TournamentAssistant');
+    totalDeleted += nuke(ctx.db.TournamentTeamRequest, 'TournamentTeamRequest');
+    totalDeleted += nuke(ctx.db.TournamentTeamMember, 'TournamentTeamMember');
+    totalDeleted += nuke(ctx.db.TournamentTeam, 'TournamentTeam');
+    totalDeleted += nuke(ctx.db.TournamentEnrolled, 'TournamentEnrolled');
+    totalDeleted += nuke(ctx.db.TournamentPlayerAccount, 'TournamentPlayerAccount');
+    totalDeleted += nuke(ctx.db.Tournament, 'Tournament');
+
+    // ── Chat
+    totalDeleted += nuke(ctx.db.ChatMessage, 'ChatMessage');
+
+    // ── Stats, MMR, leaderboard
+    totalDeleted += nuke(ctx.db.MmrHistory, 'MmrHistory');
+    totalDeleted += nuke(ctx.db.MmrRating, 'MmrRating');
+    totalDeleted += nuke(ctx.db.Leaderboard, 'Leaderboard');
+    totalDeleted += nuke(ctx.db.PlayerCharacterStat, 'PlayerCharacterStat');
+    totalDeleted += nuke(ctx.db.PlayerStat, 'PlayerStat');
+    totalDeleted += nuke(ctx.db.GlobalCharacterStat, 'GlobalCharacterStat');
+
+    // ── Calendar
+    totalDeleted += nuke(ctx.db.CalendarEventInvite, 'CalendarEventInvite');
+    totalDeleted += nuke(ctx.db.CalendarEvent, 'CalendarEvent');
+    totalDeleted += nuke(ctx.db.SavedCalendar, 'SavedCalendar');
+    totalDeleted += nuke(ctx.db.AvailabilitySlot, 'AvailabilitySlot');
+
+    // ── Seasons
+    totalDeleted += nuke(ctx.db.Season, 'Season');
+
+    // ── Cost sets (user-defined; seed data lives in HsrCharacterCost etc.)
+    totalDeleted += nuke(ctx.db.CostSetDraftSynergy, 'CostSetDraftSynergy');
+    totalDeleted += nuke(ctx.db.CostSetDraftLightcone, 'CostSetDraftLightcone');
+    totalDeleted += nuke(ctx.db.CostSetDraftCharacter, 'CostSetDraftCharacter');
+    totalDeleted += nuke(ctx.db.CostSet, 'CostSet');
+
+    // ── Rosters
+    totalDeleted += nuke(ctx.db.HsrAccountLightcone, 'HsrAccountLightcone');
+    totalDeleted += nuke(ctx.db.HsrAccountCharacter, 'HsrAccountCharacter');
+    totalDeleted += nuke(ctx.db.HsrAccount, 'HsrAccount');
+
+    // ── User achievements (keep Achievement/AchievementCriteria seed data)
+    totalDeleted += nuke(ctx.db.UserAchievement, 'UserAchievement');
+
+    // ── GC audit
+    totalDeleted += nuke(ctx.db.GcResult, 'GcResult');
+
+    // ── Pending user deletion jobs (would fail referencing deleted users anyway)
+    totalDeleted += nuke(ctx.db.UserDeletionJob, 'UserDeletionJob');
+
+    // ── Bans
+    totalDeleted += nuke(ctx.db.BanRecord, 'BanRecord');
+
+    // ── Users: preserve the SYSTEM user and its auth chain.
+    // SYSTEM_USER_ID is a SENTINEL (0) used for audit columns during bootstrap,
+    // NOT the actual User.id of the SYSTEM row — User.id is autoInc, so the real
+    // SYSTEM row gets whatever the first autoInc value was (typically 1). We
+    // identify it by its unique username 'SYSTEM'.
+    const systemUser = ctx.db.User.username.find('SYSTEM');
+    const systemUserRowId = systemUser?.id;
+
+    const userPrivates = [...ctx.db.UserPrivate.iter()]
+        .filter((up: any) => systemUserRowId === undefined || up.userId !== systemUserRowId);
+    for (const up of userPrivates) { ctx.db.UserPrivate.delete(up); }
+    if (userPrivates.length > 0) console.log(`[NUKE] UserPrivate: ${userPrivates.length}`);
+    totalDeleted += userPrivates.length;
+
+    const userIdents = [...ctx.db.UserIdentity.iter()]
+        .filter((ui: any) => systemUserRowId === undefined || ui.userId !== systemUserRowId);
+    for (const ui of userIdents) { ctx.db.UserIdentity.delete(ui); }
+    if (userIdents.length > 0) console.log(`[NUKE] UserIdentity: ${userIdents.length}`);
+    totalDeleted += userIdents.length;
+
+    const users = [...ctx.db.User.iter()]
+        .filter((u: any) => systemUserRowId === undefined || u.id !== systemUserRowId);
+    for (const u of users) { ctx.db.User.delete(u); }
+    if (users.length > 0) console.log(`[NUKE] User: ${users.length}`);
+    totalDeleted += users.length;
+
+    console.log(`[NUKE] server_nuke_test_data complete: ${totalDeleted} rows deleted`);
+});
