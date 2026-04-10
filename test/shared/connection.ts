@@ -91,11 +91,11 @@ function createHarnessInternal(opts: { verify: boolean }): Promise<TestHarness> 
             let userId = 0;
 
             if (opts.verify) {
-              // Deterministic: PK lookup on UserIdentity by this connection's identity
-              const idRows = await queryPrivateTable(
-                `SELECT user_id FROM user_identity WHERE identity = X'${identityHex}'`
-              );
-              userId = idRows.length > 0 ? parseInt(idRows[0].user_id, 10) : 0;
+              // Read from view_my_identity — returns caller's UserIdentity row.
+              // No spacetime sql CLI roundtrip — the view is subscribed via
+              // subscribeToAllTables() and cached in the client.
+              const idRows = [...connInner.db.view_my_identity.iter()];
+              userId = idRows.length > 0 ? (idRows[0] as any).userId : 0;
             } else {
               // Guest path: match Guest_<shortId> in subscription cache
               const shortId = identityHex.slice(0, 8);
