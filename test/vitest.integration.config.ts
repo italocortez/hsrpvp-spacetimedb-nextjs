@@ -28,9 +28,11 @@ export default defineConfig({
       '@/': path.resolve(__dirname, '../') + '/',
     },
 
-    // Integration tests need more time (network, SpacetimeDB round-trips)
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    // Integration tests need more time (network, SpacetimeDB round-trips).
+    // Hooks often create multiple verified harnesses which compound latency
+    // against maincloud — 120s gives headroom for up to 6 harnesses + setup.
+    testTimeout: 60000,
+    hookTimeout: 120000,
 
     // Run sequentially — tests share SpacetimeDB state and WebSocket connections to maincloud
     // fileParallelism: false prevents parallel file execution (avoids connection saturation)

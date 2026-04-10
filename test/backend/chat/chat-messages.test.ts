@@ -56,7 +56,7 @@ describe('Chat Messages', () => {
         await memberA.sync();
         await memberB.sync();
         await outsider.sync();
-    }, 30000);
+    }, 120000);
 
     afterAll(async () => {
         // D-03: strict cleanup per resource opened (safety net — tests already

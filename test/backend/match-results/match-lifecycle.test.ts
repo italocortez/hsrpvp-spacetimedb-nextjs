@@ -176,7 +176,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
             // MatchResultRecord should be deleted (ephemeral)
             const mr = getMatchResultById(host, matchResultId);
             expect(mr).toBeUndefined();
-        }, 20000);
+        }, 30000);
 
         it('MatchSessionHistory created', () => {
             const historyCount = [...host.conn.db.MatchSessionHistory.iter()].length;
@@ -451,7 +451,7 @@ describe.skipIf(!hasServerToken())('Match Lifecycle', () => {
             // Casual auto-finalize — MatchResultRecord should be deleted
             const mr = getMatchResultById(host, matchResultId);
             expect(mr).toBeUndefined();
-        }, 20000);
+        }, 30000);
 
         it('MatchSessionHistory.outcome = Draw', () => {
             const newHistories = [...host.conn.db.MatchSessionHistory.iter()]
