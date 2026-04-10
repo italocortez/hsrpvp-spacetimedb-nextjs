@@ -1,0 +1,11 @@
+User                      1
+UserPrivate               0
+HsrAccount                0
+Lobby                     0
+LobbyMember               0
+Tournament                0
+MatchSession              0
+MatchSessionStep          0
+MatchResultRecord         0
+ChatMessage               0
+MatchSessionHistory       0

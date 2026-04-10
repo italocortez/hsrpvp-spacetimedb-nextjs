@@ -40,6 +40,13 @@ export default defineConfig({
       concurrent: false,
     },
     fileParallelism: false,
+
+    // Clear + reseed the maincloud test database once before the suite.
+    // Tests leak state that has no auto-cleanup path (AwaitingResult lobbies per
+    // D-48, User/UserPrivate rows with no delete reducer). Without this, state
+    // accumulates across runs and later tests hit timeout ceilings as tables grow.
+    // Opt out per invocation with SKIP_DB_CLEAR=1. See test/global-setup.ts.
+    globalSetup: ['./test/global-setup.ts'],
   },
   resolve: {
     alias: {
