@@ -448,7 +448,7 @@ Plans:
 **Goal:** Fix test harness confirmed reads default, replace fixed-timeout sync with event-driven subscription readiness, implement stale placeholder view tests, and reduce overall test suite runtime. Cohesive pass across all test infrastructure.
 **Depends on:** Phase 12.2
 **Requirements**: TEST-MODERN-01 (test harness uses withConfirmedReads(false)), TEST-MODERN-02 (subscription sync uses onApplied instead of fixed timeouts), TEST-MODERN-03 (auth-views.test.ts has real view integration tests), TEST-MODERN-04 (full test suite completes faster than current baseline)
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 **Scope:**
 1. **Confirmed reads fix (HIGH):** Add `.withConfirmedReads(false)` to `test/shared/connection.ts` builder + all standalone scripts (bootstrap.ts, seed-data.ts, promoteUser.ts, identity-gc.test.ts, etc.)
@@ -458,4 +458,5 @@ Plans:
 5. **Suite runtime profiling:** Identify slowest test files and optimize connection setup/teardown patterns
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 14 to break down)
+- [ ] 14-01-PLAN.md — Confirmed reads fix + onApplied subscription readiness
+- [ ] 14-02-PLAN.md — Helper dedup + suite runtime baseline
