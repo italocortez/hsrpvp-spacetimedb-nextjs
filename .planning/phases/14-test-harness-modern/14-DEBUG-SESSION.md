@@ -413,6 +413,81 @@ Plus the fast-path primitive (commit `332d490`) for mid-suite cleanup if future 
 
 **Phase 14 post-execution debug session closed.** Suite runtime baseline: **48.5 min, 531 passing integration tests + 197 passing unit tests, 0 failures, 0 skipped.**
 
+### Test inventory (58 files / 728 tests)
+
+**Integration suite — 47 files / 531 tests** (vitest.integration.config.ts, ~48.5 min):
+
+| File | Tests |
+|---|---:|
+| test/backend/achievements/achievement-auto-award.test.ts | 1 |
+| test/backend/achievements/achievement-management.test.ts | 24 |
+| test/backend/anonymous-play/anonymous-labels.test.ts | 10 |
+| test/backend/auth/auth-security.test.ts | 6 |
+| test/backend/auth/auth-views.test.ts | 4 |
+| test/backend/auth/ban-admin.test.ts | 9 |
+| test/backend/auth/server-link-provider.test.ts | 7 |
+| test/backend/brackets/bracket-advancement.test.ts | 28 |
+| test/backend/brackets/group-to-elimination.test.ts | 9 |
+| test/backend/calendar/calendar-availability.test.ts | 9 |
+| test/backend/calendar/calendar-events.test.ts | 16 |
+| test/backend/calendar/calendar-saved.test.ts | 9 |
+| test/backend/chat/chat-messages.test.ts | 22 |
+| test/backend/cost-sets/cost-set-lifecycle.test.ts | 11 |
+| test/backend/garbage-collector/identity-gc.test.ts | 8 |
+| test/backend/lobby/account-selection.test.ts | 12 |
+| test/backend/lobby/disconnect-admin-tools.test.ts | 5 |
+| test/backend/lobby/disconnect-concede.test.ts | 7 |
+| test/backend/lobby/disconnect-gc.test.ts | 2 |
+| test/backend/lobby/disconnect-leave-lobby.test.ts | 4 |
+| test/backend/lobby/lobby-lifecycle.test.ts | 28 |
+| test/backend/lobby/lobby-presets.test.ts | 14 |
+| test/backend/lobby/lobby-settings.test.ts | 21 |
+| test/backend/lobby/lobby-tournament.test.ts | 10 |
+| test/backend/match-results/match-lifecycle.test.ts | 24 |
+| test/backend/match-results/mmr-stats.test.ts | 31 |
+| test/backend/match-results/rating-admin.test.ts | 11 |
+| test/backend/match-results/referee-coach.test.ts | 10 |
+| test/backend/match-results/score-entry.test.ts | 14 |
+| test/backend/match-session/draft-auction.test.ts | 13 |
+| test/backend/match-session/draft-classic.test.ts | 19 |
+| test/backend/match-session/draft-control.test.ts | 8 |
+| test/backend/match-session/post-draft.test.ts | 24 |
+| test/backend/roster/account-deletion-guard.test.ts | 5 |
+| test/backend/roster/archetype-crud.test.ts | 9 |
+| test/backend/roster/roster-accounts.test.ts | 12 |
+| test/backend/roster/roster-characters.test.ts | 7 |
+| test/backend/roster/roster-migration.test.ts | 4 |
+| test/backend/season/season-admin.test.ts | 4 |
+| test/backend/season/tournament-player-account.test.ts | 4 |
+| test/backend/tournaments/tournament-admin.test.ts | 10 |
+| test/backend/tournaments/tournament-cancel-cleanup.test.ts | 6 |
+| test/backend/tournaments/tournament-management.test.ts | 3 |
+| test/backend/tournaments/tournament-mmr.test.ts | 6 |
+| test/backend/tournaments/tournament-registration.test.ts | 14 |
+| test/backend/tournaments/tournament-stages.test.ts | 8 |
+| test/backend/tournaments/tournament-teams.test.ts | 9 |
+| **Total** | **531** |
+
+**Unit suite — 11 files / 197 tests** (vitest.config.ts, ~0.5s):
+
+| File | Tests |
+|---|---:|
+| test/backend/achievements/achievement-checker.unit.test.ts | 24 |
+| test/backend/brackets/bracket-generation.unit.test.ts | 25 |
+| test/backend/lobby/disconnect-helpers.unit.test.ts | 25 |
+| test/backend/lobby/flag-transfer-helpers.unit.test.ts | 19 |
+| test/backend/lobby/lobby-slot-helpers.unit.test.ts | 21 |
+| test/backend/lobby/ownership-validation.unit.test.ts | 6 |
+| test/backend/match-results/account-rating.unit.test.ts | 15 |
+| test/backend/match-results/elo-calculation.unit.test.ts | 18 |
+| test/backend/roster/roster-helpers.unit.test.ts | 13 |
+| test/backend/tournaments/tournament-helpers.unit.test.ts | 8 |
+| test/backend/tournaments/tournament-stage-validation.unit.test.ts | 23 |
+| **Total** | **197** |
+
+**Hotspot files (≥20 tests, 8 files, 202 tests = 38% of integration suite):**
+mmr-stats (31), bracket-advancement (28), lobby-lifecycle (28), achievement-management (24), match-lifecycle (24), post-draft (24), chat-messages (22), lobby-settings (21).
+
 ---
 
 *Session closed: 2026-04-10 — Round 9 verified clean. Three commits (7bbbd31, 332d490, 56a71a2) on `feature_nath_claude` ship the complete fix set.*
