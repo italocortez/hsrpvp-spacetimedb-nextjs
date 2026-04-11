@@ -1,11 +1,12 @@
 ---
 phase: 14-test-harness-modern
 type: debug-session
-status: mitigated
+status: resolved
 started: 2026-04-09
 updated: 2026-04-10
 rounds: 9
-mitigation: test/global-setup.ts (Round 9)
+mitigation: test/global-setup.ts + token refresh (Round 9)
+baseline: 48.5 min / 531 integration + 197 unit tests / 0 fail / 0 skip
 ---
 
 # Phase 14 Post-Execution Debug Session
@@ -337,3 +338,81 @@ Round 8's "environmental, accept" verdict is **superseded**. The root cause is c
 ---
 
 *Session updated: 2026-04-10 — Round 9 complete. Root cause corrected: cumulative state accumulation, mitigated by globalSetup.*
+
+---
+
+## Round 9 Addendum — Full-Suite Verification + Token Rotation Bug
+
+**Date:** 2026-04-10
+**Branch:** `feature_nath_claude` at `56a71a2`
+
+### First full-suite run caught a follow-up bug
+
+The first `npm run test:all` under the Round 9 globalSetup produced catastrophic failures: **45 failed test files, 42 failed tests, 469 skipped, 94 "Forbidden: caller is not the registered server identity" errors.** Post-suite row counts showed `User=99, UserIdentity=99, everything-else=0` — tests were creating guest users (`loginAsGuest` doesn't need the server token) but every `serverLinkProvider` call failed with "Forbidden."
+
+**Root cause:** `post-publish.ts` rotates the server identity and writes a fresh `SPACETIMEDB_SERVER_TOKEN` to `.env.local`. But the vitest runner process had already loaded the *old* token into `process.env` at config-import time (`vitest.integration.config.ts` calls `loadEnvLocal()` before globalSetup runs). Tests read the token lazily via `getServerToken()` which returned the stale value, so every server-token connection mapped to an `Identity` that no longer existed in the `ServerIdentity` table after `--clear-database`.
+
+**Fix:** commit `56a71a2` — after `post-publish.ts` completes in globalSetup, re-read `SPACETIMEDB_SERVER_TOKEN` from `.env.local` and mutate `process.env`. vitest forks its test workers AFTER globalSetup runs, so the updated `process.env` propagates at fork time. Verified with a single-file smoke test (chat-messages.test.ts 22/22 passed, "Refreshed process.env" log line confirmed).
+
+### Second full-suite run — CLEAN
+
+With commit `56a71a2` applied:
+
+| Metric | Value |
+|---|---|
+| **Test files** | **47 passed / 47** |
+| **Tests** | **531 passed / 531** |
+| **Skipped** | **0** |
+| **Failed** | **0** |
+| **Errors** | **0** |
+| **Duration** | **2911s (~48.5 min)** |
+
+Plus the unit suite (`test/vitest.config.ts`): **11 files / 197 tests passed in 502ms**.
+
+**Total across both configs: 728 passing tests, zero failures, zero skips.** Duration is ~6 min *faster* than the Phase 10.5 baseline (54m38s) — the clean DB means every query is O(log n) over small indexes instead of inflated ones, and that speedup more than pays for the 11.5s globalSetup overhead.
+
+### Measured intra-suite accumulation (single clean run, 531 tests)
+
+| Table | Post-suite count | Category |
+|---|---:|---|
+| User | 313 | Permanent (no delete path) |
+| UserPrivate | 295 | Permanent |
+| UserIdentity | 311 | Permanent |
+| HsrAccount | 52 | Intentionally persistent |
+| HsrAccountCharacter | 6 | Cascade leak (only 6 because most tests finalize cleanly) |
+| Lobby | 24 | Leaked AwaitingResult (D-48 skip) |
+| LobbyMember | 64 | Leaked with parent lobbies |
+| Tournament | 35 | Persistent when cancelled |
+| TournamentEnrolled | 61 | Leaked with parent tournaments |
+| MatchSession | 24 | Leaked from rejection-path tests |
+| MatchSessionStep | 157 | Leaked with parent sessions |
+| MatchResultRecord | 28 | Leaked (never finalized) |
+| MatchResultParticipant | 51 | Leaked with parent MR |
+| MatchParticipantHistory | 18 | Permanent archive |
+| PlayerStat | 15 | Permanent |
+| MmrRating | 6 | Permanent |
+| ChatMessage | 110 | Permanent (expected to grow) |
+| MatchSessionHistory | 9 | Permanent archive |
+| MatchSessionStepHistory | 152 | Permanent archive |
+| HsrCharacter | 83 | Seed (preserved) |
+| HsrLightcone | 156 | Seed (preserved) |
+| EloConfigTable | 1 | Seed (preserved) |
+
+Per-test accumulation rate: ~0.59 Users/test, ~0.05 Lobbies/test, ~0.07 Tournaments/test. Projected growth at 531 tests/run matches observations. The suite still passes cleanly at this level, so the intra-suite accumulation is tolerable **at current data volumes**. If test counts ever double, revisit.
+
+### Round 9 Final Conclusion
+
+**Phase 14 test suite is now demonstrably clean on a fresh baseline.** The flakiness that drove Rounds 1-8 was compounding cross-run accumulation, masked by environmental variance. Two complementary fixes:
+
+1. **`test/global-setup.ts`** (commit `7bbbd31`) — clears + reseeds maincloud before every suite invocation, establishing a deterministic starting state.
+2. **`process.env` token refresh in globalSetup** (commit `56a71a2`) — fixes the stale-token bug the first full run caught.
+
+Plus the fast-path primitive (commit `332d490`) for mid-suite cleanup if future scale makes intra-suite accumulation a problem:
+
+3. **`server_nuke_test_data` reducer + `scripts/nuke-test-data.ts`** — ~500ms end-to-end wipe of non-seed state, 23x faster than the full globalSetup path. Not wired into the suite yet; available as a test utility for the future.
+
+**Phase 14 post-execution debug session closed.** Suite runtime baseline: **48.5 min, 531 passing integration tests + 197 passing unit tests, 0 failures, 0 skipped.**
+
+---
+
+*Session closed: 2026-04-10 — Round 9 verified clean. Three commits (7bbbd31, 332d490, 56a71a2) on `feature_nath_claude` ship the complete fix set.*
