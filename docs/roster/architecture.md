@@ -63,6 +63,7 @@ Archetype (id: u32 autoInc PK)  [public: true]
 2. No-op if account is already active
 3. Deactivate all other accounts for this user (iter via `user_id` index)
 4. Activate target account (`isActive=true`)
+5. Phase 12.3 D-G-01 (WIDE): rejects when the target account OR any of the caller's currently-active accounts is bound to a live `LobbyMemberAccount`. Error cites the conflicting lobby's joinCode.
 
 ### delete_hsr_account(hsrAccountId)
 1. `ensureVerifiedUser(ctx)` -- ownership check
@@ -75,23 +76,26 @@ Archetype (id: u32 autoInc PK)  [public: true]
 
 ### batch_upsert_characters(hsrAccountId, charactersJson)
 1. `ensureVerifiedUser(ctx)` -- ownership check
-2. Parse JSON array of `{ characterName, eidolonLevel }` objects
-3. Phase 1 -- validate ALL entries: `characterName` exists in `HsrCharacter`; `eidolonLevel` in 0-6 range
-4. Phase 2 -- upsert ALL: find existing `HsrAccountCharacter` by composite PK; delete+insert pattern
-5. Atomic: any validation failure rejects entire batch
+2. Phase 12.3 D-G-01 (NARROW): rejects when the target `hsrAccountId` is bound to a live `LobbyMemberAccount`
+3. Parse JSON array of `{ characterName, eidolonLevel }` objects
+4. Phase 12.3 D-D-02: body is a thin wrapper delegating to `applyBatchUpsert` from `spacetimedb/src/helpers/rosterMutations.ts`
+5. Helper: Phase 1 validate ALL entries (`characterName` exists in `HsrCharacter`; `eidolonLevel` in 0-6 range), Phase 2 upsert ALL via composite-PK delete+insert, then call `updateAccountRating`
+6. Atomic: any validation failure rejects entire batch
 
 ### batch_remove_characters(hsrAccountId, characterNamesJson)
 1. `ensureVerifiedUser(ctx)` -- ownership check
-2. Parse JSON array of character name strings
-3. Phase 1 -- validate ALL names exist on this account
-4. Phase 2 -- delete ALL matching `HsrAccountCharacter` rows
-5. Atomic: any name not found rejects entire batch
+2. Phase 12.3 D-G-01 (NARROW): rejects when the target `hsrAccountId` is bound to a live `LobbyMemberAccount`
+3. Parse JSON array of character name strings
+4. Phase 12.3 D-D-02: body is a thin wrapper delegating to `applyBatchRemove` from `spacetimedb/src/helpers/rosterMutations.ts`
+5. Helper: Phase 1 validate ALL names exist on this account, Phase 2 delete ALL matching `HsrAccountCharacter` rows, then call `updateAccountRating`
+6. Atomic: any name not found rejects entire batch
 
 ### migrate_roster(sourceAccountId, targetAccountId, mode)
 1. `ensureVerifiedUser(ctx)` -- both accounts must belong to same user
 2. Validate `sourceAccountId !== targetAccountId`
-3. Copy mode: upsert all source characters into target (overwrite eidolon level if character exists)
-4. Move mode: same as copy, then delete all source `HsrAccountCharacter` rows
+3. Phase 12.3 D-G-01: rejects when EITHER source OR target account is bound to a live `LobbyMemberAccount`
+4. Phase 12.3 D-D-03: copy mode calls `applyBatchUpsert` on target (validates + upserts + recomputes target rating); move mode additionally calls `applyBatchRemove` on source (deletes + recomputes source rating)
+5. Phase 12.3 D-D-04 (latent bug fix): previously never called `updateAccountRating` on either account, leaving stale ratings until another mutation triggered a recompute. The helper-based implementation closes this gap.
 
 ### Admin proxy reducers
 All mirror user variants with `ensureAdmin(ctx)` and `targetUserId` parameter (no ownership checks):
@@ -100,6 +104,39 @@ All mirror user variants with `ensureAdmin(ctx)` and `targetUserId` parameter (n
 - `admin_delete_hsr_account(hsrAccountId)` -- same deletion guard as user variant (D-24)
 - `admin_batch_upsert_characters(hsrAccountId, charactersJson)`
 - `admin_batch_remove_characters(hsrAccountId, characterNamesJson)`
+
+### Phase 12.3: rosterMutations.ts helpers and lobby guards
+
+New file `spacetimedb/src/helpers/rosterMutations.ts` exports two helpers that
+centralize the "mutate characters + recompute accountRating" sequence previously
+duplicated across `batch_upsert_characters`, `batch_remove_characters`, and
+`migrate_roster`:
+
+- `applyBatchUpsert(ctx, accountId, items, actingUserId)` -- validates items against
+  HsrCharacter + eidolon 0..6, upserts `HsrAccountCharacter` rows via composite-PK
+  delete+insert with audit columns, then calls `updateAccountRating`.
+- `applyBatchRemove(ctx, accountId, names, actingUserId)` -- validates all names
+  exist, deletes them, then calls `updateAccountRating`.
+
+Both helpers take pre-validated inputs (Pitfall 5): the calling reducer owns
+auth and account-ownership checks; the helper owns content validation and the
+mutate+recompute sequence. `migrate_roster` previously did the mutations inline
+without calling `updateAccountRating`, leaving both source and target with stale
+ratings until another mutation triggered a recompute -- D-D-04 closed this latent bug.
+
+**D-G-01 lobby guards** (defense-in-depth UX layer on top of the Phase 12.3 MMR snapshot):
+Four reducers reject when the caller has an active `LobbyMemberAccount` binding:
+- `set_active_hsr_account` -- WIDE predicate: rejects when the target account OR
+  any of the caller's currently-active accounts is bound to a lobby.
+- `batch_upsert_characters`, `batch_remove_characters` -- NARROW predicate:
+  rejects when the specific target `hsrAccountId` is bound to a lobby.
+- `migrate_roster` -- rejects when EITHER source or target is bound to a lobby.
+
+All four reuse the existing `LobbyMemberAccount.by_account` index; no new index
+was introduced. Error messages cite the conflicting lobby's `joinCode` (fallback:
+lobby id). The guards exist for UX clarity -- the snapshot from Phase 12.3's D-A
+capture already makes the MMR system correct even if every guard were bypassed
+by an admin reducer.
 
 ## Phase History
 
@@ -115,10 +152,11 @@ All mirror user variants with `ensureAdmin(ctx)` and `targetUserId` parameter (n
 | Visibility: isRosterPublic / isRatingPublic; lobby/tournament can force open-roster override | Phase 02 CONTEXT.md | 2026-02-10 |
 | HsrAccountLightcone cascade not yet implemented -- lightcone reducers descoped from Phase 2 | Phase 02 execution | 2026-02-10 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
+| Phase 12.3 | Helper extraction (rosterMutations.ts with applyBatchUpsert / applyBatchRemove), migrate_roster rating-recompute fix (D-D-04 latent bug), four D-G lobby guards on set_active / batch_upsert / batch_remove / migrate_roster |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 02 / Phase 10.4*
+*Last updated: 2026-04-11*
+*Feature owner: Phase 02 / Phase 10.4 / Phase 12.3*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
