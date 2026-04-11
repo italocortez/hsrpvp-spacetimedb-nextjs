@@ -201,11 +201,28 @@ export const start_draft = spacetimedb.reducer(
             (m: any) => !slotIsCoach(m.lobbySlot) && slotTeam(m.lobbySlot) !== null
         );
         for (const member of participantMembers) {
+            // D-A-01 / D-B-01 (Phase 12.3): capture max HsrAccount.accountRating across
+            // the member's LobbyMemberAccount rows at the instant the lobby transitions
+            // Waiting -> Drafting. max() is the anti-gaming rule: swapping to a lower
+            // account later cannot reduce the MMR input for this match.
+            // D-B-02: default 0 when no LMA rows exist (only possible for casual matches
+            // — ranked/MMR-tournament matches are rejected at lines 59-73 if any player
+            // has zero LMA rows). Zero matches the pre-phase `?? 0` fallback at
+            // finalizationHelpers.ts:87,91 and produces zero account-modifier contribution.
+            const selectedAccounts = [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, member.userId])];
+            let accountRatingSnapshot = 0;
+            for (const lma of selectedAccounts) {
+                const acct = ctx.db.HsrAccount.id.find(lma.hsrAccountId);
+                if (acct && acct.accountRating > accountRatingSnapshot) {
+                    accountRatingSnapshot = acct.accountRating;
+                }
+            }
             ctx.db.MatchResultParticipant.insert({
                 matchResultId: matchResultRow.id,
                 userId: member.userId,
                 teamSide: slotToTeamSide(member.lobbySlot),
                 isCaptain: member.isCaptain,
+                accountRatingSnapshot,
                 ...auditInsert(ctx, user.id),
             } as any);
         }
