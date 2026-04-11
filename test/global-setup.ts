@@ -98,6 +98,28 @@ export default async function setup() {
         );
     }
 
+    // post-publish.ts ROTATES the server identity and writes a fresh token to
+    // .env.local. The vitest runner process already loaded the OLD token into
+    // process.env at config-import time (vitest.integration.config.ts calls
+    // loadEnvLocal() before globalSetup runs). Tests read the token lazily via
+    // getServerToken() in test/shared/connection.ts, so refreshing process.env
+    // here is sufficient — subsequent getServerToken() calls will see the new
+    // token. Without this, every server-token reducer call fails with
+    // "Forbidden: caller is not the registered server identity" because the
+    // stale token maps to an Identity that no longer exists in ServerIdentity.
+    const freshToken = loadEnvValue('SPACETIMEDB_SERVER_TOKEN');
+    if (!freshToken) {
+        throw new Error(
+            '[global-setup] post-publish completed but SPACETIMEDB_SERVER_TOKEN is missing from .env.local. ' +
+            'Something went wrong during bootstrap.'
+        );
+    }
+    const prevToken = process.env.SPACETIMEDB_SERVER_TOKEN;
+    process.env.SPACETIMEDB_SERVER_TOKEN = freshToken;
+    if (prevToken !== freshToken) {
+        console.log('[global-setup] Refreshed process.env.SPACETIMEDB_SERVER_TOKEN with rotated token.');
+    }
+
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     console.log(`[global-setup] Database reset complete in ${elapsed}s. Suite starting on clean state.`);
 }
