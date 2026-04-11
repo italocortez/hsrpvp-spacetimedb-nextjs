@@ -50,6 +50,7 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 - ✓ Auth security hardening (UserPrivate isolation, view-based profile, ban enforcement, identity cleanup) — Validated in Phase 12
 - ✓ Identity garbage collection (scheduled cleanup of stale UserIdentity rows, 90-day TTL) — Validated in Phase 12.1
 - ✓ SDK upgrade audit (2.0.3 → 2.1.0, view exports, .catch() error handling, confirmed reads) — Validated in Phase 12.2
+- ✓ MMR rating snapshot (account rating captured at match start via `MRP.accountRatingSnapshot`, monotonic-upward hook in `select_match_account`, tournament-stage ordering guard, roster mutation guards) — Validated in Phase 12.3
 - ✓ Documentation normalization (standardized architecture/contract templates, full hydration, codebase docs regen, FRONTEND-HANDOFF rewrite, ERD update) — Validated in Phase 13
 
 ### Active
@@ -114,4 +115,4 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 | Flat columns over config structs | Filterable data uses flat columns; LobbyConfig can be reworked | Convention |
 
 ---
-*Last updated: 2026-04-09 after Phase 13 completion (Documentation Normalization). v0.5 backend complete.*
+*Last updated: 2026-04-11 after Phase 12.3 completion (MMR Rating Snapshot). v0.5 backend complete.*
