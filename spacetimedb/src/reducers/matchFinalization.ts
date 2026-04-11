@@ -27,6 +27,39 @@ export const finalize_match_result = spacetimedb.reducer(
             throw new SenderError('Match result must be Validated before finalization.');
         }
 
+        // ── D-H-01 (Phase 12.3): tournament-stage ordering guard ─────────────
+        // Reject finalization of tournament-controlled matches until the parent
+        // tournament reaches a terminal stage (Completed or Cancelled). Two
+        // properties depend on this ordering:
+        //   1. MMR batch processing. `process_tournament_mmr` (matchFinalization.ts:65)
+        //      reads MatchResultRecord + MatchResultParticipant rows that
+        //      `runFinalization` step 18 (finalizationHelpers.ts:549-558) deletes
+        //      unconditionally. Without the guard, an admin finalizing an individual
+        //      MMR-tournament match mid-tournament silently loses its MMR input.
+        //   2. Bracket rollback capability. The TO may need to invalidate a bracket
+        //      match after the fact (disputed result, cheating discovered, wrong
+        //      score submitted). Keeping the ephemeral data alive until the
+        //      tournament reaches a terminal stage makes rollback a local row
+        //      operation instead of historical reconstruction.
+        // Guard is unconditional: `countTowardsMmr` is NOT consulted (D-H-02) because
+        // the rollback property applies to casual tournaments too.
+        if (matchResult.isTournamentControlled) {
+            const bracketMatch = matchResult.bracketMatchId !== undefined
+                ? ctx.db.BracketMatch.id.find(matchResult.bracketMatchId)
+                : undefined;
+            const derivedTournamentId = bracketMatch?.tournamentId;
+            const tournament = derivedTournamentId !== undefined
+                ? ctx.db.Tournament.id.find(derivedTournamentId)
+                : undefined;
+            if (!tournament || (tournament.stage.tag !== 'Completed' && tournament.stage.tag !== 'Cancelled')) {
+                throw new SenderError(
+                    'Tournament match cannot be finalized while the tournament is still active. ' +
+                    'Wait for the tournament to reach Completed or Cancelled — this preserves MMR batch processing and bracket rollback capability.'
+                );
+            }
+        }
+        // ── END D-H-01 ───────────────────────────────────────────────────────
+
         // 3. Authority check (Mod+, referee, tournament access)
         let hasAuthority = false;
         if (isRoleAtLeast(user.role, 'Moderator')) {
