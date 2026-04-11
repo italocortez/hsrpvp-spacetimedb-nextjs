@@ -1,6 +1,6 @@
 # HSRPVP Backend -- Frontend Handoff
 
-Last updated: 2026-04-09
+Last updated: 2026-04-10
 
 > **TL;DR:** The backend (v0.5) is complete. All 83 mapped requirements are implemented across 20 phases. You have 67 tables, ~155 reducer exports, 32 server-side views, and generated TypeScript bindings. The frontend (v1) needs to be built on top of this. This document routes you to everything you need.
 
@@ -13,7 +13,7 @@ Last updated: 2026-04-09
 - **Reducers:** ~155 exports across 44 reducer source files (`spacetimedb/src/reducers/`)
 - **Views:** 32 server-side named views (`securityViews.ts`: 24, `anonymousViews.ts`: 8)
 - **Requirements:** All 83 mapped v0.5 requirements complete (see `.planning/REQUIREMENTS.md` traceability table)
-- **Tests:** 673+ tests across 41 integration test files (Phase 10.5 baseline)
+- **Tests:** 728 tests across 58 files — 531 integration tests (47 files, ~48.5 min on maincloud) + 197 unit tests (11 files, <1s). Round 9 baseline (Phase 14), 0 failures / 0 skipped
 - **Generated bindings:** 236 TypeScript files in `src/module_bindings/` — regenerate with `spacetime generate` after schema changes
 
 ---
@@ -294,5 +294,5 @@ Routing guide for AI agents reading this file:
 
 ---
 
-*Last updated: 2026-04-09*
-*Backend complete as of Phase 12.2 (SDK 2.1.0 upgrade). All v0.5 requirements implemented.*
+*Last updated: 2026-04-10*
+*Backend complete as of Phase 14 (test harness modernized for SDK 2.1.0). All v0.5 requirements implemented.*
