@@ -1088,6 +1088,7 @@ export const MatchResultParticipant = __t.object("MatchResultParticipant", {
     return TeamSide;
   },
   isCaptain: __t.bool(),
+  accountRatingSnapshot: __t.f64(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
