@@ -5,6 +5,20 @@ import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { validateUid, deriveRegion, recalcDuplicateUid } from '../helpers/rosterHelpers';
 import { applyBatchUpsert, applyBatchRemove } from '../helpers/rosterMutations';
 
+/**
+ * D-G-02 (Phase 12.3): Builds a user-facing SenderError for the lobby-guard
+ * rejections. Cites the first conflicting lobby's joinCode (fallback: lobby id)
+ * so the user can find the match they need to leave.
+ */
+function buildLobbyGuardError(ctx: any, lmaRows: Array<{ lobbyId: number }>, verbPhrase: string): SenderError {
+    const firstLobbyId = lmaRows[0].lobbyId;
+    const lobby = ctx.db.Lobby.id.find(firstLobbyId);
+    const lobbyLabel = lobby?.joinCode ? `lobby ${lobby.joinCode}` : `lobby #${firstLobbyId}`;
+    return new SenderError(
+        `Cannot ${verbPhrase} while you have an account selected in ${lobbyLabel}. Leave the lobby first.`
+    );
+}
+
 // ─── create_hsr_account ───────────────────────────────────────────────────────
 // Creates a new HSR account entry for the authenticated user.
 // Validates UID format, derives region, enforces 5-account cap,
@@ -83,6 +97,25 @@ export const set_active_hsr_account = spacetimedb.reducer(
 
         // No-op if already active
         if (account.isActive) return;
+
+        // D-G-01 (Phase 12.3, WIDE per research A1): reject when the target account
+        // OR any of the caller's currently-active accounts is bound to a live lobby.
+        // Covers two UX cases: (a) "I'm trying to activate an account that's already
+        // bound to a live lobby" and (b) "I'm trying to swap OUT of an account that's
+        // bound to a live lobby". Snapshot from Plan 01 already makes the system
+        // correct — this guard exists for clarity (D-G-03).
+        const targetBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (targetBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, targetBinding, 'change your active account');
+        }
+        const allBindings = ctx.db.HsrAccount.user_id.filter(user.id);
+        for (const acc of allBindings) {
+            if (!acc.isActive) continue;
+            const activeBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(acc.id)];
+            if (activeBinding.length > 0) {
+                throw buildLobbyGuardError(ctx, activeBinding, 'change your active account');
+            }
+        }
 
         const allAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
         for (const acc of allAccounts) {
@@ -166,7 +199,13 @@ export const batch_upsert_characters = spacetimedb.reducer(
         if (!account) throw new SenderError('HSR account not found');
         if (account.userId !== user.id) throw new SenderError('Not your account');
 
-        // D-G-01 (Phase 12.3) guard will be added in Task 3 below this block.
+        // D-G-01 (Phase 12.3, NARROW per research A2): reject when the specific
+        // target account is bound to a live lobby. Existing `by_account` index is
+        // sufficient — no new `by_user` index (C11).
+        const hsrAccountBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (hsrAccountBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, hsrAccountBinding, 'edit characters on this account');
+        }
 
         const items: Array<{ characterName: string; eidolonLevel: number }> = JSON.parse(charactersJson);
 
@@ -190,7 +229,12 @@ export const batch_remove_characters = spacetimedb.reducer(
         if (!account) throw new SenderError('HSR account not found');
         if (account.userId !== user.id) throw new SenderError('Not your account');
 
-        // D-G-01 (Phase 12.3) guard will be added in Task 3 below this block.
+        // D-G-01 (Phase 12.3, NARROW per research A2): reject when the target account
+        // is bound to a live lobby.
+        const hsrAccountBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (hsrAccountBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, hsrAccountBinding, 'remove characters from this account');
+        }
 
         const names: string[] = JSON.parse(characterNamesJson);
 
@@ -225,7 +269,16 @@ export const migrate_roster = spacetimedb.reducer(
             throw new SenderError('Source and target cannot be the same account');
         }
 
-        // D-G-01 (Phase 12.3) guard will be added in Task 3 below this block.
+        // D-G-01 (Phase 12.3): reject when EITHER side of the migration is bound
+        // to a live lobby. Both accounts are mutated, so both must be checked.
+        const sourceBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(sourceAccountId)];
+        if (sourceBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, sourceBinding, 'migrate characters from this account');
+        }
+        const targetBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(targetAccountId)];
+        if (targetBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, targetBinding, 'migrate characters to this account');
+        }
 
         const sourceChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(sourceAccountId)];
         if (sourceChars.length === 0) {
