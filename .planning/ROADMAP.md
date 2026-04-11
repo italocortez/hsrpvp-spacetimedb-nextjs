@@ -398,7 +398,7 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.5. Test Suite Stabilization | 1/1 | Complete    | 2026-04-06 |
 | 12.1. Identity Garbage Collection | 1/1 | Complete    | 2026-04-08 |
 | 12.2. SDK Upgrade Audit | 2/2 | Complete    | 2026-04-09 |
-| 12.3. MMR Rating Snapshot | 0/8 | Planned     | -          |
+| 12.3. MMR Rating Snapshot | 8/8 | Complete    | 2026-04-11 |
 | 13. Documentation Normalization | 5/5 | Complete    | 2026-04-09 |
 
 
@@ -428,7 +428,7 @@ Plans:
 **Goal:** Freeze `HsrAccount.accountRating` at match-record time so ELO deltas stay correct even if the user swaps their active account or mutates their roster mid-match. Persist the snapshot on `MatchResultParticipant` and switch `processMatchMmr` to read the frozen value instead of re-querying `HsrAccount.isActive`. Add defense-in-depth lobby guards to the active-account and roster-mutation reducers so the invariant is user-visible instead of implicit.
 **Requirements**: MMR-RACE-01 (ELO delta uses rating value at match start, not finalize time), MMR-RACE-02 (processMatchMmr path-independent across standalone-ranked and tournament-batch), ROST-GUARD-01 (set_active_hsr_account and roster mutation reducers reject while caller has active LobbyMemberAccount)
 **Depends on:** Phase 5 (ELO calculation path), Phase 10.4 (LobbyMemberAccount + select_match_account), Phase 11 (matrix accountRating formula)
-**Plans:** 8 plans
+**Plans:** 8/8 plans complete
 
 **Scope:**
 1. **Schema:** Add `accountRatingSnapshot: f64` column to `MatchResultParticipant`. No other schema changes — stats are confirmed user-level (`PlayerStat`, `PlayerCharacterStat`, `MmrRating`, `MatchParticipantHistory` all keyed by `userId`, never `hsrAccountId`), so no attribution column is needed.
@@ -441,14 +441,14 @@ Plans:
 **Context:** Design bug diagnosed in `.planning/debug/phase-5-mmr-account-rating-source.md` during v0.5 milestone audit on 2026-04-10. The current `isActive`-based lookup is a holdover from Phase 6 (commit `1c91abb`) that was never migrated when Phase 10.4 introduced per-match account selection. Low severity in practice (v0.5 is backend-only, Fair-MMR modifier is bounded by `maxAccountBonus=200` and further compressed through the ELO sigmoid, D-29 was a conscious-if-incomplete decision), but the fix is small and additive and correcting it strengthens the "backend foundation" claim for v0.5 close-out.
 
 Plans:
-- [ ] 12.3-01-PLAN.md — Schema: add accountRatingSnapshot f64 column; start_draft captures max across LMA; timer_expiry_classic auto-pick pool migrates to LMA; publish + regenerate bindings (D-F, D-A, D-B-01/02, D-I)
-- [ ] 12.3-02-PLAN.md — processMatchMmr read-path swap at finalizationHelpers.ts:85-92 (D-readpath-01/02)
-- [ ] 12.3-03-PLAN.md — select_match_account monotonic-upward snapshot update hook for BetweenGames (D-B-03/04/05)
-- [ ] 12.3-04-PLAN.md — finalize_match_result tournament-stage ordering guard with Pitfall 4 defensive handling (D-H-01 through D-H-05)
-- [ ] 12.3-05-PLAN.md — New rosterMutations.ts helpers (applyBatchUpsert / applyBatchRemove) + three reducer wrappers + four D-G lobby guards + D-D-04 migrate_roster rating-recompute fix (D-D-01/02/03/04, D-G-01/02/03)
-- [ ] 12.3-06-PLAN.md — Snapshot tests: new mmr-snapshot.unit.test.ts + mmr-snapshot-betweengames.test.ts + mmr-stats.test.ts extension with D-G race tests (MMR-RACE-01/02, ROST-GUARD-01)
-- [ ] 12.3-07-PLAN.md — Guard/ordering/pool tests: new migrate-roster-rating.test.ts + tournament-ordering-guard.test.ts + auto-pick-ownership-pool.test.ts (ROST-GUARD-01, MMR-RACE-02, OWN-POOL-01)
-- [ ] 12.3-08-PLAN.md — Architecture docs (match-results, roster, tournament) + REQUIREMENTS.md backfill (MMR-RACE-01/02, ROST-GUARD-01) + full test-suite verification gate (C8, C9, C10)
+- [x] 12.3-01-PLAN.md — Schema: add accountRatingSnapshot f64 column; start_draft captures max across LMA; timer_expiry_classic auto-pick pool migrates to LMA; publish + regenerate bindings (D-F, D-A, D-B-01/02, D-I)
+- [x] 12.3-02-PLAN.md — processMatchMmr read-path swap at finalizationHelpers.ts:85-92 (D-readpath-01/02)
+- [x] 12.3-03-PLAN.md — select_match_account monotonic-upward snapshot update hook for BetweenGames (D-B-03/04/05)
+- [x] 12.3-04-PLAN.md — finalize_match_result tournament-stage ordering guard with Pitfall 4 defensive handling (D-H-01 through D-H-05)
+- [x] 12.3-05-PLAN.md — New rosterMutations.ts helpers (applyBatchUpsert / applyBatchRemove) + three reducer wrappers + four D-G lobby guards + D-D-04 migrate_roster rating-recompute fix (D-D-01/02/03/04, D-G-01/02/03)
+- [x] 12.3-06-PLAN.md — Snapshot tests: new mmr-snapshot.unit.test.ts + mmr-snapshot-betweengames.test.ts + mmr-stats.test.ts extension with D-G race tests (MMR-RACE-01/02, ROST-GUARD-01)
+- [x] 12.3-07-PLAN.md — Guard/ordering/pool tests: new migrate-roster-rating.test.ts + tournament-ordering-guard.test.ts + auto-pick-ownership-pool.test.ts (ROST-GUARD-01, MMR-RACE-02, OWN-POOL-01)
+- [x] 12.3-08-PLAN.md — Architecture docs (match-results, roster, tournament) + REQUIREMENTS.md backfill (MMR-RACE-01/02, ROST-GUARD-01) + full test-suite verification gate (C8, C9, C10)
 
 ### Phase 13: Documentation Normalization — full doc update with standardized structure
 
