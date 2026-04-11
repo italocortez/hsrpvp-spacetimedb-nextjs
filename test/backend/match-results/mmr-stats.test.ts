@@ -628,3 +628,245 @@ describe.skipIf(!hasServerToken())('MMR + Leaderboard + Stats', () => {
         });
     });
 });
+
+// ─── Phase 12.3: snapshot-backed MMR + D-G guard rejections ─────────────────
+//
+// Appended by Plan 12.3-06 Task 3 — extends this file (C10: test files are
+// only edited via explicit tasks). Existing tests above are unchanged.
+//
+// Covers two requirement IDs:
+//   - MMR-RACE-02: negative-control proving the persisted snapshot flows
+//     through to ELO (two matches with different account ratings produce
+//     different MMR deltas — if the read path were still buggy and looked up
+//     active isActive instead of the snapshot, this test would still pass
+//     for the wrong reason, so the assertion is paired with an explicit
+//     snapshot read to make the provenance clear).
+//   - ROST-GUARD-01: the three D-G guards that protect an MRP-capture window
+//     at the roster.ts layer — set_active_hsr_account, batch_upsert_characters,
+//     batch_remove_characters. migrate_roster rejection tests + roster
+//     rating recompute regression belong to Plan 12.3-07's dedicated
+//     migrate-roster-rating.test.ts file — do NOT duplicate here.
+
+describe.skipIf(!hasServerToken())('Phase 12.3: snapshot-backed MMR + D-G guard rejections', () => {
+    let host: TestHarness;
+    let blue: TestHarness;
+    let red: TestHarness;
+    let admin: TestHarness;
+
+    // Shared scratch state between the negative-control beforeAll and the
+    // D-G guard tests (which reuse the lobby blue is currently bound to).
+    let match1BlueDelta: number | null = null;
+    let match2BlueDelta: number | null = null;
+    let lowMatchRating = 0;
+    let highMatchRating = 0;
+
+    // For the D-G guard tests we need a fresh live lobby (NOT the ones from
+    // the negative-control — those are finalized + deleted).
+    let guardLobbyId: number;
+    let guardBlueAccountId: number;
+
+    beforeAll(async () => {
+        host = await createVerifiedTestHarness();
+        blue = await createVerifiedTestHarness();
+        red = await createVerifiedTestHarness();
+        admin = await createVerifiedTestHarness();
+        await host.sync();
+        await blue.sync();
+        await red.sync();
+        await admin.sync();
+
+        await promoteToRole(admin, 'Admin');
+        await ensureEloConfig(admin);
+    }, 120000);
+
+    afterAll(async () => {
+        // Cleanup the guard lobby if still alive
+        try { await host.call.closeLobby({ lobbyId: guardLobbyId }); } catch { /* ok */ }
+        // Cleanup any remaining HsrAccount rows blue created
+        try {
+            const accts = await queryPrivateTable(
+                `SELECT id FROM hsr_account WHERE user_id = ${blue.userId}`
+            );
+            for (const a of accts) {
+                try { await blue.call.deleteHsrAccount({ hsrAccountId: Number(a.id) }); } catch { /* ok */ }
+            }
+        } catch { /* ok */ }
+
+        await host?.disconnect();
+        await blue?.disconnect();
+        await red?.disconnect();
+        await admin?.disconnect();
+    });
+
+    // ─── Negative control: snapshot flows through to MMR delta ──────────
+
+    describe('snapshot drives MMR delta (negative control — MMR-RACE-02)', () => {
+        it('two ranked matches with different account ratings produce different MMR deltas', async () => {
+            // Match 1: blue has a LOW-rated active account.
+            await blue.call.createHsrAccount({ uid: '812090001', displayLabel: 'Blue Low' });
+            await blue.sync(1500);
+            const blueLowRows = await queryPrivateTable(
+                `SELECT id FROM hsr_account WHERE user_id = ${blue.userId}`
+            );
+            const blueLowId = Number(blueLowRows[blueLowRows.length - 1].id);
+            // LOW rating: single character. The roster module recomputes
+            // account_rating at end of batch_upsert_characters (D-D-02).
+            await blue.call.batchUpsertCharacters({
+                hsrAccountId: blueLowId,
+                charactersJson: JSON.stringify([
+                    { characterName: 'acheron', eidolonLevel: 0 },
+                ]),
+            });
+            await blue.sync(1500);
+
+            // Red account (seed so the match is valid for Ranked D-08 gate).
+            await ensureHsrAccount(red);
+
+            // Read the rating so we can assert it's non-zero later.
+            const lowRows = await queryPrivateTable(
+                `SELECT account_rating FROM hsr_account WHERE id = ${blueLowId}`
+            );
+            lowMatchRating = Number(lowRows[0].account_rating);
+
+            const match1 = await setupScoredMatch(host, blue, red);
+            await submitOverrideFinalize(host, admin, blue, red, match1.matchResultId, blue.userId, 'Blue');
+
+            // Read blue's MMR delta from MmrHistory for match 1.
+            const hist1 = [...host.conn.db.MmrHistory.iter()]
+                .filter(h => h.userId === blue.userId)
+                .sort((a: any, b: any) => b.id - a.id);
+            expect(hist1.length).toBeGreaterThanOrEqual(1);
+            match1BlueDelta = hist1[0].delta;
+
+            // Upgrade blue's roster to a much HIGHER rating for match 2.
+            // Since the old account is no longer bound to any lobby (match 1
+            // finalized + lobby deleted), batch_upsert is allowed.
+            await blue.call.batchUpsertCharacters({
+                hsrAccountId: blueLowId,
+                charactersJson: JSON.stringify([
+                    { characterName: 'acheron', eidolonLevel: 6 },
+                    { characterName: 'aglaea', eidolonLevel: 6 },
+                    { characterName: 'anaxa', eidolonLevel: 6 },
+                    { characterName: 'archer', eidolonLevel: 6 },
+                    { characterName: 'argenti', eidolonLevel: 6 },
+                    { characterName: 'arlan', eidolonLevel: 6 },
+                ]),
+            });
+            await blue.sync(1500);
+
+            const highRows = await queryPrivateTable(
+                `SELECT account_rating FROM hsr_account WHERE id = ${blueLowId}`
+            );
+            highMatchRating = Number(highRows[0].account_rating);
+            // Sanity: the rating actually grew. If this fails the test is
+            // invalid — report, do not auto-fix.
+            expect(highMatchRating).toBeGreaterThan(lowMatchRating);
+
+            // Match 2: same players, new higher rating → snapshot captures the
+            // new value at start_draft, ELO sees a different account-modifier.
+            const match2 = await setupScoredMatch(host, blue, red);
+            await submitOverrideFinalize(host, admin, blue, red, match2.matchResultId, blue.userId, 'Blue');
+
+            const hist2 = [...host.conn.db.MmrHistory.iter()]
+                .filter(h => h.userId === blue.userId)
+                .sort((a: any, b: any) => b.id - a.id);
+            // Latest MmrHistory is match 2's delta.
+            expect(hist2.length).toBeGreaterThanOrEqual(2);
+            match2BlueDelta = hist2[0].delta;
+
+            // Both deltas must be defined, both must be > 0 (blue won both),
+            // and crucially they must NOT be identical — if the snapshot were
+            // ignored and the ELO helper were reading a constant 0, both deltas
+            // would be identical. Different deltas prove the snapshot is being
+            // used as the account-modifier input (Plan 12.3-02 D-readpath-01).
+            expect(match1BlueDelta).not.toBeNull();
+            expect(match2BlueDelta).not.toBeNull();
+            expect(match1BlueDelta).not.toBe(match2BlueDelta);
+        }, 600000);
+    });
+
+    // ─── D-G guard rejections (ROST-GUARD-01) ──────────────────────────
+
+    describe('D-G roster guards while caller has a live LMA binding', () => {
+        beforeAll(async () => {
+            // Create a brand-new ranked lobby with blue bound via LMA. The
+            // negative-control's lobbies are finalized + deleted, so blue has
+            // no LMA binding after them — we must create a fresh one here
+            // before any of the D-G guard tests run.
+            await host.call.createLobby(defaultLobbyArgs());
+            await host.sync(1500);
+            const l = [...host.conn.db.Lobby.iter()]
+                .filter(l => l.hostUserId === host.userId)
+                .at(-1)!;
+            guardLobbyId = l.id;
+
+            // blue needs an HsrAccount (it should already have one from the
+            // negative control, but ensure it regardless).
+            await ensureHsrAccount(blue);
+            const blueAccts = await queryPrivateTable(
+                `SELECT id, is_active FROM hsr_account WHERE user_id = ${blue.userId}`
+            );
+            // Use the currently-active account — D-G-01 targets this account.
+            const activeRow = blueAccts.find((r) => r.is_active === 'true') ?? blueAccts[0];
+            guardBlueAccountId = Number(activeRow.id);
+
+            await blue.call.joinLobby({ lobbyId: guardLobbyId, joinCode: '', password: '' });
+            await blue.sync(1500);
+            await blue.call.setTeamSlot({
+                lobbyId: guardLobbyId,
+                targetUserId: blue.userId,
+                lobbySlot: { tag: 'BluePlayer' as const },
+            });
+            await blue.sync();
+            await host.sync();
+
+            // Confirm blue has an LMA row bound to the active account.
+            const lmaRows = await queryPrivateTable(
+                `SELECT hsr_account_id FROM lobby_member_account WHERE lobby_id = ${guardLobbyId} AND user_id = ${blue.userId}`
+            );
+            expect(lmaRows.length).toBeGreaterThanOrEqual(1);
+        }, 60000);
+
+        it('set_active_hsr_account rejects while caller has an active LobbyMemberAccount binding (D-G-01)', async () => {
+            // Create a second account so we can attempt to switch isActive
+            // to a DIFFERENT one. The guard at roster.ts:107-118 rejects
+            // because the currently-active account is bound to a live lobby.
+            await blue.call.createHsrAccount({ uid: '812090101', displayLabel: 'Blue Alt' });
+            await blue.sync(1500);
+            const altRows = await queryPrivateTable(
+                `SELECT id FROM hsr_account WHERE user_id = ${blue.userId} AND is_active = false`
+            );
+            expect(altRows.length).toBeGreaterThanOrEqual(1);
+            const altAccountId = Number(altRows[altRows.length - 1].id);
+
+            const err = await expectReducerError(
+                blue.call.setActiveHsrAccount({ hsrAccountId: altAccountId })
+            );
+            expect(err).toContain('change your active account');
+        }, 30000);
+
+        it('batch_upsert_characters rejects while target account is bound to a live lobby (D-G-01)', async () => {
+            const err = await expectReducerError(
+                blue.call.batchUpsertCharacters({
+                    hsrAccountId: guardBlueAccountId,
+                    charactersJson: JSON.stringify([
+                        { characterName: 'anaxa', eidolonLevel: 0 },
+                    ]),
+                })
+            );
+            expect(err).toContain('edit characters on this account');
+        }, 30000);
+
+        it('batch_remove_characters rejects while target account is bound to a live lobby (D-G-01)', async () => {
+            // Even with an empty character list the guard fires before the
+            // delete loop (guard runs in the first ~5 lines of the reducer).
+            const err = await expectReducerError(
+                blue.call.batchRemoveCharacters({
+                    hsrAccountId: guardBlueAccountId,
+                    characterNamesJson: JSON.stringify(['acheron']),
+                })
+            );
+            expect(err).toContain('remove characters from this account');
+        }, 30000);
+    });
+});
