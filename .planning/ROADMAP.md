@@ -371,7 +371,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 10.5 -> 11 -> 12 -> 12.1 -> 12.2 -> 13
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 04.1 -> 5 -> 6 -> 06.1 -> 7 -> 8 -> 9 -> 10 -> 10.1 -> 10.3 -> 10.4 -> 10.5 -> 11 -> 12 -> 12.1 -> 12.2 -> 13 -> 14 -> 12.3
 
 Note: Phase 8 (Calendar) depends only on Phase 1 schema and can be parallelized with Phases 3-7 if needed, but serial execution is the default.
 Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 as Scope F.
@@ -398,6 +398,7 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.5. Test Suite Stabilization | 1/1 | Complete    | 2026-04-06 |
 | 12.1. Identity Garbage Collection | 1/1 | Complete    | 2026-04-08 |
 | 12.2. SDK Upgrade Audit | 2/2 | Complete    | 2026-04-09 |
+| 12.3. MMR Rating Snapshot | 0/0 | Not started | -          |
 | 13. Documentation Normalization | 5/5 | Complete    | 2026-04-09 |
 
 
@@ -421,6 +422,26 @@ Plans:
 Plans:
 - [x] 12.2-01-PLAN.md — Export all 32 views, publish module, regenerate bindings, run full test suite, SDK changelog audit
 - [x] 12.2-02-PLAN.md — Frontend auth rework (view-based profile resolution), confirmed reads disable, _then() error callbacks, human verification
+
+### Phase 12.3: MMR Rating Snapshot (INSERTED)
+
+**Goal:** Freeze `HsrAccount.accountRating` at match-record time so ELO deltas stay correct even if the user swaps their active account or mutates their roster mid-match. Persist the snapshot on `MatchResultParticipant` and switch `processMatchMmr` to read the frozen value instead of re-querying `HsrAccount.isActive`. Add defense-in-depth lobby guards to the active-account and roster-mutation reducers so the invariant is user-visible instead of implicit.
+**Requirements**: MMR-RACE-01 (ELO delta uses rating value at match start, not finalize time), MMR-RACE-02 (processMatchMmr path-independent across standalone-ranked and tournament-batch), ROST-GUARD-01 (set_active_hsr_account and roster mutation reducers reject while caller has active LobbyMemberAccount)
+**Depends on:** Phase 5 (ELO calculation path), Phase 10.4 (LobbyMemberAccount + select_match_account), Phase 11 (matrix accountRating formula)
+**Plans:** 0 plans (to be planned)
+
+**Scope:**
+1. **Schema:** Add `accountRatingSnapshot: f64` column to `MatchResultParticipant`. No other schema changes — stats are confirmed user-level (`PlayerStat`, `PlayerCharacterStat`, `MmrRating`, `MatchParticipantHistory` all keyed by `userId`, never `hsrAccountId`), so no attribution column is needed.
+2. **Snapshot capture:** At `MatchResultParticipant` insert inside `runFinalization`, resolve the player's `LobbyMemberAccount` row for this lobby to get the selected `hsrAccountId`, read `HsrAccount.accountRating` from that account, and write the value into the new column. LMA is still alive at insert time (step 19 `hardDeleteLobby` runs later).
+3. **Read-site swap:** Replace the `HsrAccount.user_id.filter(uid).find(a => a.isActive)` lookup in `processMatchMmr` (`finalizationHelpers.ts:85-92`) with a direct read of `participant.accountRatingSnapshot`. Both the standalone-ranked path and the tournament-batch path (`process_tournament_mmr`) use the same column — the previously-unfixable tournament path becomes trivially correct since it no longer needs a live LMA.
+4. **Defense-in-depth guards:** Add a `user-has-active-LobbyMemberAccount` rejection (same pattern as `delete_hsr_account` at `roster.ts:112-115`) to `set_active_hsr_account`, `batch_upsert_characters`, `batch_remove_characters`, and `migrate_roster`. User sees a clear "can't do this while in a match" error instead of silent incorrect behavior.
+5. **Test coverage:** New `test/backend/match-results/mmr-snapshot.unit.test.ts` for snapshot capture. Integration tests for account-swap race, roster-mutation race, and best-of-N tournament series with per-game account changes. Promote the `it.skip` regression stub proposed in the debug session to a real test.
+6. **Doc updates:** Update `docs/match-results/architecture.md` (snapshot pattern) and `docs/roster/contract.md` (lobby-guard invariants + known-limitation removal).
+
+**Context:** Design bug diagnosed in `.planning/debug/phase-5-mmr-account-rating-source.md` during v0.5 milestone audit on 2026-04-10. The current `isActive`-based lookup is a holdover from Phase 6 (commit `1c91abb`) that was never migrated when Phase 10.4 introduced per-match account selection. Low severity in practice (v0.5 is backend-only, Fair-MMR modifier is bounded by `maxAccountBonus=200` and further compressed through the ELO sigmoid, D-29 was a conscious-if-incomplete decision), but the fix is small and additive and correcting it strengthens the "backend foundation" claim for v0.5 close-out.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 12.3 to break down)
 
 ### Phase 13: Documentation Normalization — full doc update with standardized structure
 

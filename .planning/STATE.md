@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 14
+current_phase: 12.3
 current_plan: Not started
-status: completed
-last_updated: "2026-04-10T02:38:01.321Z"
+status: active
+last_updated: "2026-04-10T21:00:00.000Z"
 progress:
-  total_phases: 22
+  total_phases: 23
   completed_phases: 22
   total_plans: 68
   completed_plans: 68
-  percent: 100
+  percent: 96
 ---
 
 # Session State
@@ -179,6 +179,7 @@ See: .planning/PROJECT.md
 - Phase 10.5 inserted after Phase 10.4: Test Suite Stabilization — audit cross-file failures, test isolation, cleanup hygiene exposed after 10.4 schema changes
 - Phase 12.1 inserted after Phase 12: Identity Garbage Collection — scheduled cleanup of stale UserIdentity rows (orphaned after logout) based on lastSeenAt age (INSERTED)
 - Phase 13 added: Contract Hydration — standardize all contract.md files to reducer-first format (docs-only, no code changes)
+- Phase 12.3 inserted after Phase 12.2 during v0.5 milestone audit close-out: MMR Rating Snapshot — freeze HsrAccount.accountRating at MatchResultParticipant insert time so ELO deltas stay correct under mid-match account swap or roster mutation; add defense-in-depth lobby guards to set_active_hsr_account and roster mutators. Diagnosed in .planning/debug/phase-5-mmr-account-rating-source.md (URGENT)
 
 ## Session Log
 
