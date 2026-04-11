@@ -3,7 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { ensureVerifiedUser } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 import { validateUid, deriveRegion, recalcDuplicateUid } from '../helpers/rosterHelpers';
-import { updateAccountRating } from '../helpers/accountRating';
+import { applyBatchUpsert, applyBatchRemove } from '../helpers/rosterMutations';
 
 // ─── create_hsr_account ───────────────────────────────────────────────────────
 // Creates a new HSR account entry for the authenticated user.
@@ -166,36 +166,14 @@ export const batch_upsert_characters = spacetimedb.reducer(
         if (!account) throw new SenderError('HSR account not found');
         if (account.userId !== user.id) throw new SenderError('Not your account');
 
+        // D-G-01 (Phase 12.3) guard will be added in Task 3 below this block.
+
         const items: Array<{ characterName: string; eidolonLevel: number }> = JSON.parse(charactersJson);
-        if (!Array.isArray(items) || items.length === 0) {
-            throw new SenderError('charactersJson must be a non-empty JSON array');
-        }
 
-        // Phase 1 — Validate ALL before writing ANY
-        for (const item of items) {
-            if (!ctx.db.HsrCharacter.name.find(item.characterName)) {
-                throw new SenderError(`Invalid character: "${item.characterName}"`);
-            }
-            if (item.eidolonLevel === undefined || item.eidolonLevel < 0 || item.eidolonLevel > 6) {
-                throw new SenderError(`Invalid eidolon level for "${item.characterName}": must be 0-6`);
-            }
-        }
-
-        // Phase 2 — Upsert all (composite PK: delete then insert)
-        for (const item of items) {
-            const existing = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([hsrAccountId, item.characterName])][0] ?? null;
-            if (existing) {
-                ctx.db.HsrAccountCharacter.delete(existing);
-            }
-            ctx.db.HsrAccountCharacter.insert({
-                hsrAccountId,
-                characterName: item.characterName,
-                eidolonLevel: item.eidolonLevel,
-                ...(existing ? auditUpdate(ctx, existing, user.id) : auditInsert(ctx, user.id)),
-            } as any);
-        }
-
-        updateAccountRating(ctx, hsrAccountId, user.id);
+        // D-D-02 (Phase 12.3): delegate to shared helper — validates items against
+        // HsrCharacter + eidolon range, upserts via composite-PK delete+insert, then
+        // recomputes accountRating. Single source of truth for "mutate chars + recompute".
+        applyBatchUpsert(ctx, hsrAccountId, items, user.id);
     }
 );
 
@@ -212,29 +190,12 @@ export const batch_remove_characters = spacetimedb.reducer(
         if (!account) throw new SenderError('HSR account not found');
         if (account.userId !== user.id) throw new SenderError('Not your account');
 
+        // D-G-01 (Phase 12.3) guard will be added in Task 3 below this block.
+
         const names: string[] = JSON.parse(characterNamesJson);
-        if (!Array.isArray(names) || names.length === 0) {
-            throw new SenderError('characterNamesJson must be a non-empty JSON array');
-        }
 
-        // Composite PK lookup: filter by indexed hsrAccountId, then match characterName
-        const accountChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(hsrAccountId)];
-
-        // Validate ALL names exist before deleting ANY
-        for (const name of names) {
-            const existing = accountChars.find(row => row.characterName === name) ?? null;
-            if (!existing) {
-                throw new SenderError(`Character "${name}" not found on this account`);
-            }
-        }
-
-        // All validated — now delete
-        for (const name of names) {
-            const row = accountChars.find(row => row.characterName === name)!;
-            ctx.db.HsrAccountCharacter.delete(row);
-        }
-
-        updateAccountRating(ctx, hsrAccountId, user.id);
+        // D-D-02 (Phase 12.3): delegate to shared helper.
+        applyBatchRemove(ctx, hsrAccountId, names, user.id);
     }
 );
 
@@ -264,29 +225,27 @@ export const migrate_roster = spacetimedb.reducer(
             throw new SenderError('Source and target cannot be the same account');
         }
 
-        const sourceChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(sourceAccountId)];
+        // D-G-01 (Phase 12.3) guard will be added in Task 3 below this block.
 
-        // Copy/upsert source characters into target
-        for (const char of sourceChars) {
-            const existingInTarget = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([targetAccountId, char.characterName])][0] ?? null;
-            if (existingInTarget) {
-                ctx.db.HsrAccountCharacter.delete(existingInTarget);
-            }
-            ctx.db.HsrAccountCharacter.insert({
-                hsrAccountId: targetAccountId,
-                characterName: char.characterName,
-                eidolonLevel: char.eidolonLevel,
-                ...(existingInTarget
-                    ? auditUpdate(ctx, existingInTarget, user.id)
-                    : auditInsert(ctx, user.id)),
-            } as any);
+        const sourceChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(sourceAccountId)];
+        if (sourceChars.length === 0) {
+            // Nothing to migrate — no rating change needed either.
+            return;
         }
 
-        // Move mode: delete source characters after copying
+        // D-D-03 (Phase 12.3): upsert source characters into target via the shared
+        // helper. This also recomputes the target's accountRating — fixing the pre-existing
+        // latent bug where migrate_roster never called updateAccountRating (D-D-04).
+        const itemsForTarget = sourceChars.map(c => ({
+            characterName: c.characterName,
+            eidolonLevel: c.eidolonLevel,
+        }));
+        applyBatchUpsert(ctx, targetAccountId, itemsForTarget, user.id);
+
+        // Move mode: also remove from source, which recomputes source's rating.
         if (mode === 'move') {
-            for (const char of sourceChars) {
-                ctx.db.HsrAccountCharacter.delete(char);
-            }
+            const namesToRemove = sourceChars.map(c => c.characterName);
+            applyBatchRemove(ctx, sourceAccountId, namesToRemove, user.id);
         }
     }
 );
