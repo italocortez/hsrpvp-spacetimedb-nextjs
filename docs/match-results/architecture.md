@@ -42,6 +42,7 @@ MatchResultRecord (id: u32 autoInc PK)  [public: true]
   |     lightconesPicked: string[] (lightcone names per character slot)
   |     finalTeamScore: u8
   |     isWinner: bool
+  |     accountRatingSnapshot (f64, default 0)  // Phase 12.3: frozen HsrAccount.accountRating input for ELO modifier
   |     audit columns
   |
   +-- MatchResultGame (id: u32 autoInc PK)  [public: true]
@@ -136,6 +137,44 @@ Called after result validation. 19-step pipeline (steps run in order, guarded by
 2. Find `BracketMatch` -- set `winnerTeamId` directly (bypasses match result flow)
 3. Optionally: call `advance_bracket_match` if autoAdvance is set
 
+### Phase 12.3: MMR accountRatingSnapshot lifecycle
+
+The account-rating input to `processMatchMmr` is frozen at match-record time on a
+`MatchResultParticipant.accountRatingSnapshot: f64` column (Phase 12.3 D-F-01).
+This eliminates three race vectors documented in Phase 12.3 CONTEXT.md D-E-01:
+
+1. `set_active_hsr_account` called post-capture
+2. `batch_upsert_characters` / `batch_remove_characters` called post-capture
+3. `process_tournament_mmr` re-reading `isActive` at tournament-end (potentially hours later)
+
+**Capture point** (D-A-01): `start_draft` at `draftClassic.ts` computes
+`max(HsrAccount.accountRating)` across all `LobbyMemberAccount` rows for
+`(lobbyId, userId)` at the moment the lobby transitions `Waiting -> Drafting`
+and writes the value in the same MRP insert loop. For casual matches with zero
+LMA rows the snapshot defaults to 0 (matches the pre-phase `?? 0` fallback).
+
+**Monotonic update** (D-B-03): `select_match_account` extends the snapshot upward
+between games in a best-of-N series via a post-insert hook:
+`accountRatingSnapshot = max(existing, newAccount.accountRating)`. `deselect_match_account`
+does NOT run the hook (removing from selection can never lower the max). The hook
+short-circuits when no `MatchResultRecord` exists (Waiting stage) or when the caller
+has no MRP row (stand-ins joining after `start_draft`).
+
+**Read-site** (D-readpath-01): `processMatchMmr` at `finalizationHelpers.ts` reads
+`participant.accountRatingSnapshot` directly. Both the standalone-ranked path
+(`runFinalization` step 11) and the tournament-batch path (`process_tournament_mmr`)
+call the same helper, so the read-path swap is path-independent by construction.
+
+**Tournament ordering guard** (D-H-01): `finalize_match_result` rejects
+tournament-controlled matches while the parent tournament is not `Completed` or
+`Cancelled`. Unconditional (`countTowardsMmr` is not consulted) because the guard
+protects both MMR batch processing AND bracket rollback capability. Cross-reference:
+see `docs/tournament/architecture.md`.
+
+**Public subscription impact** (C7): `MatchResultParticipant` is `public: true`,
+so `accountRatingSnapshot` ships to subscribed clients. One f64 per player per
+live match; bounded by match count × team size. Acceptable within the energy budget.
+
 ## Phase History
 
 | Decision | Source | Date |
@@ -152,10 +191,11 @@ Called after result validation. 19-step pipeline (steps run in order, guarded by
 | rollback_bracket_match blocked if mmrProcessedAt is set -- post-MMR rollback not allowed | Phase 04 execution | 2026-02-20 |
 | MatchResultRecord.tournamentId removed -- derived from bracketMatch.tournamentId (Phase 10.1) | Phase 10.1 execution | 2026-03-25 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
+| Phase 12.3 | Freeze account-rating input to ELO via MRP.accountRatingSnapshot, monotonic-upward hook in select_match_account, read-path swap in processMatchMmr, finalize_match_result tournament-ordering guard, timer_expiry_classic auto-pick LMA migration |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 06 / Phase 07 / Phase 10.1*
+*Last updated: 2026-04-11*
+*Feature owner: Phase 06 / Phase 07 / Phase 10.1 / Phase 12.3*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
