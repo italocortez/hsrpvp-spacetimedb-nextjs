@@ -668,13 +668,16 @@ export const timer_expiry_classic = spacetimedb.reducer(
                 // Gather available pool: owned if requireOwnership, not banned/picked
                 let availablePool: string[] = [];
                 if (lobby.requireOwnership && teamMembers.length > 0) {
-                    // Union of all team members' owned characters
+                    // Union of all team members' owned characters across their selected LMA accounts.
+                    // D-I-01/02 (Phase 12.3): migrated from HsrAccount.isActive to LobbyMemberAccount —
+                    // closes the last in-gameplay runtime read of isActive (Phase 10.4 migration gap).
+                    // Matches the pattern at draftClassic.ts:76-96 (start_draft autoRandomPick validation)
+                    // and ownershipValidation.ts:21-36 (validateCharacterOwnership).
                     const ownedSet = new Set<string>();
                     for (const member of teamMembers) {
-                        const accounts = [...ctx.db.HsrAccount.user_id.filter(member.userId)];
-                        const activeAccount = accounts.find((a: any) => a.isActive);
-                        if (activeAccount) {
-                            const chars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(activeAccount.id)];
+                        const selectedAccounts = [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, member.userId])];
+                        for (const lma of selectedAccounts) {
+                            const chars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(lma.hsrAccountId)];
                             for (const c of chars) {
                                 ownedSet.add(c.characterName);
                             }
