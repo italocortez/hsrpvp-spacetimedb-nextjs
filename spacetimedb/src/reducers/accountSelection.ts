@@ -2,6 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { slotIsCoach, slotIsSpectator } from '../helpers/lobbyHelpers';
+import { auditUpdate } from '../helpers/auditColumns';
 
 // ─── select_match_account ─────────────────────────────────────────────────────
 // Sets the HSR account a lobby member will use for the current match.
@@ -84,6 +85,37 @@ export const select_match_account = spacetimedb.reducer(
                 ctx.db.LobbyMemberAccount.delete(existing);
             }
             ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId });
+        }
+
+        // D-B-03 (Phase 12.3): monotonic-upward snapshot update for BetweenGames account swaps.
+        // Gated by MRP existence, not lobby stage:
+        //   - Waiting stage: no MatchResultRecord yet (created at draftClassic.ts:178 inside
+        //     start_draft). The lookup returns empty -> this block is a no-op. Pre-draft
+        //     swaps are harmless because MRP rows don't exist yet (D-B-04).
+        //   - BetweenGames stage: MRR exists, MRP exists -> apply max rule.
+        //   - Stand-ins joining after start_draft: LMA row seeded on join but no MRP row
+        //     for them (MRP only inserted at start_draft:204). This block short-circuits
+        //     at `if (!existingMrp) return;`. Stand-ins are intentionally excluded from
+        //     MMR attribution here (D-B-05, D-B-06) — mid-series stand-in MMR is deferred.
+        //   - `deselect_match_account` does NOT run this hook (removing an account from
+        //     the selection can never lower the max — D-B-03).
+        const mr = [...ctx.db.MatchResultRecord.lobby_id.filter(lobbyId)][0];
+        if (mr) {
+            const existingMrp = [...ctx.db.MatchResultParticipant.by_result_and_user.filter([mr.id, user.id])][0];
+            if (existingMrp) {
+                const freshAccount = ctx.db.HsrAccount.id.find(hsrAccountId);
+                if (freshAccount) {
+                    const newSnapshot = Math.max(existingMrp.accountRatingSnapshot, freshAccount.accountRating);
+                    if (newSnapshot !== existingMrp.accountRatingSnapshot) {
+                        ctx.db.MatchResultParticipant.delete(existingMrp);
+                        ctx.db.MatchResultParticipant.insert({
+                            ...existingMrp,
+                            accountRatingSnapshot: newSnapshot,
+                            ...auditUpdate(ctx, existingMrp, user.id),
+                        } as any);
+                    }
+                }
+            }
         }
 
         console.log(`[ACCOUNT] User #${user.id} selected account #${hsrAccountId} for lobby #${lobbyId}`);
