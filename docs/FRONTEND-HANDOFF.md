@@ -13,7 +13,7 @@ Last updated: 2026-04-10
 - **Reducers:** ~155 exports across 44 reducer source files (`spacetimedb/src/reducers/`)
 - **Views:** 32 server-side named views (`securityViews.ts`: 24, `anonymousViews.ts`: 8)
 - **Requirements:** All 83 mapped v0.5 requirements complete (see `.planning/REQUIREMENTS.md` traceability table)
-- **Tests:** 728 tests across 58 files — 531 integration tests (47 files, ~48.5 min on maincloud) + 197 unit tests (11 files, <1s). Round 9 baseline (Phase 14), 0 failures / 0 skipped
+- **Tests:** 728 tests across 58 files — 531 integration tests (47 files, ~48.5 min on maincloud) + 197 unit tests (11 files, <1s).
 - **Generated bindings:** 236 TypeScript files in `src/module_bindings/` — regenerate with `spacetime generate` after schema changes
 
 ---
