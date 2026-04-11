@@ -23,6 +23,7 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 - [x] **ROST-06**: User can set roster visibility to public or private
 - [x] **ROST-07**: Roster visibility is overridden by lobby/tournament open-roster settings
 - [x] **ROST-08**: Account rating is calculated from roster composition (characters + eidolons + lightcones owned)
+- [x] **ROST-GUARD-01** *(added Phase 12.3)*: `set_active_hsr_account`, `batch_upsert_characters`, `batch_remove_characters`, and `migrate_roster` reject with a clear error identifying the conflicting lobby when the caller has an active `LobbyMemberAccount` binding. UX defense-in-depth layered on top of the Phase 12.3 MMR snapshot.
 
 ### Tournament System
 
@@ -84,6 +85,11 @@ Requirements for this milestone (backend foundation). Each maps to roadmap phase
 - [x] **MMR-05**: matchesPlayedPerMode counter tracked from day one for K-factor tiering
 - [x] **MMR-06**: Leaderboard table/view sorted by MMR per game mode and global
 - [x] **MMR-07**: Season ID column in schema (seasons not implemented yet, but schema supports it)
+
+### MMR Race-Condition Fixes
+
+- [x] **MMR-RACE-01**: ELO delta uses rating value at match start, not finalize time (snapshot captured inline at `start_draft` MRP insert loop; `processMatchMmr` reads `MatchResultParticipant.accountRatingSnapshot` directly)
+- [x] **MMR-RACE-02**: `processMatchMmr` path-independent across standalone-ranked (`runFinalization` step 11) and tournament-batch (`process_tournament_mmr`) execution; both paths read the same persisted snapshot
 
 ### Player Stats & Profile
 
@@ -267,13 +273,16 @@ Deferred to frontend milestone and beyond. Tracked but not in current roadmap.
 | COST-01 | Phase 10 | Complete |
 | ARCH-01 | Phase 11 | Complete (redefined) |
 | ARCH-02 | Phase 11 | Complete (redefined) |
+| MMR-RACE-01 | Phase 12.3 | Complete |
+| MMR-RACE-02 | Phase 12.3 | Complete |
+| ROST-GUARD-01 | Phase 12.3 | Complete |
 
 **Coverage:**
-- v0.5 requirements: 86 total
-- Mapped to phases: 83
+- v0.5 requirements: 89 total
+- Mapped to phases: 86
 - Out of scope: 3 (TEAM-01, TEAM-02, TEAM-03)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-17 — TEAM-01/02/03 reclassified as Out of Scope (v0.5); tournament-scoped teams (TEAM-04) cover Phase 3 needs*
+*Last updated: 2026-04-11 — Added MMR-RACE-01, MMR-RACE-02, ROST-GUARD-01 (Phase 12.3 backfill)*

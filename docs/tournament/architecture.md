@@ -182,6 +182,40 @@ Tournament (id: u32 autoInc PK)  [public: true]
 3. Tournament path (additive, D-07): validate account against `TournamentPlayerAccount`; check `maxAccountsPerPlayer` cap; insert `LobbyMemberAccount`
 4. Non-tournament path (replace, D-07): delete existing `LobbyMemberAccount` for user; insert new one (always exactly 1)
 5. `deselect_match_account`: tournament path only; delete specific `LobbyMemberAccount` row
+6. Phase 12.3 D-B-03: `select_match_account` carries a monotonic-upward post-insert hook that extends `MatchResultParticipant.accountRatingSnapshot` to `max(existing, newAccount.accountRating)` when an MRP row already exists (BetweenGames stage). `deselect_match_account` does NOT run the hook -- removing from selection cannot lower the max.
+
+### Phase 12.3: finalize_match_result tournament-ordering guard
+
+A stage guard rejects tournament-controlled match finalization until the parent
+tournament reaches `Completed` or `Cancelled`. Without this guard, an admin
+finalizing an individual MMR-tournament match mid-tournament would silently lose
+the match's MMR input -- `runFinalization` step 18 unconditionally deletes
+`MatchResultRecord` + `MatchResultParticipant` rows, which is exactly the data
+`process_tournament_mmr` reads at tournament-end.
+
+The guard is unconditional:
+- **MMR tournaments** (`countTowardsMmr: true`): blocked until terminal stage ->
+  `process_tournament_mmr` runs against surviving MRP rows -> individual
+  `finalize_match_result` calls succeed and clean up the ephemeral data.
+- **Casual tournaments** (`countTowardsMmr: false`): blocked until terminal stage
+  -> per-match `finalize_match_result` succeeds (no MMR step because
+  `process_tournament_mmr` rejects with `countTowardsMmr=false`). The guard still
+  applies to preserve bracket rollback capability, which applies to casual
+  tournaments too.
+- **Non-tournament matches** (`isTournamentControlled: false`): unaffected;
+  finalize freely once validated.
+
+Bracket rollback itself is NOT implemented in Phase 12.3 -- the guard makes it
+possible by keeping ephemeral data alive until tournament end. Implementing
+"invalidate this bracket match and redo downstream" is a future phase.
+
+Tournament derivation (`BracketMatch -> Tournament.tournamentId`) reuses the same
+path as the existing authority check at `matchFinalization.ts:39-50`. Defensive
+handling: an MRR with `isTournamentControlled: true` but missing `bracketMatchId`
+is rejected with the same error message (Pitfall 4 resolution).
+
+Cross-reference: see `docs/match-results/architecture.md` Phase 12.3 section for
+the full MMR snapshot lifecycle context.
 
 ## Phase History
 
@@ -202,10 +236,11 @@ Tournament (id: u32 autoInc PK)  [public: true]
 | ensureTournamentAccess: organizer OR TournamentAssistant row OR Moderator+ | Phase 04 execution | 2026-02-20 |
 | costSetId=0 sentinel; costSetId>0 must reference published CostSet | Phase 03 execution | 2026-02-15 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
+| Phase 12.3 | finalize_match_result tournament-ordering guard (D-H-01): unconditional rejection of tournament-controlled finalize until tournament stage is Completed or Cancelled, preserves MMR batch processing and bracket rollback window |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 04 / Phase 06 / Phase 08 / Phase 10.1 / Phase 10.4*
+*Last updated: 2026-04-11*
+*Feature owner: Phase 04 / Phase 06 / Phase 08 / Phase 10.1 / Phase 10.4 / Phase 12.3*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
