@@ -82,14 +82,15 @@ export function processMatchMmr(
     let redEffective = calculateTeamEffective(redRatings, cv.sizeBonus, cv.spreadDivisor);
 
     // 5. Apply account rating modifier (Fair MMR always in Phase 5)
-    const blueAccountRatings = blueParticipants.map((p: any) => {
-        const activeAccount = [...ctx.db.HsrAccount.user_id.filter(p.userId)].find((a: any) => a.isActive);
-        return activeAccount?.accountRating ?? 0;
-    });
-    const redAccountRatings = redParticipants.map((p: any) => {
-        const activeAccount = [...ctx.db.HsrAccount.user_id.filter(p.userId)].find((a: any) => a.isActive);
-        return activeAccount?.accountRating ?? 0;
-    });
+    // D-readpath-01 (Phase 12.3): read the persisted snapshot from MRP instead of
+    // re-querying HsrAccount.isActive. The snapshot was captured at start_draft
+    // (draftClassic.ts line ~204) with the max-across-LMA rule, so post-capture
+    // mutations to isActive or accountRating cannot affect the ELO delta here.
+    // D-readpath-02: both runFinalization step 11 (standalone-ranked) and
+    // process_tournament_mmr (tournament batch) call this helper — one edit fixes
+    // both paths by construction.
+    const blueAccountRatings = blueParticipants.map((p: any) => p.accountRatingSnapshot);
+    const redAccountRatings = redParticipants.map((p: any) => p.accountRatingSnapshot);
 
     const blueAvgAccount = blueAccountRatings.length > 0
         ? blueAccountRatings.reduce((a: number, b: number) => a + b, 0) / blueAccountRatings.length
