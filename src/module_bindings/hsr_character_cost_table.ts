@@ -9,11 +9,7 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  GameMode,
-  EidolonCost,
-} from "./types";
-
+import { GameMode, EidolonCost } from "./types";
 
 export default __t.row({
   characterName: __t.string().name("character_name"),

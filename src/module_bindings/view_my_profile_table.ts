@@ -9,10 +9,7 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  Role,
-} from "./types";
-
+import { Role } from "./types";
 
 export default __t.row({
   id: __t.u32(),
@@ -27,7 +24,9 @@ export default __t.row({
   },
   hasDiscordLinked: __t.bool().name("has_discord_linked"),
   avatarCharacterName: __t.string().name("avatar_character_name"),
-  displayedAchievementId: __t.option(__t.u32()).name("displayed_achievement_id"),
+  displayedAchievementId: __t
+    .option(__t.u32())
+    .name("displayed_achievement_id"),
   deletedAt: __t.option(__t.timestamp()).name("deleted_at"),
   discordId: __t.option(__t.string()).name("discord_id"),
   discordUsername: __t.option(__t.string()).name("discord_username"),

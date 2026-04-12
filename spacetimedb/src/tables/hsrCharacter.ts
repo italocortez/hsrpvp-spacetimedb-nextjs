@@ -12,6 +12,16 @@ export const hsrCharacterColumns = {
     imageUrl: t.string(),
     versionReleased: t.f64(),
     treatAsVersion: t.f64(),
+
+    // NEW (Phase 15, D-05): Spine asset URLs — optional, most characters lack Spine.
+    skelUrl: t.string().optional(),
+    atlasUrl: t.string().optional(),
+    atlasImgUrls: t.array(t.string()),
+
+    // NEW (Phase 15, D-05a): Card positioning — required i32 with 0 defaults.
+    posX: t.i32(),
+    posY: t.i32(),
+    width: t.i32(),
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
