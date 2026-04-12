@@ -115,4 +115,4 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 | Flat columns over config structs | Filterable data uses flat columns; LobbyConfig can be reworked | Convention |
 
 ---
-*Last updated: 2026-04-11 after Phase 12.3 completion (MMR Rating Snapshot). v0.5 backend complete.*
+*Last updated: 2026-04-12 after Phase 13 rerun (Documentation Normalization). v0.5 backend complete, all docs current.*
