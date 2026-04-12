@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v0.5 Backend Foundation** — Phases 1-14 (shipped 2026-04-12)
-- 📋 **v1 Frontend** — (planned)
+- 📋 **v0.9 Frontend** — (planned)
 
 ## Phases
 
@@ -43,4 +43,4 @@ Full details: `milestones/v0.5-ROADMAP.md`
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v0.5 Backend Foundation | 23 | 75 | ✅ Complete | 2026-04-12 |
-| v1 Frontend | - | - | 📋 Planned | - |
+| v0.9 Frontend | - | - | 📋 Planned | - |

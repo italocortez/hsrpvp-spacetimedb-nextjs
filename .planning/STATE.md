@@ -1,6 +1,6 @@
 ---
 gsd_state_version: 1.0
-milestone: v1
+milestone: v0.9
 milestone_name: Frontend
 current_phase: null
 current_plan: null
@@ -21,11 +21,11 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place
-**Current focus:** Planning next milestone (v1 Frontend)
+**Current focus:** Planning next milestone (v0.9 Frontend)
 
 ## Position
 
-**Milestone:** v1 Frontend
+**Milestone:** v0.9 Frontend
 **Current phase:** Not started
 **Status:** Planning next milestone
 
@@ -48,4 +48,4 @@ Decisions from v0.5 archived to `milestones/v0.5-ROADMAP.md`. Key conventions th
 
 ## Blockers
 
-None — clean slate for v1.
+None — clean slate for v0.9.
