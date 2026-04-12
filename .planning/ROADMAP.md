@@ -30,6 +30,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10.5: Test Suite Stabilization** - Comprehensive audit of integration test suite to fix cross-file failures, test isolation issues, and stale assertions exposed after Phase 10.4 (INSERTED) (completed 2026-04-05)
 - [x] **Phase 11: Account Rating Matrix** - Replace TEMPORARY accountRating with matrix-based formula: vertical (eidolons + age decay) + horizontal (archetype coverage), runtime-configurable (completed 2026-04-06)
 - [x] **Phase 12: Auth Security Hardening** - Isolate sensitive auth data into UserPrivate private table, make UserIdentity private, add BanRecord system (Discord ID bans), server-side identity resolution via ephemeral connection, unified server_link_provider reducer (completed 2026-04-08)
+- [x] **Phase 12.1: Identity Garbage Collection** - Scheduled cleanup of stale UserIdentity rows based on lastSeenAt age (INSERTED) (completed 2026-04-08)
+- [x] **Phase 12.2: SDK Upgrade Audit** - Verify SpacetimeDB SDK 2.0.3 to 2.1.0 upgrade compatibility, export all views, audit SDK internals (INSERTED) (completed 2026-04-09)
+- [x] **Phase 12.3: MMR Rating Snapshot** - Freeze accountRating at match-record time, defense-in-depth lobby guards on roster mutation reducers (INSERTED) (completed 2026-04-11)
+- [x] **Phase 13: Documentation Normalization** - Normalize all documentation to consistent structure, full hydration from codebase, regenerate codebase maps, rewrite FRONTEND-HANDOFF (completed 2026-04-12)
+- [x] **Phase 14: Test Harness Modernization** - Fix confirmed reads default, event-driven subscription readiness, helper dedup (completed 2026-04-12)
 
 ## Phase Details
 
@@ -44,8 +49,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Module publishes to maincloud without error and `spacetime generate` produces valid client bindings
 **Plans:** 2/2 plans complete
 Plans:
-- [ ] 01-01-PLAN.md - Define all new enums, structs, flatten LobbyConfig, update existing tables
-- [ ] 01-02-PLAN.md - Create all skeleton tables, register in schema, publish and generate
+- [x] 01-01-PLAN.md - Define all new enums, structs, flatten LobbyConfig, update existing tables
+- [x] 01-02-PLAN.md - Create all skeleton tables, register in schema, publish and generate
 
 ### Phase 2: Roster Management
 **Goal**: Players can record which HSR characters and lightcones they own, manage multiple accounts, and control roster visibility — enforced at the server level
@@ -60,8 +65,8 @@ Plans:
   6. A per-account rating value is stored and recalculated when roster contents change
 **Plans:** 2/2 plans complete
 Plans:
-- [ ] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade
-- [ ] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish
+- [x] 02-01-PLAN.md — Schema changes, new tables, helpers, user deletion cascade
+- [x] 02-02-PLAN.md — User and admin roster reducers, archetype CRUD, exports, docs, publish
 
 ### Phase 3: Tournament System
 **Goal**: Tournament organizers can create and manage tournament lifecycle, players can register solo or as tournament-scoped teams, referees operate per-match (not per-tournament), cost sets have draft/publish workflow, and the expanded role hierarchy (Moderator, TournamentHost) is enforced
@@ -96,9 +101,9 @@ Plans:
   5. Seeding supports both manual slot assignment and MMR-based auto-seeding
 **Plans:** 3/3 plans complete
 Plans:
-- [ ] 04-01-PLAN.md — Schema changes: BracketSide enum, table updates (BracketMatch, Tournament, TournamentParticipant, TournamentTeam, GroupStanding), stage transition guards, auto-team creation, display name sync
-- [ ] 04-02-PLAN.md — Bracket generation helpers (fold seeding, circle scheduling, snake distribution) and generate_bracket, seed_bracket, swap_seeds reducers
-- [ ] 04-03-PLAN.md — Bracket advancement (advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match), DQ auto-advance, architecture docs, publish + bindings
+- [x] 04-01-PLAN.md — Schema changes: BracketSide enum, table updates (BracketMatch, Tournament, TournamentParticipant, TournamentTeam, GroupStanding), stage transition guards, auto-team creation, display name sync
+- [x] 04-02-PLAN.md — Bracket generation helpers (fold seeding, circle scheduling, snake distribution) and generate_bracket, seed_bracket, swap_seeds reducers
+- [x] 04-03-PLAN.md — Bracket advancement (advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match), DQ auto-advance, architecture docs, publish + bindings
 
 ### Phase 04.1: Schema Normalization & Match Result Rework (INSERTED)
 
@@ -108,9 +113,9 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 04.1-01-PLAN.md — Enums (MatchOutcome, MatchType), struct removal (PlayerSnapshot), all table definition changes, 2 new tables, schema registration, BracketMatchDescriptor interface rename
-- [ ] 04.1-02-PLAN.md — All reducer/helper updates, admin.ts PK type fix, publish --clear-database, generate bindings, test updates, full test suite pass
-- [ ] 04.1-03-PLAN.md — Documentation updates: match-results, brackets, tournament, MMR, player-stats, match-session docs, skill file, codebase map
+- [x] 04.1-01-PLAN.md — Enums (MatchOutcome, MatchType), struct removal (PlayerSnapshot), all table definition changes, 2 new tables, schema registration, BracketMatchDescriptor interface rename
+- [x] 04.1-02-PLAN.md — All reducer/helper updates, admin.ts PK type fix, publish --clear-database, generate bindings, test updates, full test suite pass
+- [x] 04.1-03-PLAN.md — Documentation updates: match-results, brackets, tournament, MMR, player-stats, match-session docs, skill file, codebase map
 
 ### Phase 5: Match Results and MMR
 **Goal**: Players can submit and verify match results with screenshots; validated results trigger ELO updates and bracket advancement atomically in one transaction
@@ -395,11 +400,12 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 10.4. Account Selection Per Match | 3/3 | Complete    | 2026-04-04 |
 | 11. Account Rating Matrix | 2/2 | Complete   | 2026-04-06 |
 | 12. Auth Security Hardening | 3/3 | Complete    | 2026-04-08 |
-| 10.5. Test Suite Stabilization | 1/1 | Complete    | 2026-04-06 |
+| 10.5. Test Suite Stabilization | 5/5 | Complete    | 2026-04-06 |
 | 12.1. Identity Garbage Collection | 1/1 | Complete    | 2026-04-08 |
 | 12.2. SDK Upgrade Audit | 2/2 | Complete    | 2026-04-09 |
 | 12.3. MMR Rating Snapshot | 8/8 | Complete    | 2026-04-11 |
-| 13. Documentation Normalization | 0/4 | In Progress | — |
+| 13. Documentation Normalization | 4/4 | Complete    | 2026-04-12 |
+| 14. Test Harness Modernization | 2/2 | Complete    | 2026-04-12 |
 
 
 ### Phase 12.1: Identity Garbage Collection (INSERTED)
@@ -465,10 +471,10 @@ Plans:
 5. **FRONTEND-HANDOFF.md rewrite + ERD mermaid update:** Rewrite docs/FRONTEND-HANDOFF.md from final normalized docs. Update notes/erd-mermaid.md with all tables, PKs/FKs, and cardinality annotations (one-to-one, one-to-many, etc.)
 
 Plans:
-- [ ] 13-01-PLAN.md — ROADMAP fixes + test header update
-- [ ] 13-02-PLAN.md — Architecture timestamp fixes + contract Phase 12.3 additions
-- [ ] 13-03-PLAN.md — Codebase docs full regeneration (7 files)
-- [ ] 13-04-PLAN.md — FRONTEND-HANDOFF rewrite + ERD update
+- [x] 13-01-PLAN.md — ROADMAP fixes + test header update
+- [x] 13-02-PLAN.md — Architecture timestamp fixes + contract Phase 12.3 additions
+- [x] 13-03-PLAN.md — Codebase docs full regeneration (7 files)
+- [x] 13-04-PLAN.md — FRONTEND-HANDOFF rewrite + ERD update
 
 ### Phase 14: Test Harness Modernization for SDK 2.1.0
 
