@@ -6,23 +6,48 @@ import { checkProviderBan } from './helpers/banHelper';
 // Private auth tables — imported for schema registration
 import './tables/userPrivate';
 import './tables/banRecord';
-// Security views — all 24 exported so [registerExport] fires during module init
+// Phase 15 D-01/D-02: domain view barrel — each file holds views that match the `tables/` layout.
+// Every view must be named-re-exported here so [registerExport] fires during module init
+// (Phase 12.2 rule — CONVENTIONS.md:233-252). Splitting security/anonymousViews into 8 files
+// puts each view in a home that matches its underlying domain.
 export {
     view_lobby_browser,
     view_my_lobbies,
+    view_my_lobby_chat,
+    view_my_lobby_members,
+} from './views/lobbyViews';
+export {
     view_my_identity,
-    view_user_directory,
     view_my_profile,
+    view_user_directory,
+    view_public_accounts,
     view_admin_user_private,
+} from './views/identityViews';
+export {
     view_my_cost_sets,
     view_my_draft_character_costs,
     view_my_draft_lightcone_costs,
     view_my_draft_synergy_costs,
+} from './views/costSetViews';
+export {
     view_my_player_stats,
     view_my_character_stats,
+} from './views/statsViews';
+export {
     view_my_relationships,
     view_my_roster_visibility,
     view_my_roster,
+} from './views/socialViews';
+export {
+    view_my_match_steps,
+    view_my_match_participants,
+} from './views/matchViews';
+export {
+    view_match_history,
+    view_match_participant_history,
+    view_match_step_history,
+} from './views/matchHistoryViews';
+export {
     view_my_tournaments,
     view_my_tournament_enrolled,
     view_my_tournament_teams,
@@ -32,18 +57,7 @@ export {
     view_my_tournament_lobbies,
     view_my_tournament_group_standings,
     view_tournament_registrant_accounts,
-} from './views/securityViews';
-// Anonymous + history views — exported so [registerExport] fires during module init
-export {
-    view_my_lobby_chat,
-    view_my_lobby_members,
-    view_my_match_steps,
-    view_my_match_participants,
-    view_match_history,
-    view_match_participant_history,
-    view_match_step_history,
-    view_public_accounts,
-} from './views/anonymousViews';
+} from './views/tournamentViews';
 export { broadcast_cursor } from './reducers/cursor';
 export { login_as_guest } from './reducers/auth';
 export { delete_guest_account, update_display_name, update_username, update_avatar } from './reducers/profile';
