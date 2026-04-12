@@ -133,7 +133,13 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
   2. A signed-in user subscribed to `view_my_match_history` receives rows only where they are a participant; rows belonging to other users never appear for them.
   3. `view_my_mmr_history`, `view_my_session_history`, and `view_my_participant_history` are each filtered server-side by `ctx.sender` with no client-side filter required.
   4. All four historical views are reachable from regenerated TypeScript bindings and covered by integration tests asserting cross-user isolation.
-**Plans**: TBD
+**Plans**: 6 plans
+- [ ] 15-01-PLAN.md — View file reorganization (8 domain files; binding surface invariant)
+- [ ] 15-02-PLAN.md — Spine + positioning columns on hsr_character (schema additions)
+- [ ] 15-03-PLAN.md — Admin router rework (partial-update + costSetId tuple fix across 5 cases)
+- [ ] 15-04-PLAN.md — 5 self-scoped history views + ROADMAP/REQUIREMENTS 4→5 rename
+- [ ] 15-05-PLAN.md — Seed/template/data rework (D-22 shape; both seed entry points)
+- [ ] 15-06-PLAN.md — Integration tests (isolation, partial-update, cost-set PK, round-trip) + architecture docs
 
 ### Phase 16: Route + global foundation
 **Goal**: Every downstream phase builds on a route-group structure, primitives (`<ViewportGate>`, `<ViewportWriter>`, render-tier), middleware, and asset-caching Service Worker that are settled and non-negotiable.
