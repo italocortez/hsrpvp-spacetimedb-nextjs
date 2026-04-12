@@ -1,6 +1,6 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-04-09
+**Analysis Date:** 2026-04-12
 
 ## Test Framework
 
@@ -18,10 +18,10 @@ npm test                        # Unit tests only (fast, no SpacetimeDB needed)
 npm run test:watch              # Unit tests in watch mode
 npm run test:integration        # Integration tests (requires live SpacetimeDB on maincloud)
 npm run test:integration:watch  # Integration tests in watch mode
-npm run test:all                # Unit + integration (full suite)
+npm run test:all                # Unit + integration (full suite — triggers global-setup.ts DB clear)
 npm run test:phase -- <path>    # Single directory integration tests
-npm run test:typecheck          # TypeScript type checking (tsc --noEmit)
 npx vitest run --config test/vitest.integration.config.ts <file>  # Single integration file
+SKIP_DB_CLEAR=1 npm run test:all  # Full suite but skip DB clear (preserves existing state)
 ```
 
 ## Test File Organization
@@ -38,9 +38,12 @@ npx vitest run --config test/vitest.integration.config.ts <file>  # Single integ
 test/
 ├── vitest.config.ts                      # Unit runner — includes *.unit.test.ts only
 ├── vitest.integration.config.ts          # Integration runner — includes *.test.ts, excludes *.unit.test.ts
+│                                         # Phase 14: globalSetup points to global-setup.ts; testTimeout=60s, hookTimeout=120s
+├── global-setup.ts                       # Phase 14: pre-suite DB clear + reseed (spacetime publish --clear-database)
 ├── tsconfig.json                         # Test-specific TS config
 ├── shared/
 │   ├── connection.ts                     # WebSocket test harness (createTestHarness, createVerifiedTestHarness)
+│   │                                     # Phase 14: .withConfirmedReads(false), onApplied subscription readiness
 │   ├── fixtures.ts                       # Test data constants + factories (UIDs, createAccountArgs)
 │   ├── seed-data.ts                      # CLI script — seeds game data tables after publish
 │   ├── bootstrap.ts                      # CLI script — register_server on fresh database
@@ -58,21 +61,67 @@ test/
 │       ├── promoteUser.ts               # promoteUser (grants role via server token)
 │       └── seed.ts                       # ensureEloConfig (idempotent seeding helpers)
 └── backend/
-    ├── roster/                           # roster-accounts, roster-characters, archetype-crud, etc.
-    ├── lobby/                            # lobby-lifecycle, lobby-settings, disconnect-*, etc.
-    ├── match-results/                    # elo-calculation (unit), match-lifecycle, mmr-stats, etc.
-    ├── match-session/                    # draft-classic, draft-auction, draft-control, post-draft
-    ├── tournaments/                      # tournament-management, tournament-registration, etc.
-    ├── brackets/                         # bracket-generation (unit), bracket-advancement
-    ├── achievements/                     # achievement-management, achievement-auto-award
-    ├── season/                           # season-admin, tournament-player-account
+    ├── achievements/                     # achievement-auto-award, achievement-checker.unit, achievement-management
+    ├── anonymous-play/                   # anonymous-labels
+    ├── auth/                             # auth-security, auth-views, ban-admin, server-link-provider
+    ├── brackets/                         # bracket-generation.unit, bracket-advancement, group-to-elimination
     ├── calendar/                         # calendar-availability, calendar-events, calendar-saved
     ├── chat/                             # chat-messages
     ├── cost-sets/                        # cost-set-lifecycle
-    ├── anonymous-play/                   # anonymous-labels
-    ├── auth/                             # auth tests
-    └── garbage-collector/                # GC tests (Phase 12.1)
+    ├── garbage-collector/                # identity-gc (Phase 12.1)
+    ├── lobby/                            # account-selection, disconnect-*, lobby-lifecycle, lobby-presets, lobby-settings, lobby-slot-helpers.unit, lobby-tournament, ownership-validation.unit, flag-transfer-helpers.unit
+    ├── match-results/                    # account-rating.unit, elo-calculation.unit, match-lifecycle, mmr-stats, rating-admin, referee-coach, score-entry
+    │   ├── mmr-snapshot.test.ts          # NEW Phase 12.3 — accountRatingSnapshot captured at start_draft
+    │   └── mmr-snapshot-betweengames.test.ts  # NEW Phase 12.3 — monotonic snapshot hook during BetweenGames
+    ├── match-session/                    # draft-auction, draft-classic, draft-control, post-draft
+    │   └── auto-pick-ownership-pool.test.ts   # NEW Phase 12.3 — timer_expiry_classic uses LMA pool for requireOwnership
+    ├── roster/                           # account-deletion-guard, archetype-crud, roster-accounts, roster-characters, roster-helpers.unit, roster-migration
+    │   └── migrate-roster-rating.test.ts      # NEW Phase 12.3 — D-D-04 migrate_roster rating recompute + D-G lobby guards
+    ├── season/                           # season-admin, tournament-player-account
+    └── tournaments/                      # tournament-admin, tournament-cancel-cleanup, tournament-helpers.unit, tournament-management, tournament-mmr, tournament-registration, tournament-stage-validation.unit, tournament-stages, tournament-teams
+        └── tournament-ordering-guard.test.ts  # NEW Phase 12.3 — D-H-01 ordering guard + process_tournament_mmr
 ```
+
+**Total test files: 63** (as of Phase 12.3 + Phase 14)
+- 53 integration tests (`.test.ts`)
+- 10 unit tests (`.unit.test.ts`)
+- 58 pre-Phase 12.3 + 5 new Phase 12.3 files
+
+## Phase 12.3 Test Files
+
+| File | Tests |
+|------|-------|
+| `test/backend/match-results/mmr-snapshot.test.ts` | Verifies `accountRatingSnapshot` is captured on `MatchResultParticipant` when `start_draft` is called; checks value matches account's current rating |
+| `test/backend/match-results/mmr-snapshot-betweengames.test.ts` | Verifies monotonic snapshot update during BetweenGames stage — changing account rating between games only updates snapshot if new value >= existing |
+| `test/backend/match-session/auto-pick-ownership-pool.test.ts` | Verifies `timer_expiry_classic` auto-picks from the LobbyMemberAccount character pool when `requireOwnership=true` on the tournament |
+| `test/backend/roster/migrate-roster-rating.test.ts` | Verifies D-D-04 fix: `migrate_roster` now recomputes `accountRating` on both source and target accounts; also verifies D-G lobby guard blocks migration when accounts are in active lobbies |
+| `test/backend/tournaments/tournament-ordering-guard.test.ts` | Verifies D-H-01: `process_tournament_mmr` is blocked until tournament reaches terminal stage (Completed/Cancelled); verifies guard fires on in-progress tournaments |
+
+## Phase 14 Test Infrastructure
+
+**`test/global-setup.ts` (pre-suite database clear):**
+- Runs ONCE before the entire integration suite via vitest `globalSetup`
+- Executes `spacetime publish {dbName} --clear-database -y --module-path spacetimedb`
+- Runs `npx tsx scripts/post-publish.ts` to re-register server identity and seed game data
+- Refreshes `process.env.SPACETIMEDB_SERVER_TOKEN` with the rotated token from `.env.local`
+- Safety guard: Refuses to wipe databases whose name does not contain `-test`
+- Skip with `SKIP_DB_CLEAR=1` env var (useful when iterating on a single failing file)
+- Why needed: Tests leak state with no auto-cleanup path (AwaitingResult lobbies, User rows, Cancelled Tournament rows). Without this, tables grow across runs and later tests hit timeout ceilings.
+
+**`.withConfirmedReads(false)` on test connections:**
+- Added in Phase 14 to match app behavior (Phase 12.2)
+- Applied in `test/shared/connection.ts` on both the main connection builder and the server-token verification connection
+- Ensures test subscription semantics match production subscription semantics
+
+**`onApplied` subscription readiness:**
+- Phase 14 replaced fixed-timeout `sync()` for initial subscription load with `subscriptionBuilder().onApplied(callback)`
+- `onApplied` fires exactly when the initial subscription batch is committed to the client cache
+- Resolves the TestHarness promise — subsequent test code can safely read from `conn.db.*`
+- `sync()` is still used between reducer calls within tests (500ms default) to allow push updates to propagate
+
+**Vitest timeout changes (Phase 14):**
+- `testTimeout`: 60s (was 30s) — allows for more complex multi-user scenarios
+- `hookTimeout`: 120s (was 30s) — allows for 6+ harness creation in `beforeAll` with verification roundtrips
 
 ## Vitest Configuration Details
 
@@ -85,8 +134,9 @@ test/
 **Integration config (`test/vitest.integration.config.ts`):**
 - Includes: `test/backend/**/*.test.ts`, excludes `*.unit.test.ts`
 - Loads `.env.local` via inline `loadEnvLocal()` function (Vite's envDir only exposes `VITE_*` prefixed vars)
-- Timeout: 30s test, 30s hook — network round-trips to maincloud
+- Timeout: 60s test, 120s hook — network round-trips to maincloud (raised in Phase 14)
 - Sequential execution: `fileParallelism: false`, `sequence.concurrent: false` — tests share SpacetimeDB state
+- Global setup: `['./test/global-setup.ts']` — pre-suite DB clear + reseed (Phase 14)
 - Requires `SPACETIMEDB_SERVER_TOKEN` in `.env.local` for verified user test harnesses
 
 ## Test Structure
@@ -116,9 +166,9 @@ describe.skipIf(!hasServerToken())('Domain Name', () => {
     beforeAll(async () => {
         host = await createVerifiedTestHarness();
         joiner = await createVerifiedTestHarness();
-        await host.sync();
-        await joiner.sync();
-    }, 30000);
+        // Note: harnesses resolve only after onApplied fires (Phase 14)
+        // No explicit sync() needed after createVerifiedTestHarness() returns
+    }, 120000);  // Phase 14: 120s hook timeout
 
     afterAll(async () => {
         for (const id of openedLobbyIds) {
@@ -170,6 +220,7 @@ describe('functionName', () => {
 - Section comments inside `describe` blocks: `// ── section name ──────────────`
 - Cleanup registered in arrays (`openedLobbyIds: number[]`) and swept in `afterAll`
 - `describe.skipIf(!hasServerToken())` guards suites requiring a server token
+- Harnesses resolve after `onApplied` — no `sync()` call needed immediately after creation (Phase 14)
 
 ## Phase 10.5 Cleanup Pattern (afterAll)
 
@@ -276,7 +327,6 @@ export function defaultLobbyArgs(overrides: Record<string, unknown> = {}) {
         teamSize: 1,
         draftMode: { tag: 'Classic' as const, value: {} },
         // ... all required fields with sensible defaults
-        // Phase 10.4+ requires: bestOf, refereeControlsShelving
         ...overrides,
     };
 }
@@ -316,10 +366,8 @@ beforeAll(async () => {
     host = await createVerifiedTestHarness();
     joiner = await createVerifiedTestHarness();
     guest = await createTestHarness();  // unverified — for permission guard tests
-    await host.sync();
-    await joiner.sync();
-    await guest.sync();
-}, 30000);
+    // All three resolve only after onApplied fires — subscription cache is ready
+}, 120000);  // Phase 14: 120s covers 3+ harnesses on slow connections
 ```
 
 **Conditional Suite Skip:**
@@ -363,15 +411,16 @@ Reusable versions live in `test/shared/helpers/queries.ts`.
 - Target: reducer behavior end-to-end against live SpacetimeDB on maincloud
 - Connect via `createTestHarness()` or `createVerifiedTestHarness()` from `test/shared/connection.ts`
 - Run sequentially — shared DB state
+- Initial subscription cache ready via `onApplied` callback (Phase 14)
 - Read state via WebSocket subscription cache (`conn.db.TableName.iter()`)
 - Query private (non-public) tables via `spacetime sql` CLI (`queryPrivateTable()` helper)
 - Require `SPACETIMEDB_SERVER_TOKEN` in `.env.local` for verified user harnesses
 - Run with: `npm run test:integration`
-- Timeout: 30s per test, 30s per hook
+- Timeout: 60s per test, 120s per hook (Phase 14)
 
 **E2E Tests:**
 - Not present — `test/frontend/` directory exists with only a README placeholder
 
 ---
 
-*Testing analysis: 2026-04-09 (updated from 2026-04-06 to reflect Phase 10.5 shared helpers structure, Phase 12.1 garbage-collector test directory, sequential execution config)*
+*Testing analysis: 2026-04-12 (regenerated from 2026-04-09 to reflect Phase 12.3: 5 new test files (63 total), descriptions of new test coverage; Phase 14: global-setup.ts pre-suite DB clear, .withConfirmedReads(false) on test connections, onApplied subscription readiness, raised timeouts)*

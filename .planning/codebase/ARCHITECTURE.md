@@ -1,6 +1,6 @@
 # Architecture
 
-**Analysis Date:** 2026-04-09
+**Analysis Date:** 2026-04-12
 
 ## Pattern Overview
 
@@ -18,7 +18,7 @@
 **SpacetimeDB Module (Backend):**
 - Purpose: Single source of truth for all game and user state; processes all mutations via reducers
 - Location: `spacetimedb/src/`
-- Contains: 67 table definitions (`tables/`), 44 reducer files (`reducers/`), 25 helper utilities (`helpers/`), security + anonymous views (`views/`), types (`types/enums.ts`, `types/structs.ts`)
+- Contains: 67 table definitions (`tables/`), 44 reducer files (`reducers/`), 26 helper utilities (`helpers/`), security + anonymous views (`views/`), types (`types/enums.ts`, `types/structs.ts`)
 - Depends on: `spacetimedb/server` SDK (^2.0.3 in the module's own package)
 - Compiles to: `spacetimedb/dist/bundle.js` — published to SpacetimeDB maincloud via `spacetime publish`
 
@@ -118,6 +118,38 @@
 - Rules: Skip guest users; skip online users; always preserve newest identity per user
 - Pattern: `IdentityGcJob` scheduled table uses mutable binding (`setRunIdentityGcReducer`) to avoid circular import
 
+**Phase 12.3 Schema Additions:**
+
+`MatchResultParticipant.accountRatingSnapshot`:
+- Type: `f64` (float64)
+- Purpose: Captures the participant's `HsrAccount.accountRating` at the moment `start_draft` is called, before any match-related mutations. Used by the ELO calculation to determine relative strength at match start.
+- Key rules: Monotonic — the snapshot is only updated if the new value is >= the existing value (prevents gaming by downgrading account rating before a match). Captured during `start_draft` reducer when `LobbyMemberAccount` rows are locked in.
+- Impact: Fixes a latent design bug (Phase 5 D-05: ELO was computed from current rating, not rating at match start) where account rating changes between draft start and match finalization would corrupt ELO deltas.
+
+`Tournament.requireOwnership`:
+- Type: `bool`
+- Purpose: Controls whether character ownership validation is enforced during draft (D-H-01). When `true`, the draft timer-expiry reducer (`timer_expiry_classic`) restricts auto-pick candidates to the LobbyMemberAccount pool (characters the active account actually owns), preventing auto-picks of unowned characters in MMR tournaments.
+- Default: `false` (backward-compatible with existing tournaments)
+- Guard: D-H-01 ordering guard also gates `process_tournament_mmr` — MMR cannot be processed until the tournament reaches a terminal stage (`Completed` or `Cancelled`).
+
+**Roster Mutations Helper (Phase 12.3):**
+- Location: `spacetimedb/src/helpers/rosterMutations.ts`
+- Purpose: Single source of truth for batch character mutation + accountRating recompute
+- Exports:
+  - `applyBatchUpsert(ctx, accountId, items, actingUserId)` — validate all items against HsrCharacter + eidolon range, upsert via composite-PK delete+insert, then call `updateAccountRating`
+  - `applyBatchRemove(ctx, accountId, names, actingUserId)` — validate all names exist on account, delete all, then call `updateAccountRating`
+- Contract: Caller MUST validate auth and ownership before calling. Helper does NOT re-auth.
+- Used by: `batch_upsert_characters`, `batch_remove_characters`, `migrate_roster` (all in `reducers/roster.ts`)
+- Fixes: D-D-04 latent bug — `migrate_roster` previously never called `updateAccountRating` after migrating characters; now it delegates to `applyBatchUpsert`/`applyBatchRemove` which always recompute rating.
+
+**D-G Lobby Guard Pattern (Phase 12.3):**
+- Purpose: Prevent roster mutations on accounts that are currently bound to an active lobby via `LobbyMemberAccount`. Guards ensure match integrity — changing a roster mid-match would invalidate the draft snapshot.
+- Implementation: Before any roster mutation, check `ctx.db.LobbyMemberAccount.by_account.filter(accountId)`. If any rows exist, raise a `SenderError` citing the conflicting lobby's join code.
+- Guard widths:
+  - **WIDE** (set_active_hsr_account): Checks both the target account AND all currently-active accounts. Prevents swapping active account when any related account is in a lobby.
+  - **NARROW** (batch_upsert_characters, batch_remove_characters, migrate_roster): Checks only the specific account(s) being mutated.
+- Location: `spacetimedb/src/reducers/roster.ts` — `buildLobbyGuardError()` helper function
+
 **Route Groups (Next.js):**
 - `(authenticated)` wraps pages in `AuthRequired`
 - `(game)` wraps live draft page
@@ -132,11 +164,11 @@
 |---------------|------------|--------------|-------------|
 | Auth / Users | `User`, `UserIdentity`, `UserPrivate`, `ServerIdentity`, `UserDeletionJob` | `login_as_guest`, `server_link_provider`, `server_set_role` | `ensurePermissions.ts`, `auditColumns.ts` |
 | Identity GC | `IdentityGcJob` | `run_identity_gc`, `admin_trigger_identity_gc` | — |
-| Roster | `HsrAccount`, `HsrAccountCharacter`, `HsrAccountLightcone`, `Archetype` | `create_hsr_account`, `batch_upsert_characters` | `rosterHelpers.ts`, `accountRating.ts` |
+| Roster | `HsrAccount`, `HsrAccountCharacter`, `HsrAccountLightcone`, `Archetype` | `create_hsr_account`, `batch_upsert_characters`, `batch_remove_characters`, `migrate_roster` | `rosterHelpers.ts`, `accountRating.ts`, `rosterMutations.ts` |
 | Game Data | `HsrCharacter`, `HsrLightcone`, `HsrCharacterCost`, `HsrLightconeCost`, `HsrSynergyCost` | `admin_bulk_upsert`, `admin_delete_row` | — |
 | Cost Sets | `CostSet`, `CostSetDraftCharacter`, `CostSetDraftLightcone`, `CostSetDraftSynergy` | `create_cost_set`, `publish_cost_set` | — |
 | Lobby | `Lobby`, `LobbyMember`, `LobbyMemberAccount`, `LobbyBan`, `LobbyGcJob`, `GcResult` | `create_lobby`, `join_lobby`, `close_lobby`, `run_lobby_gc` | `lobbyHelpers.ts`, `disconnectHelpers.ts` |
-| Draft | `MatchSession`, `MatchSessionStep`, `MatchSessionHistory`, `MatchSessionStepHistory` | `start_draft_classic`, `pick_ban_action` | `draftSequences.ts`, `anonymousLabels.ts` |
+| Draft | `MatchSession`, `MatchSessionStep`, `MatchSessionHistory`, `MatchSessionStepHistory` | `start_draft_classic`, `pick_ban_action`, `timer_expiry_classic` | `draftSequences.ts`, `anonymousLabels.ts`, `ownershipValidation.ts` |
 | Match Results | `MatchResultRecord`, `MatchResultGame`, `MatchResultParticipant` | `submit_match_result`, `finalize_match_result` | `finalizationHelpers.ts`, `bracketHelpers.ts` |
 | MMR / Leaderboard | `MmrRating`, `MmrHistory`, `Leaderboard`, `EloConfig`, `Season` | `process_tournament_mmr`, `create_season` | `eloCalculation.ts`, `leaderboardRebuild.ts` |
 | Player Stats | `PlayerStat`, `CharacterStat`, `GlobalCharacterStat` | (computed during finalization) | `statsIncrement.ts`, `characterStatsIncrement.ts` |
@@ -176,4 +208,4 @@
 
 ---
 
-*Architecture analysis: 2026-04-09 (updated from 2026-04-06 to reflect Phase 12 UserPrivate, Phase 12.1 Identity GC, Phase 12.2 SDK upgrade and view exports)*
+*Architecture analysis: 2026-04-12 (regenerated from 2026-04-09 to reflect Phase 12.3: accountRatingSnapshot on MatchResultParticipant, requireOwnership on Tournament, rosterMutations.ts helper, D-G lobby guard pattern, D-H ordering guard; Phase 14: test infrastructure changes documented in TESTING.md)*
