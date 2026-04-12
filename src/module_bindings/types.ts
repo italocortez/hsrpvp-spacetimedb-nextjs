@@ -1647,6 +1647,7 @@ export const Tournament = __t.object("Tournament", {
   groupSize: __t.u8(),
   has3RdPlaceMatch: __t.bool(),
   autoAdvanceBracket: __t.bool(),
+  requireOwnership: __t.bool(),
   requireVerified: __t.bool(),
   requireRoster: __t.bool(),
   minimumMmr: __t.option(__t.u32()),

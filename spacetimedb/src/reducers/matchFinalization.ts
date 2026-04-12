@@ -27,22 +27,25 @@ export const finalize_match_result = spacetimedb.reducer(
             throw new SenderError('Match result must be Validated before finalization.');
         }
 
-        // ── D-H-01 (Phase 12.3): tournament-stage ordering guard ─────────────
-        // Reject finalization of tournament-controlled matches until the parent
-        // tournament reaches a terminal stage (Completed or Cancelled). Two
-        // properties depend on this ordering:
-        //   1. MMR batch processing. `process_tournament_mmr` (matchFinalization.ts:65)
-        //      reads MatchResultRecord + MatchResultParticipant rows that
-        //      `runFinalization` step 18 (finalizationHelpers.ts:549-558) deletes
-        //      unconditionally. Without the guard, an admin finalizing an individual
-        //      MMR-tournament match mid-tournament silently loses its MMR input.
-        //   2. Bracket rollback capability. The TO may need to invalidate a bracket
-        //      match after the fact (disputed result, cheating discovered, wrong
-        //      score submitted). Keeping the ephemeral data alive until the
-        //      tournament reaches a terminal stage makes rollback a local row
-        //      operation instead of historical reconstruction.
-        // Guard is unconditional: `countTowardsMmr` is NOT consulted (D-H-02) because
-        // the rollback property applies to casual tournaments too.
+        // ── D-H-01 (Phase 12.3, narrowed post-UAT): MMR tournament guard ────
+        // Block per-match finalize for MMR tournament rows only. The guard's
+        // sole purpose is protecting MatchResultRecord + MatchResultParticipant
+        // rows that `process_tournament_mmr` (the batch reducer) needs to read
+        // later. Calling `finalize_match_result` on an MMR tournament match
+        // would (a) skip step 11 MMR processing because `runFinalization`
+        // gates it on `!isTournamentControlled`, and (b) delete the ephemeral
+        // rows at step 18 — silently losing MMR input for the entire match.
+        //
+        // Casual tournament matches are NOT guarded: they have no MMR input
+        // to protect, runFinalization step 17 advances the bracket normally,
+        // and `rollback_bracket_match` still works after step 18's cleanup
+        // (it filters surviving MRRs and passes vacuously when none exist).
+        // In practice, casual tournament matches never reach this reducer
+        // anyway because `submit_match_result` auto-finalizes them inline.
+        //
+        // Pitfall 4 (broken derivation chain): if the bracketMatch or
+        // tournament lookup fails, default to rejection. A broken chain
+        // cannot be proved non-MMR, so we fall back to the safer path.
         if (matchResult.isTournamentControlled) {
             const bracketMatch = matchResult.bracketMatchId !== undefined
                 ? ctx.db.BracketMatch.id.find(matchResult.bracketMatchId)
@@ -51,10 +54,12 @@ export const finalize_match_result = spacetimedb.reducer(
             const tournament = derivedTournamentId !== undefined
                 ? ctx.db.Tournament.id.find(derivedTournamentId)
                 : undefined;
-            if (!tournament || (tournament.stage.tag !== 'Completed' && tournament.stage.tag !== 'Cancelled')) {
+            const isCasualTournament = tournament != null && !tournament.countTowardsMmr;
+            if (!isCasualTournament) {
                 throw new SenderError(
-                    'Tournament match cannot be finalized while the tournament is still active. ' +
-                    'Wait for the tournament to reach Completed or Cancelled — this preserves MMR batch processing and bracket rollback capability.'
+                    'MMR tournament matches cannot be finalized individually. ' +
+                    'MMR is processed in batch via process_tournament_mmr after the tournament reaches Completed. ' +
+                    'Cancelled MMR tournaments do not generate MMR.'
                 );
             }
         }

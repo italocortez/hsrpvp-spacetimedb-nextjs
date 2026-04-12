@@ -40,6 +40,8 @@ export const tournamentColumns = {
     groupSize: t.u8(),                    // min 3, target group size for round-robin
     has3rdPlaceMatch: t.bool(),           // controls 3rd place match generation
     autoAdvanceBracket: t.bool(),         // controls auto vs manual advancement
+    // Lobby settings inherited by tournament lobbies
+    requireOwnership: t.bool(),
     // Registration requirements
     requireVerified: t.bool(),
     requireRoster: t.bool(),

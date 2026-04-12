@@ -157,10 +157,21 @@ export function removeUncheckedInParticipants(ctx: any, tournamentId: number, ac
 
 /**
  * Cascade-deletes all tournament-scoped infrastructure rows on cancellation.
- * Preserves: TournamentEnrolled (audit trail), MatchResultRecord (player history).
- * Deletes: TournamentTeamRequest, TournamentTeamMember, TournamentTeam, TournamentAssistant,
- *          BracketMatch, GroupPhaseRecord, TournamentPlayerAccount.
- *          Also hard-deletes Shelved/BetweenGames lobbies linked to bracket matches (D-18).
+ *
+ * Preserves: TournamentEnrolled (audit trail). MatchSessionHistory (the actual
+ *            archive layer — MatchResultRecord is ephemeral by design and has
+ *            usually already been deleted by runFinalization step 18 before
+ *            this helper runs).
+ * Deletes:   TournamentTeamRequest, TournamentTeamMember, TournamentTeam, TournamentAssistant,
+ *            BracketMatch, GroupPhaseRecord, TournamentPlayerAccount.
+ *            Also hard-deletes Shelved/BetweenGames lobbies linked to bracket
+ *            matches (D-18), which cascades to any still-ephemeral MRR/MRP rows.
+ *
+ * Note: For MMR tournaments mid-flight (rare), some MatchResultRecord rows may
+ * still exist because the D-H-01 guard blocks per-match finalize for MMR
+ * tournaments. Those rows are orphaned (bracket_match_id → deleted BracketMatch)
+ * after this helper runs. Casual tournament matches never reach this state —
+ * they auto-finalize at submit and runFinalization has already cleaned them up.
  *
  * Order: requests → linked lobbies (before bracket) → standings → calendar → bracket → player accounts → team members → teams → assistants
  * (child rows before parents to avoid referencing deleted data mid-transaction)

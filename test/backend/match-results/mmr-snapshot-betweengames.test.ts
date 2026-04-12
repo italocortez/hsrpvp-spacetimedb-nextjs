@@ -38,7 +38,7 @@ import {
 import { defaultLobbyArgs as sharedDefaultLobbyArgs } from '../../shared/helpers/lobbies';
 import { createTournamentArgs } from '../../shared/helpers/tournaments';
 import { promoteUser } from '../../shared/helpers/promoteUser';
-import { completeDraft, advanceToScoring } from '../../shared/helpers/drafts';
+import { completeDraft, completeTournamentDraft, advanceToScoring } from '../../shared/helpers/drafts';
 import { gameScoreArgs } from '../../shared/helpers/scores';
 import { characterBatch, KNOWN_CHARACTERS } from '../../shared/fixtures';
 
@@ -515,7 +515,11 @@ describe.skipIf(!hasServerToken())('Phase 12.3: BetweenGames monotonic-upward sn
             await player1.sync(1500);
             await player2.sync(1500);
 
-            await completeDraft(player1, player2, lobbyId);
+            // Tournament lobbies default to BanMode=Four — use the tournament
+            // draft helper (4 bans + 16 picks) rather than completeDraft (16 picks,
+            // BanMode=None). Using completeDraft here produces "Current turn is
+            // not a Pick." because the draft starts with the first ban phase.
+            await completeTournamentDraft(player1, player2, lobbyId);
             await toUser.sync(1500);
             await advanceToScoring(toUser, player1, player2, lobbyId);
 

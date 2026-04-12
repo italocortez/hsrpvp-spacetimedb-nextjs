@@ -304,7 +304,7 @@ describe.skipIf(!hasServerToken())('Tournament Ordering Guard (D-H-01)', () => {
 
     // ─── Scenario 1 — MMR tournament ─────────────────────────────────────
 
-    it('Scenario 1: MMR tournament — finalize rejected mid-InProgress, succeeds post-Completed', async () => {
+    it('Scenario 1: MMR tournament — finalize rejected for TO and admin (correctness-before-authority)', async () => {
         const tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
             name: `Guard MMR ${Date.now()}`,
             countTowardsMmr: true,
@@ -323,94 +323,53 @@ describe.skipIf(!hasServerToken())('Tournament Ordering Guard (D-H-01)', () => {
         );
         openedLobbyIds.push(lobbyId);
 
-        // Tournament still InProgress — the guard MUST reject.
+        // D-H-01 (narrowed post-UAT): MMR tournament matches are rejected
+        // unconditionally. Tournament MMR flows through process_tournament_mmr
+        // batch, not through this reducer — calling finalize_match_result
+        // would skip MMR processing and delete the rows the batch needs.
+        // Casual tournament matches are NOT guarded (they auto-finalize on
+        // submit anyway and have no MMR input to protect).
         const errBeforeCompleted = await expectReducerError(
             toUser.call.finalizeMatchResult({ matchResultId })
         );
         expect(errBeforeCompleted).toContain(
-            'Tournament match cannot be finalized while the tournament is still active'
+            'MMR tournament matches cannot be finalized individually'
         );
+        expect(errBeforeCompleted).toContain('process_tournament_mmr');
 
-        // Also try via admin — should ALSO be blocked (guard runs before authority check).
+        // Admin cannot bypass — guard runs BEFORE the authority check.
         const errViaAdmin = await expectReducerError(
             admin.call.finalizeMatchResult({ matchResultId })
         );
         expect(errViaAdmin).toContain(
-            'Tournament match cannot be finalized while the tournament is still active'
+            'MMR tournament matches cannot be finalized individually'
         );
 
-        // Advance tournament to Completed (InProgress -> Completed is a valid direct transition).
-        await toUser.call.advanceTournamentStage({
-            tournamentId,
-            nextStage: 'Completed',
-        });
-        await toUser.sync(1500);
-
-        // Now finalize should succeed.
-        await toUser.call.finalizeMatchResult({ matchResultId });
-        await toUser.sync(2000);
-        await admin.sync(2000);
-
-        // MatchResultRecord should be deleted (runFinalization step 18 removes it).
-        const mrAfter = [...toUser.conn.db.MatchResultRecord.iter()].find(
-            r => r.id === matchResultId,
-        );
-        expect(mrAfter).toBeUndefined();
+        // Cleanup handled by afterAll.
     }, 240000);
 
-    // ─── Scenario 2 — Casual tournament (countTowardsMmr=false) ──────────
-
-    it('Scenario 2: Casual tournament — finalize ALSO rejected mid-InProgress (unconditional D-H-02), succeeds post-Cancelled', async () => {
-        const tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
-            name: `Guard Casual ${Date.now()}`,
-            countTowardsMmr: false,
-        });
-        openedTournamentIds.push(tournamentId);
-        await advanceToInProgress(toUser, tournamentId);
-
-        const bracketMatches = [...toUser.conn.db.BracketMatch.iter()].filter(
-            bm => bm.tournamentId === tournamentId
-        );
-        const bracketMatch = bracketMatches[0];
-        if (!bracketMatch) throw new Error('No bracket match found for casual tournament');
-
-        const { lobbyId, matchResultId } = await setupValidatedTournamentMatch(
-            toUser, p1, p2, admin, bracketMatch.id,
-        );
-        openedLobbyIds.push(lobbyId);
-
-        // Casual-tournament path: guard is unconditional. Even though
-        // process_tournament_mmr would refuse this tournament (countTowardsMmr=false),
-        // the rollback property still applies → finalize is blocked.
-        const err = await expectReducerError(
-            toUser.call.finalizeMatchResult({ matchResultId })
-        );
-        expect(err).toContain(
-            'Tournament match cannot be finalized while the tournament is still active'
-        );
-
-        // Cancel the tournament — persistent terminal state per Phase 10.5.
-        await toUser.call.cancelTournament({ tournamentId });
-        await toUser.sync(1500);
-
-        // Now finalize should succeed.
-        await toUser.call.finalizeMatchResult({ matchResultId });
-        await toUser.sync(2000);
-        await admin.sync(2000);
-
-        const mrAfter = [...toUser.conn.db.MatchResultRecord.iter()].find(
-            r => r.id === matchResultId,
-        );
-        expect(mrAfter).toBeUndefined();
-
-        // Sanity: process_tournament_mmr should still refuse this tournament because
-        // countTowardsMmr=false. This proves finalize DID NOT implicitly invoke the
-        // batch MMR step for a casual tournament.
-        const mmrErr = await expectReducerError(
-            toUser.call.processTournamentMmr({ tournamentId })
-        );
-        expect(mmrErr).toMatch(/countTowardsMmr/i);
-    }, 240000);
+    // ─── Scenario 2 deliberately omitted ─────────────────────────────────
+    //
+    // Casual tournament matches are NOT covered by the D-H-01 guard (post-UAT
+    // narrowing). The Phase 12.3 Plan 04 D-H-02 decision claimed the guard
+    // should be unconditional, but investigation revealed:
+    //
+    //   1. Casual matches (including casual tournament matches) auto-finalize
+    //      inline via matchResultSubmission.ts:199-203, which calls
+    //      runFinalization directly as a helper, bypassing any reducer-level
+    //      guard. Casual tournament matches therefore never reach this
+    //      reducer via the normal flow.
+    //
+    //   2. Even if they did, there's nothing to protect: no MMR input means
+    //      nothing would be silently lost. runFinalization step 17 advances
+    //      the bracket, step 18 cleans up ephemeral rows, step 19 closes
+    //      the lobby. rollback_bracket_match still works post-cleanup
+    //      because it checks for surviving MRR rows and passes vacuously
+    //      when none exist.
+    //
+    // If rollback becomes an operational pain point for casual tournaments,
+    // the solution is tooling around MatchSessionHistory (admin_void_match)
+    // and PlayerStat adjustments, not preserving ephemeral MRR rows.
 
     // ─── Scenario 3 — Non-tournament match (sanity regression) ───────────
 
@@ -452,24 +411,21 @@ describe.skipIf(!hasServerToken())('Tournament Ordering Guard (D-H-01)', () => {
         }
     }, 240000);
 
-    // ─── Scenario 4 — Pitfall 4 defensive case (skipped, grep-verified in Plan 04) ─
-
-    it.skip('Scenario 4 (Pitfall 4): tournament-controlled MRR with bracketMatchId=undefined → rejected', () => {
-        // Defensive case: MatchResultRecord has isTournamentControlled=true but
-        // bracketMatchId=undefined. Plan 04's grep evidence already enumerated
-        // the three insert sites that can produce this state (draftClassic.ts:182,
-        // concede.ts:33, concede.ts:312) and proved the guard path rejects it.
-        //
-        // Reaching this state from the test harness requires either:
-        //   (a) a server-token admin path that inserts a fabricated
-        //       MatchResultRecord row directly, or
-        //   (b) a live bracketMatch that was then deleted before finalize —
-        //       which the tournament lifecycle forbids (bracket matches are
-        //       tied to their tournament and cannot be orphaned mid-flow).
-        //
-        // Neither path is cleanly reachable from the integration harness.
-        // This assertion is therefore covered by:
-        //   - Plan 04's grep of the insert sites (file-scoped proof),
-        //   - The /gsd-verify-work manual UAT if it ever catches a defect here.
-    });
+    // ─── Scenario 4 — Pitfall 4 defensive case ─────────────────────────────
+    //
+    // Structurally unreachable from the integration harness:
+    // MatchResultRecord.isTournamentControlled=true with bracketMatchId=undefined
+    // requires either (a) a server-token admin path that inserts a fabricated
+    // MRR row directly, or (b) a live bracketMatch deleted before finalize —
+    // which the tournament lifecycle forbids (bracket matches are tied to their
+    // tournament and cannot be orphaned mid-flow).
+    //
+    // The defensive branch in the guard treats "missing bracket/tournament" as
+    // "cannot prove this is a casual tournament, so block" — correct behavior
+    // verified via Plan 04's grep of the three MRR insert sites (draftClassic.ts:182,
+    // concede.ts:33, concede.ts:312).
+    //
+    // it('Scenario 4 (Pitfall 4): tournament-controlled MRR with bracketMatchId=undefined → rejected', async () => {
+    //     // Cannot construct from reducer calls: createTournamentLobby always validates bracketMatchId
+    // });
 });

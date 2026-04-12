@@ -156,8 +156,8 @@ export const create_tournament_lobby = spacetimedb.reducer(
             // Roster visibility inherited from tournament
             rosterVisibility: tournament.rosterVisibility,
 
-            // Ownership — default false (tournament does not track individual ownership config)
-            requireOwnership: false,
+            // Ownership — inherited from tournament (Phase 12.3 follow-up)
+            requireOwnership: tournament.requireOwnership,
 
             // Cost set inherited from tournament
             costSetId: tournament.costSetId,

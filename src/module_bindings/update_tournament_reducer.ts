@@ -23,6 +23,7 @@ export default {
   has3RdPlaceMatch: __t.bool(),
   autoAdvanceBracket: __t.bool(),
   winnerAdvantage: __t.u8(),
+  requireOwnership: __t.bool(),
   requireVerified: __t.bool(),
   requireRoster: __t.bool(),
   minimumMmr: __t.u32(),

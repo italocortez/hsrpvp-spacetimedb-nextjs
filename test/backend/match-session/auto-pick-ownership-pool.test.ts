@@ -38,8 +38,15 @@ import {
     type TestHarness,
 } from '../../shared/connection';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
+import { defaultSettingsArgs } from '../../shared/helpers/lobbies';
 import { startDraftAndSync } from '../../shared/helpers/drafts';
 import { myLobbies } from '../../shared/helpers/queries';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
+import {
+    setupRegistrationTournament,
+    advanceToInProgress,
+    cleanupTournament,
+} from '../../shared/helpers/tournaments';
 import { characterBatch, nextUid, resetUidCounter } from '../../shared/fixtures';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -247,88 +254,289 @@ describe.skipIf(!hasServerToken())('Auto-Pick Ownership Pool (D-I-04)', () => {
     // ─── Scenario 2 — Multi-account tournament (LMA-union) ────────────────
 
     describe('Scenario 2 — tournament: union of both selected LMA accounts', () => {
-        // The full tournament setup (create -> register -> lock -> generate ->
-        // advance -> tournament_lobby -> auto_random_pick + requireOwnership) is
-        // significantly heavier than the non-tournament path. The D-I-04 code
-        // block is shared across tournament and non-tournament paths — the only
-        // difference is that LMA insertion is additive in the tournament path and
-        // replacement in the non-tournament path.
-        //
-        // Scenario 2 therefore exercises the LMA-union behavior via a simpler
-        // proxy: a non-tournament lobby where select_match_account is called
-        // multiple times BUT we also directly verify the LMA table shape.
-        //
-        // Actually — non-tournament select_match_account REPLACES, not appends
-        // (accountSelection.ts:82-88). We cannot drive the union through a
-        // non-tournament lobby. The only way to prove union is via a live
-        // tournament with maxAccountsPerPlayer=2.
-        //
-        // The tournament setup helpers (setupRegistrationTournament,
-        // advanceToInProgress) exist; the rest (TournamentPlayerAccount lock,
-        // tournament lobby creation, tournament draft with autoRandomPick +
-        // requireOwnership) is a significant amount of glue code that does not
-        // currently have a shared helper.
-        //
-        // Given C10's hard test-only scope boundary, the practical option is
-        // to skip this scenario with a precise explanation. The D-I-04 code
-        // block is single-path (one `for (const lma of selectedAccounts)` loop)
-        // — if Scenario 1 proves the loop reads LMA instead of isActive, the
-        // union semantics follow directly from the loop operating over the full
-        // selectedAccounts array. Manual UAT owns the end-to-end tournament
-        // assertion.
-        it.skip('multi-account tournament: auto-pick draws from union of selected LMA accounts', () => {
-            // See scenario description. Not cleanly reachable without new shared helpers.
+        let toUser: TestHarness;
+        let p1: TestHarness;
+        let p2: TestHarness;
+        let tournamentId: number;
+        let p1AccountA: number;
+        let p1AccountB: number;
+        let p2Account: number;
+
+        // Account A pool (only on A): acheron, aglaea
+        // Account B pool (only on B): argenti, arlan
+        // Union should be: acheron, aglaea, argenti, arlan
+        const P1_A_CHARS = ['acheron', 'aglaea'] as const;
+        const P1_B_CHARS = ['argenti', 'arlan'] as const;
+        const P1_UNION = [...P1_A_CHARS, ...P1_B_CHARS] as const;
+
+        beforeAll(async () => {
+            resetUidCounter();
+            toUser = await createVerifiedTestHarness();
+            p1 = await createVerifiedTestHarness();
+            p2 = await createVerifiedTestHarness();
+            await toUser.sync();
+            await p1.sync();
+            await p2.sync();
+
+            await promoteToRole(toUser, 'TournamentHost');
+            await toUser.sync(1500);
+
+            // P1: two accounts with disjoint character sets (before registration
+            // so TPA snapshot captures both).
+            p1AccountA = await createAccount(p1, nextUid(), 'P1-A');
+            await seedChars(p1, p1AccountA, [...P1_A_CHARS]);
+            p1AccountB = await createAccount(p1, nextUid(), 'P1-B');
+            await seedChars(p1, p1AccountB, [...P1_B_CHARS]);
+
+            // P2: one account with different chars so red pool doesn't collide.
+            p2Account = await createAccount(p2, nextUid(), 'P2');
+            await seedChars(p2, p2Account, ['bailu', 'blackswan']);
+        }, 120000);
+
+        afterAll(async () => {
+            if (tournamentId) await cleanupTournament(toUser, tournamentId);
+            try { await p1.call.deleteHsrAccount({ hsrAccountId: p1AccountA }); } catch {}
+            try { await p1.call.deleteHsrAccount({ hsrAccountId: p1AccountB }); } catch {}
+            try { await p2.call.deleteHsrAccount({ hsrAccountId: p2Account }); } catch {}
+            await toUser?.disconnect();
+            await p1?.disconnect();
+            await p2?.disconnect();
         });
+
+        it('auto-pick for p1 draws from union of both LMA accounts', async () => {
+            // Tournament with requireOwnership + maxAccountsPerPlayer=2
+            tournamentId = await setupRegistrationTournament(toUser, [p1, p2], {
+                name: `OwnerPool Union ${Date.now()}`,
+                countTowardsMmr: false,
+                maxAccountsPerPlayer: 2,
+                requireOwnership: true,
+            });
+            await advanceToInProgress(toUser, tournamentId);
+
+            const bracketMatches = [...toUser.conn.db.BracketMatch.iter()].filter(
+                bm => bm.tournamentId === tournamentId
+            );
+            expect(bracketMatches.length).toBeGreaterThan(0);
+            const bracketMatchId = bracketMatches[0].id;
+
+            // Create tournament lobby
+            await toUser.call.createTournamentLobby({ bracketMatchId, joinCode: '' });
+            await toUser.sync(1500);
+            const lobby = [...toUser.conn.db.Lobby.iter()].find(l => {
+                const bm = l.bracketMatchId;
+                if (bm == null) return false;
+                return typeof bm === 'number' ? bm === bracketMatchId : (bm as any).value === bracketMatchId;
+            });
+            expect(lobby).toBeDefined();
+            const lobbyId = lobby!.id;
+
+            // Enable autoRandomPick + BanMode=None via update_lobby_settings
+            // (both are free fields for tournaments). BanMode=None ensures turn 0
+            // is a Pick (tournament default BanMode=Four starts with bans).
+            await toUser.call.updateLobbySettings(defaultSettingsArgs(lobbyId, {
+                autoRandomPick: true,
+                standardTurnSeconds: 1,
+                banMode: { tag: 'None', value: {} },
+            }));
+            await toUser.sync(1000);
+
+            // P1 joins → auto-LMA seeds with active account
+            await p1.call.joinLobby({ lobbyId, joinCode: '', password: '' });
+            await p1.sync(1500);
+
+            // Set P1 to Blue BEFORE selecting accounts (Spectators cannot select)
+            await toUser.call.setTeamSlot({ lobbyId, targetUserId: p1.userId, lobbySlot: { tag: 'BluePlayer' as const } });
+            await toUser.sync();
+
+            // Tournament additive path: select BOTH accounts into LMA
+            const lmaBefore = await queryPrivateTable(
+                `SELECT hsr_account_id FROM lobby_member_account WHERE lobby_id = ${lobbyId} AND user_id = ${p1.userId}`
+            );
+            const alreadySelected = new Set(lmaBefore.map(r => Number(r.hsr_account_id)));
+            if (!alreadySelected.has(p1AccountA)) {
+                await p1.call.selectMatchAccount({ lobbyId, hsrAccountId: p1AccountA });
+                await p1.sync(1000);
+            }
+            if (!alreadySelected.has(p1AccountB)) {
+                await p1.call.selectMatchAccount({ lobbyId, hsrAccountId: p1AccountB });
+                await p1.sync(1000);
+            }
+
+            // Verify both accounts in LMA
+            const lmaAfter = await queryPrivateTable(
+                `SELECT hsr_account_id FROM lobby_member_account WHERE lobby_id = ${lobbyId} AND user_id = ${p1.userId}`
+            );
+            const lmaIds = lmaAfter.map(r => Number(r.hsr_account_id));
+            expect(lmaIds).toContain(p1AccountA);
+            expect(lmaIds).toContain(p1AccountB);
+
+            // P2 as Red (P1 already Blue from earlier setTeamSlot)
+            await p2.call.joinLobby({ lobbyId, joinCode: '', password: '' });
+            await p2.sync(1500);
+            await toUser.call.setTeamSlot({ lobbyId, targetUserId: p2.userId, lobbySlot: { tag: 'RedPlayer' as const } });
+            await toUser.sync();
+
+            await p1.call.confirmReady({ lobbyId });
+            await p1.sync();
+            await p2.call.confirmReady({ lobbyId });
+            await p2.sync();
+            await toUser.sync();
+
+            // Start draft and wait for timer expiry
+            await startDraftAndSync(toUser, p1, p2, lobbyId);
+            await fireTimerExpiry(toUser, lobbyId);
+
+            const picked = firstAutoPickChar(toUser, lobbyId);
+            expect(picked).toBeDefined();
+            // The auto-picked character must be from the UNION of A + B chars
+            expect(P1_UNION).toContain(picked!);
+
+            await leaveAll(lobbyId, p1, p2, toUser);
+        }, 120000);
     });
 
     // ─── Scenario 3 — Stand-in contributes LMA chars ──────────────────────
 
-    describe('Scenario 3 — stand-in contributes LMA chars, not captain isActive', () => {
-        // Requires the tournament stand-in flow (TournamentStandIn row + rejoin
-        // during Waiting or BetweenGames). This path shares the same D-I-04
-        // code block as Scenarios 1 and 2 — the stand-in's LMA row is written
-        // by lobbyLifecycle.ts auto-LMA seed (line 323-338) using the stand-in's
-        // isActive, and can then be overridden via select_match_account if the
-        // stand-in swaps.
-        //
-        // End-to-end assertion requires the full tournament stand-in flow
-        // (bracket match with a participant who is then replaced). This is a
-        // heavy integration path outside the shared helpers and is deferred to
-        // manual UAT per C10 — the underlying LMA-union read is the same code
-        // path exercised by Scenario 1.
-        it.skip('stand-in auto-pick uses stand-in LMA, not captain isActive', () => {
-            // See scenario description.
+    describe('Scenario 3 — stand-in contributes LMA chars, not original player isActive', () => {
+        let toUser: TestHarness;
+        let original: TestHarness;
+        let standIn: TestHarness;
+        let opponent: TestHarness;
+        let tournamentId: number;
+        let originalAccount: number;
+        let standInAccount: number;
+        let opponentAccount: number;
+
+        // Original player's chars (should NOT appear in pool after replacement)
+        const ORIGINAL_CHARS = ['acheron', 'aglaea'] as const;
+        // Stand-in's chars (SHOULD appear in pool)
+        const STANDIN_CHARS = ['argenti', 'arlan'] as const;
+
+        beforeAll(async () => {
+            resetUidCounter();
+            toUser = await createVerifiedTestHarness();
+            original = await createVerifiedTestHarness();
+            standIn = await createVerifiedTestHarness();
+            opponent = await createVerifiedTestHarness();
+            await toUser.sync();
+            await original.sync();
+            await standIn.sync();
+            await opponent.sync();
+
+            await promoteToRole(toUser, 'TournamentHost');
+            await toUser.sync(1500);
+
+            originalAccount = await createAccount(original, nextUid(), 'Original');
+            await seedChars(original, originalAccount, [...ORIGINAL_CHARS]);
+
+            standInAccount = await createAccount(standIn, nextUid(), 'StandIn');
+            await seedChars(standIn, standInAccount, [...STANDIN_CHARS]);
+
+            opponentAccount = await createAccount(opponent, nextUid(), 'Opponent');
+            await seedChars(opponent, opponentAccount, ['bailu', 'blackswan']);
+        }, 120000);
+
+        afterAll(async () => {
+            if (tournamentId) await cleanupTournament(toUser, tournamentId);
+            try { await original.call.deleteHsrAccount({ hsrAccountId: originalAccount }); } catch {}
+            try { await standIn.call.deleteHsrAccount({ hsrAccountId: standInAccount }); } catch {}
+            try { await opponent.call.deleteHsrAccount({ hsrAccountId: opponentAccount }); } catch {}
+            await toUser?.disconnect();
+            await original?.disconnect();
+            await standIn?.disconnect();
+            await opponent?.disconnect();
         });
+
+        it('auto-pick after stand-in replacement draws from stand-in LMA, not original', async () => {
+            // Create tournament with requireOwnership
+            tournamentId = await setupRegistrationTournament(toUser, [original, opponent], {
+                name: `StandIn Pool ${Date.now()}`,
+                countTowardsMmr: false,
+                requireOwnership: true,
+            });
+            await advanceToInProgress(toUser, tournamentId);
+
+            const bracketMatches = [...toUser.conn.db.BracketMatch.iter()].filter(
+                bm => bm.tournamentId === tournamentId
+            );
+            expect(bracketMatches.length).toBeGreaterThan(0);
+            const bracketMatchId = bracketMatches[0].id;
+
+            // Approve stand-in for this bracket match (D-68)
+            await toUser.call.approveStandIn({ bracketMatchId, userId: standIn.userId });
+            await toUser.sync(1000);
+
+            // Create tournament lobby
+            await toUser.call.createTournamentLobby({ bracketMatchId, joinCode: '' });
+            await toUser.sync(1500);
+            const lobby = [...toUser.conn.db.Lobby.iter()].find(l => {
+                const bm = l.bracketMatchId;
+                if (bm == null) return false;
+                return typeof bm === 'number' ? bm === bracketMatchId : (bm as any).value === bracketMatchId;
+            });
+            expect(lobby).toBeDefined();
+            const lobbyId = lobby!.id;
+
+            // Enable autoRandomPick + BanMode=None (turn 0 = Pick, not Ban)
+            await toUser.call.updateLobbySettings(defaultSettingsArgs(lobbyId, {
+                autoRandomPick: true,
+                standardTurnSeconds: 1,
+                banMode: { tag: 'None', value: {} },
+            }));
+            await toUser.sync(1000);
+
+            // Stand-in joins instead of original (auto-LMA seeds with stand-in's active account)
+            await standIn.call.joinLobby({ lobbyId, joinCode: '', password: '' });
+            await standIn.sync(1500);
+
+            // Verify LMA has stand-in's account, not original's
+            const lma = await queryPrivateTable(
+                `SELECT user_id, hsr_account_id FROM lobby_member_account WHERE lobby_id = ${lobbyId} AND user_id = ${standIn.userId}`
+            );
+            expect(lma.length).toBeGreaterThan(0);
+            expect(Number(lma[0].hsr_account_id)).toBe(standInAccount);
+
+            // Set team slots: stand-in as Blue, opponent as Red
+            await toUser.call.setTeamSlot({ lobbyId, targetUserId: standIn.userId, lobbySlot: { tag: 'BluePlayer' as const } });
+            await toUser.sync();
+
+            await opponent.call.joinLobby({ lobbyId, joinCode: '', password: '' });
+            await opponent.sync(1500);
+            await toUser.call.setTeamSlot({ lobbyId, targetUserId: opponent.userId, lobbySlot: { tag: 'RedPlayer' as const } });
+            await toUser.sync();
+
+            await standIn.call.confirmReady({ lobbyId });
+            await standIn.sync();
+            await opponent.call.confirmReady({ lobbyId });
+            await opponent.sync();
+            await toUser.sync();
+
+            // Start draft and fire timer expiry
+            await startDraftAndSync(toUser, standIn, opponent, lobbyId);
+            await fireTimerExpiry(toUser, lobbyId);
+
+            const picked = firstAutoPickChar(toUser, lobbyId);
+            expect(picked).toBeDefined();
+            // Must be from stand-in's chars, NOT original's
+            expect(STANDIN_CHARS).toContain(picked!);
+            expect(ORIGINAL_CHARS).not.toContain(picked!);
+
+            await leaveAll(lobbyId, standIn, opponent, toUser);
+        }, 120000);
     });
 
     // ─── Scenario 4 — Casual requireOwnership with missing-LMA member ─────
-
-    describe('Scenario 4 — casual requireOwnership: missing LMA member contributes empty, pool assembles from rest', () => {
-        // This scenario is fundamentally unreachable in current backend code.
-        //
-        // Reasoning:
-        //   - Scenario 4 requires autoRandomPick=true so that timer_expiry_classic
-        //     enters the pool-gathering block (draftClassic.ts:648-709). Without
-        //     autoRandomPick, auto-pick always writes characterName='EMPTY' and
-        //     never touches the pool — the LMA-union code does not run.
-        //   - With autoRandomPick=true, start_draft's guard at draftClassic.ts:76-96
-        //     rejects any player whose selected LMA accounts contribute zero
-        //     characters. A player with no HsrAccount at all has zero LMA rows
-        //     (lobbyLifecycle.ts auto-LMA seed is gated by `activeAcct` existence),
-        //     which falls under selectedAccounts.length === 0 → start_draft
-        //     rejects at line 80 with "no account selected".
-        //
-        // Therefore the scenario described in the plan ("one team member has no
-        // LMA, pool still assembles from others") cannot be exercised: start_draft
-        // refuses to start in the only configuration where the pool block runs.
-        // The per-member loop in D-I-04 DOES handle empty contributions
-        // gracefully (set-union with an empty sub-set is a no-op), so the
-        // behavior under assertion is already correct by construction — but
-        // it is unobservable from an integration test.
-        //
-        // Reported to the Phase history via SUMMARY.md; not a test-file failure.
-        it.skip('casual requireOwnership: member with no LMA contributes empty, pool still assembles', () => {
-            // See scenario description.
-        });
-    });
+    //
+    // Structurally unreachable: start_draft's guard at draftClassic.ts:76-96
+    // rejects any player whose selected LMA accounts contribute zero characters
+    // when autoRandomPick=true. A player with no HsrAccount has zero LMA rows
+    // (lobbyLifecycle.ts auto-LMA seed is gated by `activeAcct` existence),
+    // which triggers selectedAccounts.length === 0 → rejection at line 80.
+    // The per-member loop in D-I-04 handles empty contributions gracefully
+    // (set-union with empty = no-op) but this behavior is unobservable from
+    // an integration test because the precondition can't be constructed.
+    //
+    // it('casual requireOwnership: member with no LMA contributes empty, pool still assembles', async () => {
+    //     // Cannot construct: start_draft rejects zero-LMA players when autoRandomPick=true
+    // });
 });

@@ -61,6 +61,7 @@ export default __t.row({
   groupSize: __t.u8().name("group_size"),
   has3RdPlaceMatch: __t.bool().name("has_3_rd_place_match"),
   autoAdvanceBracket: __t.bool().name("auto_advance_bracket"),
+  requireOwnership: __t.bool().name("require_ownership"),
   requireVerified: __t.bool().name("require_verified"),
   requireRoster: __t.bool().name("require_roster"),
   minimumMmr: __t.option(__t.u32()).name("minimum_mmr"),
