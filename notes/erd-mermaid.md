@@ -1,6 +1,6 @@
 # HSRPVP SpacetimeDB ERD
 
-67 tables. All v0.5 tables included. Updated 2026-04-09. Paste into [mermaid.live](https://mermaid.live) to preview.
+67 tables. All v0.5 tables included. Updated 2026-04-12. Paste into [mermaid.live](https://mermaid.live) to preview.
 
 | Color | Tables |
 |-------|--------|
@@ -126,6 +126,7 @@ erDiagram
         u32 costSetId FK
         u32 seasonId FK
         u8 maxAccountsPerPlayer "default 1 — Phase 10.4 D-33"
+        bool requireOwnership "character ownership validation in draft — Phase 12.3"
     }
     tournament_enrolled {
         u32 tournamentId PK_FK
@@ -246,6 +247,7 @@ erDiagram
     match_result_participant {
         u32 matchResultId PK_FK
         u32 userId PK_FK
+        f64 accountRatingSnapshot "frozen at match-record time — Phase 12.3"
     }
 
     %% grey
