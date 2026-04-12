@@ -1,11 +1,13 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.9
-milestone_name: Frontend
-current_phase: 15
-current_plan: null
-status: ready_to_plan
-last_updated: "2026-04-12T17:30:00.000Z"
+milestone_name: Frontend — Phase Summary
+current_phase: 15 — Backend pre-work
+current_plan: None (phase not yet planned)
+status: planning
+stopped_at: Phase 15 context expanded — template rework (characters + lightcones), seed-data.ts rework, data-file migration folded into scope. Ready for planning.
+last_updated: "2026-04-12T22:36:08.806Z"
+last_activity: 2026-04-12 — ROADMAP.md authored; 27 core phases locked per DECISIONS.md R1; coverage validated 84/84.
 progress:
   total_phases: 27
   completed_phases: 0
@@ -64,6 +66,7 @@ Authoritative: `.planning/research/DECISIONS.md` (R1–R11) + `notes/v09-fronten
 ## Decisions
 
 Recent v0.9-scope decisions:
+
 - Phase structure 15–41 locked (27 core phases, data/UX pair pattern).
 - `team_builder_draft` table promoted INTO v0.9 scope (Phase 19); previously "out of scope".
 - Authed base layer minimized to `user` + `hsr_account` only (R3); feature pages own own subs.
@@ -73,6 +76,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 ## Blockers
 
 None at kickoff. Open items for phase-time research tracked in `.planning/research/DECISIONS.md` "Open items for phase-time research":
+
 1. Spine `skeleton.scaleY = -1` workaround (Phase 31)
 2. Cursor broadcast throttle rate lock (Phase 30)
 3. Imgur rate-limit fallback / Discord-bot storage plan (Phase 32)
@@ -83,7 +87,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-12 (v0.9 roadmap authoring)
-Stopped at: ROADMAP.md + STATE.md written; coverage validated (84/84 core + 12 deferred MOBILE).
-Resume file: None
+Last session: 2026-04-12T22:36:08.804Z
+Stopped at: Phase 15 context expanded — template rework (characters + lightcones), seed-data.ts rework, data-file migration folded into scope. Ready for planning.
+Resume file: .planning/phases/15-backend-pre-work/15-CONTEXT.md
 Next action: `/gsd-plan-phase 15`
