@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.5
 milestone_name: milestone
-current_phase: 13
+current_phase: 14
 current_plan: Not started
 status: planning
-last_updated: "2026-04-11T19:48:41.234Z"
+last_updated: "2026-04-12T16:06:39.662Z"
 progress:
   total_phases: 23
   completed_phases: 23
-  total_plans: 76
-  completed_plans: 76
+  total_plans: 75
+  completed_plans: 75
   percent: 100
 ---
 
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v0.5 milestone
-**Current phase:** 13
+**Current phase:** 14
 **Current plan:** Not started
 **Status:** Ready to plan
 
