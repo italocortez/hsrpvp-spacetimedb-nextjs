@@ -55,11 +55,26 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 
 ### Active
 
-<!-- Current scope: v1 frontend milestone. v0.5 backend is complete. -->
+<!-- Current scope: v0.9 Frontend milestone. v0.5 backend is complete. -->
 
-**v1 Frontend Milestone** (next)
-- [ ] Frontend UI for all backend features (lobby, draft, tournament, profile, admin)
-- [ ] Test harness modernization for SDK 2.1.0 (Phase 14)
+## Current Milestone: v0.9 Frontend
+
+**Goal:** Complete frontend coverage of the v0.5 backend — every feature surfaced through a Next.js App Router frontend with SpacetimeDB subscriptions as the single data plane. Subscription architecture is the foundation; pages are built on top of each subscription layer.
+
+**Target features:**
+- Backend pre-work: Spine asset columns on `hsr_character` + self-scoped historical views
+- Route-group subscription lifecycle: global → public → authed → match → entity
+- Three-tier asset delivery: portraits, Spine animations, image-only fallback (Service Worker + Web Worker)
+- Public pages: cost tables, team builder (consuming anon reference subs)
+- Authed pages: profile (with historical data), admin panel
+- Match zone: lobby list, lobby detail, live draft with Spine pedestal
+- Tournament flows: creation, registration, brackets, stage management
+- Leaderboards + MMR visualization
+- Render capability detection (`getRenderTier()` — Chrome/Edge/Firefox supported, Safari defensively gated)
+
+**Architectural decisions:** See `notes/v09-frontend-subscription-strategy.md` (8 binding decisions).
+
+**Priority order:** cost tables → team builder → admin panel → profile page → lobby/matches → tournaments → leaderboards.
 
 ### Out of Scope
 
@@ -115,5 +130,22 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 | Matrix-based account rating | Vertical (eidolon depth) + horizontal (archetype coverage) with admin-tunable config | Implemented (Phase 11) |
 | Flat columns over config structs | Filterable data uses flat columns; LobbyConfig can be reworked | Convention |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-04-12 after v0.5 milestone completion. Backend shipped, frontend milestone (v1) next.*
+*Last updated: 2026-04-12 after v0.9 milestone kickoff. Backend shipped; frontend milestone now defining requirements.*
