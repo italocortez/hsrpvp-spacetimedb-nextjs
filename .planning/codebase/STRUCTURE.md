@@ -1,6 +1,6 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-04-09
+**Analysis Date:** 2026-04-12
 
 ## Directory Layout
 
@@ -60,7 +60,33 @@ hsrpvp-spacetimedb-nextjs/
 │   │   ├── schema.ts           # Table registration with SpacetimeDB schema()
 │   │   ├── tables/             # 67 table definitions (one file per table)
 │   │   ├── reducers/           # 44 reducer files (grouped by domain)
-│   │   ├── helpers/            # 25 shared server-side utility files
+│   │   ├── helpers/            # 26 shared server-side utility files (Phase 12.3: +rosterMutations.ts)
+│   │   │   ├── accountRating.ts
+│   │   │   ├── achievementChecker.ts
+│   │   │   ├── anonymousHelpers.ts
+│   │   │   ├── anonymousLabels.ts
+│   │   │   ├── auditColumns.ts
+│   │   │   ├── banHelper.ts
+│   │   │   ├── bracketGeneration.ts
+│   │   │   ├── bracketHelpers.ts
+│   │   │   ├── calendarCascade.ts
+│   │   │   ├── calendarCleanup.ts
+│   │   │   ├── characterStatsIncrement.ts
+│   │   │   ├── disconnectHelpers.ts
+│   │   │   ├── draftSequences.ts
+│   │   │   ├── eloCalculation.ts
+│   │   │   ├── ensurePermissions.ts
+│   │   │   ├── finalizationHelpers.ts
+│   │   │   ├── flagTransferHelpers.ts
+│   │   │   ├── globalCharacterStatsIncrement.ts
+│   │   │   ├── leaderboardRebuild.ts
+│   │   │   ├── lobbyHelpers.ts
+│   │   │   ├── ownershipValidation.ts
+│   │   │   ├── rosterHelpers.ts
+│   │   │   ├── rosterMutations.ts          # NEW Phase 12.3 — applyBatchUpsert, applyBatchRemove
+│   │   │   ├── statsIncrement.ts
+│   │   │   ├── tournamentHelpers.ts
+│   │   │   └── userDeletionHelper.ts
 │   │   ├── views/              # 2 files: securityViews.ts + anonymousViews.ts
 │   │   └── types/              # enums.ts, structs.ts
 │   ├── dist/                   # Compiled JS output (generated, committed)
@@ -72,9 +98,11 @@ hsrpvp-spacetimedb-nextjs/
 ├── test/
 │   ├── vitest.config.ts        # Unit runner -- includes *.unit.test.ts only
 │   ├── vitest.integration.config.ts  # Integration runner -- includes *.test.ts, excludes *.unit.test.ts
+│   ├── global-setup.ts         # Phase 14: pre-suite DB clear + reseed via spacetime publish --clear-database
 │   ├── tsconfig.json           # Test-specific TS config
 │   ├── shared/
 │   │   ├── connection.ts       # WebSocket test harness (createTestHarness, createVerifiedTestHarness)
+│   │   │                       # Phase 14: .withConfirmedReads(false) + onApplied subscription readiness
 │   │   ├── fixtures.ts         # Test data constants + factories (UIDs, createAccountArgs)
 │   │   ├── seed-data.ts        # CLI script -- seeds game data tables after publish
 │   │   ├── bootstrap.ts        # CLI script -- registers server identity on fresh database
@@ -102,10 +130,15 @@ hsrpvp-spacetimedb-nextjs/
 │       ├── garbage-collector/
 │       ├── lobby/
 │       ├── match-results/
+│       │   ├── mmr-snapshot.test.ts            # NEW Phase 12.3 — accountRatingSnapshot capture at start_draft
+│       │   └── mmr-snapshot-betweengames.test.ts  # NEW Phase 12.3 — monotonic snapshot hook during BetweenGames
 │       ├── match-session/
+│       │   └── auto-pick-ownership-pool.test.ts  # NEW Phase 12.3 — timer_expiry_classic uses LMA pool
 │       ├── roster/
+│       │   └── migrate-roster-rating.test.ts     # NEW Phase 12.3 — D-D-04 migrate_roster rating recompute + D-G guards
 │       ├── season/
 │       └── tournaments/
+│           └── tournament-ordering-guard.test.ts # NEW Phase 12.3 — D-H-01 ordering guard + process_tournament_mmr
 ├── docs/                       # Feature documentation
 │   ├── ERD.excalidraw          # Entity-Relationship Diagram (Excalidraw format)
 │   ├── FRONTEND-HANDOFF.md     # Frontend implementation guide
@@ -172,15 +205,18 @@ hsrpvp-spacetimedb-nextjs/
 **`spacetimedb/src/tables/` (67 files):**
 - Purpose: SpacetimeDB table schema definitions — one file per table
 - Notable additions since Phase 10: `userPrivate.ts` (Phase 12, `public: false`), `identityGcJob.ts` (Phase 12.1), `lobbyMemberAccount.ts` (Phase 10.4), `tournamentPlayerAccount.ts` (Phase 10.4)
+- Phase 12.3 schema additions: `accountRatingSnapshot: f64` on `MatchResultParticipant`; `requireOwnership: bool` on `Tournament`
 
 **`spacetimedb/src/reducers/` (44 files):**
 - Purpose: Server-side mutation handlers grouped by domain
 - Notable: `identityGc.ts` (Phase 12.1 scheduled GC), `accountSelection.ts` (Phase 10.4), `seriesManagement.ts`, `concede.ts`
 - Key: `auth.ts`, `lobbyLifecycle.ts`, `matchFinalization.ts`, `draftClassic.ts`, `draftAuction.ts`
+- Phase 12.3: `roster.ts` now imports `rosterMutations.ts` for `batch_upsert_characters`, `batch_remove_characters`, `migrate_roster`
 
-**`spacetimedb/src/helpers/` (25 files):**
+**`spacetimedb/src/helpers/` (26 files as of Phase 12.3):**
 - Purpose: Shared server-side utilities called by reducers
-- Key: `ensurePermissions.ts`, `auditColumns.ts`, `finalizationHelpers.ts`, `eloCalculation.ts`, `anonymousLabels.ts`
+- Phase 12.3 addition: `rosterMutations.ts` — `applyBatchUpsert` and `applyBatchRemove` (105 lines); single source of truth for "mutate characters + recompute accountRating"
+- Key: `ensurePermissions.ts`, `auditColumns.ts`, `finalizationHelpers.ts`, `eloCalculation.ts`, `anonymousLabels.ts`, `rosterMutations.ts`
 
 **`spacetimedb/src/views/` (2 files):**
 - Purpose: Server-computed data projections
@@ -193,9 +229,11 @@ hsrpvp-spacetimedb-nextjs/
 - Contains 32 `view_*_table.ts` files (added in Phase 12.2) alongside standard table and reducer bindings
 - Never edit manually
 
-**`test/backend/` (14 subdirectories):**
+**`test/backend/` (14 subdirectories, 63 total test files):**
 - Purpose: Integration tests for the SpacetimeDB module, grouped by feature domain
 - `test/shared/helpers/` added in Phase 10.5 for shared cleanup and fixture helpers (9 files)
+- Phase 12.3 additions: 5 new test files across match-results, match-session, roster, and tournaments
+- Phase 14 addition: `test/global-setup.ts` — pre-suite DB clear and reseed for deterministic test runs
 
 **`docs/` (19 feature directories + `docs/_templates`):**
 - Each feature directory contains `architecture.md` and `contract.md`
@@ -218,19 +256,20 @@ hsrpvp-spacetimedb-nextjs/
 - `spacetimedb/src/schema.ts` — Complete table registry
 - `spacetimedb/src/helpers/ensurePermissions.ts` — Role-based permission guards
 - `spacetimedb/src/helpers/auditColumns.ts` — Audit field helpers
+- `spacetimedb/src/helpers/rosterMutations.ts` — Batch character upsert/remove + rating recompute (Phase 12.3)
 - `components/features/auth/hooks/useAuth.ts` — Auth state (view_my_profile primary since Phase 12.2)
 
-## File Counts (as of Phase 12.2)
+## File Counts (as of Phase 12.3)
 
 | Directory | Count |
 |-----------|-------|
 | `spacetimedb/src/tables/` | 67 files |
 | `spacetimedb/src/reducers/` | 44 files |
-| `spacetimedb/src/helpers/` | 25 files |
+| `spacetimedb/src/helpers/` | 26 files (+1 from Phase 12.3: rosterMutations.ts) |
 | `spacetimedb/src/views/` | 2 files (32 named views total) |
 | `src/module_bindings/` | 236 files (32 view bindings) |
 | `test/shared/helpers/` | 9 files |
-| `test/backend/` | 14 subdirectories |
+| `test/backend/` | 14 subdirectories, 63 test files total |
 | `docs/` | 19 feature directories + `docs/_templates` |
 
 ## Naming Conventions
@@ -241,7 +280,9 @@ hsrpvp-spacetimedb-nextjs/
 - Hooks: camelCase with `use` prefix (`useAuth.ts`, `useDraftState.ts`)
 - SpacetimeDB tables: camelCase (`lobbyMember.ts`, `matchSession.ts`)
 - SpacetimeDB reducers: camelCase grouped by domain (`lobbyLifecycle.ts`, `draftClassic.ts`)
+- SpacetimeDB helpers: camelCase (`rosterMutations.ts`, `eloCalculation.ts`)
 - Generated bindings: snake_case (`lobby_member_table.ts`, `view_my_lobbies_table.ts`)
+- Test files: kebab-case with `.test.ts` suffix
 
 ## Where to Add New Code
 
@@ -260,14 +301,19 @@ hsrpvp-spacetimedb-nextjs/
 2. Export from `spacetimedb/src/index.ts`
 3. Auth guard first; spread `auditInsert`/`auditUpdate` on all mutations
 
+**New Shared Helper (batch logic):**
+1. Create `spacetimedb/src/helpers/{domain}Mutations.ts` following the `rosterMutations.ts` pattern
+2. Export named functions; import into domain reducer files
+3. Caller is responsible for auth/ownership validation before calling helper
+
 ## Special Directories
 
 **`src/module_bindings/`:** Auto-generated, committed to git, never edit manually
 
 **`spacetimedb/dist/`:** Compiled output (`dist/bundle.js`), committed, published by SpacetimeDB CLI
 
-**`.planning/codebase/`:** 7 docs regenerated periodically (D-12); last regenerated 2026-04-09 (Phase 13, Plan 04)
+**`.planning/codebase/`:** 7 docs regenerated periodically (D-12); last regenerated 2026-04-12 (Phase 13, Plan 03)
 
 ---
 
-*Structure analysis: 2026-04-09 (updated from 2026-04-06 to reflect Phase 10.5 through 12.2 additions)*
+*Structure analysis: 2026-04-12 (regenerated from 2026-04-09 to reflect Phase 12.3 additions: rosterMutations.ts helper, 5 new test files, schema columns; Phase 14 global-setup.ts and test infrastructure)*

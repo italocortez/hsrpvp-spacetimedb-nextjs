@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Analysis Date:** 2026-04-09
+**Analysis Date:** 2026-04-12
 
 ## Languages
 
@@ -45,6 +45,7 @@
 
 **Testing:**
 - Vitest ^4.1.0 — Both unit and integration test runner; configs at `test/vitest.config.ts` and `test/vitest.integration.config.ts`
+- 63 total test files (including 10 unit test files): 58 pre-Phase 12.3 + 5 new Phase 12.3 test files
 
 **Build/Dev:**
 - `next dev` / `next build` / `next start` — Standard Next.js dev/build/serve scripts
@@ -102,6 +103,8 @@
 
 | Version | Change |
 |---------|--------|
+| Phase 12.3 | `rosterMutations.ts` helper added (applyBatchUpsert, applyBatchRemove); `accountRatingSnapshot` column added to `MatchResultParticipant`; `requireOwnership` column added to `Tournament`; 5 new test files; D-G lobby guards in roster reducers; D-H ordering guard in tournament finalization |
+| Phase 14 | `test/global-setup.ts` added — pre-suite DB clear + reseed; `.withConfirmedReads(false)` on test connection builder; `onApplied` subscription readiness callback replaces fixed-timeout `sync()` for initial data load; `testTimeout` raised to 60s; `hookTimeout` raised to 120s |
 | Phase 12.2 | SDK upgraded from `^2.0.3` to `^2.1.0` in root `package.json`; view export pattern changed to `export const`; reducer error handling changed to `.catch()`; `.withConfirmedReads(false)` added |
 | Phase 12 | UserPrivate table added (`public: false`); server_link_discord replaced by server_link_provider (generic OAuth bridge) |
 | Phase 12.1 | IdentityGcJob scheduled reducer added; identity TTL = 90 days |
@@ -109,4 +112,4 @@
 
 ---
 
-*Stack analysis: 2026-04-09 (updated from 2026-04-06 to reflect Phase 12.2 SDK upgrade)*
+*Stack analysis: 2026-04-12 (regenerated from 2026-04-09 to reflect Phase 12.3 schema additions and Phase 14 test infrastructure changes)*

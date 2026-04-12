@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analysis Date:** 2026-04-09
+**Analysis Date:** 2026-04-12
 
 ## APIs & External Services
 
@@ -107,7 +107,7 @@
 - `NEXT_PUBLIC_SPACETIMEDB_DB_NAME` — Database name exposed to browser
 - `SPACETIMEDB_HOST` — WebSocket URL for server-side (API route) connection
 - `SPACETIMEDB_DB_NAME` — Database name for server-side connection
-- `SPACETIMEDB_SERVER_TOKEN` — Auth token for the trusted server identity (never expose to client)
+- `SPACETIMEDB_SERVER_TOKEN` — Auth token for the trusted server identity (never expose to client; rotated by `post-publish.ts` after `--clear-database`)
 - `DISCORD_CLIENT_ID` — Discord OAuth app client ID
 - `DISCORD_CLIENT_SECRET` — Discord OAuth app client secret
 - `NEXTAUTH_SECRET` — NextAuth session signing secret
@@ -138,4 +138,4 @@ The following integrations were explicitly descoped:
 
 ---
 
-*Integration audit: 2026-04-09 (updated from 2026-04-06 to reflect Phase 12 UserPrivate, Phase 12 server_link_provider rename, Phase 12.2 withConfirmedReads(false) and view_my_profile primary auth)*
+*Integration audit: 2026-04-12 (regenerated from 2026-04-09; Phase 12.3 added no new external integrations — changes were internal-only: rosterMutations helper, schema columns, D-G/D-H guards; Phase 14 added global-setup.ts which uses spacetime CLI publish internally)*

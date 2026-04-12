@@ -1,6 +1,6 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-04-09
+**Analysis Date:** 2026-04-12
 
 ---
 
@@ -14,7 +14,7 @@
 
 **`ctx: any` in all reducer/helper signatures:**
 - Issue: All helper functions accepting a SpacetimeDB context declare `ctx: any`. Required by the current SDK API but blocks static analysis of db method calls.
-- Files: `finalizationHelpers.ts`, `leaderboardRebuild.ts`, `achievementChecker.ts`, most other helper files
+- Files: `finalizationHelpers.ts`, `leaderboardRebuild.ts`, `achievementChecker.ts`, `rosterMutations.ts`, most other helper files
 - Impact: Calling a non-existent index compiles fine.
 - Fix approach: SDK-level fix required. In the interim, unit-test index lookups in the test harness.
 
@@ -159,6 +159,11 @@
 - Why fragile: `view_my_profile` uses `ctx.db.UserPrivate.userId.find(userId)` with optional chaining. If `UserPrivate` row is missing (pre-Phase 12 users), `discordId` and `discordUsername` are `undefined` — graceful but dependent on optional chaining throughout.
 - Safe modification: Any addition of required fields to `view_my_profile` must handle missing UserPrivate row.
 
+**`rosterMutations.ts` — shared helper called by 3 reducers:**
+- Files: `spacetimedb/src/helpers/rosterMutations.ts` (Phase 12.3)
+- Why fragile: `applyBatchUpsert` and `applyBatchRemove` are called by `batch_upsert_characters`, `batch_remove_characters`, and `migrate_roster`. A bug in the helper affects all three callers. The helper does NOT re-validate auth or ownership — callers must do that before delegating.
+- Safe modification: Changes to `applyBatchUpsert`/`applyBatchRemove` must be validated against all three calling reducers. Run `test/backend/roster/` and `test/backend/match-results/` after any change.
+
 ---
 
 ## Scaling Limits
@@ -213,4 +218,4 @@
 
 ---
 
-*Concerns audit: 2026-04-09 (updated from 2026-04-06 to reflect Phase 12.2 useAuth.ts changes, view_my_profile fragile area, SDK version risk update)*
+*Concerns audit: 2026-04-12 (regenerated from 2026-04-09; Phase 12.3 resolved the mmr-account-rating-source bug (D-D-04: migrate_roster now calls updateAccountRating via rosterMutations.ts); added rosterMutations.ts fragile-area note; Phase 14 test flakiness addressed by global-setup.ts)*
