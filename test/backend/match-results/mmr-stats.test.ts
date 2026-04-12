@@ -11,6 +11,11 @@
  * - Verify PlayerCharacterStat picks/faced via spacetime sql (private table)
  * - Verify mmrProcessedAt double-processing guard (structural: record deleted)
  *
+ * Phase 12.3 additions:
+ * - Verify accountRatingSnapshot captured at start_draft (MMR-RACE-01)
+ * - Verify processMatchMmr reads snapshot, not live account (MMR-RACE-02)
+ * - Verify D-G lobby guards reject roster mutations during active match (ROST-GUARD-01)
+ *
  * Coverage gaps:
  * - PlayerRelationship (ally/opponent) — needs multi-player team setup
  * - Ban stats (all tests use banMode: None)
