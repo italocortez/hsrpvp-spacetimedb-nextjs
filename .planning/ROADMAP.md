@@ -76,7 +76,7 @@ Plans:
   5. Tournament-level settings (anonymous play, roster visibility with 3 variants, disconnect policy, cost set) are stored and readable by match reducers
   6. A TO or admin can override match results and disqualify participants via explicit reducers
   7. Cost sets support draft/publish workflow with private draft tables
-**Plans:** 5/5 plans complete
+**Plans:** 4 plans
 Plans:
 - [x] 03-01-PLAN.md — Schema changes: enums (Moderator, Seeding, RosterVisibility), new tables (CostSet, drafts, TournamentTeam), cost PK expansion, permission helpers, publish --clear-database
 - [x] 03-02-PLAN.md — Tournament CRUD, lifecycle, registration, tournament-scoped team reducers
@@ -328,7 +328,7 @@ Plans:
   4. Integration test harness helpers (`ensureHsrAccount`, `promoteUser`, etc.) are extracted to `test/shared/` so they don't drift across duplicate copies in individual test files
   5. Full suite runtime is documented with a baseline — regression detection in future phases
   6. Test failure reports distinguish "file passes in isolation but fails in suite" from "file fails in isolation" — cross-file bugs get fixed at suite level, not per-file
-**Plans:** 5/5 plans complete
+**Plans:** 4 plans
 Plans:
 - [x] 10.5-01-PLAN.md — Capture baseline failure inventory + AUDIT.md seed + test/README runtime entry
 - [x] 10.5-02-PLAN.md — Extract ~70 inline test helpers to test/shared/helpers/ (8 domain files)
@@ -399,7 +399,7 @@ Note: Phase 10.2 (tournamentId/lobbyId removal) was completed inside Phase 10.1 
 | 12.1. Identity Garbage Collection | 1/1 | Complete    | 2026-04-08 |
 | 12.2. SDK Upgrade Audit | 2/2 | Complete    | 2026-04-09 |
 | 12.3. MMR Rating Snapshot | 8/8 | Complete    | 2026-04-11 |
-| 13. Documentation Normalization | 5/5 | Complete    | 2026-04-09 |
+| 13. Documentation Normalization | 0/4 | In Progress | — |
 
 
 ### Phase 12.1: Identity Garbage Collection (INSERTED)
@@ -455,7 +455,7 @@ Plans:
 **Goal:** Normalize all documentation to a consistent structure, fully hydrate from current codebase, regenerate codebase maps, rewrite FRONTEND-HANDOFF.md, and update ERD. Docs-only phase — no code changes.
 **Requirements**: All backend phases complete
 **Depends on:** Phase 12.2
-**Plans:** 5/5 plans complete
+**Plans:** 4 plans
 
 **Scope:**
 1. **Templates + ROADMAP scope update:** Create architecture.md and contract.md templates, update Phase 13 scope in ROADMAP.md, cleanup pass on completed phase descriptions
@@ -465,11 +465,10 @@ Plans:
 5. **FRONTEND-HANDOFF.md rewrite + ERD mermaid update:** Rewrite docs/FRONTEND-HANDOFF.md from final normalized docs. Update notes/erd-mermaid.md with all tables, PKs/FKs, and cardinality annotations (one-to-one, one-to-many, etc.)
 
 Plans:
-- [x] 13-01-PLAN.md — Templates + ROADMAP scope update
-- [x] 13-02-PLAN.md — Architecture normalization (19 files)
-- [x] 13-03-PLAN.md — Contract full hydration (18 files)
-- [x] 13-04-PLAN.md — Codebase docs full regeneration (7 files)
-- [x] 13-05-PLAN.md — FRONTEND-HANDOFF rewrite + ERD mermaid update
+- [ ] 13-01-PLAN.md — ROADMAP fixes + test header update
+- [ ] 13-02-PLAN.md — Architecture timestamp fixes + contract Phase 12.3 additions
+- [ ] 13-03-PLAN.md — Codebase docs full regeneration (7 files)
+- [ ] 13-04-PLAN.md — FRONTEND-HANDOFF rewrite + ERD update
 
 ### Phase 14: Test Harness Modernization for SDK 2.1.0
 

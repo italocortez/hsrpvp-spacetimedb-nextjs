@@ -1,16 +1,16 @@
-# Phase 13: Documentation Normalization - Research
+# Phase 13: Documentation Normalization (RERUN) - Research
 
-**Researched:** 2026-04-09
-**Domain:** Documentation standardization, codebase documentation generation, ERD maintenance
+**Researched:** 2026-04-12
+**Domain:** Documentation standardization, codebase documentation generation, ERD maintenance, test header maintenance
 **Confidence:** HIGH
 
 ## Summary
 
-Phase 13 is a docs-only phase that normalizes 19 architecture files, 18 contract files, 7 codebase map files, 1 frontend handoff doc, and 1 ERD diagram to consistent standards. The reference examples (roster architecture.md at 170 lines, roster contract.md at 416 lines) establish the gold standard format. The current docs vary widely in structure -- only 3/19 architecture files have an "Overview" section, only 1/19 has "Reducer Flows", and 6/18 contracts lack the "Reducers" section entirely. The codebase was last documented at 2026-04-06 (pre-Phase 12.2) and the FRONTEND-HANDOFF.md references a non-existent `docs/teams/` directory and claims Phases 7-11 are incomplete when they are all done.
+This is a RERUN of Phase 13. The original Phase 13 (completed 2026-04-09) normalized 19 architecture files, 18 contract files, 7 codebase docs, FRONTEND-HANDOFF, and ERD. Since then, Phase 12.3 (MMR Rating Snapshot, completed 2026-04-11) modified 13 backend source files and added significant new functionality -- but only partially updated docs. Phase 14 (Test Harness Modernization) also completed, adding test infrastructure changes. The 3 verification gaps from the original run were already fixed by commit `665c671`, but Phase 12.3 introduced NEW staleness across the documentation surface.
 
-The total scope is approximately 44 files to write/rewrite, with the contract hydration (18 files) being the most labor-intensive since it requires reading all 155 reducer exports from 44 reducer source files to document Purpose/Permission/Parameters/Flow/State Changes/Error Cases for each. The 5-plan execution order (D-19) is sound: templates first, then architecture, then contracts, then codebase docs, then handoff+ERD.
+The rerun scope breaks into 5 categories: (1) Architecture docs -- 3 files have Phase 12.3 content in their body but mismatched header/footer timestamps; 16 other architecture files are current. (2) Contract docs -- 3 contracts (roster, match-results, tournament) need Phase 12.3 additions (D-G guards, snapshot pattern, ordering guard). (3) Codebase docs -- all 7 files are dated 2026-04-09 and miss Phase 12.3 changes (rosterMutations.ts helper, 5 new test files, accountRatingSnapshot column, Tournament.requireOwnership). (4) FRONTEND-HANDOFF -- says 83 requirements/20 phases/~155 reducers/58 test files; actual is 86 mapped/25 phases/~156 reducers/63 test files. (5) ROADMAP -- Phase list at top missing 5 entries (12.1, 12.2, 12.3, 13, 14); Phase 10.5 progress row says 1/1 (should be 5/5). (6) ERD -- missing 2 new columns (accountRatingSnapshot, requireOwnership). (7) Test headers -- mmr-stats.test.ts has 242 new lines from Phase 12.3 not reflected in its header comment.
 
-**Primary recommendation:** Execute exactly as specified in CONTEXT.md decisions D-01 through D-19. The reference examples are well-structured and the gap analysis is clear. No technical uncertainty -- this is a disciplined documentation pass.
+**Primary recommendation:** Execute a targeted update pass on the specific stale items rather than a full rewrite. The bulk of Phase 13's work is still valid. Focus on: syncing docs to Phase 12.3/14 changes, fixing ROADMAP gaps, updating FRONTEND-HANDOFF stats, and refreshing codebase docs with the 5 new test files + new helper.
 
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
@@ -30,7 +30,7 @@ The total scope is approximately 44 files to write/rewrite, with the contract hy
 - **D-12:** Full regeneration of all 7 .planning/codebase/ files from scratch (not incremental update)
 - **D-13:** Files to regenerate: ARCHITECTURE.md, CONCERNS.md, CONVENTIONS.md, INTEGRATIONS.md, STACK.md, STRUCTURE.md, TESTING.md
 - **D-14:** Rewrite FRONTEND-HANDOFF.md from scratch (not incremental update), generated after all other docs are normalized
-- **D-15:** Update notes/erd-mermaid.md with all production tables (~55+), showing PKs, FKs, and cardinality annotations (one-to-one, one-to-many, one-to-one-optional, many-to-many)
+- **D-15:** Update notes/erd-mermaid.md with all production tables (~67), showing PKs, FKs, and cardinality annotations (one-to-one, one-to-many, one-to-one-optional, many-to-many)
 - **D-16:** Example notation: `User (one) to UserPrivate (one-optional)`
 - **D-17:** Update Phase 13 scope description in ROADMAP.md to reflect new goals
 - **D-18:** Minor cleanup pass on completed phase descriptions (status markers, plan counts) -- no scope changes to future phases
@@ -52,7 +52,7 @@ The total scope is approximately 44 files to write/rewrite, with the contract hy
 
 | ID | Description | Research Support |
 |----|-------------|------------------|
-| All backend phases complete | All v0.5 backend requirements (83 mapped) are complete per REQUIREMENTS.md traceability table | Verified -- all SCHM, ROST, TRNT, TEAM-04/05, BRKT, MTCH, MMR, ANON, STAT, ACHV, CAL, MOUS, CHAT, LBBY, DISC, COST, ARCH requirements marked complete |
+| All backend phases complete | All v0.5 backend requirements (86 mapped + 3 OOS) are complete per REQUIREMENTS.md traceability table | Verified -- REQUIREMENTS.md shows 89 total, 86 mapped, 3 Out of Scope; all Complete [VERIFIED: codebase] |
 </phase_requirements>
 
 ## Project Constraints (from CLAUDE.md)
@@ -60,304 +60,253 @@ The total scope is approximately 44 files to write/rewrite, with the contract hy
 Relevant CLAUDE.md directives for this docs-only phase:
 
 1. **Architecture docs cross-reference contracts via links. No duplication between them.** -- Architecture files document structure/flows, contracts document behavior/acceptance. Phase 13 must maintain this separation.
-2. **Architecture docs: Update every time backend code changes** -- Phase 13 is the catch-up pass for all accumulated drift.
-3. **Contracts: Use the template from `.claude/skills/uat/references/workflow-doc-template.md`** -- The contract template is already read and analyzed in this research.
-4. **Contracts: Update after every phase discussion with new workflow decisions** -- Phase 13 hydrates all contracts with full reducer documentation from codebase.
-5. **Never modify behavior specs during execution; update after with Phase X execution provenance tags** -- Since Phase 13 IS the documentation phase, all changes are the primary purpose. Tag new entries with `Phase 13 normalization` in Phase History.
-6. **Make the smallest change necessary; do NOT touch unrelated files** -- Phase 13 scope is explicitly all docs; each plan should touch only its designated file set.
-7. **Project uses npm** -- Not relevant for docs-only phase but noted.
+2. **Architecture docs: Update every time backend code changes** -- Phase 12.3 changed 13 source files; 3 architecture docs were updated but the rest of the doc surface was not.
+3. **Contracts: Use the template from `.claude/skills/uat/references/workflow-doc-template.md`** -- The contract template is already established in `docs/_templates/contract-template.md`.
+4. **Contracts: Update after every phase discussion with new workflow decisions** -- Phase 12.3 added ROST-GUARD-01, MMR-RACE-01/02 decisions not yet in contracts.
+5. **Never modify behavior specs during execution; update after with Phase X execution provenance tags** -- Tag new entries with `Phase 13 normalization (rerun)` or `Phase 12.3 execution` as appropriate.
+6. **Make the smallest change necessary; do NOT touch unrelated files** -- Rerun scope: only update what changed since original Phase 13 (2026-04-09).
+
+## Delta Analysis: What Changed Since Original Phase 13 (2026-04-09)
+
+### Phase 12.3: MMR Rating Snapshot (completed 2026-04-11)
+
+**Backend source files changed (13 files):** [VERIFIED: git diff]
+
+| File | Change Type | Impact on Docs |
+|------|------------|----------------|
+| `spacetimedb/src/tables/matchResultParticipant.ts` | Added `accountRatingSnapshot: f64` column | ERD, match-results architecture |
+| `spacetimedb/src/tables/tournament.ts` | Added `requireOwnership: boolean` column | ERD, tournament architecture |
+| `spacetimedb/src/helpers/rosterMutations.ts` | NEW file (105 lines) | roster architecture, codebase STRUCTURE/ARCHITECTURE |
+| `spacetimedb/src/helpers/finalizationHelpers.ts` | Changed processMatchMmr to read snapshot | match-results architecture (already updated) |
+| `spacetimedb/src/helpers/tournamentHelpers.ts` | D-H ordering guard helpers | tournament architecture (already updated) |
+| `spacetimedb/src/reducers/roster.ts` | D-G lobby guards on batch_upsert/remove/set_active | roster contract (MISSING) |
+| `spacetimedb/src/reducers/accountSelection.ts` | Monotonic snapshot hook | match-results contract (MISSING) |
+| `spacetimedb/src/reducers/matchFinalization.ts` | D-H ordering guard | tournament/match-results contract (MISSING) |
+| `spacetimedb/src/reducers/draftClassic.ts` | Auto-pick pool migration to LMA | match-session architecture (MISSING) |
+| `spacetimedb/src/reducers/server.ts` | start_draft snapshot capture | match-results architecture (already updated) |
+| `spacetimedb/src/reducers/tournamentLobby.ts` | Minor tournament wiring | tournament architecture (already updated) |
+| `spacetimedb/src/reducers/tournamentManagement.ts` | requireOwnership column | tournament architecture (already updated) |
+| `spacetimedb/src/index.ts` | rosterMutations export | codebase STRUCTURE |
+
+**New test files (5):** [VERIFIED: git diff --diff-filter=A]
+
+| File | Coverage |
+|------|----------|
+| `test/backend/match-results/mmr-snapshot.test.ts` | MMR-RACE-01 capture |
+| `test/backend/match-results/mmr-snapshot-betweengames.test.ts` | MMR-RACE-01 hook |
+| `test/backend/match-session/auto-pick-ownership-pool.test.ts` | D-I-04 |
+| `test/backend/roster/migrate-roster-rating.test.ts` | D-D-04, D-G |
+| `test/backend/tournaments/tournament-ordering-guard.test.ts` | D-H-01, MMR-RACE-02 |
+
+**New REQUIREMENTS.md entries (3):** [VERIFIED: codebase]
+- MMR-RACE-01, MMR-RACE-02, ROST-GUARD-01
+
+### Phase 14: Test Harness Modernization (completed after Phase 13)
+
+**Changes:** confirmed reads fix, onApplied subscription readiness, helper dedup. No backend source changes. Affects: codebase TESTING.md, test file count (new `test/global-setup.ts`).
+
+### Verification gap fixes (commit 665c671)
+
+**Already fixed:**
+- calendar/contract.md Architecture link added
+- archetypes/contract.md Edge Cases + Integration Points sections added
 
 ## Architecture Patterns
 
-### Architecture File Normalization Gap Analysis
+### Current Architecture Doc State
 
-**Current state audit (19 files):** [VERIFIED: codebase grep]
+**19 architecture files exist.** [VERIFIED: filesystem]
 
-| Section | Files With It | Files Missing It | Reference Has It |
-|---------|---------------|------------------|------------------|
-| `# Feature -- Architecture` header | 2 (achievements, calendar) | 17 | Yes (roster) |
-| `## Overview` | 3 (cost-sets, roster, views) | 16 | Yes |
-| `## Table Relationships` | 7 (achievements, cost-sets, lobby, match-results, match-session, roster, tournament) | 12 | Yes |
-| `## Reducer Flows` | 1 (roster) | 18 | Yes |
-| `## Phase History` | 0 | 19 | Not in roster, but D-03 requires it |
-| `Last updated: YYYY-MM-DD` | 1 (achievements) | 18 | Not in roster, but D-02 requires it |
+| File | Header Timestamp | Footer Timestamp | Phase 12.3 Content | Status |
+|------|-----------------|------------------|---------------------|--------|
+| match-results | 2026-04-09 | 2026-04-11 | Has snapshot + ordering guard | TIMESTAMP MISMATCH |
+| roster | 2026-04-09 | 2026-04-11 | Has rosterMutations + D-G guards | TIMESTAMP MISMATCH |
+| tournament | 2026-04-09 | 2026-04-11 | Has D-H guard + requireOwnership | TIMESTAMP MISMATCH |
+| Other 16 files | 2026-04-09 | 2026-04-09 | None needed | OK |
 
-**Header format inconsistencies:** [VERIFIED: codebase grep]
-- Correct (`Feature -- Architecture`): achievements, calendar (2 files)
-- Missing doc type: admin, anonymous-play, archetypes, auth, brackets, chat, cost-sets, cost-tables, lobby, match-results, match-session, mmr, player-stats, tournament, views (15 files)
-- Has `<!-- generated-by -->` comment: smoke, mmr (2 files)
+**Action:** Fix header timestamp on 3 files to match footer (2026-04-12 for the rerun date).
 
-**Section naming inconsistencies:**
-- `## Tables` instead of `## Table Relationships`: admin, anonymous-play, archetypes, auth, brackets, chat, cost-tables, mmr, player-stats, smoke (use `## Tables`)
-- Some use `## Key Decisions` instead of dedicated Phase History section
-- Some use `## Reducer Reference` (table format) instead of `## Reducer Flows` (narrative format)
+### Current Contract Doc State
 
-### Contract File Normalization Gap Analysis
+**18 contract files exist.** [VERIFIED: filesystem]
 
-**Current state audit (18 files):** [VERIFIED: codebase grep]
+All 18 have the Architecture link (D-07 verified). All 18 have required sections (D-06 verified -- including archetypes Edge Cases/Integration Points fixed by 665c671).
 
-| Section | Files With It | Files Missing It |
-|---------|---------------|------------------|
-| Architecture link | 15 | 3 (achievements, calendar, mmr-has-it-but-after-comment) |
-| `## Feature Overview` | 13 | 5 (anonymous-play, brackets, cost-sets, match-results, player-stats) |
-| `## Reducers` | 12 | 6 (anonymous-play, brackets, cost-sets, match-results, player-stats, views) |
-| `## Acceptance Scenarios` | 18 | 0 |
-| `## Edge Cases` | 16 | 2 (archetypes, smoke -- though smoke has similar content) |
-| `## Integration Points` | 17 | 1 (archetypes) |
-| `## Phase History` | 18 | 0 |
+**Phase 12.3 content gaps in contracts:**
 
-**Contracts needing heaviest hydration** (missing Reducers section = needs full reducer documentation from codebase):
-- `anonymous-play` -- reducers live in views (anonymousViews.ts) and helpers
-- `brackets` -- 7 reducers (generate_bracket, seed_bracket, swap_seeds, advance_bracket_match, submit_and_advance_bracket, rollback_bracket_match, advance_group_to_elimination)
-- `cost-sets` -- 8 reducers documented in architecture but not in contract
-- `match-results` -- 4+ reducers (submit_match_result, override_match_result, finalize/auto-finalize, score entry)
-- `player-stats` -- primarily computed, but has views and stat increment logic
-- `views` -- 32+ views documented in architecture.md, need contract format for acceptance scenarios
+| Contract | Missing Content | Source |
+|----------|----------------|--------|
+| roster/contract.md | D-G lobby guards: set_active_hsr_account, batch_upsert_characters, batch_remove_characters, migrate_roster reject while caller has active LobbyMemberAccount | ROST-GUARD-01, `spacetimedb/src/reducers/roster.ts` |
+| match-results/contract.md | accountRatingSnapshot capture at start_draft, processMatchMmr reads snapshot instead of live HsrAccount | MMR-RACE-01/02, `spacetimedb/src/helpers/finalizationHelpers.ts` |
+| match-results/contract.md | select_match_account monotonic-upward snapshot hook | Phase 12.3 Plan 03, `spacetimedb/src/reducers/accountSelection.ts` |
+| tournament/contract.md | D-H-01 finalize_match_result ordering guard -- rejects tournament-controlled finalization until tournament reaches terminal stage | MMR-RACE-02, `spacetimedb/src/reducers/matchFinalization.ts` |
+| tournament/contract.md | Tournament.requireOwnership column | Phase 12.3, `spacetimedb/src/tables/tournament.ts` |
+| match-session/contract.md | timer_expiry_classic auto-pick pool migration from HsrAccount.isActive to LobbyMemberAccount | Phase 12.3 D-I, `spacetimedb/src/reducers/draftClassic.ts` |
 
-### Recommended Template File Location
+### ROADMAP Issues Found
 
-Place templates at `docs/_templates/` (underscore prefix sorts before feature dirs, signals non-feature content):
-- `docs/_templates/architecture-template.md`
-- `docs/_templates/contract-template.md`
+**Phase list at top (lines 15-32):** [VERIFIED: line-by-line read]
 
-### Recommended Project Structure for Docs
+Missing entries (exist in details/progress but not in summary list):
+1. Phase 12.1: Identity Garbage Collection (completed 2026-04-08)
+2. Phase 12.2: SDK Upgrade Audit (completed 2026-04-09)
+3. Phase 12.3: MMR Rating Snapshot (completed 2026-04-11)
+4. Phase 13: Documentation Normalization (completed 2026-04-09)
+5. Phase 14: Test Harness Modernization (completed -- date TBD)
 
-```
-docs/
-  _templates/
-    architecture-template.md
-    contract-template.md
-  {feature}/
-    architecture.md          # Structure, tables, reducer flows
-    contract.md              # Behavior, acceptance scenarios
-  FRONTEND-HANDOFF.md        # Rewritten from normalized docs
-  ERD.excalidraw             # (untouched, deferred)
-notes/
-  erd-mermaid.md             # Updated with cardinality
-.planning/
-  codebase/
-    ARCHITECTURE.md           # Regenerated
-    CONCERNS.md               # Regenerated
-    CONVENTIONS.md            # Regenerated
-    INTEGRATIONS.md           # Regenerated
-    STACK.md                  # Regenerated
-    STRUCTURE.md              # Regenerated
-    TESTING.md                # Regenerated
-```
+**Progress table issues:** [VERIFIED: grep]
+- Phase 10.5 says `1/1` but had 5 plans (should be `5/5`)
+- Phase 14 row entirely missing from progress table
+- Phase 13 date shows 2026-04-09 (original run) -- should be updated to rerun date
 
-### Architecture Template Standard (from D-01 through D-05)
+**Execution order:** Currently `-> 13 -> 14 -> 12.3` -- Phase 12.3 executed after 14, which is correct.
 
-```markdown
-# Feature Name -- Architecture
+**Plan checkmark inconsistency:** Phases 1, 2, 4, and 04.1 use `[ ]` instead of `[x]` for their plan items, while all other phases use `[x]`. All plans are complete.
 
-Last updated: YYYY-MM-DD
+### Codebase Doc State
 
-## Overview
+**7 files, all dated 2026-04-09.** [VERIFIED: filesystem]
 
-{1-2 paragraphs: what this feature does, who uses it}
+Missing from these docs since Phase 13:
+- `rosterMutations.ts` helper (new file, 105 lines)
+- 5 new test files from Phase 12.3
+- `test/global-setup.ts` from Phase 14
+- `accountRatingSnapshot` column on MatchResultParticipant
+- `requireOwnership` column on Tournament
+- Phase 14 test harness changes (withConfirmedReads, onApplied)
+- Updated test file count: 63 (was 58)
+- Updated test count estimate (was 728)
 
-## Table Relationships
+### ERD State
 
-```
-ParentTable (PK)
-  +-- ChildTable (FK -> ParentTable.PK)  [PRIVATE -- D-XX, Phase Y]
-  |     columnName -> Description
-  +-- AnotherChild (FK -> ParentTable.PK)
-```
+**67 entities, dated 2026-04-09.** [VERIFIED: filesystem]
 
-## Reducer Flows
+Missing columns from Phase 12.3:
+- `MatchResultParticipant.accountRatingSnapshot: f64`
+- `Tournament.requireOwnership: boolean`
 
-### reducer_name(param1, param2)
-1. Step 1
-2. Step 2
-...
+No new tables were added -- still 67.
 
-## Phase History
+### FRONTEND-HANDOFF State
 
-| Decision | Source | Date |
-|----------|--------|------|
-| {what} | {where} | {when} |
+**Dated 2026-04-10 (already updated once after Phase 13).** [VERIFIED: filesystem]
 
----
+Stale values:
+| Field | Current Value | Actual Value | Source |
+|-------|--------------|--------------|--------|
+| Requirements | 83 mapped | 86 mapped (89 total) | REQUIREMENTS.md |
+| Phases | 20 phases | 25 phases | ROADMAP.md progress table |
+| Reducer exports | ~155 | ~156 | grep of reducer files |
+| Test files | 58 files | 63 files | filesystem count |
+| Test count | 728 tests | TBD (needs fresh run) | -- |
 
-*Last updated: YYYY-MM-DD*
-*Feature owner: Phase N*
-```
+### Test File Header State
 
-### Contract Template Standard (from D-06 through D-11)
+**63 test files total.** [VERIFIED: filesystem]
 
-```markdown
-# Feature Name
-
-**Architecture:** [architecture.md](architecture.md)
-
-## Feature Overview
-
-{1 paragraph}
-
-## Reducers
-
-### reducer_name
-
-**Purpose:** {one line}
-**Permission:** {who}
-**Parameters:**
-| Param | Type | Required | Description |
-|-------|------|----------|-------------|
-**Flow:**
-1. ...
-**Expected State Changes:**
-- ...
-**Error Cases:**
-| Condition | Error Message |
-|-----------|--------------|
-
-## Acceptance Scenarios
-
-### Scenario Name
-**Given:** ...
-**When:** ...
-**Then:** ...
-
-## Edge Cases
-
-| Case | Expected Behavior | Notes |
-|------|-------------------|-------|
-
-## Integration Points
-
-| This Feature | Connects To | How | Direction |
-|-------------|------------|-----|-----------|
-
-## Phase History
-
-| Decision | Source | Date |
-|----------|--------|------|
-
----
-
-*Last updated: YYYY-MM-DD*
-*Feature owner: Phase N*
-```
+| File | Header Issue | Description |
+|------|-------------|-------------|
+| `test/backend/match-results/mmr-stats.test.ts` | STALE | 242 new lines from Phase 12.3 adding `describe('Phase 12.3: snapshot-backed MMR + D-G guard rejections')` block not mentioned in header comment. Header lists coverage items from pre-12.3 only. |
+| All other 62 test files | OK | Headers accurately describe test content. Phase 12.3 changes to other files were minor (import cleanup, 1-2 line fixes) that don't warrant header updates. |
 
 ## Don't Hand-Roll
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Reducer parameter documentation | Manually infer types from code | Read actual reducer source files in `spacetimedb/src/reducers/` for exact parameter types and names | Stale docs are worse than no docs; source is always truth |
-| Table relationship diagrams | Guess table structures | Read actual table definitions in `spacetimedb/src/tables/` for exact column types and PKs/FKs | 67 table files, schema has evolved through 12+ phases |
-| ERD cardinality | Assume relationships | Read FK columns and check for btree indexes, optional markers | Some relationships changed (TournamentEnrolled.hsrAccountId removed in Phase 10.4) |
-| View documentation | Copy from old docs | Read `spacetimedb/src/views/anonymousViews.ts` and `securityViews.ts` for current view implementations | Views were added/modified in Phases 10.3, 10.4, 12.2 |
-
-**Key insight:** Every doc file must be written by reading the actual source code, not by copying/editing existing docs. Existing docs have accumulated drift over 12+ phases. The source files in `spacetimedb/src/` are the single source of truth.
+| Architecture content | Copy from stale docs | Read actual source files in `spacetimedb/src/` | Phase 12.3 changed 13 source files; only docs that read source will be accurate |
+| Contract reducer docs | Assume existing entries are correct | Read reducer signatures from source + cross-reference architecture | D-G guards, snapshot hooks, ordering guards were added to existing reducers |
+| ERD column lists | Trust existing ERD entities | Read `spacetimedb/src/tables/*.ts` for exact column definitions | 2 new columns added in Phase 12.3 |
+| Test file counts | Use cached numbers from old docs | Run `ls test/backend/**/*.test.ts \| wc -l` | 5 new test files from Phase 12.3 + 1 from Phase 14 |
 
 ## Common Pitfalls
 
-### Pitfall 1: Copying Stale Content from Existing Docs
-**What goes wrong:** Old docs reference removed columns, deleted tables, or deprecated patterns
-**Why it happens:** 12+ phases of evolution; docs were not always updated atomically with code changes
-**How to avoid:** For every architecture and contract file, read the corresponding source files fresh. Do not trust existing doc content as baseline.
-**Warning signs:** References to `TournamentParticipant` (replaced by `TournamentEnrolled` + `TournamentTeamMember`), `GroupStanding` (renamed to `GroupPhaseRecord`), `player1Id/player2Id` (replaced by `MatchResultParticipant`)
+### Pitfall 1: Assuming Original Phase 13 Work Is Fully Current
+**What goes wrong:** Treating the 2026-04-09 docs as needing no updates because "Phase 13 already ran"
+**Why it happens:** Phase 12.3 ran AFTER Phase 13 and updated 3 architecture files but NOT contracts, codebase docs, FRONTEND-HANDOFF, or ERD
+**How to avoid:** Treat Phase 12.3 source file changes as the primary delta. Only update what changed.
+**Warning signs:** Timestamps saying 2026-04-09 on files that should reflect 2026-04-11 changes
 
-### Pitfall 2: Architecture-Contract Duplication
-**What goes wrong:** Same reducer flow documented in both architecture.md and contract.md with slightly different details
-**Why it happens:** CLAUDE.md explicitly prohibits duplication, but both files cover reducers
-**How to avoid:** Architecture documents reducer flows as brief operational sequences (numbered steps). Contract documents reducer behavior as acceptance specifications (Purpose/Permission/Params/Flow/State Changes/Errors). Architecture is "how it works", contract is "what it should do".
-**Warning signs:** Identical numbered step lists in both files
+### Pitfall 2: Full Regeneration When Targeted Updates Suffice
+**What goes wrong:** Rewriting all 19 architecture files and 18 contracts from scratch when only 3-4 of each need Phase 12.3 additions
+**Why it happens:** Original CONTEXT.md D-12 says "full regeneration from scratch"
+**How to avoid:** For the RERUN, apply D-12 only to codebase docs (which DO need full regen). For architecture/contract files, apply targeted updates to the specific files impacted by Phase 12.3.
+**Warning signs:** Touching files that haven't had source code changes since the original Phase 13
 
-### Pitfall 3: Inconsistent Feature-to-Reducer Mapping
-**What goes wrong:** A reducer documented in the wrong feature's contract, or missed entirely
-**Why it happens:** Some reducers span features (e.g., `finalize_match_result` touches MMR, stats, brackets, match history)
-**How to avoid:** Map each of the 44 reducer files to exactly one feature doc. Cross-feature behavior goes in Integration Points.
-**Warning signs:** A reducer appearing in multiple contracts' Reducers section
+### Pitfall 3: Missing the ROADMAP Phase List Gap
+**What goes wrong:** Updating the progress table but not the Phase list at the top of ROADMAP.md
+**Why it happens:** The two sections are visually separated; easy to fix one and forget the other
+**How to avoid:** Check both sections. The Phase list (lines 15-32) and the Progress table (lines 379-402) must agree.
 
-### Pitfall 4: ERD Table Count Mismatch
-**What goes wrong:** ERD lists different tables than actual schema
-**Why it happens:** Tables added in later phases (Phase 10.4: LobbyMemberAccount, Phase 11: AccountRatingConfig, Phase 12.1: IdentityGcJob, GcResult) may be missing
-**How to avoid:** Cross-reference the 67 table definition files in `spacetimedb/src/tables/` against ERD entities. Current ERD has 65 entities; 2 are missing (likely IdentityGcJob and GcResult from Phase 12.1, or AccountRatingConfig from Phase 11).
-**Warning signs:** Table count in ERD header not matching actual
+### Pitfall 4: Header/Footer Timestamp Mismatch
+**What goes wrong:** Updating doc content but only changing one of the two timestamp locations
+**Why it happens:** Phase 12.3 Plan 08 appended to the footer but didn't update the header
+**How to avoid:** Always update BOTH `Last updated: YYYY-MM-DD` on line 3 AND `*Last updated: YYYY-MM-DD*` in the footer
 
-### Pitfall 5: FRONTEND-HANDOFF.md Stale References
-**What goes wrong:** Handoff doc references non-existent paths or incorrect completion status
-**Why it happens:** Current handoff was written at Phase 6.1; references `docs/teams/` (doesn't exist), says Phases 7-11 are incomplete (all complete), claims "80+ reducers" (actual: 155)
-**How to avoid:** Write from scratch after all other docs are normalized; reference only verified paths
+### Pitfall 5: Forgetting D-12 for Codebase Docs
+**What goes wrong:** Incrementally updating codebase docs instead of regenerating from scratch
+**Why it happens:** The rerun context might suggest "just update the delta"
+**How to avoid:** D-12 explicitly says full regeneration. The 7 codebase docs should be rewritten from the current codebase state, not patched.
 
-### Pitfall 6: Phase History Provenance Confusion
-**What goes wrong:** Phase History entries lack clear provenance, mixing original design decisions with execution-time additions
-**Why it happens:** Different phases used different tagging conventions
-**How to avoid:** For Phase 13 normalization, tag all new entries as `Phase 13 normalization`. Preserve existing entries with their original provenance. Do not rewrite existing Phase History entries.
-**Warning signs:** Entries with no source attribution
+### Pitfall 6: FRONTEND-HANDOFF Data Drift
+**What goes wrong:** Updating the FRONTEND-HANDOFF text but leaving stale numbers in the TL;DR or Backend Summary
+**Why it happens:** Numbers are scattered across multiple sections
+**How to avoid:** Update all numeric claims: requirements count, phase count, reducer count, test file count, test count
 
-## Scope Metrics
+## Scope Metrics (RERUN)
 
-**Exact file counts:** [VERIFIED: filesystem audit]
+**Files needing updates:** [VERIFIED: git diff + filesystem audit]
 
-| Category | Count | Files |
-|----------|-------|-------|
-| Architecture normalization | 19 | achievements, admin, anonymous-play, archetypes, auth, brackets, calendar, chat, cost-sets, cost-tables, lobby, match-results, match-session, mmr, player-stats, roster, smoke, tournament, views |
-| Contract hydration | 18 | achievements, admin, anonymous-play, archetypes, auth, brackets, calendar, chat, cost-sets, lobby, match-results, match-session, mmr, player-stats, roster, smoke, tournament, views |
-| Codebase docs regeneration | 7 | ARCHITECTURE, CONCERNS, CONVENTIONS, INTEGRATIONS, STACK, STRUCTURE, TESTING |
-| FRONTEND-HANDOFF rewrite | 1 | docs/FRONTEND-HANDOFF.md |
-| ERD update | 1 | notes/erd-mermaid.md |
-| Templates (new) | 2 | docs/_templates/architecture-template.md, docs/_templates/contract-template.md |
-| ROADMAP cleanup | 1 | .planning/ROADMAP.md |
-| **Total** | **49** | |
+| Category | Count | Files | Change Type |
+|----------|-------|-------|-------------|
+| Architecture timestamp fix | 3 | match-results, roster, tournament | Header timestamp 2026-04-09 -> 2026-04-12 |
+| Architecture content gap | 1 | match-session (auto-pick pool migration) | Add Phase 12.3 D-I content |
+| Contract Phase 12.3 additions | 4 | roster, match-results, tournament, match-session | Add D-G guards, snapshot pattern, ordering guard, auto-pick pool |
+| Codebase docs full regen | 7 | ARCHITECTURE, CONCERNS, CONVENTIONS, INTEGRATIONS, STACK, STRUCTURE, TESTING | D-12: full regeneration |
+| FRONTEND-HANDOFF refresh | 1 | docs/FRONTEND-HANDOFF.md | Update stats (requirements, phases, reducers, tests) |
+| ERD column additions | 1 | notes/erd-mermaid.md | Add accountRatingSnapshot, requireOwnership columns |
+| ROADMAP fixes | 1 | .planning/ROADMAP.md | Phase list, progress table, plan checkmarks |
+| Test header update | 1 | test/backend/match-results/mmr-stats.test.ts | Add Phase 12.3 coverage to header comment |
+| **Total** | **19** | | |
 
-**Reducer-to-feature mapping for contract hydration:** [VERIFIED: codebase grep]
+**Compared to original Phase 13:** 49 files -> 19 files. Significantly smaller scope since most work from the first run is still valid.
 
-| Feature Doc | Reducer Source Files | Reducer Count |
-|-------------|---------------------|---------------|
-| achievements | achievementManagement.ts | 7 |
-| admin | admin.ts, adminMatchTools.ts, banAdmin.ts | 8 |
-| anonymous-play | (views only -- anonymousViews.ts) | 0 reducers, 4+ views |
-| archetypes | (in rosterAdmin.ts -- archetype reducers) | 4 |
-| auth | auth.ts | 1 (login_as_guest) + server reducers |
-| brackets | bracketGeneration.ts, bracketAdvancement.ts | 7 |
-| calendar | calendarAvailability.ts, calendarEvents.ts, calendarInviteResponse.ts, calendarSaved.ts | 12+ |
-| chat | chat.ts | 2 |
-| cost-sets | costSetManagement.ts | 8 |
-| lobby | lobbyLifecycle.ts, lobbySettings.ts, lobbyPresets.ts, lobbyGc.ts | 15+ |
-| match-results | matchResultSubmission.ts, matchFinalization.ts, scoreEntry.ts | 8+ |
-| match-session | draftClassic.ts, draftAuction.ts, draftControl.ts, postDraft.ts, seriesManagement.ts | 15+ |
-| mmr | eloAdmin.ts, seasonAdmin.ts, ratingAdmin.ts | 6+ |
-| player-stats | (computed via helpers, views) | 0 direct reducers, stats in views |
-| roster | roster.ts, rosterAdmin.ts, profile.ts, accountSelection.ts | 12+ |
-| smoke | server.ts, identityGc.ts, userDeletion.ts | 5+ |
-| tournament | tournamentManagement.ts, tournamentRegistration.ts, tournamentTeams.ts, tournamentAdmin.ts, tournamentCheckIn.ts, tournamentLobby.ts, refereeManagement.ts, concede.ts | 25+ |
-| views | (views/anonymousViews.ts, views/securityViews.ts) | 32+ views |
+### Reducer-to-Feature Mapping Updates
 
-**ERD status:** [VERIFIED: filesystem audit]
-- Current entities: 65 (ERD header says 66)
-- Actual table files: 67
-- Missing from ERD: likely IdentityGcJob, GcResult, AccountRatingConfig (Phase 11-12.1 additions)
-- Cardinality annotations: Already present using mermaid ERD notation (`}o--||`, `}o--o|`, `||--||`), with text labels like `"userId (many-to-one)"`. D-15/D-16 want explicit cardinality annotation text on all relationships.
+Only features with Phase 12.3 source changes need contract updates:
 
-## Execution Strategy Recommendations
+| Feature Doc | Changed Reducer Files | New Behavior to Document |
+|-------------|----------------------|--------------------------|
+| roster | roster.ts, rosterMutations.ts (NEW) | D-G guards on 4 reducers, applyBatchUpsert/Remove delegation, migrate_roster rating recompute |
+| match-results | finalizationHelpers.ts, accountSelection.ts, server.ts | accountRatingSnapshot capture, processMatchMmr snapshot read, monotonic hook |
+| tournament | matchFinalization.ts, tournamentManagement.ts, tournamentLobby.ts | D-H ordering guard, Tournament.requireOwnership |
+| match-session | draftClassic.ts | timer_expiry_classic auto-pick pool migration from HsrAccount.isActive to LMA |
 
-### Plan 1: Templates + ROADMAP (smallest plan)
-- Create `docs/_templates/architecture-template.md` and `docs/_templates/contract-template.md`
-- Update ROADMAP.md Phase 13 scope and cleanup completed phase entries (D-17, D-18)
-- Estimated: 3 files touched
+## Execution Strategy Recommendations (RERUN)
 
-### Plan 2: Architecture Normalization (19 files)
-- **Recommended batching:** Process all 19 sequentially by feature directory (alphabetical). Each file follows the same template, just different content. No inter-file dependencies.
-- **Per-file process:** Read existing architecture.md + read corresponding table definition files + read corresponding reducer files -> write normalized architecture.md
-- **Estimated effort per file:** Small files (admin, archetypes, cost-tables at 59-68 lines) need moderate expansion. Large files (match-results at 524 lines, views at 476 lines, lobby at 436 lines) need structural reorganization more than content addition.
+The original D-19 5-plan structure should be adapted for the rerun:
 
-### Plan 3: Contract Hydration (18 files -- heaviest)
-- **Recommended batching:** Process all 18 sequentially by feature directory (alphabetical).
-- **Per-file process:** Read existing contract.md + read ALL reducer source files for that feature + cross-reference architecture.md -> write fully hydrated contract.md
-- **This is the highest-effort plan.** The 6 contracts currently missing Reducers sections need full hydration from scratch. The 12 that have Reducers sections need verification against current source and possible expansion.
-- **Critical:** For each reducer, must read the actual source code to document correct parameters, types, flow, and error messages. Do not rely on existing doc content.
+### Plan 1: ROADMAP + Test Headers
+- Fix ROADMAP Phase list (add 5 missing entries)
+- Fix ROADMAP progress table (Phase 10.5 plan count, add Phase 14 row)
+- Fix plan checkmarks on Phases 1, 2, 4, 04.1
+- Update mmr-stats.test.ts header comment
+- Smallest plan, no cross-dependencies
 
-### Plan 4: Codebase Docs Regeneration (7 files)
-- Full regeneration from scratch (D-12). Read the entire codebase structure, not existing docs.
-- Current docs dated 2026-04-06 (pre-Phase 12.2). Need to reflect: SDK upgrade (Phase 12.2), identity GC (Phase 12.1), account selection (Phase 10.4), test stabilization (Phase 10.5), all view exports.
+### Plan 2: Architecture + Contract Updates (Phase 12.3 delta)
+- Fix timestamp mismatch on 3 architecture files (match-results, roster, tournament)
+- Add Phase 12.3 content to match-session/architecture.md (auto-pick pool)
+- Update 4 contracts (roster, match-results, tournament, match-session) with Phase 12.3 additions
+- Must read actual source files for accurate documentation per D-09
 
-### Plan 5: FRONTEND-HANDOFF + ERD (2 files)
-- **Must execute last** (D-14) -- references finalized docs from Plans 2-4.
-- FRONTEND-HANDOFF.md: Current version references `docs/teams/` (doesn't exist), claims 55 tables (actual: 67), claims 80+ reducers (actual: 155), says Phases 7-11 incomplete (all complete). Full rewrite.
-- ERD: Add missing tables (IdentityGcJob, GcResult, AccountRatingConfig at minimum), verify all 67 tables present, ensure all relationships have explicit cardinality annotations.
+### Plan 3: Codebase Docs Full Regeneration
+- Full regeneration of all 7 files per D-12
+- Must reflect current state including Phase 12.3 + Phase 14 changes
+- 67 tables, ~156 reducer exports, 26 helpers, 63 test files, 5 new Phase 12.3 test files
+
+### Plan 4: FRONTEND-HANDOFF + ERD
+- Update FRONTEND-HANDOFF stats: 86 mapped requirements, 25 phases, ~156 reducers, 63 test files
+- Update ERD: add accountRatingSnapshot to MatchResultParticipant, requireOwnership to Tournament
+- Must execute after Plans 2-3 so references are up to date (per D-14)
 
 ## Validation Architecture
 
@@ -374,12 +323,12 @@ ParentTable (PK)
 |--------|----------|-----------|-------------------|-------------|
 | N/A | Docs-only phase -- no code changes | manual-only | N/A | N/A |
 
-**Justification for manual-only:** Phase 13 produces zero code changes. All outputs are markdown documentation files. Validation is structural (does each file have the required sections?) and content-based (do reducers match source code?). This cannot be automated with the existing test framework.
+**Justification for manual-only:** Phase 13 produces zero code changes except for the test header comment update (which is a comment, not executable code). All outputs are markdown documentation files. Validation is structural.
 
 ### Sampling Rate
 - **Per task commit:** Visual inspection of file structure against template
-- **Per wave merge:** Cross-reference reducer counts in contracts against source file grep
-- **Phase gate:** All 49 files exist, all architecture files have required 4 sections, all contracts have required 7 sections
+- **Per wave merge:** Cross-reference numeric claims (table count, reducer count, test count) against filesystem
+- **Phase gate:** All updated files have consistent timestamps, ROADMAP Phase list matches progress table, FRONTEND-HANDOFF stats match actual counts
 
 ### Wave 0 Gaps
 None -- no test infrastructure needed for docs-only phase.
@@ -388,48 +337,51 @@ None -- no test infrastructure needed for docs-only phase.
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Template files should go in `docs/_templates/` | Architecture Patterns | Low -- location is Claude's discretion per CONTEXT.md; planner can override |
-| A2 | The 2 missing ERD tables are IdentityGcJob and GcResult (Phase 12.1) | Scope Metrics | Low -- exact missing tables will be determined by diff during Plan 5 execution |
-| A3 | 155 reducer count from grep is accurate | Scope Metrics | Low -- includes scheduled reducers and view functions; exact count per feature may vary slightly |
+| A1 | Phase 14 is completed (plans 2/2 marked [x] in ROADMAP) | Delta Analysis | Low -- if incomplete, ROADMAP row needs different status |
+| A2 | ~156 reducer exports is accurate (grep count) | Scope Metrics | Low -- exact count verified via grep |
+| A3 | Test count has increased from 728 but exact number unknown without running suite | Scope Metrics | Medium -- FRONTEND-HANDOFF test count may be wrong; recommend running suite or estimating from new test file describes |
 
-## Open Questions (RESOLVED)
+## Open Questions
 
-1. **Special handling for smoke/views contracts?**
-   - What we know: `smoke` documents test infrastructure, not a user-facing feature. `views` documents server-side views, not reducers. Both have contract.md files but don't follow the standard reducer-first pattern.
-   - What's unclear: Should these follow the exact same template or have an adapted format?
-   - Recommendation: Adapt the template slightly -- smoke uses "Bootstrap Procedures" instead of "Reducers", views uses "View Definitions" instead of "Reducers". Same sections otherwise.
+1. **Exact test count for FRONTEND-HANDOFF?**
+   - What we know: Was 728 (531 integration + 197 unit). Phase 12.3 added 5 new test files. Phase 14 may have modified counts.
+   - What's unclear: Exact test count without running `npm run test:all`
+   - Recommendation: During execution, run a quick `grep -c "it(" test/backend/**/*.test.ts` to estimate, or use the last known count from Phase 14 execution if available.
 
-2. **AccountRatingConfig table (Phase 11) presence in ERD?**
-   - What we know: Phase 11 added AccountRatingConfig as a single-row config table. ERD mentions it in the color legend (pink) but may or may not have its entity definition.
-   - What's unclear: Whether it's among the 65 counted entities or missing.
-   - Recommendation: Verify during Plan 5 execution by diffing table files against ERD entities.
+2. **Should match-session/architecture.md get Phase 12.3 content?**
+   - What we know: `draftClassic.ts` was modified (auto-pick pool migration). The architecture.md for match-session was NOT updated by Phase 12.3 Plan 08.
+   - What's unclear: Whether the auto-pick pool change is significant enough for architecture doc update
+   - Recommendation: Yes -- it changes behavior of timer_expiry_classic from querying HsrAccount.isActive to querying LobbyMemberAccount, which is a meaningful data flow change worth documenting.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Filesystem audit of `docs/*/architecture.md` (19 files) and `docs/*/contract.md` (18 files) -- section presence verified via grep
-- `docs/roster/architecture.md` (170 lines) -- reference architecture read in full
-- `docs/roster/contract.md` (416 lines) -- reference contract read in full
-- `.claude/skills/uat/references/workflow-doc-template.md` -- contract template read in full
-- `spacetimedb/src/reducers/` directory listing (44 files, 155 reducer exports)
-- `spacetimedb/src/tables/` directory listing (67 table definition files)
-- `notes/erd-mermaid.md` (492 lines, 65 entity definitions, existing cardinality annotations)
-- `docs/FRONTEND-HANDOFF.md` (stale references confirmed: teams dir missing, phase status incorrect)
-- `.planning/codebase/` files (7 files, dated 2026-04-06)
-- `13-CONTEXT.md` -- all 19 locked decisions
+- Git diff `3a77a8c..HEAD` -- all files changed after last Phase 13 commit [VERIFIED: git]
+- Git diff `ce93599..HEAD -- spacetimedb/src/` -- 13 backend source files changed [VERIFIED: git]
+- Filesystem audit of `docs/*/architecture.md` (19 files) -- timestamp consistency [VERIFIED: grep]
+- Filesystem audit of `docs/*/contract.md` (18 files) -- architecture link presence [VERIFIED: grep]
+- `spacetimedb/src/tables/*.ts` count: 67 files [VERIFIED: ls + wc]
+- `spacetimedb/src/reducers/*.ts` grep: ~156 reducer exports [VERIFIED: grep]
+- `test/backend/**/*.test.ts` count: 63 files [VERIFIED: ls + wc]
+- `.planning/ROADMAP.md` line-by-line analysis of Phase list, progress table, plan checkmarks [VERIFIED: read]
+- `13-VERIFICATION.md` gap analysis [VERIFIED: read]
+- Commit `665c671` verification gap fixes confirmed [VERIFIED: git log]
 
 ### Secondary (MEDIUM confidence)
-- Reducer-to-feature mapping inferred from file naming conventions and directory structure
+- Phase 14 completion status inferred from ROADMAP plan checkmarks (2/2 [x])
 
 ### Tertiary (LOW confidence)
-- None -- all findings verified against filesystem
+- None
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH -- docs-only phase, no library decisions needed
-- Architecture: HIGH -- reference examples read in full, gap analysis complete via grep audit
-- Pitfalls: HIGH -- stale content identified by direct file comparison, missing tables confirmed by filesystem audit
+- Architecture/Contract delta: HIGH -- git diff confirms exactly which files changed and when
+- ROADMAP issues: HIGH -- line-by-line verification against progress table and Phase list
+- Codebase docs staleness: HIGH -- dated 2026-04-09, Phase 12.3 completed 2026-04-11
+- FRONTEND-HANDOFF staleness: HIGH -- numbers verified against current filesystem
+- ERD gaps: HIGH -- grep confirmed missing columns
+- Test header: HIGH -- header text compared against actual describe blocks
 
-**Research date:** 2026-04-09
-**Valid until:** 2026-05-09 (stable -- docs-only phase, no external dependencies that could change)
+**Research date:** 2026-04-12
+**Valid until:** 2026-05-12 (stable -- docs-only phase, updates are deterministic from codebase state)
