@@ -1,6 +1,6 @@
 # Match Results -- Architecture
 
-Last updated: 2026-04-09
+Last updated: 2026-04-12
 
 ## Overview
 
@@ -195,7 +195,7 @@ live match; bounded by match count × team size. Acceptable within the energy bu
 
 ---
 
-*Last updated: 2026-04-11*
+*Last updated: 2026-04-12*
 *Feature owner: Phase 06 / Phase 07 / Phase 10.1 / Phase 12.3*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

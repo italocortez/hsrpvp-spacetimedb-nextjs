@@ -189,7 +189,8 @@ Match results manage the full lifecycle of determining a match outcome: per-game
 2. Look up `MatchResultRecord`; throw if not found
 3. Validate status is `Validated`
 4. Authority check: Moderator+, OR `refereeUserId === user.id`, OR tournament access via BracketMatch
-5. Delegate to `runFinalization(ctx, matchResult, user.id)`
+5. Phase 12.3 D-H-01 ordering guard: if match is tournament-controlled, reject unless the parent tournament stage is `Completed` or `Cancelled`
+6. Delegate to `runFinalization(ctx, matchResult, user.id)`
 
 **Expected State Changes:**
 - Full finalization: `MatchHistory` row inserted, `PlayerStats` updated, `MmrHistory` rows written, leaderboard rebuilt, lobby hard-deleted
@@ -200,6 +201,7 @@ Match results manage the full lifecycle of determining a match outcome: per-game
 | Match result not found | "Match result not found." |
 | Status is not Validated | "Match result must be Validated before finalization." |
 | No authority | "You do not have authority to finalize this match result." |
+| Tournament match, tournament not yet Completed or Cancelled (D-H-01) | Ordering guard error — must wait for tournament to finish |
 
 ---
 
@@ -340,6 +342,36 @@ Match results manage the full lifecycle of determining a match outcome: per-game
 | Invalid `winnerTeamSideTag` for Validated | "Invalid winnerTeamSideTag: must be \"Blue\", \"Red\", or \"\" for a draw." |
 | Ranked match missing screenshots | "Cannot validate: no game scores have been recorded." / "Cannot validate Ranked match: game N is missing screenshot(s). All games must have both teamBlueScreenshotUrl and teamRedScreenshotUrl." |
 
+## Phase 12.3: accountRatingSnapshot lifecycle
+
+### Capture (MMR-RACE-01)
+
+At `start_draft` time, when `MatchResultParticipant` rows are inserted, the reducer
+resolves each player's `LobbyMemberAccount` rows for `(lobbyId, userId)`, reads
+`HsrAccount.accountRating` for each selected account, and writes
+`max(accountRatings)` to `MatchResultParticipant.accountRatingSnapshot`. For casual
+matches with zero `LobbyMemberAccount` rows the snapshot defaults to `0`.
+
+This freeze eliminates three race vectors: (1) `set_active_hsr_account` post-capture,
+(2) `batch_upsert/remove_characters` post-capture, (3) `process_tournament_mmr`
+re-reading `HsrAccount` at tournament-end (potentially hours after match start).
+
+### Read-path (MMR-RACE-02)
+
+`processMatchMmr` at `finalizationHelpers.ts` reads `participant.accountRatingSnapshot`
+directly. Both the standalone-ranked path (`runFinalization` step 11) and the
+tournament-batch path (`process_tournament_mmr`) call the same helper, so the
+read-path swap is path-independent.
+
+### Monotonic-upward hook in BetweenGames
+
+`select_match_account` carries a post-insert hook: if a `MatchResultRecord` exists for
+the lobby (i.e. the match is in BetweenGames) and the caller has an MRP row,
+`accountRatingSnapshot` is extended to `max(existing, newAccount.accountRating)`.
+`deselect_match_account` does NOT run the hook — removing from selection can never
+lower the max. The hook short-circuits when no MRP row exists (stand-ins joining
+after `start_draft`).
+
 ## Acceptance Scenarios
 
 ### Happy Path: Captain Records and Confirms Scores, Referee Submits
@@ -383,6 +415,32 @@ Match results manage the full lifecycle of determining a match outcome: per-game
 **Given:** Ranked MatchResultRecord in Disputed status
 **When:** Moderator calls `override_match_result(matchResultId, "Validated", "Blue", "Screenshot confirms Blue win")`
 **Then:** Status → Validated, winnerTeamSide=Blue, matchEndReason=Completed, disputeReason set.
+
+### Phase 12.3: processMatchMmr Reads Snapshot (MMR-RACE-02)
+
+**Given:** A finalized match with two participants, each having an accountRatingSnapshot value set at start_draft time
+**When:** `processMatchMmr` runs (either via runFinalization or process_tournament_mmr)
+**Then:** ELO modifier is computed from `participant.accountRatingSnapshot` — not from a live `HsrAccount.accountRating` lookup. Even if a player changed their roster or active account after the draft started, the snapshot value is used.
+
+### Phase 12.3: BetweenGames Monotonic Snapshot Update
+
+**Given:** A best-of-N series in BetweenGames stage; player has accountRatingSnapshot=100 on their MRP row; player selects a second account with accountRating=150
+**When:** `select_match_account(lobbyId, higherRatedAccountId)`
+**Then:** accountRatingSnapshot updated to 150 (max wins).
+
+**Given:** Same series; player then selects a third account with accountRating=80
+**When:** `select_match_account(lobbyId, lowerRatedAccountId)`
+**Then:** accountRatingSnapshot remains 150 (monotonic-upward; lower value does not replace).
+
+### Phase 12.3: Tournament Ordering Guard (D-H-01)
+
+**Given:** A tournament match where the parent tournament is still InProgress
+**When:** Moderator calls `finalize_match_result(matchResultId)`
+**Then:** Throws ordering guard error — tournament must reach Completed or Cancelled before individual match finalization is allowed.
+
+**Given:** Same tournament match after the tournament stage advances to Completed
+**When:** Moderator calls `finalize_match_result(matchResultId)`
+**Then:** Finalization proceeds normally — 19-step pipeline runs, stats and MMR written, lobby hard-deleted.
 
 ## Edge Cases
 
@@ -430,8 +488,9 @@ Match results manage the full lifecycle of determining a match outcome: per-game
 | override_match_result uses winnerTeamSide + matchEndReason (D-30, D-31) | Phase 11 execution | 2026-04-06 |
 | Ranked override requires screenshots (D-07) | Phase 11 execution | 2026-04-06 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+| Phase 12.3 execution | accountRatingSnapshot capture at MRP insert (MMR-RACE-01); processMatchMmr snapshot read-path (MMR-RACE-02) replacing live HsrAccount lookup; select_match_account monotonic-upward hook in BetweenGames; finalize_match_result D-H-01 tournament ordering guard | 2026-04-12 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 7*
+*Last updated: 2026-04-12*
+*Feature owner: Phase 7 / Phase 12.3*

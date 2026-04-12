@@ -1,6 +1,6 @@
 # Match Session -- Architecture
 
-Last updated: 2026-04-09
+Last updated: 2026-04-12
 
 ## Overview
 
@@ -148,6 +148,31 @@ Lobby (id: u32 autoInc PK)
 4. Delete all `MatchSessionStep` rows for this lobby (via `lobby_id` index)
 5. Delete `MatchSession` row for this lobby
 
+### Phase 12.3: timer_expiry_classic auto-pick pool migration
+
+**D-I-01/02**: When `autoRandomPick=true` on a Classic draft Pick turn and the timer
+expires, the auto-pick character pool was previously built by reading
+`HsrAccount` filtered by `isActive=true` for each acting team member (the global
+active account). Phase 12.3 migrated this read to `LobbyMemberAccount` rows for
+`(lobbyId, userId)` — the per-match selected accounts.
+
+**Why this matters**: Phase 10.4 introduced per-match account selection
+(`LobbyMemberAccount`). After that change, a player's globally active account
+(`HsrAccount.isActive=true`) can legitimately differ from their match-selected
+account. Using the old path meant timer expiry auto-picks would sample the wrong
+character pool — the pool from the globally active account rather than the accounts
+the player brought into this specific match.
+
+**Post-migration behavior**: Timer expiry builds the owned-character union across
+all `LobbyMemberAccount` rows for the acting team's members, matching the pattern
+used by `ownershipValidation.ts` (real-time pick ownership checks) and
+`start_draft`'s `autoRandomPick` pre-validation gate (lines 76-96). This closes
+the last in-gameplay runtime read of `HsrAccount.isActive`.
+
+**Scope**: The migration applies only to the `requireOwnership=true` path. When
+`requireOwnership=false`, the pool comes from the cost table for the game mode
+(no account read needed), which was unchanged.
+
 ## Phase History
 
 | Decision | Source | Date |
@@ -162,10 +187,11 @@ Lobby (id: u32 autoInc PK)
 | Anonymous enforcement in MatchSessionStep: actorUserId=0 when isAnonymousPlayers | Phase 09 CONTEXT.md | 2026-03-28 |
 | BetweenGames stage added for best-of-N series; advance_to_next_game resets draft state | Phase 07 execution | 2026-03-07 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
+| Phase 12.3 execution | timer_expiry_classic auto-pick pool migrated from HsrAccount.isActive to LobbyMemberAccount per-match selection (D-I-01/02); closes last in-gameplay isActive read from Phase 10.4 migration gap | 2026-04-12 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 07 / Phase 09*
+*Last updated: 2026-04-12*
+*Feature owner: Phase 07 / Phase 09 / Phase 12.3*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

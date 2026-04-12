@@ -165,6 +165,30 @@ Tournaments are multi-stage competitive events managed by Tournament Hosts and t
 | Duplicate lobby for bracket match | "A lobby already exists for this bracket match." |
 | Stand-in already approved | "Stand-in already approved for this bracket match." |
 
+## Phase 12.3 Additions
+
+### Tournament.requireOwnership (Phase 12.3)
+
+`Tournament.requireOwnership` is a boolean column (default `false`). When `true`,
+character ownership validation during Classic draft picks checks that the picked
+character is in the player's enrolled HSR account roster (via `TournamentPlayerAccount`
+→ `HsrAccountCharacter`). This is distinct from `requireRoster`, which only gates
+registration; `requireOwnership` gates individual draft picks.
+
+### finalize_match_result Ordering Guard (D-H-01, Phase 12.3)
+
+For tournament-controlled matches, `finalize_match_result` rejects unless the parent
+tournament has reached `Completed` or `Cancelled`. The guard is unconditional:
+- **MMR tournaments** (`countTowardsMmr=true`): blocked until terminal stage →
+  `process_tournament_mmr` runs against surviving MRP rows → individual
+  `finalize_match_result` calls succeed and clean up ephemeral data.
+- **Casual tournaments** (`countTowardsMmr=false`): blocked until terminal stage →
+  per-match `finalize_match_result` succeeds (no MMR step). Guard still applies
+  to preserve bracket rollback capability.
+- **Non-tournament matches**: unaffected; finalize freely once Validated.
+
+Cross-reference: see `docs/match-results/contract.md` Phase 12.3 section.
+
 ## Acceptance Scenarios
 
 ### Tournament Creation
@@ -379,6 +403,21 @@ Note: TournamentEnrolled row does NOT contain hsrAccountId — that column was r
 **When:** `resume_series(matchSessionId)` with 1+ player per team present
 **Then:** Series resumes from where it left off
 
+### Phase 12.3: Tournament Ordering Guard Blocks Early Finalization (D-H-01)
+**Given:** A tournament match where the parent tournament stage is InProgress
+**When:** Moderator calls `finalize_match_result(matchResultId)`
+**Then:** Throws ordering guard error — finalization blocked until tournament is Completed or Cancelled
+
+### Phase 12.3: Tournament Ordering Guard Allows Finalization After Completion (D-H-01)
+**Given:** Same tournament match; tournament has since advanced to Completed
+**When:** Moderator calls `finalize_match_result(matchResultId)`
+**Then:** Finalization proceeds — 19-step pipeline runs, stats written, lobby hard-deleted
+
+### Phase 12.3: requireOwnership Blocks Unowned Character Pick
+**Given:** Tournament with requireOwnership=true; player enrolled with account that has only "Kafka" in their roster
+**When:** Player tries to pick "Jingliu" (not in their enrolled account's HsrAccountCharacter rows)
+**Then:** Pick rejected with ownership error — character not in player's enrolled HSR account
+
 ## Edge Cases
 
 | Case | Expected Behavior |
@@ -478,7 +517,9 @@ Note: TournamentEnrolled row does NOT contain hsrAccountId — that column was r
 | Stand-in TPA snapshot conditional on bracketMatchId being truthy | Phase 10.4 execution | 2026-04-04 |
 | view_tournament_registrant_accounts new view: locked accounts per tournament respecting rosterVisibility | Phase 10.4 execution | 2026-04-04 |
 | Full hydration from codebase; Feature Overview and Reducers section added | Phase 13 normalization | 2026-04-09 |
+| Phase 12.3 execution | D-H-01 finalize_match_result ordering guard: tournament-controlled matches blocked until tournament reaches Completed or Cancelled (unconditional — applies to both MMR and casual tournaments); Tournament.requireOwnership column (bool, default false) gates per-pick character ownership checks | 2026-04-12 |
 
 ---
 
-*Last updated: 2026-04-09*
+*Last updated: 2026-04-12*
+*Feature owner: Phase 3 / Phase 12.3*

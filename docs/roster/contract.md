@@ -83,8 +83,9 @@ Players create HSR account entries (up to 5 per user), add owned characters with
 **Flow:**
 1. ensureVerifiedUser — ownership check
 2. No-op if account is already active
-3. Deactivate all other accounts for this user
-4. Activate the target account
+3. Phase 12.3 D-G-01 (WIDE guard): reject if target account OR any of caller's currently-active accounts is bound to a live LobbyMemberAccount row
+4. Deactivate all other accounts for this user
+5. Activate the target account
 
 **Expected State Changes:**
 - Target HsrAccount.isActive = true
@@ -94,6 +95,7 @@ Players create HSR account entries (up to 5 per user), add owned characters with
 | Condition | Error Message |
 |-----------|--------------|
 | Not account owner | Permission error |
+| Target or any active account bound to a live lobby (ROST-GUARD-01) | Error citing the conflicting lobby's joinCode |
 
 ### delete_hsr_account
 
@@ -137,13 +139,15 @@ Players create HSR account entries (up to 5 per user), add owned characters with
 
 **Flow:**
 1. ensureVerifiedUser — ownership check
-2. Parse JSON array
-3. Phase 1: Validate ALL — character exists in HsrCharacter table, eidolon 0-6
-4. Phase 2: Upsert ALL — composite PK find → delete + insert pattern
-5. Atomic: any validation failure rejects entire batch
+2. Phase 12.3 D-G-01 (NARROW guard): reject if the target hsrAccountId is bound to a live LobbyMemberAccount row
+3. Parse JSON array
+4. Phase 1: Validate ALL — character exists in HsrCharacter table, eidolon 0-6 (via applyBatchUpsert helper)
+5. Phase 2: Upsert ALL — composite PK find → delete + insert pattern, then updateAccountRating (via applyBatchUpsert helper)
+6. Atomic: any validation failure rejects entire batch
 
 **Expected State Changes:**
 - HsrAccountCharacter rows inserted or updated (delete+insert for existing)
+- HsrAccount.accountRating recalculated
 
 **Error Cases:**
 | Condition | Error Message |
@@ -152,6 +156,7 @@ Players create HSR account entries (up to 5 per user), add owned characters with
 | Unknown character name | "Invalid character" |
 | Eidolon level > 6 | "eidolon level" |
 | Any invalid entry | Entire batch rejected (no partial writes) |
+| Target account bound to a live lobby (ROST-GUARD-01) | Error citing the conflicting lobby's joinCode |
 
 ### batch_remove_characters
 
@@ -167,19 +172,22 @@ Players create HSR account entries (up to 5 per user), add owned characters with
 
 **Flow:**
 1. ensureVerifiedUser — ownership check
-2. Parse JSON array of names
-3. Phase 1: Validate ALL names exist on this account
-4. Phase 2: Delete ALL
-5. Atomic: any name not found rejects entire batch
+2. Phase 12.3 D-G-01 (NARROW guard): reject if the target hsrAccountId is bound to a live LobbyMemberAccount row
+3. Parse JSON array of names
+4. Phase 1: Validate ALL names exist on this account (via applyBatchRemove helper)
+5. Phase 2: Delete ALL, then updateAccountRating (via applyBatchRemove helper)
+6. Atomic: any name not found rejects entire batch
 
 **Expected State Changes:**
 - HsrAccountCharacter rows deleted
+- HsrAccount.accountRating recalculated
 
 **Error Cases:**
 | Condition | Error Message |
 |-----------|--------------|
 | Character not on account | "not found" |
 | Any missing entry | Entire batch rejected (no partial deletes) |
+| Target account bound to a live lobby (ROST-GUARD-01) | Error citing the conflicting lobby's joinCode |
 
 ### migrate_roster
 
@@ -197,12 +205,14 @@ Players create HSR account entries (up to 5 per user), add owned characters with
 **Flow:**
 1. ensureVerifiedUser — both accounts must belong to caller
 2. Validate source !== target
-3. Copy mode: upsert source chars into target (overwrite eidolon if exists)
-4. Move mode: same as copy, then delete all source chars
+3. Phase 12.3 D-G-01: reject if EITHER source OR target account is bound to a live LobbyMemberAccount row
+4. Copy mode: call applyBatchUpsert on target (validates + upserts all source chars + recomputes target accountRating)
+5. Move mode: same as copy, then call applyBatchRemove on source (deletes source chars + recomputes source accountRating)
+6. Phase 12.3 D-D-04 (latent bug fix): previously never called updateAccountRating on either account, leaving stale ratings. Helper-based implementation closes this gap.
 
 **Expected State Changes:**
-- Copy: target gains source's characters (eidolon levels overwritten if conflicts)
-- Move: same as copy + source HsrAccountCharacter rows deleted
+- Copy: target gains source's characters (eidolon levels overwritten if conflicts); target accountRating recalculated
+- Move: same as copy + source HsrAccountCharacter rows deleted; both source and target accountRating recalculated
 
 **Error Cases:**
 | Condition | Error Message |
@@ -210,6 +220,16 @@ Players create HSR account entries (up to 5 per user), add owned characters with
 | source === target | "same account" |
 | Invalid mode | Must contain "copy" (or similar) |
 | Not owner of both | Permission error |
+| Source or target account bound to a live lobby (ROST-GUARD-01) | Error citing the conflicting lobby's joinCode |
+
+### rosterMutations.ts helpers (Phase 12.3 D-D-01/02/03)
+
+New file `spacetimedb/src/helpers/rosterMutations.ts` extracts the "mutate characters + recompute accountRating" sequence that was previously duplicated across `batch_upsert_characters`, `batch_remove_characters`, and `migrate_roster`:
+
+- `applyBatchUpsert(ctx, accountId, items, actingUserId)` — validates items (character exists, eidolon 0-6), upserts HsrAccountCharacter rows via composite-PK delete+insert with audit columns, calls `updateAccountRating`
+- `applyBatchRemove(ctx, accountId, names, actingUserId)` — validates all names exist, deletes HsrAccountCharacter rows, calls `updateAccountRating`
+
+The calling reducer owns auth and account-ownership checks; helpers own content validation and the mutate+recompute sequence. Admin variants (`admin_batch_upsert_characters`, `admin_batch_remove_characters`) also delegate to these helpers.
 
 ### Admin proxy reducers
 
@@ -269,6 +289,11 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 **When:** `update_hsr_account(id, displayLabel="   ", ...)`
 **Then:** Throws "cannot be empty"
 
+### Set Active — D-G Guard (Phase 12.3)
+**Given:** User with account A that is currently selected in an active lobby (LobbyMemberAccount row exists for A)
+**When:** `set_active_hsr_account(A.id)` or `set_active_hsr_account(B.id)` where B is the caller's currently-active account
+**Then:** Throws error identifying the conflicting lobby's joinCode. Switch blocked while account is in active use. (ROST-GUARD-01)
+
 ### Set Active — Switch
 **Given:** User with accounts A (active) and B (inactive)
 **When:** `set_active_hsr_account(B.id)`
@@ -299,6 +324,11 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 **When:** `admin_delete_hsr_account(account.id)` called by admin
 **Then:** Same deletion guard applies — throws same error. Admins must remove lobby/tournament references before deleting. (D-25, Phase 10.4 execution)
 
+### Batch Upsert — D-G Guard (Phase 12.3)
+**Given:** Account is currently selected in an active lobby (LobbyMemberAccount row exists for that hsrAccountId)
+**When:** `batch_upsert_characters(hsrAccountId, [...])`
+**Then:** Throws error identifying the conflicting lobby's joinCode. Mutation blocked while account is in active use. (ROST-GUARD-01)
+
 ### Batch Upsert — Insert
 **Given:** Account with no characters
 **When:** `batch_upsert_characters(id, [{acheron, e2}, {aglaea, e0}])`
@@ -324,6 +354,11 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 **When:** `batch_upsert_characters(id, [])`
 **Then:** Throws "non-empty"
 
+### Batch Remove — D-G Guard (Phase 12.3)
+**Given:** Account is currently selected in an active lobby (LobbyMemberAccount row exists for that hsrAccountId)
+**When:** `batch_remove_characters(hsrAccountId, [...])`
+**Then:** Throws error identifying the conflicting lobby's joinCode. Removal blocked while account is in active use. (ROST-GUARD-01)
+
 ### Batch Remove — Happy Path
 **Given:** Account with aglaea
 **When:** `batch_remove_characters(id, ["aglaea"])`
@@ -333,6 +368,11 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 **Given:** Account with acheron but NOT "GhostCharacter"
 **When:** `batch_remove_characters(id, ["acheron", "GhostCharacter"])`
 **Then:** Throws "not found", acheron is NOT deleted (all-or-nothing)
+
+### Migrate — D-G Guard (Phase 12.3)
+**Given:** Source or target account is currently selected in an active lobby (LobbyMemberAccount row exists)
+**When:** `migrate_roster(sourceAccountId, targetAccountId, "copy")`
+**Then:** Throws error identifying the conflicting lobby's joinCode. Migration blocked while either account is in active use. (ROST-GUARD-01)
 
 ### Migrate — Copy
 **Given:** Source account with acheron (e3) and aglaea (e1), empty target account
@@ -410,8 +450,9 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 | admin_delete_hsr_account has identical deletion guards (D-25) | Phase 10.4 execution | 2026-04-04 |
 | HsrAccount and HsrAccountCharacter made private — view_my_roster and view_public_accounts replace raw subscriptions (D-20) | Phase 10.4 execution | 2026-04-04 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+| Phase 12.3 execution | D-G lobby guards (ROST-GUARD-01) on set_active_hsr_account (WIDE), batch_upsert_characters (NARROW), batch_remove_characters (NARROW), migrate_roster (source+target); rosterMutations.ts helper extraction (D-D-01/02/03) with applyBatchUpsert + applyBatchRemove; migrate_roster rating-recompute fix (D-D-04 latent bug) | 2026-04-12 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 2*
+*Last updated: 2026-04-12*
+*Feature owner: Phase 2 / Phase 12.3*
