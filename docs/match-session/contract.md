@@ -173,11 +173,11 @@ The match session system manages the entire draft lifecycle within a lobby: char
 4. Read current step from `draftSequence[turnIndex]`
 5. **If Pick turn:**
    - Default: `characterName="EMPTY"`, `eidolon=0`
-   - If `autoRandomPick=true`: build available pool (owned characters if requireOwnership, else all cost table characters), exclude banned+picked, deterministic hash `(turnIndex * 31 + lobbyId) % poolSize`
+   - If `autoRandomPick=true`: build available pool — Phase 12.3 D-I-01/02: if `requireOwnership=true`, pool is union of characters from all `LobbyMemberAccount` rows for `(lobbyId, userId)` for each acting team member (migrated from `HsrAccount.isActive` global account); if `requireOwnership=false`, pool is all cost table characters for the game mode — exclude banned+picked, deterministic hash `(turnIndex * 31 + lobbyId) % poolSize`
    - Insert Pick step with `actorUserId=0` (system), `costPaid=0`
 6. **If Ban turn:**
    - Default: `characterName="SKIP"`
-   - If `autoRandomPick=true`: same deterministic hash from available pool
+   - If `autoRandomPick=true`: same deterministic hash from available pool (same LobbyMemberAccount-based pool when requireOwnership=true)
    - Insert Ban step with `actorUserId=0` (system)
 7. Advance `turnIndex` by 1; reset timer
 8. If Classic draft complete: transition to `Equipping`
@@ -694,6 +694,13 @@ The match session system manages the entire draft lifecycle within a lobby: char
 **When:** Turn timer expires
 **Then:** System deterministically selects from available pool using hash `(turnIndex * 31 + lobbyId) % poolSize`. Pick step recorded with selected character, actorUserId=0.
 
+### Classic Draft: Timer Expiry Auto-Pick Uses Match-Selected Account (Phase 12.3 D-I)
+
+**Given:** Active Classic draft, autoRandomPick=true, requireOwnership=true; Blue player's globally-active HSR account has "Kafka" but their match-selected account (LobbyMemberAccount) has "Jingliu" and "Blade"
+**When:** Turn timer expires on Blue's Pick turn
+**Then:** Auto-pick pool is built from the match-selected account (LobbyMemberAccount rows) — contains "Jingliu" and "Blade", NOT "Kafka". System deterministically picks from {Jingliu, Blade}. Pick recorded with actorUserId=0.
+Note: The globally-active account (HsrAccount.isActive=true) is NOT consulted. Pool reflects match selection, not global account preference. (D-I-01/02, Phase 12.3)
+
 ### Classic Draft: Mirror Picks
 
 **Given:** Active Classic draft, allowMirrorPicks=true, Blue has already picked "Kafka"
@@ -923,8 +930,9 @@ D-50 applies to ALL Drafting→Equipping transitions: auto (last Classic pick, l
 | runFinalization step 19: cascade-deletes lobby after ephemeral cleanup (was set Finished, changed to cascade-delete) | Phase 9 execution | 2026-03-29 |
 | AwaitingResult stage: submit_match_result sets AwaitingResult (frees players), finalization cascade-deletes lobby | Phase 9 execution | 2026-03-29 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+| Phase 12.3 execution | timer_expiry_classic auto-pick pool migrated from HsrAccount.isActive (global active account) to LobbyMemberAccount (per-match selected accounts) when requireOwnership=true (D-I-01/02); closes last in-gameplay runtime read of HsrAccount.isActive introduced in Phase 10.4 migration gap | 2026-04-12 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 9*
+*Last updated: 2026-04-12*
+*Feature owner: Phase 9 / Phase 12.3*
