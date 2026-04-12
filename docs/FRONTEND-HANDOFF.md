@@ -1,8 +1,8 @@
 # HSRPVP Backend -- Frontend Handoff
 
-Last updated: 2026-04-10
+Last updated: 2026-04-12
 
-> **TL;DR:** The backend (v0.5) is complete. All 83 mapped requirements are implemented across 20 phases. You have 67 tables, ~155 reducer exports, 32 server-side views, and generated TypeScript bindings. The frontend (v1) needs to be built on top of this. This document routes you to everything you need.
+> **TL;DR:** The backend (v0.5) is complete. All 86 mapped requirements are implemented across 25 phases. You have 67 tables, ~156 reducer exports, 32 server-side views, and generated TypeScript bindings. The frontend (v1) needs to be built on top of this. This document routes you to everything you need.
 
 ---
 
@@ -10,10 +10,10 @@ Last updated: 2026-04-10
 
 - **SpacetimeDB SDK:** 2.1.0 (`spacetimedb/react` on the client, `spacetimedb/server` in the module)
 - **Tables:** 67 production table definitions (`spacetimedb/src/tables/`)
-- **Reducers:** ~155 exports across 44 reducer source files (`spacetimedb/src/reducers/`)
+- **Reducers:** ~156 exports across 44 reducer source files (`spacetimedb/src/reducers/`)
 - **Views:** 32 server-side named views (`securityViews.ts`: 24, `anonymousViews.ts`: 8)
-- **Requirements:** All 83 mapped v0.5 requirements complete (see `.planning/REQUIREMENTS.md` traceability table)
-- **Tests:** 728 tests across 58 files — 531 integration tests (47 files, ~48.5 min on maincloud) + 197 unit tests (11 files, <1s).
+- **Requirements:** All 86 mapped v0.5 requirements complete (89 total, 3 out of scope — TEAM-01, TEAM-02, TEAM-03). See `.planning/REQUIREMENTS.md` traceability table.
+- **Tests:** 729 tests across 63 files — integration tests (`test/backend/**/*.test.ts`, excludes `*.unit.test.ts`) + unit tests (`*.unit.test.ts`).
 - **Generated bindings:** 236 TypeScript files in `src/module_bindings/` — regenerate with `spacetime generate` after schema changes
 
 ---
@@ -28,14 +28,13 @@ Each of the 19 feature areas has two canonical docs: `architecture.md` (tables, 
 | Admin | 2 (BanRecord, UserDeletionJob) | 8 | [arch](admin/architecture.md) / [contract](admin/contract.md) |
 | Roster | 5 (HsrAccount, HsrAccountCharacter, HsrAccountLightcone, Archetype, HsrCharacterArchetype) | 22 | [arch](roster/architecture.md) / [contract](roster/contract.md) |
 | Archetypes | 2 (Archetype, HsrCharacterArchetype) | 4 | [arch](archetypes/architecture.md) / [contract](archetypes/contract.md) |
-| Cost Tables | 3 (HsrCharacter, HsrLightcone + cost tables) | 3 | [arch](cost-tables/architecture.md) / [contract](cost-tables/contract.md) |
 | Cost Sets | 6 (CostSet, 3 live + 3 draft tables) | 8 | [arch](cost-sets/architecture.md) / [contract](cost-sets/contract.md) |
-| Tournament | 6 (Tournament, TournamentEnrolled, TournamentTeam, TournamentTeamMember, TournamentAssistant, TournamentPlayerAccount, TournamentTeamRequest, TournamentStandIn) | 29 | [arch](tournament/architecture.md) / [contract](tournament/contract.md) |
+| Tournament | 8 (Tournament, TournamentEnrolled, TournamentTeam, TournamentTeamMember, TournamentAssistant, TournamentPlayerAccount, TournamentTeamRequest, TournamentStandIn) | 29 | [arch](tournament/architecture.md) / [contract](tournament/contract.md) |
 | Brackets | 2 (BracketMatch, GroupPhaseRecord) | 7 | [arch](brackets/architecture.md) / [contract](brackets/contract.md) |
 | Match Session | 6 (MatchSession, MatchSessionStep, MatchSessionHistory, MatchSessionStepHistory, MatchParticipantHistory, LobbyCursorEvent) | 18 | [arch](match-session/architecture.md) / [contract](match-session/contract.md) |
 | Lobby | 7 (Lobby, LobbyMember, LobbyMemberAccount, LobbyBan, LobbyPreset, LobbyPassword, LobbyGcJob) | 18 | [arch](lobby/architecture.md) / [contract](lobby/contract.md) |
 | Match Results | 7 (MatchResultRecord, MatchResultGame, MatchResultParticipant, MatchResultGameHistory, ChatMessage, EloConfig) | 9 | [arch](match-results/architecture.md) / [contract](match-results/contract.md) |
-| MMR | 4 (MmrRating, MmrHistory, Leaderboard, EloConfig, Season) | 7 | [arch](mmr/architecture.md) / [contract](mmr/contract.md) |
+| MMR | 4 (MmrRating, MmrHistory, Leaderboard, Season) | 7 | [arch](mmr/architecture.md) / [contract](mmr/contract.md) |
 | Player Stats | 5 (PlayerStat, PlayerCharacterStat, GlobalCharacterStat, PlayerRelationship, AccountRatingConfig) | 0 direct (computed) | [arch](player-stats/architecture.md) / [contract](player-stats/contract.md) |
 | Achievements | 3 (Achievement, AchievementCriteria, UserAchievement) | 7 | [arch](achievements/architecture.md) / [contract](achievements/contract.md) |
 | Calendar | 4 (CalendarEvent, CalendarEventInvite, AvailabilitySlot, SavedCalendar) | 12 | [arch](calendar/architecture.md) / [contract](calendar/contract.md) |
@@ -187,6 +186,16 @@ Labels for anonymous players are computed server-side in `anonymousLabels.ts`. T
 
 Roster visibility (public/private) is server-enforced at the view layer. `view_public_accounts` and `view_my_roster` handle the filtering. The frontend never needs to manually check `isRosterPublic`.
 
+### Roster Mutation Guards (Phase 12.3)
+
+The following reducers reject if the caller has an active `LobbyMemberAccount` row (i.e., the caller is currently in a match):
+- `set_active_hsr_account`
+- `batch_upsert_characters`
+- `batch_remove_characters`
+- `migrate_roster`
+
+Show the user a clear error message if these fail while they are in a lobby. Error message format: `"Cannot modify roster or switch account while in an active match"`.
+
 ### Tournament Lifecycle
 
 Stage machine (forward-only):
@@ -252,9 +261,9 @@ conn.reducers.joinLobby(lobbyId).catch(err => {
 | What | Path | Notes |
 |------|------|-------|
 | Backend tables | `spacetimedb/src/tables/` | 67 table definitions |
-| Backend reducers | `spacetimedb/src/reducers/` | 44 reducer files, ~155 exports |
+| Backend reducers | `spacetimedb/src/reducers/` | 44 reducer files, ~156 exports |
 | Backend views | `spacetimedb/src/views/` | 32 named views (securityViews.ts: 24, anonymousViews.ts: 8) |
-| Backend helpers | `spacetimedb/src/helpers/` | ELO calc, bracket gen, stats, audit, roster |
+| Backend helpers | `spacetimedb/src/helpers/` | ELO calc, bracket gen, stats, audit, roster mutations |
 | Backend enums | `spacetimedb/src/types/enums.ts` | Role, GameMode, DraftMode, TournamentStage, BracketFormat, etc. |
 | Generated bindings | `src/module_bindings/` | 236 files — regenerate with `spacetime generate` |
 | Frontend components | `components/features/` | Feature-grouped components |
@@ -294,5 +303,5 @@ Routing guide for AI agents reading this file:
 
 ---
 
-*Last updated: 2026-04-10*
+*Last updated: 2026-04-12*
 *Backend complete as of Phase 14 (test harness modernized for SDK 2.1.0). All v0.5 requirements implemented.*
