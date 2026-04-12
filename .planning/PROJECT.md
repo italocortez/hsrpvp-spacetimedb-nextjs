@@ -75,7 +75,8 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 
 ## Context
 
-- Backend (v0.5) is complete: 67 tables, ~155 reducers, 32 server-side views, 673+ tests across 21 phases
+- **v0.5 shipped** (2026-04-12): 67 tables, ~156 reducers, 32 server-side views, 728 integration tests across 23 phases
+- 28,040 LOC backend TypeScript, 23,450 LOC tests, 6,678 LOC frontend (landing page)
 - SpacetimeDB SDK 2.1.0 with TypeScript backend, Next.js 15 frontend with HeroUI
 - SpacetimeDB handles all persistent state and real-time sync via WebSocket subscriptions
 - Privacy enforced via PRIVATE tables + 32 named views (no raw private table subscriptions)
@@ -108,11 +109,11 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 | Tournament settings override user roster visibility | Tournament integrity > personal preference | Implemented (Phase 6) |
 | Role-based TO access | Prevents spam tournaments while allowing community organizing | Implemented (Phase 3) |
 | Configurable disconnect behavior | Different contexts (casual vs tournament) need different handling | Implemented (Phase 10) |
-| Backend-only milestone | Solid table design first, UI in separate milestone | v0.5 complete |
+| Backend-only milestone | Solid table design first, UI in separate milestone | ✓ Good — v0.5 shipped 2026-04-12 |
 | UserPrivate isolation | Profile data only via view_my_profile; no direct table subscription | Implemented (Phase 12) |
 | .catch() reducer error pattern | Replaces _then() callbacks after SDK 2.1.0 upgrade | Implemented (Phase 12.2) |
 | Matrix-based account rating | Vertical (eidolon depth) + horizontal (archetype coverage) with admin-tunable config | Implemented (Phase 11) |
 | Flat columns over config structs | Filterable data uses flat columns; LobbyConfig can be reworked | Convention |
 
 ---
-*Last updated: 2026-04-12 after Phase 13 rerun (Documentation Normalization). v0.5 backend complete, all docs current.*
+*Last updated: 2026-04-12 after v0.5 milestone completion. Backend shipped, frontend milestone (v1) next.*
