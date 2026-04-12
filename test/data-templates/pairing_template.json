@@ -1,18 +1,22 @@
 [
   {
-    "source": "cerydra",
-    "pair_target": "anaxa",
+    "source_name": "cerydra",
+    "target_name": "anaxa",
     "cost": {
-      "memoryofchaos": 3.0,
-      "apocalypticshadow": 3.0
+      "cost_set_id": 0,
+      "memory_of_chaos": 3.0,
+      "apocalyptic_shadow": 3.0,
+      "anomaly_arbitration": 3.0
     }
   },
   {
-    "source": "feixiao",
-    "pair_target": "moze",
+    "source_name": "feixiao",
+    "target_name": "moze",
     "cost": {
-      "memoryofchaos": 4.0,
-      "apocalypticshadow": 4.0
+      "cost_set_id": 0,
+      "memory_of_chaos": 4.0,
+      "apocalyptic_shadow": 4.0,
+      "anomaly_arbitration": 4.0
     }
   }
 ]
