@@ -1,6 +1,6 @@
 # Roster Management -- Architecture
 
-Last updated: 2026-04-09
+Last updated: 2026-04-12
 
 ## Overview
 
@@ -156,7 +156,7 @@ by an admin reducer.
 
 ---
 
-*Last updated: 2026-04-11*
+*Last updated: 2026-04-12*
 *Feature owner: Phase 02 / Phase 10.4 / Phase 12.3*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
