@@ -204,7 +204,6 @@ import CostSetRow from "./cost_set_table";
 import EloConfigTableRow from "./elo_config_table_table";
 import GlobalCharacterStatRow from "./global_character_stat_table";
 import GroupPhaseRecordRow from "./group_phase_record_table";
-import HsrAccountLightconeRow from "./hsr_account_lightcone_table";
 import HsrCharacterRow from "./hsr_character_table";
 import HsrCharacterArchetypeRow from "./hsr_character_archetype_table";
 import HsrCharacterCostRow from "./hsr_character_cost_table";
@@ -474,20 +473,6 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, GroupPhaseRecordRow),
-  HsrAccountLightcone: __table({
-    name: 'hsr_account_lightcone',
-    indexes: [
-      { accessor: 'hsr_account_id', name: 'hsr_account_lightcone_hsr_account_id_idx_btree', algorithm: 'btree', columns: [
-        'hsrAccountId',
-      ] },
-      { accessor: 'by_account_and_lightcone', name: 'hsr_account_lightcone_hsr_account_id_lightcone_name_idx_btree', algorithm: 'btree', columns: [
-        'hsrAccountId',
-        'lightconeName',
-      ] },
-    ],
-    constraints: [
-    ],
-  }, HsrAccountLightconeRow),
   HsrCharacter: __table({
     name: 'hsr_character',
     indexes: [

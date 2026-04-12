@@ -13,8 +13,6 @@ import { HsrSynergyCost } from './tables/hsrSynergyCost';
 // Roster Management
 import { HsrAccount } from './tables/hsrAccount';
 import { HsrAccountCharacter } from './tables/hsrAccountCharacter';
-import { HsrAccountLightcone } from './tables/hsrAccountLightcone';
-
 // Archetypes
 import { Archetype } from './tables/archetype';
 import { HsrCharacterArchetype } from './tables/hsrCharacterArchetype';
@@ -133,8 +131,6 @@ const spacetimedb = schema({
     // Roster Management
     HsrAccount,
     HsrAccountCharacter,
-    HsrAccountLightcone,
-
     // Archetypes
     Archetype,
     HsrCharacterArchetype,

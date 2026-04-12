@@ -516,7 +516,6 @@ export const server_nuke_test_data = spacetimedb.reducer({
     totalDeleted += nuke(ctx.db.CostSet, 'CostSet');
 
     // ── Rosters
-    totalDeleted += nuke(ctx.db.HsrAccountLightcone, 'HsrAccountLightcone');
     totalDeleted += nuke(ctx.db.HsrAccountCharacter, 'HsrAccountCharacter');
     totalDeleted += nuke(ctx.db.HsrAccount, 'HsrAccount');
 

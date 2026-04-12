@@ -595,17 +595,6 @@ export const HsrAccountCharacter = __t.object("HsrAccountCharacter", {
 });
 export type HsrAccountCharacter = __Infer<typeof HsrAccountCharacter>;
 
-export const HsrAccountLightcone = __t.object("HsrAccountLightcone", {
-  hsrAccountId: __t.u32(),
-  lightconeName: __t.string(),
-  superimpositionLevel: __t.u8(),
-  createdById: __t.u32(),
-  createdDate: __t.timestamp(),
-  lastModifiedById: __t.u32(),
-  lastModifiedDate: __t.timestamp(),
-});
-export type HsrAccountLightcone = __Infer<typeof HsrAccountLightcone>;
-
 export const HsrCharacter = __t.object("HsrCharacter", {
   name: __t.string(),
   displayName: __t.string(),
