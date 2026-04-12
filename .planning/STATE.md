@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 15 — Backend pre-work
-current_plan: None (phase not yet planned)
-status: planning
-stopped_at: Phase 15 context expanded — template rework (characters + lightcones), seed-data.ts rework, data-file migration folded into scope. Ready for planning.
-last_updated: "2026-04-12T22:36:08.806Z"
-last_activity: 2026-04-12 — ROADMAP.md authored; 27 core phases locked per DECISIONS.md R1; coverage validated 84/84.
+current_phase: 15
+current_plan: 1
+status: executing
+stopped_at: Completed 15-01-PLAN.md (view reorg); ready for Plan 02 (Spine + positioning columns)
+last_updated: "2026-04-12T23:55:39.325Z"
+last_activity: 2026-04-12
 progress:
   total_phases: 27
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 6
+  completed_plans: 1
+  percent: 17
 ---
 
 # Session State
@@ -23,15 +23,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** v0.9 Frontend Milestone — Phase 15 (Backend pre-work) ready to plan.
+**Current focus:** Phase 15 — backend-pre-work
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 15 — Backend pre-work
-**Current plan:** None (phase not yet planned)
-**Status:** Ready to plan
-**Last activity:** 2026-04-12 — ROADMAP.md authored; 27 core phases locked per DECISIONS.md R1; coverage validated 84/84.
+**Current phase:** 15
+**Current plan:** 1
+**Status:** Executing Phase 15
+**Last activity:** 2026-04-12
 
 Progress: [░░░░░░░░░░] 0% (v0.9 milestone)
 
@@ -73,6 +73,8 @@ Recent v0.9-scope decisions:
 
 Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 
+- [Phase 15]: Move-only view reorg: all 32 existing views split into 8 domain files matching tables/ layout; binding surface unchanged.
+
 ## Blockers
 
 None at kickoff. Open items for phase-time research tracked in `.planning/research/DECISIONS.md` "Open items for phase-time research":
@@ -87,7 +89,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-12T22:36:08.804Z
-Stopped at: Phase 15 context expanded — template rework (characters + lightcones), seed-data.ts rework, data-file migration folded into scope. Ready for planning.
-Resume file: .planning/phases/15-backend-pre-work/15-CONTEXT.md
+Last session: 2026-04-12T23:55:39.323Z
+Stopped at: Completed 15-01-PLAN.md (view reorg); ready for Plan 02 (Spine + positioning columns)
+Resume file: None
 Next action: `/gsd-plan-phase 15`
