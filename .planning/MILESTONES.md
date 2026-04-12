@@ -17,7 +17,7 @@
 3. Real-time lobby system with Classic + Auction draft modes, best-of-N series support, ephemeral chat, cursor broadcast, and configurable disconnect handling
 4. Roster management with multi-account support, matrix-based account rating (vertical eidolons + horizontal archetype coverage), and per-match account selection with MMR snapshot freeze
 5. Auth security hardening with UserPrivate isolation, view-based profile access, ban infrastructure, identity garbage collection, and SDK 2.1.0 upgrade
-6. 19 normalized feature doc sets (architecture.md + contract.md), comprehensive FRONTEND-HANDOFF.md, and full codebase maps for v1 frontend milestone
+6. 19 normalized feature doc sets (architecture.md + contract.md), comprehensive FRONTEND-HANDOFF.md, and full codebase maps for v0.9 frontend milestone
 
 **Archives:** `milestones/v0.5-ROADMAP.md`, `milestones/v0.5-REQUIREMENTS.md`, `milestones/v0.5-MILESTONE-AUDIT.md`
 
