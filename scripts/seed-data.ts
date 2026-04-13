@@ -15,6 +15,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { pathToFileURL } from 'node:url';
 import { DbConnection } from '../src/module_bindings';
 
 // ─── Env loading (same as register-server.ts) ─────────────────────────────────
@@ -414,9 +415,7 @@ export async function seedAll(serverToken: string): Promise<void> {
 // ─── CLI entry point ───────────────────────────────────────────────────────────
 
 // Only run when called directly (not when imported by post-publish.ts)
-if (process.argv[1] === new URL(import.meta.url).pathname ||
-    process.argv[1]?.endsWith('seed-data.ts') ||
-    process.argv[1]?.endsWith('seed-data.js')) {
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN;
     if (!serverToken) {
         console.error('[seed] SPACETIMEDB_SERVER_TOKEN not found in .env.local. Run register-server.ts first.');
