@@ -1,6 +1,13 @@
 import { SenderError } from 'spacetimedb/server';
 
 /**
+ * Canonical BanType payload — SpacetimeDB enum tag is the only discriminant
+ * checkProviderBan uses; `value: {}` satisfies the struct shape. Extract to
+ * eliminate the `as any` repetition across call sites.
+ */
+export const DISCORD_BAN_TYPE = { tag: 'DiscordId', value: {} } as any;
+
+/**
  * Check if a provider ID is banned for the given ban type.
  *
  * WR-01: MUST filter by banType, not just providerId alone (prevents

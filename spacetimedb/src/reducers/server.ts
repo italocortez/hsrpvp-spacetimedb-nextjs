@@ -3,7 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { Identity, Timestamp } from 'spacetimedb';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
 import { performUserDeletion } from '../helpers/userDeletionHelper';
-import { rejectIfBanned } from '../helpers/banHelper';
+import { rejectIfBanned, DISCORD_BAN_TYPE } from '../helpers/banHelper';
 
 /**
  * Helper: verify the caller is the registered server identity.
@@ -99,7 +99,7 @@ export const server_link_provider = spacetimedb.reducer({
     if (!validProviders.includes(provider)) {
         throw new SenderError(`Invalid provider "${provider}". Must be one of: ${validProviders.join(', ')}`);
     }
-    const banType = { tag: 'DiscordId', value: {} } as any;  // Only discord for now
+    const banType = DISCORD_BAN_TYPE;  // Only discord for now
 
     // 4. Ban check (D-08 enforcement point 1: link-time)
     rejectIfBanned(ctx, banType, providerId);

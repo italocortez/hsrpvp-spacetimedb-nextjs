@@ -1,7 +1,7 @@
 import spacetimedb from './schema';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
 import { transferCaptain, transferReferee, transferHost } from './helpers/flagTransferHelpers';
-import { checkProviderBan } from './helpers/banHelper';
+import { checkProviderBan, DISCORD_BAN_TYPE } from './helpers/banHelper';
 
 // Private auth tables — imported for schema registration
 import './tables/userPrivate';
@@ -133,7 +133,7 @@ spacetimedb.clientConnected((ctx) => {
       // D-08 enforcement point 2: Check if the user's provider is banned on reconnect
       const userPrivate = ctx.db.UserPrivate.userId.find(mapping.userId);
       if (userPrivate && userPrivate.discordId) {
-        const isBanned = checkProviderBan(ctx, { tag: 'DiscordId', value: {} } as any, userPrivate.discordId);
+        const isBanned = checkProviderBan(ctx, DISCORD_BAN_TYPE, userPrivate.discordId);
         if (isBanned && !user.deletedAt) {
           ctx.db.User.id.update({
             ...user,
