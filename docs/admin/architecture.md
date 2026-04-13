@@ -1,6 +1,6 @@
 # Admin & Server Operations -- Architecture
 
-Last updated: 2026-04-09
+Last updated: 2026-04-13
 
 ## Overview
 
@@ -133,6 +133,60 @@ BanRecord (id: u32 autoInc PK)  [PRIVATE -- public: false]
    - If user has history references: soft-delete (set username='deleted_\<id\>', clear discordId, preserve displayName)
    - If guest with no history references: hard-delete User row
 
+## Phase 15 -- Backend pre-work
+
+<!-- Phase 15 D-05, D-05a: Spine + positioning columns on hsr_character -->
+
+### HsrCharacter schema additions (D-05, D-05a)
+
+Six new columns on `hsr_character` support Spine rigs (Phase 31 Pedestal) and card positioning (image_url rendering):
+
+| Column | Type | Semantics |
+|--------|------|-----------|
+| `skelUrl` | `string optional` | Spine skeleton URL; `null` = no Spine for this character |
+| `atlasUrl` | `string optional` | Spine atlas URL; `null` = no Spine |
+| `atlasImgUrls` | `array<string>` | Atlas page image URLs; `[]` = no Spine (arrays cannot be optional in SpacetimeDB) |
+| `posX` | `i32` | Card positioning X offset (required, default `0`) |
+| `posY` | `i32` | Card positioning Y offset (required, default `0`) |
+| `width` | `i32` | Card positioning width (required, default `0`) |
+
+Bindings expose all six columns in `src/module_bindings/hsr_character_type.ts` after `spacetime generate`. `HsrLightcone` already had `posX`/`posY`/`width` — no schema change there; router partial-update fix applies.
+
+### admin_bulk_upsert -- partial-update wire convention (D-08, D-10, D-12)
+
+<!-- Phase 15 D-08: null-preserve semantics on existing rows -->
+
+The router reducer `admin_bulk_upsert` reworked for **true partial updates** across all 5 game-data cases (`HsrCharacter`, `HsrLightcone`, `HsrCharacterCost`, `HsrLightconeCost`, `HsrSynergyCost`). Wire convention:
+
+- Every `EXPECTED_KEYS` entry must appear in the incoming JSON row (strict `validateKeys` contract -- preserved).
+- **`null` on an EXISTING row** = "preserve this field" (do not overwrite).
+- **`null` on an INSERT row** = "apply schema default" (required columns) OR "stay null" (optional columns like `skelUrl`, `atlasUrl`).
+- **Non-null value** = "set to this value".
+
+Implementation: `mergeForUpdate<T>()` helper (admin.ts:86-99) returns a new row with existing values preserved where incoming is `null`. `validateEnumIfPresent()` wrapper (admin.ts:~103) skips enum validation for null-valued fields on update (preserve-existing path). The insert branch retains its default-injection logic (per D-12) so schema-required fields still get sensible defaults on new rows.
+
+**Before (pre-Plan-03 bug):** the router built full rows with aggressive default injection (`r.imageUrl || ''`) and spread them over existing rows, silently zeroing every unsent field. The reworked router only merges keys whose value is non-null/non-undefined on the update branch.
+
+### Cost-set PK tuple match fix (D-09)
+
+<!-- Phase 15 D-09: full composite tuple on existence check -->
+
+For the three cost tables, the existence check now matches on the full composite tuple including `costSetId`:
+
+- `HsrCharacterCost`: `(characterName, gameMode.tag, costSetId)` -- admin.ts:478-486
+- `HsrLightconeCost`: `(lightconeName, gameMode.tag, costSetId)` -- admin.ts:528-535
+- `HsrSynergyCost`: `(sourceName, targetName, gameMode.tag, costSetId)` -- admin.ts:574-583
+
+Previous behavior matched on `(characterName, gameMode)` only, silently overwriting non-default cost sets (e.g. `costSetId=5`) when the default set (`costSetId=0`) was upserted. The fix preserves the `costSetId=0` default-set sentinel (v0.5 convention) while allowing an arbitrary number of custom cost sets per `(name, mode)` pair to coexist.
+
+`HsrCharacterCost` / `HsrLightconeCost` use a delete+insert pattern (no direct composite-PK update accessor in the generated bindings) -- audit columns cascade via `auditUpdate`. `HsrSynergyCost` uses `id.update()` because its PK is auto-inc `id`.
+
+### Regression coverage (D-21)
+
+- `test/backend/reducers/admin/partial-update.test.ts` -- asserts unsent null fields on `HsrCharacter` / `HsrLightcone` partial updates preserve originally-seeded values.
+- `test/backend/reducers/admin/cost-set-pk.test.ts` -- asserts distinct `costSetId` rows coexist for all three cost tables; specific regression for the "default-set-overwrites-custom-set" live bug.
+- `test/backend/seed/round-trip.test.ts` -- D-21a clean-DB reseed round-trip; asserts Spine + positioning columns populate on `hsr_character` and all three cost tables contain all 3 game modes.
+
 ## Phase History
 
 | Decision | Source | Date |
@@ -146,10 +200,13 @@ BanRecord (id: u32 autoInc PK)  [PRIVATE -- public: false]
 | Multi-column index on BanRecord causes PANIC in SpacetimeDB TS SDK; use single-column index + in-memory filter (D-WR-01) | Phase 12 execution | 2026-04-05 |
 | HsrCharacter bulk upsert auto-triggers account rating recalc if maxPossible changes (D-33) | Phase 11 execution | 2026-04-01 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
+| hsr_character: added 6 columns (skelUrl, atlasUrl, atlasImgUrls, posX, posY, width) for Spine + card positioning (D-05, D-05a) | Phase 15 execution | 2026-04-13 |
+| admin_bulk_upsert: null-preserve partial-update wire convention across 5 cases; mergeForUpdate + validateEnumIfPresent helpers (D-08, D-10, D-12) | Phase 15 execution | 2026-04-13 |
+| Cost-table existence checks match on full composite tuple including costSetId; fixes silent default-set overwrite (D-09) | Phase 15 execution | 2026-04-13 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 01 / Phase 09 / Phase 12*
+*Last updated: 2026-04-13*
+*Feature owner: Phase 01 / Phase 09 / Phase 12 / Phase 15*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

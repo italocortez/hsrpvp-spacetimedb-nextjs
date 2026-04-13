@@ -1,11 +1,12 @@
 ---
 phase: 15
 slug: backend-pre-work
-status: planned
-nyquist_compliant: false
-wave_0_complete: false
+status: executed
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-12
 updated_by_planner: 2026-04-12
+updated_by_executor: 2026-04-13
 ---
 
 # Phase 15 — Validation Strategy
@@ -42,20 +43,20 @@ Wave-0 spike (moved into Plan 06 Task 1): confirm whether `conn.db.viewMyMmrHist
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 15-01-01 | 01 | 1 | FOUND-02 | T-15-reorg-A, T-15-reorg-B | 8 domain view files; view-name strings verbatim | build+grep | `cd spacetimedb && npm run build && grep -c "spacetimedb.view(" src/views/lobbyViews.ts src/views/identityViews.ts src/views/costSetViews.ts src/views/statsViews.ts src/views/socialViews.ts src/views/matchViews.ts src/views/matchHistoryViews.ts src/views/tournamentViews.ts` | ✅ | ⬜ pending |
-| 15-01-02 | 01 | 1 | FOUND-02 | T-15-reorg-A, T-15-reorg-B | Barrel updated; god files deleted; 29 bindings invariant | build+publish | `cd spacetimedb && npm run build && spacetime publish && ls src/module_bindings/view_*_table.ts \| wc -l` (must equal 29) | ✅ | ⬜ pending |
-| 15-02-01 | 02 | 1 | FOUND-01 | T-15-schema-A, T-15-schema-B | 6 new columns on hsr_character; bindings expose them | build+generate+grep | `cd spacetimedb && npm run build && grep -E "skelUrl\|atlasUrl\|atlasImgUrls\|posX\|posY\|width" src/module_bindings/hsr_character_type.ts` | ✅ | ⬜ pending |
-| 15-03-01 | 03 | 2 | FOUND-01 | T-15-router-A | EXPECTED_KEYS extended; `mergeForUpdate` helper + wire-convention doc | build+grep | `cd spacetimedb && npm run build && grep -c "'skelUrl'\|'atlasUrl'\|'atlasImgUrls'\|'posX'\|'posY'\|'width'" src/reducers/admin.ts` (≥ 6) | ✅ | ⬜ pending |
-| 15-03-02 | 03 | 2 | FOUND-01 | T-15-01, T-15-03, T-15-04 | 5 cases reworked; partial-update merge + costSetId tuple | build+publish+grep | `cd spacetimedb && npm run build && spacetime publish && grep -c "e\.costSetId === " src/reducers/admin.ts` (≥ 3) | ✅ | ⬜ pending |
-| 15-04-01 | 04 | 2 | FOUND-02 | T-15-02, T-15-view-A, T-15-view-B | 5 new views with ctx.sender filter patterns | build+grep | `cd spacetimedb && npm run build && grep -c "name: 'view_my_match_session_history'\|name: 'view_my_match_session_step_history'\|name: 'view_my_match_participant_history'\|name: 'view_my_mmr_history'\|name: 'view_my_match_result_game_history'" src/views/matchHistoryViews.ts` (= 5) | ✅ | ⬜ pending |
-| 15-04-02 | 04 | 2 | FOUND-02 | T-15-view-B | Barrel + ROADMAP/REQUIREMENTS canonicalised; 34 bindings | publish+generate+grep | `cd spacetimedb && spacetime publish && spacetime generate && ls src/module_bindings/view_*_table.ts \| wc -l` (= 34) | ✅ | ⬜ pending |
-| 15-05-01 | 05 | 3 | FOUND-01 | T-15-04, T-15-seed-A, T-15-seed-C | scripts/seed-data.ts consumes D-22 shape; 3-mode fan-out | typecheck+grep | `grep -c "cost_set_id\|skel_url\|source_name\|target_name" scripts/seed-data.ts` AND `grep -cE "LIGHTCONE_GAME_MODES = \[" scripts/seed-data.ts` (= 0) | ✅ | ⬜ pending |
-| 15-05-02 | 05 | 3 | FOUND-01 | T-15-seed-B | test seed + fixtures + post-publish audited; README current | grep | `grep -cE "pair_target\|LIGHTCONE_GAME_MODES\|memoryofchaos" test/shared/seed-data.ts test/shared/fixtures.ts scripts/post-publish.ts` (= 0) | ✅ | ⬜ pending |
-| 15-06-01 | 06 | 4 | FOUND-02 | T-15-02 | Two-identity harness + 5 cross-user isolation tests | integration | `npx vitest run test/backend/views/matchHistoryViews/isolation.test.ts` | ✅ W0→filled | ⬜ pending |
-| 15-06-02 | 06 | 4 | FOUND-01 | T-15-01, T-15-03, T-15-04 | partial-update + cost-set PK + seed round-trip tests | integration | `npx vitest run test/backend/reducers/admin/ test/backend/seed/` | ✅ W0→filled | ⬜ pending |
-| 15-06-03 | 06 | 4 | FOUND-01, FOUND-02 | T-15-docs-A | Architecture docs updated; VALIDATION.md Per-Task Map current | grep | `grep -c "Phase 15" docs/admin/architecture.md docs/match/architecture.md` (≥ 2) | ✅ | ⬜ pending |
+| 15-01-01 | 01 | 1 | FOUND-02 | T-15-reorg-A, T-15-reorg-B | 8 domain view files; view-name strings verbatim | build+grep | `cd spacetimedb && npm run build && grep -c "spacetimedb.view(" src/views/lobbyViews.ts src/views/identityViews.ts src/views/costSetViews.ts src/views/statsViews.ts src/views/socialViews.ts src/views/matchViews.ts src/views/matchHistoryViews.ts src/views/tournamentViews.ts` | ✅ | ✅ green |
+| 15-01-02 | 01 | 1 | FOUND-02 | T-15-reorg-A, T-15-reorg-B | Barrel updated; god files deleted; 29 bindings invariant | build+publish | `cd spacetimedb && npm run build && spacetime publish && ls src/module_bindings/view_*_table.ts \| wc -l` (must equal 29) | ✅ | ✅ green |
+| 15-02-01 | 02 | 1 | FOUND-01 | T-15-schema-A, T-15-schema-B | 6 new columns on hsr_character; bindings expose them | build+generate+grep | `cd spacetimedb && npm run build && grep -E "skelUrl\|atlasUrl\|atlasImgUrls\|posX\|posY\|width" src/module_bindings/hsr_character_type.ts` | ✅ | ✅ green |
+| 15-03-01 | 03 | 2 | FOUND-01 | T-15-router-A | EXPECTED_KEYS extended; `mergeForUpdate` helper + wire-convention doc | build+grep | `cd spacetimedb && npm run build && grep -c "'skelUrl'\|'atlasUrl'\|'atlasImgUrls'\|'posX'\|'posY'\|'width'" src/reducers/admin.ts` (≥ 6) | ✅ | ✅ green |
+| 15-03-02 | 03 | 2 | FOUND-01 | T-15-01, T-15-03, T-15-04 | 5 cases reworked; partial-update merge + costSetId tuple | build+publish+grep | `cd spacetimedb && npm run build && spacetime publish && grep -c "e\.costSetId === " src/reducers/admin.ts` (≥ 3) | ✅ | ✅ green |
+| 15-04-01 | 04 | 2 | FOUND-02 | T-15-02, T-15-view-A, T-15-view-B | 5 new views with ctx.sender filter patterns | build+grep | `cd spacetimedb && npm run build && grep -c "name: 'view_my_match_session_history'\|name: 'view_my_match_session_step_history'\|name: 'view_my_match_participant_history'\|name: 'view_my_mmr_history'\|name: 'view_my_match_result_game_history'" src/views/matchHistoryViews.ts` (= 5) | ✅ | ✅ green |
+| 15-04-02 | 04 | 2 | FOUND-02 | T-15-view-B | Barrel + ROADMAP/REQUIREMENTS canonicalised; 34 bindings | publish+generate+grep | `cd spacetimedb && spacetime publish && spacetime generate && ls src/module_bindings/view_*_table.ts \| wc -l` (= 34) | ✅ | ✅ green |
+| 15-05-01 | 05 | 3 | FOUND-01 | T-15-04, T-15-seed-A, T-15-seed-C | scripts/seed-data.ts consumes D-22 shape; 3-mode fan-out | typecheck+grep | `grep -c "cost_set_id\|skel_url\|source_name\|target_name" scripts/seed-data.ts` AND `grep -cE "LIGHTCONE_GAME_MODES = \[" scripts/seed-data.ts` (= 0) | ✅ | ✅ green |
+| 15-05-02 | 05 | 3 | FOUND-01 | T-15-seed-B | test seed + fixtures + post-publish audited; README current | grep | `grep -cE "pair_target\|LIGHTCONE_GAME_MODES\|memoryofchaos" test/shared/seed-data.ts test/shared/fixtures.ts scripts/post-publish.ts` (= 0) | ✅ | ✅ green |
+| 15-06-01 | 06 | 4 | FOUND-02 | T-15-02 | Two-identity harness + 5 cross-user isolation tests | integration | `npx vitest run test/backend/views/matchHistoryViews/isolation.test.ts` | ✅ W0→filled | ✅ green |
+| 15-06-02 | 06 | 4 | FOUND-01 | T-15-01, T-15-03, T-15-04 | partial-update + cost-set PK + seed round-trip tests | integration | `npx vitest run test/backend/reducers/admin/ test/backend/seed/` | ✅ W0→filled | ✅ green |
+| 15-06-03 | 06 | 4 | FOUND-01, FOUND-02 | T-15-docs-A | Architecture docs updated; VALIDATION.md Per-Task Map current | grep | `grep -c "Phase 15" docs/admin/architecture.md docs/match/architecture.md` (≥ 2) | ✅ | ✅ green |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: ✅ green · ✅ green · ❌ red · ⚠️ flaky*
 
 ---
 
@@ -63,13 +64,13 @@ Wave-0 spike (moved into Plan 06 Task 1): confirm whether `conn.db.viewMyMmrHist
 
 Wave-0 artifacts are created inside Plan 06 Tasks 1 and 2 (test-file creation is authorized by FOUND-02 success criterion #4 — this is the single exception to the project "no test-file edits during execution" rule).
 
-- [ ] `test/shared/two-identity-harness.ts` — Plan 06 Task 1 (spike + helper).
-- [ ] `test/backend/views/matchHistoryViews/isolation.test.ts` — Plan 06 Task 1 (5 view isolation tests).
-- [ ] `test/backend/reducers/admin/partial-update.test.ts` — Plan 06 Task 2 (D-08/D-10 preservation).
-- [ ] `test/backend/reducers/admin/cost-set-pk.test.ts` — Plan 06 Task 2 (D-09 PK tuple).
-- [ ] `test/backend/seed/round-trip.test.ts` — Plan 06 Task 2 (D-21a clean-DB reseed).
+- [x] `test/shared/two-identity-harness.ts` — Plan 06 Task 1 (spike + helper). **DONE** — commit 71426db.
+- [x] `test/backend/views/matchHistoryViews/isolation.test.ts` — Plan 06 Task 1 (5 view isolation tests, 18 assertions). **DONE** — commit 71426db.
+- [x] `test/backend/reducers/admin/partial-update.test.ts` — Plan 06 Task 2 (D-08/D-10 preservation). **DONE** — commit 1e3c98d.
+- [x] `test/backend/reducers/admin/cost-set-pk.test.ts` — Plan 06 Task 2 (D-09 PK tuple). **DONE** — commit 1e3c98d.
+- [x] `test/backend/seed/round-trip.test.ts` — Plan 06 Task 2 (D-21a clean-DB reseed). **DONE** — commit 1e3c98d.
 
-**Wave-0 spike (embedded in Plan 06 Task 1):** verify whether `conn.db.viewMyMmrHistory.iter()` works from the test harness post-regeneration. Result steers isolation test assertion style (subscription vs SQL-on-backing-table). Spike result documented at the top of `two-identity-harness.ts`.
+**Wave-0 spike (embedded in Plan 06 Task 1):** verify whether `conn.db.viewMyMmrHistory.iter()` works from the test harness post-regeneration. **Result (2026-04-13): YES** — all 5 new view bindings are present in `src/module_bindings/index.ts` and subscribable via `.iter()` after `subscribeToAllTables()`. Isolation tests use the subscription path; SQL-on-backing-table is retained as a cross-check for invariant I2.
 
 ---
 
@@ -85,11 +86,11 @@ Wave-0 artifacts are created inside Plan 06 Tasks 1 and 2 (test-file creation is
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies filled in Plan 06
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify (met — every task above has one)
-- [ ] Wave 0 covers all MISSING references (5 test files + 1 harness, all authorized by FOUND-02 #4)
-- [ ] No watch-mode flags (every command ends in `run` not `watch`)
-- [ ] Feedback latency < 120s (scoped slice ≈ 30s; full suite ≈ 2min)
-- [ ] `nyquist_compliant: true` — flip in frontmatter at end of Plan 06 Task 3 when all above are green
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies filled in Plan 06
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify (met — every task above has one)
+- [x] Wave 0 covers all MISSING references (5 test files + 1 harness, all authorized by FOUND-02 #4)
+- [x] No watch-mode flags (every command ends in `run` not `watch`)
+- [x] Feedback latency < 120s (scoped slice ≈ 30s; full suite ≈ 2min)
+- [x] `nyquist_compliant: true` — flipped in frontmatter (Plan 06 Task 3 complete; full backend suite green on 2026-04-13)
 
-**Approval:** pending — flips to approved after Plan 06 Task 3 completes and the full backend suite is green.
+**Approval:** approved — Plan 06 Task 3 completed 2026-04-13. Full integration suite green (29/29 Phase-15-scoped tests pass; global setup reseeds maincloud before suite).

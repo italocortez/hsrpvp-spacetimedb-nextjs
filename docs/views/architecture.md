@@ -1,6 +1,6 @@
 # Views -- Architecture
 
-Last updated: 2026-04-09
+Last updated: 2026-04-13
 
 ## Overview
 
@@ -134,6 +134,40 @@ Views 10-20 apply anonymous enforcement (D-92): when `lobby.isAnonymousPlayers=t
 - **Returns:** `LobbyBan[]` for a specific lobbyId
 - **Purpose:** View and manage per-lobby bans
 
+## Phase 15 -- Views layer reorg + new history views
+
+<!-- Phase 15 D-01, D-02, D-03, D-04: domain-file split + new history views -->
+
+### Domain-file reorg (D-01..D-04)
+
+`securityViews.ts` (915 lines) and `anonymousViews.ts` (453 lines) -- which previously mixed by auth scope rather than by domain -- were split into 8 domain files matching the `tables/` directory layout:
+
+| File | Views | Count |
+|------|-------|-------|
+| `lobbyViews.ts` | view_lobby_browser, view_my_lobbies, view_my_lobby_chat, view_my_lobby_members | 4 |
+| `identityViews.ts` | view_my_identity, view_my_profile, view_user_directory, view_public_accounts, view_admin_user_private | 5 |
+| `costSetViews.ts` | view_my_cost_sets, view_my_draft_character_costs, view_my_draft_lightcone_costs, view_my_draft_synergy_costs | 4 |
+| `statsViews.ts` | view_my_player_stats, view_my_character_stats | 2 |
+| `socialViews.ts` | view_my_relationships, view_my_roster_visibility, view_my_roster | 3 |
+| `matchViews.ts` | view_my_match_steps, view_my_match_participants | 2 |
+| `matchHistoryViews.ts` | view_match_history, view_match_participant_history, view_match_step_history + 5 new `view_my_*_history` | 8 |
+| `tournamentViews.ts` | 7 existing tournament views | 7 |
+
+**Reorg invariant (D-03)**: move-only. Every `spacetimedb.view(...)` call preserved verbatim; only import paths change. Re-export surface at `spacetimedb/src/index.ts` unchanged in aggregate (each view still appears once in the barrel). Binding count is `32 -> 37` solely because of the 5 new history views added in `matchHistoryViews.ts` -- no bindings were renamed or removed.
+
+**Ordering rationale (D-04)**: the reorg landed BEFORE the new history views so `matchHistoryViews.ts` existed as the permanent home when the 5 new views were authored. Cross-reference `docs/match/architecture.md` for the filter patterns used by those 5 views.
+
+### Filter-pattern registry
+
+Two patterns cover every `view_my_*` view that filters on `ctx.sender`:
+
+- **Pattern A -- Direct user-index filter**: for backing tables with a `userId` column, the view resolves `ctx.sender` to a `mapping.userId` via `UserIdentity.identity.find` and then filters the target table's btree index on `userId`. Examples: `view_my_character_stats`, `view_my_mmr_history`, `view_my_match_participant_history`.
+- **Pattern B -- Participant-first iteration**: for backing tables WITHOUT a `userId` column (history tables keyed by `matchHistoryId`), the view first collects the caller's match IDs from `MatchParticipantHistory.by_user`, then fans out to the target table via its `by_match_history` index (or `id.find` for session history). Complexity is `O(user's matches)`, not `O(all matches)`. Examples: `view_my_match_session_history`, `view_my_match_session_step_history`, `view_my_match_result_game_history`; pre-split reference: `view_my_tournament_matches` at `securityViews.ts:710`.
+
+### 5 new self-scoped history views (D-13)
+
+Added to `matchHistoryViews.ts`, bindings at `src/module_bindings/view_my_*_history_table.ts`. All use `public: true` with server-side `ctx.sender` gating (matches the 23 existing `view_my_*` entries). See `docs/match/architecture.md` for per-view detail.
+
 ## Phase History
 
 | Decision | Source | Date |
@@ -147,10 +181,12 @@ Views 10-20 apply anonymous enforcement (D-92): when `lobby.isAnonymousPlayers=t
 | view_my_calendar_events: combines organizer events + invitee events in one call | Phase 08 execution | 2026-03-28 |
 | view_saved_calendar_slots: filters by isVisible=true on SavedCalendar | Phase 08 execution | 2026-03-28 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
+| Views layer split from 2 files into 8 domain files (lobbyViews, identityViews, costSetViews, statsViews, socialViews, matchViews, matchHistoryViews, tournamentViews); move-only invariant (D-01..D-04) | Phase 15 execution | 2026-04-13 |
+| 5 new self-scoped history views added to matchHistoryViews.ts (D-13); binding count 32 -> 37; Pattern A vs Pattern B filter registry documented | Phase 15 execution | 2026-04-13 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 03 / Phase 06 / Phase 08 / Phase 09 / Phase 10.4*
+*Last updated: 2026-04-13*
+*Feature owner: Phase 03 / Phase 06 / Phase 08 / Phase 09 / Phase 10.4 / Phase 15*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
