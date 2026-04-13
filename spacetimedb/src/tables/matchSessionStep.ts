@@ -29,5 +29,8 @@ export const MatchSessionStep = table({
     indexes: [
         // Fast lookup: "Get full history for Lobby 123"
         { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        // Phase 15 WR-07: Replaces admin_delete_row's full-table scan when guarding
+        // user-deletion against active match involvement.
+        { accessor: 'by_actor_user', algorithm: 'btree', columns: ['actorUserId'] },
     ]
 }, matchSessionStepColumns);

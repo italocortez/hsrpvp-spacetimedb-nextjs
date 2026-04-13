@@ -150,13 +150,12 @@ export const admin_delete_row = spacetimedb.reducer(
                     );
                 }
 
-                // Block deletion if user is in an active match step
-                for (const step of ctx.db.MatchSessionStep.iter()) {
-                    if (step.actorUserId === id) {
-                        throw new SenderError(
-                            `Cannot delete user #${id}: they have actions in active match (lobby #${step.lobbyId}). End the match first.`
-                        );
-                    }
+                // Block deletion if user is in an active match step (indexed lookup, Phase 15 WR-07)
+                const firstStep = ctx.db.MatchSessionStep.by_actor_user.filter(id).next().value;
+                if (firstStep) {
+                    throw new SenderError(
+                        `Cannot delete user #${id}: they have actions in active match (lobby #${firstStep.lobbyId}). End the match first.`
+                    );
                 }
 
                 // Soft-delete: set deletedAt so the client can show a notification
