@@ -314,6 +314,10 @@ export async function seedAll(serverToken: string): Promise<void> {
     let host = process.env.SPACETIMEDB_HOST ?? process.env.NEXT_PUBLIC_SPACETIMEDB_HOST ?? 'wss://maincloud.spacetimedb.com';
     if (host.startsWith('https://')) host = host.replace('https://', 'wss://');
     else if (host.startsWith('http://')) host = host.replace('http://', 'ws://');
+    else if (!host.startsWith('wss://') && !host.startsWith('ws://')) {
+        // Bare hostname — assume secure WebSocket
+        host = `wss://${host}`;
+    }
 
     let dbName: string;
     try {
