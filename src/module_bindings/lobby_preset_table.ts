@@ -18,6 +18,7 @@ import {
   BanMode,
 } from "./types";
 
+
 export default __t.row({
   id: __t.u32().primaryKey(),
   name: __t.string(),
@@ -57,9 +58,7 @@ export default __t.row({
   get disconnectPolicy() {
     return DisconnectPolicy.name("disconnect_policy");
   },
-  disconnectForfeitSeconds: __t
-    .option(__t.u32())
-    .name("disconnect_forfeit_seconds"),
+  disconnectForfeitSeconds: __t.option(__t.u32()).name("disconnect_forfeit_seconds"),
   allowMirrorPicks: __t.bool().name("allow_mirror_picks"),
   autoRandomPick: __t.bool().name("auto_random_pick"),
   refereeCanUndo: __t.bool().name("referee_can_undo"),

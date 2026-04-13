@@ -115,21 +115,16 @@ export const AnonymousLobbyMemberRow = __t.object("AnonymousLobbyMemberRow", {
 });
 export type AnonymousLobbyMemberRow = __Infer<typeof AnonymousLobbyMemberRow>;
 
-export const AnonymousMatchParticipantRow = __t.object(
-  "AnonymousMatchParticipantRow",
-  {
-    matchResultId: __t.u32(),
-    userId: __t.u32(),
-    get teamSide() {
-      return TeamSide;
-    },
-    isCaptain: __t.bool(),
-    anonymousLabel: __t.option(__t.string()),
+export const AnonymousMatchParticipantRow = __t.object("AnonymousMatchParticipantRow", {
+  matchResultId: __t.u32(),
+  userId: __t.u32(),
+  get teamSide() {
+    return TeamSide;
   },
-);
-export type AnonymousMatchParticipantRow = __Infer<
-  typeof AnonymousMatchParticipantRow
->;
+  isCaptain: __t.bool(),
+  anonymousLabel: __t.option(__t.string()),
+});
+export type AnonymousMatchParticipantRow = __Infer<typeof AnonymousMatchParticipantRow>;
 
 export const AnonymousMatchStepRow = __t.object("AnonymousMatchStepRow", {
   id: __t.u32(),
@@ -1715,21 +1710,16 @@ export const TournamentPlayerAccount = __t.object("TournamentPlayerAccount", {
 });
 export type TournamentPlayerAccount = __Infer<typeof TournamentPlayerAccount>;
 
-export const TournamentRegistrantAccountRow = __t.object(
-  "TournamentRegistrantAccountRow",
-  {
-    tournamentId: __t.u32(),
-    userId: __t.u32(),
-    hsrAccountId: __t.u32(),
-    displayLabel: __t.string(),
-    accountRating: __t.option(__t.u32()),
-    characterName: __t.option(__t.string()),
-    eidolonLevel: __t.option(__t.u8()),
-  },
-);
-export type TournamentRegistrantAccountRow = __Infer<
-  typeof TournamentRegistrantAccountRow
->;
+export const TournamentRegistrantAccountRow = __t.object("TournamentRegistrantAccountRow", {
+  tournamentId: __t.u32(),
+  userId: __t.u32(),
+  hsrAccountId: __t.u32(),
+  displayLabel: __t.string(),
+  accountRating: __t.option(__t.u32()),
+  characterName: __t.option(__t.string()),
+  eidolonLevel: __t.option(__t.u8()),
+});
+export type TournamentRegistrantAccountRow = __Infer<typeof TournamentRegistrantAccountRow>;
 
 // The tagged union or sum type for the algebraic type `TournamentStage`.
 export const TournamentStage = __t.enum("TournamentStage", {
@@ -1893,13 +1883,8 @@ export type ViewLobbyBrowser = __Infer<typeof ViewLobbyBrowser>;
 export const ViewMatchHistory = __t.object("ViewMatchHistory", {});
 export type ViewMatchHistory = __Infer<typeof ViewMatchHistory>;
 
-export const ViewMatchParticipantHistory = __t.object(
-  "ViewMatchParticipantHistory",
-  {},
-);
-export type ViewMatchParticipantHistory = __Infer<
-  typeof ViewMatchParticipantHistory
->;
+export const ViewMatchParticipantHistory = __t.object("ViewMatchParticipantHistory", {});
+export type ViewMatchParticipantHistory = __Infer<typeof ViewMatchParticipantHistory>;
 
 export const ViewMatchStepHistory = __t.object("ViewMatchStepHistory", {});
 export type ViewMatchStepHistory = __Infer<typeof ViewMatchStepHistory>;
@@ -1910,26 +1895,13 @@ export type ViewMyCharacterStats = __Infer<typeof ViewMyCharacterStats>;
 export const ViewMyCostSets = __t.object("ViewMyCostSets", {});
 export type ViewMyCostSets = __Infer<typeof ViewMyCostSets>;
 
-export const ViewMyDraftCharacterCosts = __t.object(
-  "ViewMyDraftCharacterCosts",
-  {},
-);
-export type ViewMyDraftCharacterCosts = __Infer<
-  typeof ViewMyDraftCharacterCosts
->;
+export const ViewMyDraftCharacterCosts = __t.object("ViewMyDraftCharacterCosts", {});
+export type ViewMyDraftCharacterCosts = __Infer<typeof ViewMyDraftCharacterCosts>;
 
-export const ViewMyDraftLightconeCosts = __t.object(
-  "ViewMyDraftLightconeCosts",
-  {},
-);
-export type ViewMyDraftLightconeCosts = __Infer<
-  typeof ViewMyDraftLightconeCosts
->;
+export const ViewMyDraftLightconeCosts = __t.object("ViewMyDraftLightconeCosts", {});
+export type ViewMyDraftLightconeCosts = __Infer<typeof ViewMyDraftLightconeCosts>;
 
-export const ViewMyDraftSynergyCosts = __t.object(
-  "ViewMyDraftSynergyCosts",
-  {},
-);
+export const ViewMyDraftSynergyCosts = __t.object("ViewMyDraftSynergyCosts", {});
 export type ViewMyDraftSynergyCosts = __Infer<typeof ViewMyDraftSynergyCosts>;
 
 export const ViewMyIdentity = __t.object("ViewMyIdentity", {});
@@ -1944,43 +1916,20 @@ export type ViewMyLobbyChat = __Infer<typeof ViewMyLobbyChat>;
 export const ViewMyLobbyMembers = __t.object("ViewMyLobbyMembers", {});
 export type ViewMyLobbyMembers = __Infer<typeof ViewMyLobbyMembers>;
 
-export const ViewMyMatchParticipantHistory = __t.object(
-  "ViewMyMatchParticipantHistory",
-  {},
-);
-export type ViewMyMatchParticipantHistory = __Infer<
-  typeof ViewMyMatchParticipantHistory
->;
+export const ViewMyMatchParticipantHistory = __t.object("ViewMyMatchParticipantHistory", {});
+export type ViewMyMatchParticipantHistory = __Infer<typeof ViewMyMatchParticipantHistory>;
 
-export const ViewMyMatchParticipants = __t.object(
-  "ViewMyMatchParticipants",
-  {},
-);
+export const ViewMyMatchParticipants = __t.object("ViewMyMatchParticipants", {});
 export type ViewMyMatchParticipants = __Infer<typeof ViewMyMatchParticipants>;
 
-export const ViewMyMatchResultGameHistory = __t.object(
-  "ViewMyMatchResultGameHistory",
-  {},
-);
-export type ViewMyMatchResultGameHistory = __Infer<
-  typeof ViewMyMatchResultGameHistory
->;
+export const ViewMyMatchResultGameHistory = __t.object("ViewMyMatchResultGameHistory", {});
+export type ViewMyMatchResultGameHistory = __Infer<typeof ViewMyMatchResultGameHistory>;
 
-export const ViewMyMatchSessionHistory = __t.object(
-  "ViewMyMatchSessionHistory",
-  {},
-);
-export type ViewMyMatchSessionHistory = __Infer<
-  typeof ViewMyMatchSessionHistory
->;
+export const ViewMyMatchSessionHistory = __t.object("ViewMyMatchSessionHistory", {});
+export type ViewMyMatchSessionHistory = __Infer<typeof ViewMyMatchSessionHistory>;
 
-export const ViewMyMatchSessionStepHistory = __t.object(
-  "ViewMyMatchSessionStepHistory",
-  {},
-);
-export type ViewMyMatchSessionStepHistory = __Infer<
-  typeof ViewMyMatchSessionStepHistory
->;
+export const ViewMyMatchSessionStepHistory = __t.object("ViewMyMatchSessionStepHistory", {});
+export type ViewMyMatchSessionStepHistory = __Infer<typeof ViewMyMatchSessionStepHistory>;
 
 export const ViewMyMatchSteps = __t.object("ViewMyMatchSteps", {});
 export type ViewMyMatchSteps = __Infer<typeof ViewMyMatchSteps>;
@@ -2003,47 +1952,23 @@ export type ViewMyRoster = __Infer<typeof ViewMyRoster>;
 export const ViewMyRosterVisibility = __t.object("ViewMyRosterVisibility", {});
 export type ViewMyRosterVisibility = __Infer<typeof ViewMyRosterVisibility>;
 
-export const ViewMyTournamentEnrolled = __t.object(
-  "ViewMyTournamentEnrolled",
-  {},
-);
+export const ViewMyTournamentEnrolled = __t.object("ViewMyTournamentEnrolled", {});
 export type ViewMyTournamentEnrolled = __Infer<typeof ViewMyTournamentEnrolled>;
 
-export const ViewMyTournamentGroupStandings = __t.object(
-  "ViewMyTournamentGroupStandings",
-  {},
-);
-export type ViewMyTournamentGroupStandings = __Infer<
-  typeof ViewMyTournamentGroupStandings
->;
+export const ViewMyTournamentGroupStandings = __t.object("ViewMyTournamentGroupStandings", {});
+export type ViewMyTournamentGroupStandings = __Infer<typeof ViewMyTournamentGroupStandings>;
 
-export const ViewMyTournamentLobbies = __t.object(
-  "ViewMyTournamentLobbies",
-  {},
-);
+export const ViewMyTournamentLobbies = __t.object("ViewMyTournamentLobbies", {});
 export type ViewMyTournamentLobbies = __Infer<typeof ViewMyTournamentLobbies>;
 
-export const ViewMyTournamentMatchResults = __t.object(
-  "ViewMyTournamentMatchResults",
-  {},
-);
-export type ViewMyTournamentMatchResults = __Infer<
-  typeof ViewMyTournamentMatchResults
->;
+export const ViewMyTournamentMatchResults = __t.object("ViewMyTournamentMatchResults", {});
+export type ViewMyTournamentMatchResults = __Infer<typeof ViewMyTournamentMatchResults>;
 
-export const ViewMyTournamentMatches = __t.object(
-  "ViewMyTournamentMatches",
-  {},
-);
+export const ViewMyTournamentMatches = __t.object("ViewMyTournamentMatches", {});
 export type ViewMyTournamentMatches = __Infer<typeof ViewMyTournamentMatches>;
 
-export const ViewMyTournamentTeamMembers = __t.object(
-  "ViewMyTournamentTeamMembers",
-  {},
-);
-export type ViewMyTournamentTeamMembers = __Infer<
-  typeof ViewMyTournamentTeamMembers
->;
+export const ViewMyTournamentTeamMembers = __t.object("ViewMyTournamentTeamMembers", {});
+export type ViewMyTournamentTeamMembers = __Infer<typeof ViewMyTournamentTeamMembers>;
 
 export const ViewMyTournamentTeams = __t.object("ViewMyTournamentTeams", {});
 export type ViewMyTournamentTeams = __Infer<typeof ViewMyTournamentTeams>;
@@ -2054,13 +1979,9 @@ export type ViewMyTournaments = __Infer<typeof ViewMyTournaments>;
 export const ViewPublicAccounts = __t.object("ViewPublicAccounts", {});
 export type ViewPublicAccounts = __Infer<typeof ViewPublicAccounts>;
 
-export const ViewTournamentRegistrantAccounts = __t.object(
-  "ViewTournamentRegistrantAccounts",
-  {},
-);
-export type ViewTournamentRegistrantAccounts = __Infer<
-  typeof ViewTournamentRegistrantAccounts
->;
+export const ViewTournamentRegistrantAccounts = __t.object("ViewTournamentRegistrantAccounts", {});
+export type ViewTournamentRegistrantAccounts = __Infer<typeof ViewTournamentRegistrantAccounts>;
 
 export const ViewUserDirectory = __t.object("ViewUserDirectory", {});
 export type ViewUserDirectory = __Infer<typeof ViewUserDirectory>;
+

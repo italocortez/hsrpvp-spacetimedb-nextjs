@@ -161,92 +161,44 @@ import WaitlistPromoteReducer from "../waitlist_promote_reducer";
 import WithdrawFromTournamentReducer from "../withdraw_from_tournament_reducer";
 
 export type AcceptTeamRequestParams = __Infer<typeof AcceptTeamRequestReducer>;
-export type AddAchievementCriteriaParams = __Infer<
-  typeof AddAchievementCriteriaReducer
->;
-export type AdminAssignCharacterArchetypesParams = __Infer<
-  typeof AdminAssignCharacterArchetypesReducer
->;
+export type AddAchievementCriteriaParams = __Infer<typeof AddAchievementCriteriaReducer>;
+export type AdminAssignCharacterArchetypesParams = __Infer<typeof AdminAssignCharacterArchetypesReducer>;
 export type AdminBanUserParams = __Infer<typeof AdminBanUserReducer>;
-export type AdminBatchRemoveCharactersParams = __Infer<
-  typeof AdminBatchRemoveCharactersReducer
->;
-export type AdminBatchUpsertCharactersParams = __Infer<
-  typeof AdminBatchUpsertCharactersReducer
->;
+export type AdminBatchRemoveCharactersParams = __Infer<typeof AdminBatchRemoveCharactersReducer>;
+export type AdminBatchUpsertCharactersParams = __Infer<typeof AdminBatchUpsertCharactersReducer>;
 export type AdminBulkUpsertParams = __Infer<typeof AdminBulkUpsertReducer>;
-export type AdminCreateHsrAccountParams = __Infer<
-  typeof AdminCreateHsrAccountReducer
->;
-export type AdminDeleteArchetypeParams = __Infer<
-  typeof AdminDeleteArchetypeReducer
->;
-export type AdminDeleteHsrAccountParams = __Infer<
-  typeof AdminDeleteHsrAccountReducer
->;
+export type AdminCreateHsrAccountParams = __Infer<typeof AdminCreateHsrAccountReducer>;
+export type AdminDeleteArchetypeParams = __Infer<typeof AdminDeleteArchetypeReducer>;
+export type AdminDeleteHsrAccountParams = __Infer<typeof AdminDeleteHsrAccountReducer>;
 export type AdminDeleteRowParams = __Infer<typeof AdminDeleteRowReducer>;
-export type AdminForceFinalizeParams = __Infer<
-  typeof AdminForceFinalizeReducer
->;
+export type AdminForceFinalizeParams = __Infer<typeof AdminForceFinalizeReducer>;
 export type AdminGcIdentitiesParams = __Infer<typeof AdminGcIdentitiesReducer>;
 export type AdminGcLobbiesParams = __Infer<typeof AdminGcLobbiesReducer>;
-export type AdminRecalculateAllRatingsParams = __Infer<
-  typeof AdminRecalculateAllRatingsReducer
->;
-export type AdminRemoveCharacterArchetypesParams = __Infer<
-  typeof AdminRemoveCharacterArchetypesReducer
->;
-export type AdminSeedEloConfigParams = __Infer<
-  typeof AdminSeedEloConfigReducer
->;
-export type AdminSeedRatingConfigParams = __Infer<
-  typeof AdminSeedRatingConfigReducer
->;
-export type AdminSetBracketWinnerParams = __Infer<
-  typeof AdminSetBracketWinnerReducer
->;
+export type AdminRecalculateAllRatingsParams = __Infer<typeof AdminRecalculateAllRatingsReducer>;
+export type AdminRemoveCharacterArchetypesParams = __Infer<typeof AdminRemoveCharacterArchetypesReducer>;
+export type AdminSeedEloConfigParams = __Infer<typeof AdminSeedEloConfigReducer>;
+export type AdminSeedRatingConfigParams = __Infer<typeof AdminSeedRatingConfigReducer>;
+export type AdminSetBracketWinnerParams = __Infer<typeof AdminSetBracketWinnerReducer>;
 export type AdminUnbanUserParams = __Infer<typeof AdminUnbanUserReducer>;
-export type AdminUpdateEloConfigParams = __Infer<
-  typeof AdminUpdateEloConfigReducer
->;
-export type AdminUpdateHsrAccountParams = __Infer<
-  typeof AdminUpdateHsrAccountReducer
->;
-export type AdminUpdateRatingConfigParams = __Infer<
-  typeof AdminUpdateRatingConfigReducer
->;
+export type AdminUpdateEloConfigParams = __Infer<typeof AdminUpdateEloConfigReducer>;
+export type AdminUpdateHsrAccountParams = __Infer<typeof AdminUpdateHsrAccountReducer>;
+export type AdminUpdateRatingConfigParams = __Infer<typeof AdminUpdateRatingConfigReducer>;
 export type AdminUpdateUserParams = __Infer<typeof AdminUpdateUserReducer>;
-export type AdminUpsertArchetypeParams = __Infer<
-  typeof AdminUpsertArchetypeReducer
->;
+export type AdminUpsertArchetypeParams = __Infer<typeof AdminUpsertArchetypeReducer>;
 export type AdminVoidMatchParams = __Infer<typeof AdminVoidMatchReducer>;
-export type AdvanceBracketMatchParams = __Infer<
-  typeof AdvanceBracketMatchReducer
->;
-export type AdvanceGroupToEliminationParams = __Infer<
-  typeof AdvanceGroupToEliminationReducer
->;
+export type AdvanceBracketMatchParams = __Infer<typeof AdvanceBracketMatchReducer>;
+export type AdvanceGroupToEliminationParams = __Infer<typeof AdvanceGroupToEliminationReducer>;
 export type AdvanceStageParams = __Infer<typeof AdvanceStageReducer>;
 export type AdvanceToNextGameParams = __Infer<typeof AdvanceToNextGameReducer>;
-export type AdvanceTournamentStageParams = __Infer<
-  typeof AdvanceTournamentStageReducer
->;
-export type ApproveParticipantParams = __Infer<
-  typeof ApproveParticipantReducer
->;
+export type AdvanceTournamentStageParams = __Infer<typeof AdvanceTournamentStageReducer>;
+export type ApproveParticipantParams = __Infer<typeof ApproveParticipantReducer>;
 export type ApproveStandInParams = __Infer<typeof ApproveStandInReducer>;
 export type ArrangeLineupParams = __Infer<typeof ArrangeLineupReducer>;
-export type AssignTournamentAssistantParams = __Infer<
-  typeof AssignTournamentAssistantReducer
->;
+export type AssignTournamentAssistantParams = __Infer<typeof AssignTournamentAssistantReducer>;
 export type BanCharacterParams = __Infer<typeof BanCharacterReducer>;
 export type BanMemberParams = __Infer<typeof BanMemberReducer>;
-export type BatchRemoveCharactersParams = __Infer<
-  typeof BatchRemoveCharactersReducer
->;
-export type BatchUpsertCharactersParams = __Infer<
-  typeof BatchUpsertCharactersReducer
->;
+export type BatchRemoveCharactersParams = __Infer<typeof BatchRemoveCharactersReducer>;
+export type BatchUpsertCharactersParams = __Infer<typeof BatchUpsertCharactersReducer>;
 export type BroadcastCursorParams = __Infer<typeof BroadcastCursorReducer>;
 export type CancelTournamentParams = __Infer<typeof CancelTournamentReducer>;
 export type CheckInTournamentParams = __Infer<typeof CheckInTournamentReducer>;
@@ -254,182 +206,111 @@ export type ClaimForfeitParams = __Infer<typeof ClaimForfeitReducer>;
 export type CloseLobbyParams = __Infer<typeof CloseLobbyReducer>;
 export type ConcedeMatchParams = __Infer<typeof ConcedeMatchReducer>;
 export type ConfirmLineupParams = __Infer<typeof ConfirmLineupReducer>;
-export type ConfirmMatchScoresParams = __Infer<
-  typeof ConfirmMatchScoresReducer
->;
+export type ConfirmMatchScoresParams = __Infer<typeof ConfirmMatchScoresReducer>;
 export type ConfirmReadyParams = __Infer<typeof ConfirmReadyReducer>;
 export type CreateAchievementParams = __Infer<typeof CreateAchievementReducer>;
-export type CreateAvailabilitySlotParams = __Infer<
-  typeof CreateAvailabilitySlotReducer
->;
-export type CreateCalendarEventParams = __Infer<
-  typeof CreateCalendarEventReducer
->;
+export type CreateAvailabilitySlotParams = __Infer<typeof CreateAvailabilitySlotReducer>;
+export type CreateCalendarEventParams = __Infer<typeof CreateCalendarEventReducer>;
 export type CreateCostSetParams = __Infer<typeof CreateCostSetReducer>;
 export type CreateHsrAccountParams = __Infer<typeof CreateHsrAccountReducer>;
 export type CreateLobbyParams = __Infer<typeof CreateLobbyReducer>;
 export type CreateLobbyPresetParams = __Infer<typeof CreateLobbyPresetReducer>;
 export type CreateSeasonParams = __Infer<typeof CreateSeasonReducer>;
 export type CreateTournamentParams = __Infer<typeof CreateTournamentReducer>;
-export type CreateTournamentLobbyParams = __Infer<
-  typeof CreateTournamentLobbyReducer
->;
-export type CreateTournamentTeamParams = __Infer<
-  typeof CreateTournamentTeamReducer
->;
+export type CreateTournamentLobbyParams = __Infer<typeof CreateTournamentLobbyReducer>;
+export type CreateTournamentTeamParams = __Infer<typeof CreateTournamentTeamReducer>;
 export type DeferMatchParams = __Infer<typeof DeferMatchReducer>;
 export type DeleteAchievementParams = __Infer<typeof DeleteAchievementReducer>;
-export type DeleteAvailabilitySlotParams = __Infer<
-  typeof DeleteAvailabilitySlotReducer
->;
-export type DeleteCalendarEventParams = __Infer<
-  typeof DeleteCalendarEventReducer
->;
+export type DeleteAvailabilitySlotParams = __Infer<typeof DeleteAvailabilitySlotReducer>;
+export type DeleteCalendarEventParams = __Infer<typeof DeleteCalendarEventReducer>;
 export type DeleteChatMessageParams = __Infer<typeof DeleteChatMessageReducer>;
 export type DeleteCostSetParams = __Infer<typeof DeleteCostSetReducer>;
-export type DeleteGuestAccountParams = __Infer<
-  typeof DeleteGuestAccountReducer
->;
+export type DeleteGuestAccountParams = __Infer<typeof DeleteGuestAccountReducer>;
 export type DeleteHsrAccountParams = __Infer<typeof DeleteHsrAccountReducer>;
 export type DeleteLobbyPresetParams = __Infer<typeof DeleteLobbyPresetReducer>;
-export type DeselectMatchAccountParams = __Infer<
-  typeof DeselectMatchAccountReducer
->;
-export type DisbandTournamentTeamParams = __Infer<
-  typeof DisbandTournamentTeamReducer
->;
-export type DisputeMatchResultParams = __Infer<
-  typeof DisputeMatchResultReducer
->;
+export type DeselectMatchAccountParams = __Infer<typeof DeselectMatchAccountReducer>;
+export type DisbandTournamentTeamParams = __Infer<typeof DisbandTournamentTeamReducer>;
+export type DisputeMatchResultParams = __Infer<typeof DisputeMatchResultReducer>;
 export type DqParticipantParams = __Infer<typeof DqParticipantReducer>;
-export type EditDraftCharacterCostParams = __Infer<
-  typeof EditDraftCharacterCostReducer
->;
-export type EditDraftLightconeCostParams = __Infer<
-  typeof EditDraftLightconeCostReducer
->;
-export type EditDraftSynergyCostParams = __Infer<
-  typeof EditDraftSynergyCostReducer
->;
+export type EditDraftCharacterCostParams = __Infer<typeof EditDraftCharacterCostReducer>;
+export type EditDraftLightconeCostParams = __Infer<typeof EditDraftLightconeCostReducer>;
+export type EditDraftSynergyCostParams = __Infer<typeof EditDraftSynergyCostReducer>;
 export type EquipLightconeParams = __Infer<typeof EquipLightconeReducer>;
-export type FinalizeMatchResultParams = __Infer<
-  typeof FinalizeMatchResultReducer
->;
+export type FinalizeMatchResultParams = __Infer<typeof FinalizeMatchResultReducer>;
 export type GenerateBracketParams = __Infer<typeof GenerateBracketReducer>;
 export type InviteToEventParams = __Infer<typeof InviteToEventReducer>;
 export type JoinLobbyParams = __Infer<typeof JoinLobbyReducer>;
 export type KickMemberParams = __Infer<typeof KickMemberReducer>;
 export type LeaveLobbyParams = __Infer<typeof LeaveLobbyReducer>;
-export type LeaveTournamentTeamParams = __Infer<
-  typeof LeaveTournamentTeamReducer
->;
+export type LeaveTournamentTeamParams = __Infer<typeof LeaveTournamentTeamReducer>;
 export type LockCostSetParams = __Infer<typeof LockCostSetReducer>;
 export type LoginAsGuestParams = __Infer<typeof LoginAsGuestReducer>;
-export type ManualAwardAchievementParams = __Infer<
-  typeof ManualAwardAchievementReducer
->;
+export type ManualAwardAchievementParams = __Infer<typeof ManualAwardAchievementReducer>;
 export type MigrateRosterParams = __Infer<typeof MigrateRosterReducer>;
 export type ModDemoteFromHostParams = __Infer<typeof ModDemoteFromHostReducer>;
 export type ModPromoteToHostParams = __Infer<typeof ModPromoteToHostReducer>;
 export type NominateCharacterParams = __Infer<typeof NominateCharacterReducer>;
-export type OverrideMatchResultParams = __Infer<
-  typeof OverrideMatchResultReducer
->;
+export type OverrideMatchResultParams = __Infer<typeof OverrideMatchResultReducer>;
 export type PassBidParams = __Infer<typeof PassBidReducer>;
 export type PauseDraftParams = __Infer<typeof PauseDraftReducer>;
 export type PickCharacterParams = __Infer<typeof PickCharacterReducer>;
 export type PlaceBidParams = __Infer<typeof PlaceBidReducer>;
-export type ProcessTournamentMmrParams = __Infer<
-  typeof ProcessTournamentMmrReducer
->;
+export type ProcessTournamentMmrParams = __Infer<typeof ProcessTournamentMmrReducer>;
 export type PublishCostSetParams = __Infer<typeof PublishCostSetReducer>;
 export type ReclaimRefereeParams = __Infer<typeof ReclaimRefereeReducer>;
 export type RecordGameScoresParams = __Infer<typeof RecordGameScoresReducer>;
-export type RegisterForTournamentParams = __Infer<
-  typeof RegisterForTournamentReducer
->;
+export type RegisterForTournamentParams = __Infer<typeof RegisterForTournamentReducer>;
 export type RegisterServerParams = __Infer<typeof RegisterServerReducer>;
 export type RejectTeamRequestParams = __Infer<typeof RejectTeamRequestReducer>;
-export type RemoveAchievementCriteriaParams = __Infer<
-  typeof RemoveAchievementCriteriaReducer
->;
+export type RemoveAchievementCriteriaParams = __Infer<typeof RemoveAchievementCriteriaReducer>;
 export type RemoveInviteParams = __Infer<typeof RemoveInviteReducer>;
-export type RemoveTournamentAssistantParams = __Infer<
-  typeof RemoveTournamentAssistantReducer
->;
+export type RemoveTournamentAssistantParams = __Infer<typeof RemoveTournamentAssistantReducer>;
 export type RequestJoinTeamParams = __Infer<typeof RequestJoinTeamReducer>;
 export type RespondToInviteParams = __Infer<typeof RespondToInviteReducer>;
 export type ResumeDraftParams = __Infer<typeof ResumeDraftReducer>;
 export type ResumeSeriesParams = __Infer<typeof ResumeSeriesReducer>;
-export type RollbackBracketMatchParams = __Infer<
-  typeof RollbackBracketMatchReducer
->;
+export type RollbackBracketMatchParams = __Infer<typeof RollbackBracketMatchReducer>;
 export type SaveCalendarParams = __Infer<typeof SaveCalendarReducer>;
 export type SeedBracketParams = __Infer<typeof SeedBracketReducer>;
 export type SeedIdentityGcJobParams = __Infer<typeof SeedIdentityGcJobReducer>;
 export type SeedLobbyGcJobParams = __Infer<typeof SeedLobbyGcJobReducer>;
-export type SelectMatchAccountParams = __Infer<
-  typeof SelectMatchAccountReducer
->;
+export type SelectMatchAccountParams = __Infer<typeof SelectMatchAccountReducer>;
 export type SendChatMessageParams = __Infer<typeof SendChatMessageReducer>;
 export type ServerDeleteUserParams = __Infer<typeof ServerDeleteUserReducer>;
-export type ServerLinkProviderParams = __Infer<
-  typeof ServerLinkProviderReducer
->;
-export type ServerNukeTestDataParams = __Infer<
-  typeof ServerNukeTestDataReducer
->;
+export type ServerLinkProviderParams = __Infer<typeof ServerLinkProviderReducer>;
+export type ServerNukeTestDataParams = __Infer<typeof ServerNukeTestDataReducer>;
 export type ServerSetDatetimeParams = __Infer<typeof ServerSetDatetimeReducer>;
 export type ServerSetMmrParams = __Infer<typeof ServerSetMmrReducer>;
 export type ServerSetOnlineParams = __Infer<typeof ServerSetOnlineReducer>;
 export type ServerSetRoleParams = __Infer<typeof ServerSetRoleReducer>;
-export type SetActiveHsrAccountParams = __Infer<
-  typeof SetActiveHsrAccountReducer
->;
+export type SetActiveHsrAccountParams = __Infer<typeof SetActiveHsrAccountReducer>;
 export type SetActiveSeasonParams = __Infer<typeof SetActiveSeasonReducer>;
 export type SetCaptainParams = __Infer<typeof SetCaptainReducer>;
-export type SetDisplayedAchievementParams = __Infer<
-  typeof SetDisplayedAchievementReducer
->;
+export type SetDisplayedAchievementParams = __Infer<typeof SetDisplayedAchievementReducer>;
 export type SetTeamSlotParams = __Infer<typeof SetTeamSlotReducer>;
 export type ShelveSeriesParams = __Infer<typeof ShelveSeriesReducer>;
 export type StartDraftParams = __Infer<typeof StartDraftReducer>;
-export type SubmitAndAdvanceBracketParams = __Infer<
-  typeof SubmitAndAdvanceBracketReducer
->;
+export type SubmitAndAdvanceBracketParams = __Infer<typeof SubmitAndAdvanceBracketReducer>;
 export type SubmitMatchResultParams = __Infer<typeof SubmitMatchResultReducer>;
 export type SwapSeedsParams = __Infer<typeof SwapSeedsReducer>;
-export type TimerExpiryAuctionParams = __Infer<
-  typeof TimerExpiryAuctionReducer
->;
-export type TimerExpiryClassicParams = __Infer<
-  typeof TimerExpiryClassicReducer
->;
-export type ToggleCalendarVisibilityParams = __Infer<
-  typeof ToggleCalendarVisibilityReducer
->;
+export type TimerExpiryAuctionParams = __Infer<typeof TimerExpiryAuctionReducer>;
+export type TimerExpiryClassicParams = __Infer<typeof TimerExpiryClassicReducer>;
+export type ToggleCalendarVisibilityParams = __Infer<typeof ToggleCalendarVisibilityReducer>;
 export type TransferRefereeParams = __Infer<typeof TransferRefereeReducer>;
 export type UnconfirmReadyParams = __Infer<typeof UnconfirmReadyReducer>;
 export type UndoLastStepParams = __Infer<typeof UndoLastStepReducer>;
 export type UnpublishCostSetParams = __Infer<typeof UnpublishCostSetReducer>;
 export type UnsaveCalendarParams = __Infer<typeof UnsaveCalendarReducer>;
 export type UpdateAchievementParams = __Infer<typeof UpdateAchievementReducer>;
-export type UpdateAvailabilitySlotParams = __Infer<
-  typeof UpdateAvailabilitySlotReducer
->;
+export type UpdateAvailabilitySlotParams = __Infer<typeof UpdateAvailabilitySlotReducer>;
 export type UpdateAvatarParams = __Infer<typeof UpdateAvatarReducer>;
-export type UpdateCalendarEventParams = __Infer<
-  typeof UpdateCalendarEventReducer
->;
+export type UpdateCalendarEventParams = __Infer<typeof UpdateCalendarEventReducer>;
 export type UpdateDisplayNameParams = __Infer<typeof UpdateDisplayNameReducer>;
 export type UpdateHsrAccountParams = __Infer<typeof UpdateHsrAccountReducer>;
 export type UpdateLobbyPresetParams = __Infer<typeof UpdateLobbyPresetReducer>;
-export type UpdateLobbySettingsParams = __Infer<
-  typeof UpdateLobbySettingsReducer
->;
+export type UpdateLobbySettingsParams = __Infer<typeof UpdateLobbySettingsReducer>;
 export type UpdateTournamentParams = __Infer<typeof UpdateTournamentReducer>;
 export type UpdateUsernameParams = __Infer<typeof UpdateUsernameReducer>;
 export type WaitlistPromoteParams = __Infer<typeof WaitlistPromoteReducer>;
-export type WithdrawFromTournamentParams = __Infer<
-  typeof WithdrawFromTournamentReducer
->;
+export type WithdrawFromTournamentParams = __Infer<typeof WithdrawFromTournamentReducer>;
+

@@ -9,7 +9,11 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import { GameMode, SuperimpositionCost } from "./types";
+import {
+  GameMode,
+  SuperimpositionCost,
+} from "./types";
+
 
 export default __t.row({
   costSetId: __t.u32().name("cost_set_id"),

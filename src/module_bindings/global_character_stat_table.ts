@@ -9,7 +9,12 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import { GameMode, MatchType, DraftMode } from "./types";
+import {
+  GameMode,
+  MatchType,
+  DraftMode,
+} from "./types";
+
 
 export default __t.row({
   characterName: __t.string().name("character_name"),

@@ -16,6 +16,7 @@ import {
   LobbyConfigSnapshot,
 } from "./types";
 
+
 export default __t.row({
   id: __t.u32().primaryKey(),
   lobbyCode: __t.string().name("lobby_code"),

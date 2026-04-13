@@ -10,7 +10,9 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-import { AchievementRarity } from "./types";
+import {
+  AchievementRarity,
+} from "./types";
 
 export default {
   achievementId: __t.u32(),

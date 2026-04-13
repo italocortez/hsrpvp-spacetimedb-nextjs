@@ -281,1579 +281,1025 @@ import ViewUserDirectoryRow from "./view_user_directory_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
-  AccountRatingConfig: __table(
-    {
-      name: "account_rating_config",
-      indexes: [
-        {
-          accessor: "id",
-          name: "account_rating_config_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-      ],
-      constraints: [
-        {
-          name: "account_rating_config_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    AccountRatingConfigRow,
-  ),
-  Achievement: __table(
-    {
-      name: "achievement",
-      indexes: [
-        {
-          accessor: "id",
-          name: "achievement_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "name",
-          name: "achievement_name_idx_btree",
-          algorithm: "btree",
-          columns: ["name"],
-        },
-        {
-          accessor: "by_rarity",
-          name: "achievement_rarity_idx_btree",
-          algorithm: "btree",
-          columns: ["rarity"],
-        },
-      ],
-      constraints: [
-        { name: "achievement_id_key", constraint: "unique", columns: ["id"] },
-        {
-          name: "achievement_name_key",
-          constraint: "unique",
-          columns: ["name"],
-        },
-      ],
-    },
-    AchievementRow,
-  ),
-  AchievementCriteria: __table(
-    {
-      name: "achievement_criteria",
-      indexes: [
-        {
-          accessor: "by_achievement",
-          name: "achievement_criteria_achievement_id_idx_btree",
-          algorithm: "btree",
-          columns: ["achievementId"],
-        },
-        {
-          accessor: "id",
-          name: "achievement_criteria_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "by_stat_table",
-          name: "achievement_criteria_stat_table_idx_btree",
-          algorithm: "btree",
-          columns: ["statTable"],
-        },
-      ],
-      constraints: [
-        {
-          name: "achievement_criteria_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    AchievementCriteriaRow,
-  ),
-  Archetype: __table(
-    {
-      name: "archetype",
-      indexes: [
-        {
-          accessor: "id",
-          name: "archetype_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "name",
-          name: "archetype_name_idx_btree",
-          algorithm: "btree",
-          columns: ["name"],
-        },
-      ],
-      constraints: [
-        { name: "archetype_id_key", constraint: "unique", columns: ["id"] },
-        { name: "archetype_name_key", constraint: "unique", columns: ["name"] },
-      ],
-    },
-    ArchetypeRow,
-  ),
-  AvailabilitySlot: __table(
-    {
-      name: "availability_slot",
-      indexes: [
-        {
-          accessor: "id",
-          name: "availability_slot_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "start_at",
-          name: "availability_slot_start_at_idx_btree",
-          algorithm: "btree",
-          columns: ["startAt"],
-        },
-        {
-          accessor: "user_id",
-          name: "availability_slot_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [
-        {
-          name: "availability_slot_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    AvailabilitySlotRow,
-  ),
-  BracketMatch: __table(
-    {
-      name: "bracket_match",
-      indexes: [
-        {
-          accessor: "id",
-          name: "bracket_match_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "tournament_id",
-          name: "bracket_match_tournament_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId"],
-        },
-      ],
-      constraints: [
-        { name: "bracket_match_id_key", constraint: "unique", columns: ["id"] },
-      ],
-    },
-    BracketMatchRow,
-  ),
-  CalendarEvent: __table(
-    {
-      name: "calendar_event",
-      indexes: [
-        {
-          accessor: "bracket_match_id",
-          name: "calendar_event_bracket_match_id_idx_btree",
-          algorithm: "btree",
-          columns: ["bracketMatchId"],
-        },
-        {
-          accessor: "id",
-          name: "calendar_event_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "organizer_id",
-          name: "calendar_event_organizer_id_idx_btree",
-          algorithm: "btree",
-          columns: ["organizerId"],
-        },
-        {
-          accessor: "start_at",
-          name: "calendar_event_start_at_idx_btree",
-          algorithm: "btree",
-          columns: ["startAt"],
-        },
-      ],
-      constraints: [
-        {
-          name: "calendar_event_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    CalendarEventRow,
-  ),
-  CalendarEventInvite: __table(
-    {
-      name: "calendar_event_invite",
-      indexes: [
-        {
-          accessor: "event_id",
-          name: "calendar_event_invite_event_id_idx_btree",
-          algorithm: "btree",
-          columns: ["eventId"],
-        },
-        {
-          accessor: "by_event_and_invitee",
-          name: "calendar_event_invite_event_id_invitee_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["eventId", "inviteeUserId"],
-        },
-        {
-          accessor: "invitee_user_id",
-          name: "calendar_event_invite_invitee_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["inviteeUserId"],
-        },
-      ],
-      constraints: [],
-    },
-    CalendarEventInviteRow,
-  ),
-  ChatMessage: __table(
-    {
-      name: "chat_message",
-      indexes: [
-        {
-          accessor: "id",
-          name: "chat_message_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "lobby_id",
-          name: "chat_message_lobby_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lobbyId"],
-        },
-      ],
-      constraints: [
-        { name: "chat_message_id_key", constraint: "unique", columns: ["id"] },
-      ],
-    },
-    ChatMessageRow,
-  ),
-  CostSet: __table(
-    {
-      name: "cost_set",
-      indexes: [
-        {
-          accessor: "creator_id",
-          name: "cost_set_creator_id_idx_btree",
-          algorithm: "btree",
-          columns: ["creatorId"],
-        },
-        {
-          accessor: "id",
-          name: "cost_set_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-      ],
-      constraints: [
-        { name: "cost_set_id_key", constraint: "unique", columns: ["id"] },
-      ],
-    },
-    CostSetRow,
-  ),
-  EloConfigTable: __table(
-    {
-      name: "elo_config",
-      indexes: [
-        {
-          accessor: "id",
-          name: "elo_config_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-      ],
-      constraints: [
-        { name: "elo_config_id_key", constraint: "unique", columns: ["id"] },
-      ],
-    },
-    EloConfigTableRow,
-  ),
-  GlobalCharacterStat: __table(
-    {
-      name: "global_character_stat",
-      indexes: [
-        {
-          accessor: "by_char_mode",
-          name: "global_character_stat_character_name_game_mode_idx_btree",
-          algorithm: "btree",
-          columns: ["characterName", "gameMode"],
-        },
-        {
-          accessor: "by_season",
-          name: "global_character_stat_season_id_idx_btree",
-          algorithm: "btree",
-          columns: ["seasonId"],
-        },
-      ],
-      constraints: [],
-    },
-    GlobalCharacterStatRow,
-  ),
-  GroupPhaseRecord: __table(
-    {
-      name: "group_phase_record",
-      indexes: [
-        {
-          accessor: "by_tournament_group_and_team",
-          name: "group_phase_record_tournament_id_group_id_team_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId", "groupId", "teamId"],
-        },
-        {
-          accessor: "tournament_id",
-          name: "group_phase_record_tournament_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId"],
-        },
-      ],
-      constraints: [],
-    },
-    GroupPhaseRecordRow,
-  ),
-  HsrCharacter: __table(
-    {
-      name: "hsr_character",
-      indexes: [
-        {
-          accessor: "by_element",
-          name: "hsr_character_element_idx_btree",
-          algorithm: "btree",
-          columns: ["element"],
-        },
-        {
-          accessor: "name",
-          name: "hsr_character_name_idx_btree",
-          algorithm: "btree",
-          columns: ["name"],
-        },
-        {
-          accessor: "by_path",
-          name: "hsr_character_path_idx_btree",
-          algorithm: "btree",
-          columns: ["path"],
-        },
-        {
-          accessor: "by_role",
-          name: "hsr_character_role_idx_btree",
-          algorithm: "btree",
-          columns: ["role"],
-        },
-      ],
-      constraints: [
-        {
-          name: "hsr_character_name_key",
-          constraint: "unique",
-          columns: ["name"],
-        },
-      ],
-    },
-    HsrCharacterRow,
-  ),
-  HsrCharacterArchetype: __table(
-    {
-      name: "hsr_character_archetype",
-      indexes: [
-        {
-          accessor: "archetype_id",
-          name: "hsr_character_archetype_archetype_id_idx_btree",
-          algorithm: "btree",
-          columns: ["archetypeId"],
-        },
-        {
-          accessor: "by_character_and_archetype",
-          name: "hsr_character_archetype_character_name_archetype_id_idx_btree",
-          algorithm: "btree",
-          columns: ["characterName", "archetypeId"],
-        },
-        {
-          accessor: "character_name",
-          name: "hsr_character_archetype_character_name_idx_btree",
-          algorithm: "btree",
-          columns: ["characterName"],
-        },
-      ],
-      constraints: [],
-    },
-    HsrCharacterArchetypeRow,
-  ),
-  HsrCharacterCost: __table(
-    {
-      name: "hsr_character_cost",
-      indexes: [
-        {
-          accessor: "by_character_mode_and_set",
-          name: "hsr_character_cost_character_name_game_mode_cost_set_id_idx_btree",
-          algorithm: "btree",
-          columns: ["characterName", "gameMode", "costSetId"],
-        },
-        {
-          accessor: "cost_set_id",
-          name: "hsr_character_cost_cost_set_id_idx_btree",
-          algorithm: "btree",
-          columns: ["costSetId"],
-        },
-      ],
-      constraints: [],
-    },
-    HsrCharacterCostRow,
-  ),
-  HsrLightcone: __table(
-    {
-      name: "hsr_lightcone",
-      indexes: [
-        {
-          accessor: "name",
-          name: "hsr_lightcone_name_idx_btree",
-          algorithm: "btree",
-          columns: ["name"],
-        },
-        {
-          accessor: "by_path",
-          name: "hsr_lightcone_path_idx_btree",
-          algorithm: "btree",
-          columns: ["path"],
-        },
-      ],
-      constraints: [
-        {
-          name: "hsr_lightcone_name_key",
-          constraint: "unique",
-          columns: ["name"],
-        },
-      ],
-    },
-    HsrLightconeRow,
-  ),
-  HsrLightconeCost: __table(
-    {
-      name: "hsr_lightcone_cost",
-      indexes: [
-        {
-          accessor: "cost_set_id",
-          name: "hsr_lightcone_cost_cost_set_id_idx_btree",
-          algorithm: "btree",
-          columns: ["costSetId"],
-        },
-        {
-          accessor: "by_lightcone_mode_and_set",
-          name: "hsr_lightcone_cost_lightcone_name_game_mode_cost_set_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lightconeName", "gameMode", "costSetId"],
-        },
-      ],
-      constraints: [],
-    },
-    HsrLightconeCostRow,
-  ),
-  HsrSynergyCost: __table(
-    {
-      name: "hsr_synergy_cost",
-      indexes: [
-        {
-          accessor: "cost_set_id",
-          name: "hsr_synergy_cost_cost_set_id_idx_btree",
-          algorithm: "btree",
-          columns: ["costSetId"],
-        },
-        {
-          accessor: "id",
-          name: "hsr_synergy_cost_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "source_mode",
-          name: "hsr_synergy_cost_source_name_game_mode_idx_btree",
-          algorithm: "btree",
-          columns: ["sourceName", "gameMode"],
-        },
-        {
-          accessor: "target_name",
-          name: "hsr_synergy_cost_target_name_idx_btree",
-          algorithm: "btree",
-          columns: ["targetName"],
-        },
-      ],
-      constraints: [
-        {
-          name: "hsr_synergy_cost_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    HsrSynergyCostRow,
-  ),
-  Leaderboard: __table(
-    {
-      name: "leaderboard",
-      indexes: [
-        {
-          accessor: "by_category_rank_season",
-          name: "leaderboard_category_rank_season_id_idx_btree",
-          algorithm: "btree",
-          columns: ["category", "rank", "seasonId"],
-        },
-        {
-          accessor: "by_user",
-          name: "leaderboard_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [],
-    },
-    LeaderboardRow,
-  ),
-  Lobby: __table(
-    {
-      name: "lobby",
-      indexes: [
-        {
-          accessor: "bracket_match_id",
-          name: "lobby_bracket_match_id_idx_btree",
-          algorithm: "btree",
-          columns: ["bracketMatchId"],
-        },
-        {
-          accessor: "host_user_id",
-          name: "lobby_host_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["hostUserId"],
-        },
-        {
-          accessor: "id",
-          name: "lobby_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "joinCode",
-          name: "lobby_join_code_idx_btree",
-          algorithm: "btree",
-          columns: ["joinCode"],
-        },
-        {
-          accessor: "stage",
-          name: "lobby_stage_idx_btree",
-          algorithm: "btree",
-          columns: ["stage"],
-        },
-        {
-          accessor: "tournament_id",
-          name: "lobby_tournament_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId"],
-        },
-      ],
-      constraints: [
-        { name: "lobby_id_key", constraint: "unique", columns: ["id"] },
-        {
-          name: "lobby_join_code_key",
-          constraint: "unique",
-          columns: ["joinCode"],
-        },
-      ],
-    },
-    LobbyRow,
-  ),
-  LobbyBan: __table(
-    {
-      name: "lobby_ban",
-      indexes: [
-        {
-          accessor: "by_lobby_and_user",
-          name: "lobby_ban_lobby_id_banned_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lobbyId", "bannedUserId"],
-        },
-        {
-          accessor: "lobby_id",
-          name: "lobby_ban_lobby_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lobbyId"],
-        },
-      ],
-      constraints: [],
-    },
-    LobbyBanRow,
-  ),
-  LobbyCursorEvent: __table(
-    {
-      name: "lobby_cursor_event",
-      indexes: [],
-      constraints: [],
-      event: true,
-    },
-    LobbyCursorEventRow,
-  ),
-  LobbyMember: __table(
-    {
-      name: "lobby_member",
-      indexes: [
-        {
-          accessor: "lobby_id",
-          name: "lobby_member_lobby_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lobbyId"],
-        },
-        {
-          accessor: "by_lobby_and_user",
-          name: "lobby_member_lobby_id_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lobbyId", "userId"],
-        },
-        {
-          accessor: "user_id",
-          name: "lobby_member_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [],
-    },
-    LobbyMemberRow,
-  ),
-  LobbyPreset: __table(
-    {
-      name: "lobby_preset",
-      indexes: [
-        {
-          accessor: "creator_user_id",
-          name: "lobby_preset_creator_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["creatorUserId"],
-        },
-        {
-          accessor: "id",
-          name: "lobby_preset_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-      ],
-      constraints: [
-        { name: "lobby_preset_id_key", constraint: "unique", columns: ["id"] },
-      ],
-    },
-    LobbyPresetRow,
-  ),
-  MatchParticipantHistory: __table(
-    {
-      name: "match_participant_history",
-      indexes: [
-        {
-          accessor: "by_match_history",
-          name: "match_participant_history_match_history_id_idx_btree",
-          algorithm: "btree",
-          columns: ["matchHistoryId"],
-        },
-        {
-          accessor: "by_user",
-          name: "match_participant_history_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-        {
-          accessor: "by_user_and_match",
-          name: "match_participant_history_user_id_match_history_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId", "matchHistoryId"],
-        },
-      ],
-      constraints: [],
-    },
-    MatchParticipantHistoryRow,
-  ),
-  MatchResultGame: __table(
-    {
-      name: "match_result_game",
-      indexes: [
-        {
-          accessor: "by_result_and_game",
-          name: "match_result_game_match_result_id_game_number_idx_btree",
-          algorithm: "btree",
-          columns: ["matchResultId", "gameNumber"],
-        },
-        {
-          accessor: "match_result_id",
-          name: "match_result_game_match_result_id_idx_btree",
-          algorithm: "btree",
-          columns: ["matchResultId"],
-        },
-      ],
-      constraints: [],
-    },
-    MatchResultGameRow,
-  ),
-  MatchResultGameHistory: __table(
-    {
-      name: "match_result_game_history",
-      indexes: [
-        {
-          accessor: "by_match_history",
-          name: "match_result_game_history_match_history_id_idx_btree",
-          algorithm: "btree",
-          columns: ["matchHistoryId"],
-        },
-      ],
-      constraints: [],
-    },
-    MatchResultGameHistoryRow,
-  ),
-  MatchResultParticipant: __table(
-    {
-      name: "match_result_participant",
-      indexes: [
-        {
-          accessor: "match_result_id",
-          name: "match_result_participant_match_result_id_idx_btree",
-          algorithm: "btree",
-          columns: ["matchResultId"],
-        },
-        {
-          accessor: "by_result_and_user",
-          name: "match_result_participant_match_result_id_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["matchResultId", "userId"],
-        },
-        {
-          accessor: "user_id",
-          name: "match_result_participant_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [],
-    },
-    MatchResultParticipantRow,
-  ),
-  MatchResultRecord: __table(
-    {
-      name: "match_result_record",
-      indexes: [
-        {
-          accessor: "bracket_match_id",
-          name: "match_result_record_bracket_match_id_idx_btree",
-          algorithm: "btree",
-          columns: ["bracketMatchId"],
-        },
-        {
-          accessor: "id",
-          name: "match_result_record_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "lobby_id",
-          name: "match_result_record_lobby_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lobbyId"],
-        },
-      ],
-      constraints: [
-        {
-          name: "match_result_record_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    MatchResultRecordRow,
-  ),
-  MatchSession: __table(
-    {
-      name: "match_session",
-      indexes: [
-        {
-          accessor: "lobbyId",
-          name: "match_session_lobby_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lobbyId"],
-        },
-      ],
-      constraints: [
-        {
-          name: "match_session_lobby_id_key",
-          constraint: "unique",
-          columns: ["lobbyId"],
-        },
-      ],
-    },
-    MatchSessionRow,
-  ),
-  MatchSessionHistory: __table(
-    {
-      name: "match_session_history",
-      indexes: [
-        {
-          accessor: "game_mode",
-          name: "match_session_history_game_mode_idx_btree",
-          algorithm: "btree",
-          columns: ["gameMode"],
-        },
-        {
-          accessor: "id",
-          name: "match_session_history_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "played_at",
-          name: "match_session_history_played_at_idx_btree",
-          algorithm: "btree",
-          columns: ["playedAt"],
-        },
-      ],
-      constraints: [
-        {
-          name: "match_session_history_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    MatchSessionHistoryRow,
-  ),
-  MatchSessionStep: __table(
-    {
-      name: "match_session_step",
-      indexes: [
-        {
-          accessor: "id",
-          name: "match_session_step_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "lobby_id",
-          name: "match_session_step_lobby_id_idx_btree",
-          algorithm: "btree",
-          columns: ["lobbyId"],
-        },
-      ],
-      constraints: [
-        {
-          name: "match_session_step_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    MatchSessionStepRow,
-  ),
-  MatchSessionStepHistory: __table(
-    {
-      name: "match_session_step_history",
-      indexes: [
-        {
-          accessor: "by_match_history",
-          name: "match_session_step_history_match_history_id_idx_btree",
-          algorithm: "btree",
-          columns: ["matchHistoryId"],
-        },
-      ],
-      constraints: [],
-    },
-    MatchSessionStepHistoryRow,
-  ),
-  MmrHistory: __table(
-    {
-      name: "mmr_history",
-      indexes: [
-        {
-          accessor: "id",
-          name: "mmr_history_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "match_history_id",
-          name: "mmr_history_match_history_id_idx_btree",
-          algorithm: "btree",
-          columns: ["matchHistoryId"],
-        },
-        {
-          accessor: "user_id",
-          name: "mmr_history_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [
-        { name: "mmr_history_id_key", constraint: "unique", columns: ["id"] },
-      ],
-    },
-    MmrHistoryRow,
-  ),
-  MmrRating: __table(
-    {
-      name: "mmr_rating",
-      indexes: [
-        {
-          accessor: "rating",
-          name: "mmr_rating_rating_idx_btree",
-          algorithm: "btree",
-          columns: ["rating"],
-        },
-        {
-          accessor: "by_user_mode_season",
-          name: "mmr_rating_user_id_game_mode_season_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId", "gameMode", "seasonId"],
-        },
-        {
-          accessor: "user_id",
-          name: "mmr_rating_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [],
-    },
-    MmrRatingRow,
-  ),
-  SavedCalendar: __table(
-    {
-      name: "saved_calendar",
-      indexes: [
-        {
-          accessor: "user_id",
-          name: "saved_calendar_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-        {
-          accessor: "by_user_and_target",
-          name: "saved_calendar_user_id_target_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId", "targetUserId"],
-        },
-      ],
-      constraints: [],
-    },
-    SavedCalendarRow,
-  ),
-  Season: __table(
-    {
-      name: "season",
-      indexes: [
-        {
-          accessor: "id",
-          name: "season_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "is_active",
-          name: "season_is_active_idx_btree",
-          algorithm: "btree",
-          columns: ["isActive"],
-        },
-      ],
-      constraints: [
-        { name: "season_id_key", constraint: "unique", columns: ["id"] },
-      ],
-    },
-    SeasonRow,
-  ),
-  Tournament: __table(
-    {
-      name: "tournament",
-      indexes: [
-        {
-          accessor: "id",
-          name: "tournament_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "organizer_id",
-          name: "tournament_organizer_id_idx_btree",
-          algorithm: "btree",
-          columns: ["organizerId"],
-        },
-        {
-          accessor: "stage",
-          name: "tournament_stage_idx_btree",
-          algorithm: "btree",
-          columns: ["stage"],
-        },
-      ],
-      constraints: [
-        { name: "tournament_id_key", constraint: "unique", columns: ["id"] },
-      ],
-    },
-    TournamentRow,
-  ),
-  TournamentAssistant: __table(
-    {
-      name: "tournament_assistant",
-      indexes: [
-        {
-          accessor: "tournament_id",
-          name: "tournament_assistant_tournament_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId"],
-        },
-        {
-          accessor: "by_tournament_and_user",
-          name: "tournament_assistant_tournament_id_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId", "userId"],
-        },
-        {
-          accessor: "user_id",
-          name: "tournament_assistant_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [],
-    },
-    TournamentAssistantRow,
-  ),
-  TournamentEnrolled: __table(
-    {
-      name: "tournament_enrolled",
-      indexes: [
-        {
-          accessor: "tournament_id",
-          name: "tournament_enrolled_tournament_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId"],
-        },
-        {
-          accessor: "by_tournament_and_user",
-          name: "tournament_enrolled_tournament_id_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId", "userId"],
-        },
-        {
-          accessor: "user_id",
-          name: "tournament_enrolled_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [],
-    },
-    TournamentEnrolledRow,
-  ),
-  TournamentPlayerAccount: __table(
-    {
-      name: "tournament_player_account",
-      indexes: [
-        {
-          accessor: "by_tournament_and_user",
-          name: "tournament_player_account_tournament_id_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId", "userId"],
-        },
-        {
-          accessor: "by_user",
-          name: "tournament_player_account_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [],
-    },
-    TournamentPlayerAccountRow,
-  ),
-  TournamentStandIn: __table(
-    {
-      name: "tournament_stand_in",
-      indexes: [
-        {
-          accessor: "bracket_match_id",
-          name: "tournament_stand_in_bracket_match_id_idx_btree",
-          algorithm: "btree",
-          columns: ["bracketMatchId"],
-        },
-        {
-          accessor: "by_match_and_user",
-          name: "tournament_stand_in_bracket_match_id_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["bracketMatchId", "userId"],
-        },
-      ],
-      constraints: [],
-    },
-    TournamentStandInRow,
-  ),
-  TournamentTeam: __table(
-    {
-      name: "tournament_team",
-      indexes: [
-        {
-          accessor: "captain_user_id",
-          name: "tournament_team_captain_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["captainUserId"],
-        },
-        {
-          accessor: "id",
-          name: "tournament_team_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "tournament_id",
-          name: "tournament_team_tournament_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId"],
-        },
-      ],
-      constraints: [
-        {
-          name: "tournament_team_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    TournamentTeamRow,
-  ),
-  TournamentTeamMember: __table(
-    {
-      name: "tournament_team_member",
-      indexes: [
-        {
-          accessor: "team_id",
-          name: "tournament_team_member_team_id_idx_btree",
-          algorithm: "btree",
-          columns: ["teamId"],
-        },
-        {
-          accessor: "by_tournament_and_user",
-          name: "tournament_team_member_tournament_id_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["tournamentId", "userId"],
-        },
-      ],
-      constraints: [],
-    },
-    TournamentTeamMemberRow,
-  ),
-  TournamentTeamRequest: __table(
-    {
-      name: "tournament_team_request",
-      indexes: [
-        {
-          accessor: "team_id",
-          name: "tournament_team_request_team_id_idx_btree",
-          algorithm: "btree",
-          columns: ["teamId"],
-        },
-        {
-          accessor: "by_team_and_user",
-          name: "tournament_team_request_team_id_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["teamId", "userId"],
-        },
-        {
-          accessor: "user_id",
-          name: "tournament_team_request_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [],
-    },
-    TournamentTeamRequestRow,
-  ),
-  User: __table(
-    {
-      name: "user",
-      indexes: [
-        {
-          accessor: "id",
-          name: "user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "username",
-          name: "user_username_idx_btree",
-          algorithm: "btree",
-          columns: ["username"],
-        },
-      ],
-      constraints: [
-        { name: "user_id_key", constraint: "unique", columns: ["id"] },
-        {
-          name: "user_username_key",
-          constraint: "unique",
-          columns: ["username"],
-        },
-      ],
-    },
-    UserRow,
-  ),
-  UserAchievement: __table(
-    {
-      name: "user_achievement",
-      indexes: [
-        {
-          accessor: "by_achievement",
-          name: "user_achievement_achievement_id_idx_btree",
-          algorithm: "btree",
-          columns: ["achievementId"],
-        },
-        {
-          accessor: "id",
-          name: "user_achievement_id_idx_btree",
-          algorithm: "btree",
-          columns: ["id"],
-        },
-        {
-          accessor: "by_user_achievement",
-          name: "user_achievement_user_id_achievement_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId", "achievementId"],
-        },
-        {
-          accessor: "by_user",
-          name: "user_achievement_user_id_idx_btree",
-          algorithm: "btree",
-          columns: ["userId"],
-        },
-      ],
-      constraints: [
-        {
-          name: "user_achievement_id_key",
-          constraint: "unique",
-          columns: ["id"],
-        },
-      ],
-    },
-    UserAchievementRow,
-  ),
-  view_admin_user_private: __table(
-    {
-      name: "view_admin_user_private",
-      indexes: [],
-      constraints: [],
-    },
-    ViewAdminUserPrivateRow,
-  ),
-  view_lobby_browser: __table(
-    {
-      name: "view_lobby_browser",
-      indexes: [],
-      constraints: [],
-    },
-    ViewLobbyBrowserRow,
-  ),
-  view_match_history: __table(
-    {
-      name: "view_match_history",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMatchHistoryRow,
-  ),
-  view_match_participant_history: __table(
-    {
-      name: "view_match_participant_history",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMatchParticipantHistoryRow,
-  ),
-  view_match_step_history: __table(
-    {
-      name: "view_match_step_history",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMatchStepHistoryRow,
-  ),
-  view_my_character_stats: __table(
-    {
-      name: "view_my_character_stats",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyCharacterStatsRow,
-  ),
-  view_my_cost_sets: __table(
-    {
-      name: "view_my_cost_sets",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyCostSetsRow,
-  ),
-  view_my_draft_character_costs: __table(
-    {
-      name: "view_my_draft_character_costs",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyDraftCharacterCostsRow,
-  ),
-  view_my_draft_lightcone_costs: __table(
-    {
-      name: "view_my_draft_lightcone_costs",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyDraftLightconeCostsRow,
-  ),
-  view_my_draft_synergy_costs: __table(
-    {
-      name: "view_my_draft_synergy_costs",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyDraftSynergyCostsRow,
-  ),
-  view_my_identity: __table(
-    {
-      name: "view_my_identity",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyIdentityRow,
-  ),
-  view_my_lobbies: __table(
-    {
-      name: "view_my_lobbies",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyLobbiesRow,
-  ),
-  view_my_lobby_chat: __table(
-    {
-      name: "view_my_lobby_chat",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyLobbyChatRow,
-  ),
-  view_my_lobby_members: __table(
-    {
-      name: "view_my_lobby_members",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyLobbyMembersRow,
-  ),
-  view_my_match_participant_history: __table(
-    {
-      name: "view_my_match_participant_history",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyMatchParticipantHistoryRow,
-  ),
-  view_my_match_participants: __table(
-    {
-      name: "view_my_match_participants",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyMatchParticipantsRow,
-  ),
-  view_my_match_result_game_history: __table(
-    {
-      name: "view_my_match_result_game_history",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyMatchResultGameHistoryRow,
-  ),
-  view_my_match_session_history: __table(
-    {
-      name: "view_my_match_session_history",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyMatchSessionHistoryRow,
-  ),
-  view_my_match_session_step_history: __table(
-    {
-      name: "view_my_match_session_step_history",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyMatchSessionStepHistoryRow,
-  ),
-  view_my_match_steps: __table(
-    {
-      name: "view_my_match_steps",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyMatchStepsRow,
-  ),
-  view_my_mmr_history: __table(
-    {
-      name: "view_my_mmr_history",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyMmrHistoryRow,
-  ),
-  view_my_player_stats: __table(
-    {
-      name: "view_my_player_stats",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyPlayerStatsRow,
-  ),
-  view_my_profile: __table(
-    {
-      name: "view_my_profile",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyProfileRow,
-  ),
-  view_my_relationships: __table(
-    {
-      name: "view_my_relationships",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyRelationshipsRow,
-  ),
-  view_my_roster: __table(
-    {
-      name: "view_my_roster",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyRosterRow,
-  ),
-  view_my_roster_visibility: __table(
-    {
-      name: "view_my_roster_visibility",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyRosterVisibilityRow,
-  ),
-  view_my_tournament_enrolled: __table(
-    {
-      name: "view_my_tournament_enrolled",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyTournamentEnrolledRow,
-  ),
-  view_my_tournament_group_standings: __table(
-    {
-      name: "view_my_tournament_group_standings",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyTournamentGroupStandingsRow,
-  ),
-  view_my_tournament_lobbies: __table(
-    {
-      name: "view_my_tournament_lobbies",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyTournamentLobbiesRow,
-  ),
-  view_my_tournament_match_results: __table(
-    {
-      name: "view_my_tournament_match_results",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyTournamentMatchResultsRow,
-  ),
-  view_my_tournament_matches: __table(
-    {
-      name: "view_my_tournament_matches",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyTournamentMatchesRow,
-  ),
-  view_my_tournament_team_members: __table(
-    {
-      name: "view_my_tournament_team_members",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyTournamentTeamMembersRow,
-  ),
-  view_my_tournament_teams: __table(
-    {
-      name: "view_my_tournament_teams",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyTournamentTeamsRow,
-  ),
-  view_my_tournaments: __table(
-    {
-      name: "view_my_tournaments",
-      indexes: [],
-      constraints: [],
-    },
-    ViewMyTournamentsRow,
-  ),
-  view_public_accounts: __table(
-    {
-      name: "view_public_accounts",
-      indexes: [],
-      constraints: [],
-    },
-    ViewPublicAccountsRow,
-  ),
-  view_tournament_registrant_accounts: __table(
-    {
-      name: "view_tournament_registrant_accounts",
-      indexes: [],
-      constraints: [],
-    },
-    ViewTournamentRegistrantAccountsRow,
-  ),
-  view_user_directory: __table(
-    {
-      name: "view_user_directory",
-      indexes: [],
-      constraints: [],
-    },
-    ViewUserDirectoryRow,
-  ),
+  AccountRatingConfig: __table({
+    name: 'account_rating_config',
+    indexes: [
+      { accessor: 'id', name: 'account_rating_config_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'account_rating_config_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AccountRatingConfigRow),
+  Achievement: __table({
+    name: 'achievement',
+    indexes: [
+      { accessor: 'id', name: 'achievement_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'name', name: 'achievement_name_idx_btree', algorithm: 'btree', columns: [
+        'name',
+      ] },
+      { accessor: 'by_rarity', name: 'achievement_rarity_idx_btree', algorithm: 'btree', columns: [
+        'rarity',
+      ] },
+    ],
+    constraints: [
+      { name: 'achievement_id_key', constraint: 'unique', columns: ['id'] },
+      { name: 'achievement_name_key', constraint: 'unique', columns: ['name'] },
+    ],
+  }, AchievementRow),
+  AchievementCriteria: __table({
+    name: 'achievement_criteria',
+    indexes: [
+      { accessor: 'by_achievement', name: 'achievement_criteria_achievement_id_idx_btree', algorithm: 'btree', columns: [
+        'achievementId',
+      ] },
+      { accessor: 'id', name: 'achievement_criteria_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'by_stat_table', name: 'achievement_criteria_stat_table_idx_btree', algorithm: 'btree', columns: [
+        'statTable',
+      ] },
+    ],
+    constraints: [
+      { name: 'achievement_criteria_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AchievementCriteriaRow),
+  Archetype: __table({
+    name: 'archetype',
+    indexes: [
+      { accessor: 'id', name: 'archetype_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'name', name: 'archetype_name_idx_btree', algorithm: 'btree', columns: [
+        'name',
+      ] },
+    ],
+    constraints: [
+      { name: 'archetype_id_key', constraint: 'unique', columns: ['id'] },
+      { name: 'archetype_name_key', constraint: 'unique', columns: ['name'] },
+    ],
+  }, ArchetypeRow),
+  AvailabilitySlot: __table({
+    name: 'availability_slot',
+    indexes: [
+      { accessor: 'id', name: 'availability_slot_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'start_at', name: 'availability_slot_start_at_idx_btree', algorithm: 'btree', columns: [
+        'startAt',
+      ] },
+      { accessor: 'user_id', name: 'availability_slot_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'availability_slot_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AvailabilitySlotRow),
+  BracketMatch: __table({
+    name: 'bracket_match',
+    indexes: [
+      { accessor: 'id', name: 'bracket_match_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'tournament_id', name: 'bracket_match_tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+    ],
+    constraints: [
+      { name: 'bracket_match_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, BracketMatchRow),
+  CalendarEvent: __table({
+    name: 'calendar_event',
+    indexes: [
+      { accessor: 'bracket_match_id', name: 'calendar_event_bracket_match_id_idx_btree', algorithm: 'btree', columns: [
+        'bracketMatchId',
+      ] },
+      { accessor: 'id', name: 'calendar_event_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'organizer_id', name: 'calendar_event_organizer_id_idx_btree', algorithm: 'btree', columns: [
+        'organizerId',
+      ] },
+      { accessor: 'start_at', name: 'calendar_event_start_at_idx_btree', algorithm: 'btree', columns: [
+        'startAt',
+      ] },
+    ],
+    constraints: [
+      { name: 'calendar_event_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, CalendarEventRow),
+  CalendarEventInvite: __table({
+    name: 'calendar_event_invite',
+    indexes: [
+      { accessor: 'event_id', name: 'calendar_event_invite_event_id_idx_btree', algorithm: 'btree', columns: [
+        'eventId',
+      ] },
+      { accessor: 'by_event_and_invitee', name: 'calendar_event_invite_event_id_invitee_user_id_idx_btree', algorithm: 'btree', columns: [
+        'eventId',
+        'inviteeUserId',
+      ] },
+      { accessor: 'invitee_user_id', name: 'calendar_event_invite_invitee_user_id_idx_btree', algorithm: 'btree', columns: [
+        'inviteeUserId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, CalendarEventInviteRow),
+  ChatMessage: __table({
+    name: 'chat_message',
+    indexes: [
+      { accessor: 'id', name: 'chat_message_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'lobby_id', name: 'chat_message_lobby_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_message_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatMessageRow),
+  CostSet: __table({
+    name: 'cost_set',
+    indexes: [
+      { accessor: 'creator_id', name: 'cost_set_creator_id_idx_btree', algorithm: 'btree', columns: [
+        'creatorId',
+      ] },
+      { accessor: 'id', name: 'cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'cost_set_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, CostSetRow),
+  EloConfigTable: __table({
+    name: 'elo_config',
+    indexes: [
+      { accessor: 'id', name: 'elo_config_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'elo_config_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, EloConfigTableRow),
+  GlobalCharacterStat: __table({
+    name: 'global_character_stat',
+    indexes: [
+      { accessor: 'by_char_mode', name: 'global_character_stat_character_name_game_mode_idx_btree', algorithm: 'btree', columns: [
+        'characterName',
+        'gameMode',
+      ] },
+      { accessor: 'by_season', name: 'global_character_stat_season_id_idx_btree', algorithm: 'btree', columns: [
+        'seasonId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, GlobalCharacterStatRow),
+  GroupPhaseRecord: __table({
+    name: 'group_phase_record',
+    indexes: [
+      { accessor: 'by_tournament_group_and_team', name: 'group_phase_record_tournament_id_group_id_team_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+        'groupId',
+        'teamId',
+      ] },
+      { accessor: 'tournament_id', name: 'group_phase_record_tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, GroupPhaseRecordRow),
+  HsrCharacter: __table({
+    name: 'hsr_character',
+    indexes: [
+      { accessor: 'by_element', name: 'hsr_character_element_idx_btree', algorithm: 'btree', columns: [
+        'element',
+      ] },
+      { accessor: 'name', name: 'hsr_character_name_idx_btree', algorithm: 'btree', columns: [
+        'name',
+      ] },
+      { accessor: 'by_path', name: 'hsr_character_path_idx_btree', algorithm: 'btree', columns: [
+        'path',
+      ] },
+      { accessor: 'by_role', name: 'hsr_character_role_idx_btree', algorithm: 'btree', columns: [
+        'role',
+      ] },
+    ],
+    constraints: [
+      { name: 'hsr_character_name_key', constraint: 'unique', columns: ['name'] },
+    ],
+  }, HsrCharacterRow),
+  HsrCharacterArchetype: __table({
+    name: 'hsr_character_archetype',
+    indexes: [
+      { accessor: 'archetype_id', name: 'hsr_character_archetype_archetype_id_idx_btree', algorithm: 'btree', columns: [
+        'archetypeId',
+      ] },
+      { accessor: 'by_character_and_archetype', name: 'hsr_character_archetype_character_name_archetype_id_idx_btree', algorithm: 'btree', columns: [
+        'characterName',
+        'archetypeId',
+      ] },
+      { accessor: 'character_name', name: 'hsr_character_archetype_character_name_idx_btree', algorithm: 'btree', columns: [
+        'characterName',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, HsrCharacterArchetypeRow),
+  HsrCharacterCost: __table({
+    name: 'hsr_character_cost',
+    indexes: [
+      { accessor: 'by_character_mode_and_set', name: 'hsr_character_cost_character_name_game_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'characterName',
+        'gameMode',
+        'costSetId',
+      ] },
+      { accessor: 'cost_set_id', name: 'hsr_character_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'costSetId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, HsrCharacterCostRow),
+  HsrLightcone: __table({
+    name: 'hsr_lightcone',
+    indexes: [
+      { accessor: 'name', name: 'hsr_lightcone_name_idx_btree', algorithm: 'btree', columns: [
+        'name',
+      ] },
+      { accessor: 'by_path', name: 'hsr_lightcone_path_idx_btree', algorithm: 'btree', columns: [
+        'path',
+      ] },
+    ],
+    constraints: [
+      { name: 'hsr_lightcone_name_key', constraint: 'unique', columns: ['name'] },
+    ],
+  }, HsrLightconeRow),
+  HsrLightconeCost: __table({
+    name: 'hsr_lightcone_cost',
+    indexes: [
+      { accessor: 'cost_set_id', name: 'hsr_lightcone_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'costSetId',
+      ] },
+      { accessor: 'by_lightcone_mode_and_set', name: 'hsr_lightcone_cost_lightcone_name_game_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'lightconeName',
+        'gameMode',
+        'costSetId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, HsrLightconeCostRow),
+  HsrSynergyCost: __table({
+    name: 'hsr_synergy_cost',
+    indexes: [
+      { accessor: 'cost_set_id', name: 'hsr_synergy_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'costSetId',
+      ] },
+      { accessor: 'id', name: 'hsr_synergy_cost_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'source_mode', name: 'hsr_synergy_cost_source_name_game_mode_idx_btree', algorithm: 'btree', columns: [
+        'sourceName',
+        'gameMode',
+      ] },
+      { accessor: 'target_name', name: 'hsr_synergy_cost_target_name_idx_btree', algorithm: 'btree', columns: [
+        'targetName',
+      ] },
+    ],
+    constraints: [
+      { name: 'hsr_synergy_cost_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, HsrSynergyCostRow),
+  Leaderboard: __table({
+    name: 'leaderboard',
+    indexes: [
+      { accessor: 'by_category_rank_season', name: 'leaderboard_category_rank_season_id_idx_btree', algorithm: 'btree', columns: [
+        'category',
+        'rank',
+        'seasonId',
+      ] },
+      { accessor: 'by_user', name: 'leaderboard_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, LeaderboardRow),
+  Lobby: __table({
+    name: 'lobby',
+    indexes: [
+      { accessor: 'bracket_match_id', name: 'lobby_bracket_match_id_idx_btree', algorithm: 'btree', columns: [
+        'bracketMatchId',
+      ] },
+      { accessor: 'host_user_id', name: 'lobby_host_user_id_idx_btree', algorithm: 'btree', columns: [
+        'hostUserId',
+      ] },
+      { accessor: 'id', name: 'lobby_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'joinCode', name: 'lobby_join_code_idx_btree', algorithm: 'btree', columns: [
+        'joinCode',
+      ] },
+      { accessor: 'stage', name: 'lobby_stage_idx_btree', algorithm: 'btree', columns: [
+        'stage',
+      ] },
+      { accessor: 'tournament_id', name: 'lobby_tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+    ],
+    constraints: [
+      { name: 'lobby_id_key', constraint: 'unique', columns: ['id'] },
+      { name: 'lobby_join_code_key', constraint: 'unique', columns: ['joinCode'] },
+    ],
+  }, LobbyRow),
+  LobbyBan: __table({
+    name: 'lobby_ban',
+    indexes: [
+      { accessor: 'by_lobby_and_user', name: 'lobby_ban_lobby_id_banned_user_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+        'bannedUserId',
+      ] },
+      { accessor: 'lobby_id', name: 'lobby_ban_lobby_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, LobbyBanRow),
+  LobbyCursorEvent: __table({
+    name: 'lobby_cursor_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, LobbyCursorEventRow),
+  LobbyMember: __table({
+    name: 'lobby_member',
+    indexes: [
+      { accessor: 'lobby_id', name: 'lobby_member_lobby_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+      { accessor: 'by_lobby_and_user', name: 'lobby_member_lobby_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+        'userId',
+      ] },
+      { accessor: 'user_id', name: 'lobby_member_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, LobbyMemberRow),
+  LobbyPreset: __table({
+    name: 'lobby_preset',
+    indexes: [
+      { accessor: 'creator_user_id', name: 'lobby_preset_creator_user_id_idx_btree', algorithm: 'btree', columns: [
+        'creatorUserId',
+      ] },
+      { accessor: 'id', name: 'lobby_preset_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'lobby_preset_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, LobbyPresetRow),
+  MatchParticipantHistory: __table({
+    name: 'match_participant_history',
+    indexes: [
+      { accessor: 'by_match_history', name: 'match_participant_history_match_history_id_idx_btree', algorithm: 'btree', columns: [
+        'matchHistoryId',
+      ] },
+      { accessor: 'by_user', name: 'match_participant_history_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+      { accessor: 'by_user_and_match', name: 'match_participant_history_user_id_match_history_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+        'matchHistoryId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MatchParticipantHistoryRow),
+  MatchResultGame: __table({
+    name: 'match_result_game',
+    indexes: [
+      { accessor: 'by_result_and_game', name: 'match_result_game_match_result_id_game_number_idx_btree', algorithm: 'btree', columns: [
+        'matchResultId',
+        'gameNumber',
+      ] },
+      { accessor: 'match_result_id', name: 'match_result_game_match_result_id_idx_btree', algorithm: 'btree', columns: [
+        'matchResultId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MatchResultGameRow),
+  MatchResultGameHistory: __table({
+    name: 'match_result_game_history',
+    indexes: [
+      { accessor: 'by_match_history', name: 'match_result_game_history_match_history_id_idx_btree', algorithm: 'btree', columns: [
+        'matchHistoryId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MatchResultGameHistoryRow),
+  MatchResultParticipant: __table({
+    name: 'match_result_participant',
+    indexes: [
+      { accessor: 'match_result_id', name: 'match_result_participant_match_result_id_idx_btree', algorithm: 'btree', columns: [
+        'matchResultId',
+      ] },
+      { accessor: 'by_result_and_user', name: 'match_result_participant_match_result_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'matchResultId',
+        'userId',
+      ] },
+      { accessor: 'user_id', name: 'match_result_participant_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MatchResultParticipantRow),
+  MatchResultRecord: __table({
+    name: 'match_result_record',
+    indexes: [
+      { accessor: 'bracket_match_id', name: 'match_result_record_bracket_match_id_idx_btree', algorithm: 'btree', columns: [
+        'bracketMatchId',
+      ] },
+      { accessor: 'id', name: 'match_result_record_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'lobby_id', name: 'match_result_record_lobby_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+    ],
+    constraints: [
+      { name: 'match_result_record_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, MatchResultRecordRow),
+  MatchSession: __table({
+    name: 'match_session',
+    indexes: [
+      { accessor: 'lobbyId', name: 'match_session_lobby_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+    ],
+    constraints: [
+      { name: 'match_session_lobby_id_key', constraint: 'unique', columns: ['lobbyId'] },
+    ],
+  }, MatchSessionRow),
+  MatchSessionHistory: __table({
+    name: 'match_session_history',
+    indexes: [
+      { accessor: 'game_mode', name: 'match_session_history_game_mode_idx_btree', algorithm: 'btree', columns: [
+        'gameMode',
+      ] },
+      { accessor: 'id', name: 'match_session_history_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'played_at', name: 'match_session_history_played_at_idx_btree', algorithm: 'btree', columns: [
+        'playedAt',
+      ] },
+    ],
+    constraints: [
+      { name: 'match_session_history_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, MatchSessionHistoryRow),
+  MatchSessionStep: __table({
+    name: 'match_session_step',
+    indexes: [
+      { accessor: 'by_actor_user', name: 'match_session_step_actor_user_id_idx_btree', algorithm: 'btree', columns: [
+        'actorUserId',
+      ] },
+      { accessor: 'id', name: 'match_session_step_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'lobby_id', name: 'match_session_step_lobby_id_idx_btree', algorithm: 'btree', columns: [
+        'lobbyId',
+      ] },
+    ],
+    constraints: [
+      { name: 'match_session_step_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, MatchSessionStepRow),
+  MatchSessionStepHistory: __table({
+    name: 'match_session_step_history',
+    indexes: [
+      { accessor: 'by_match_history', name: 'match_session_step_history_match_history_id_idx_btree', algorithm: 'btree', columns: [
+        'matchHistoryId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MatchSessionStepHistoryRow),
+  MmrHistory: __table({
+    name: 'mmr_history',
+    indexes: [
+      { accessor: 'id', name: 'mmr_history_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'match_history_id', name: 'mmr_history_match_history_id_idx_btree', algorithm: 'btree', columns: [
+        'matchHistoryId',
+      ] },
+      { accessor: 'user_id', name: 'mmr_history_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'mmr_history_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, MmrHistoryRow),
+  MmrRating: __table({
+    name: 'mmr_rating',
+    indexes: [
+      { accessor: 'rating', name: 'mmr_rating_rating_idx_btree', algorithm: 'btree', columns: [
+        'rating',
+      ] },
+      { accessor: 'by_user_mode_season', name: 'mmr_rating_user_id_game_mode_season_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+        'gameMode',
+        'seasonId',
+      ] },
+      { accessor: 'user_id', name: 'mmr_rating_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, MmrRatingRow),
+  SavedCalendar: __table({
+    name: 'saved_calendar',
+    indexes: [
+      { accessor: 'user_id', name: 'saved_calendar_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+      { accessor: 'by_user_and_target', name: 'saved_calendar_user_id_target_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+        'targetUserId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, SavedCalendarRow),
+  Season: __table({
+    name: 'season',
+    indexes: [
+      { accessor: 'id', name: 'season_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'is_active', name: 'season_is_active_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+      ] },
+    ],
+    constraints: [
+      { name: 'season_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SeasonRow),
+  Tournament: __table({
+    name: 'tournament',
+    indexes: [
+      { accessor: 'id', name: 'tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'organizer_id', name: 'tournament_organizer_id_idx_btree', algorithm: 'btree', columns: [
+        'organizerId',
+      ] },
+      { accessor: 'stage', name: 'tournament_stage_idx_btree', algorithm: 'btree', columns: [
+        'stage',
+      ] },
+    ],
+    constraints: [
+      { name: 'tournament_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TournamentRow),
+  TournamentAssistant: __table({
+    name: 'tournament_assistant',
+    indexes: [
+      { accessor: 'tournament_id', name: 'tournament_assistant_tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+      { accessor: 'by_tournament_and_user', name: 'tournament_assistant_tournament_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+        'userId',
+      ] },
+      { accessor: 'user_id', name: 'tournament_assistant_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentAssistantRow),
+  TournamentEnrolled: __table({
+    name: 'tournament_enrolled',
+    indexes: [
+      { accessor: 'tournament_id', name: 'tournament_enrolled_tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+      { accessor: 'by_tournament_and_user', name: 'tournament_enrolled_tournament_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+        'userId',
+      ] },
+      { accessor: 'user_id', name: 'tournament_enrolled_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentEnrolledRow),
+  TournamentPlayerAccount: __table({
+    name: 'tournament_player_account',
+    indexes: [
+      { accessor: 'by_tournament_and_user', name: 'tournament_player_account_tournament_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+        'userId',
+      ] },
+      { accessor: 'by_user', name: 'tournament_player_account_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentPlayerAccountRow),
+  TournamentStandIn: __table({
+    name: 'tournament_stand_in',
+    indexes: [
+      { accessor: 'bracket_match_id', name: 'tournament_stand_in_bracket_match_id_idx_btree', algorithm: 'btree', columns: [
+        'bracketMatchId',
+      ] },
+      { accessor: 'by_match_and_user', name: 'tournament_stand_in_bracket_match_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'bracketMatchId',
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentStandInRow),
+  TournamentTeam: __table({
+    name: 'tournament_team',
+    indexes: [
+      { accessor: 'captain_user_id', name: 'tournament_team_captain_user_id_idx_btree', algorithm: 'btree', columns: [
+        'captainUserId',
+      ] },
+      { accessor: 'id', name: 'tournament_team_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'tournament_id', name: 'tournament_team_tournament_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+      ] },
+    ],
+    constraints: [
+      { name: 'tournament_team_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TournamentTeamRow),
+  TournamentTeamMember: __table({
+    name: 'tournament_team_member',
+    indexes: [
+      { accessor: 'team_id', name: 'tournament_team_member_team_id_idx_btree', algorithm: 'btree', columns: [
+        'teamId',
+      ] },
+      { accessor: 'by_tournament_and_user', name: 'tournament_team_member_tournament_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'tournamentId',
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentTeamMemberRow),
+  TournamentTeamRequest: __table({
+    name: 'tournament_team_request',
+    indexes: [
+      { accessor: 'team_id', name: 'tournament_team_request_team_id_idx_btree', algorithm: 'btree', columns: [
+        'teamId',
+      ] },
+      { accessor: 'by_team_and_user', name: 'tournament_team_request_team_id_user_id_idx_btree', algorithm: 'btree', columns: [
+        'teamId',
+        'userId',
+      ] },
+      { accessor: 'user_id', name: 'tournament_team_request_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+    ],
+  }, TournamentTeamRequestRow),
+  User: __table({
+    name: 'user',
+    indexes: [
+      { accessor: 'id', name: 'user_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'username', name: 'user_username_idx_btree', algorithm: 'btree', columns: [
+        'username',
+      ] },
+    ],
+    constraints: [
+      { name: 'user_id_key', constraint: 'unique', columns: ['id'] },
+      { name: 'user_username_key', constraint: 'unique', columns: ['username'] },
+    ],
+  }, UserRow),
+  UserAchievement: __table({
+    name: 'user_achievement',
+    indexes: [
+      { accessor: 'by_achievement', name: 'user_achievement_achievement_id_idx_btree', algorithm: 'btree', columns: [
+        'achievementId',
+      ] },
+      { accessor: 'id', name: 'user_achievement_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'by_user_achievement', name: 'user_achievement_user_id_achievement_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+        'achievementId',
+      ] },
+      { accessor: 'by_user', name: 'user_achievement_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'user_achievement_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, UserAchievementRow),
+  view_admin_user_private: __table({
+    name: 'view_admin_user_private',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewAdminUserPrivateRow),
+  view_lobby_browser: __table({
+    name: 'view_lobby_browser',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewLobbyBrowserRow),
+  view_match_history: __table({
+    name: 'view_match_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchHistoryRow),
+  view_match_participant_history: __table({
+    name: 'view_match_participant_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchParticipantHistoryRow),
+  view_match_step_history: __table({
+    name: 'view_match_step_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchStepHistoryRow),
+  view_my_character_stats: __table({
+    name: 'view_my_character_stats',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyCharacterStatsRow),
+  view_my_cost_sets: __table({
+    name: 'view_my_cost_sets',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyCostSetsRow),
+  view_my_draft_character_costs: __table({
+    name: 'view_my_draft_character_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftCharacterCostsRow),
+  view_my_draft_lightcone_costs: __table({
+    name: 'view_my_draft_lightcone_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftLightconeCostsRow),
+  view_my_draft_synergy_costs: __table({
+    name: 'view_my_draft_synergy_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftSynergyCostsRow),
+  view_my_identity: __table({
+    name: 'view_my_identity',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyIdentityRow),
+  view_my_lobbies: __table({
+    name: 'view_my_lobbies',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbiesRow),
+  view_my_lobby_chat: __table({
+    name: 'view_my_lobby_chat',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbyChatRow),
+  view_my_lobby_members: __table({
+    name: 'view_my_lobby_members',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbyMembersRow),
+  view_my_match_participant_history: __table({
+    name: 'view_my_match_participant_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchParticipantHistoryRow),
+  view_my_match_participants: __table({
+    name: 'view_my_match_participants',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchParticipantsRow),
+  view_my_match_result_game_history: __table({
+    name: 'view_my_match_result_game_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchResultGameHistoryRow),
+  view_my_match_session_history: __table({
+    name: 'view_my_match_session_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchSessionHistoryRow),
+  view_my_match_session_step_history: __table({
+    name: 'view_my_match_session_step_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchSessionStepHistoryRow),
+  view_my_match_steps: __table({
+    name: 'view_my_match_steps',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchStepsRow),
+  view_my_mmr_history: __table({
+    name: 'view_my_mmr_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMmrHistoryRow),
+  view_my_player_stats: __table({
+    name: 'view_my_player_stats',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyPlayerStatsRow),
+  view_my_profile: __table({
+    name: 'view_my_profile',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyProfileRow),
+  view_my_relationships: __table({
+    name: 'view_my_relationships',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRelationshipsRow),
+  view_my_roster: __table({
+    name: 'view_my_roster',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRosterRow),
+  view_my_roster_visibility: __table({
+    name: 'view_my_roster_visibility',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRosterVisibilityRow),
+  view_my_tournament_enrolled: __table({
+    name: 'view_my_tournament_enrolled',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentEnrolledRow),
+  view_my_tournament_group_standings: __table({
+    name: 'view_my_tournament_group_standings',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentGroupStandingsRow),
+  view_my_tournament_lobbies: __table({
+    name: 'view_my_tournament_lobbies',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentLobbiesRow),
+  view_my_tournament_match_results: __table({
+    name: 'view_my_tournament_match_results',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentMatchResultsRow),
+  view_my_tournament_matches: __table({
+    name: 'view_my_tournament_matches',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentMatchesRow),
+  view_my_tournament_team_members: __table({
+    name: 'view_my_tournament_team_members',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentTeamMembersRow),
+  view_my_tournament_teams: __table({
+    name: 'view_my_tournament_teams',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentTeamsRow),
+  view_my_tournaments: __table({
+    name: 'view_my_tournaments',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentsRow),
+  view_public_accounts: __table({
+    name: 'view_public_accounts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewPublicAccountsRow),
+  view_tournament_registrant_accounts: __table({
+    name: 'view_tournament_registrant_accounts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewTournamentRegistrantAccountsRow),
+  view_user_directory: __table({
+    name: 'view_user_directory',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewUserDirectoryRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("accept_team_request", AcceptTeamRequestReducer),
   __reducerSchema("add_achievement_criteria", AddAchievementCriteriaReducer),
-  __reducerSchema(
-    "admin_assign_character_archetypes",
-    AdminAssignCharacterArchetypesReducer,
-  ),
+  __reducerSchema("admin_assign_character_archetypes", AdminAssignCharacterArchetypesReducer),
   __reducerSchema("admin_ban_user", AdminBanUserReducer),
-  __reducerSchema(
-    "admin_batch_remove_characters",
-    AdminBatchRemoveCharactersReducer,
-  ),
-  __reducerSchema(
-    "admin_batch_upsert_characters",
-    AdminBatchUpsertCharactersReducer,
-  ),
+  __reducerSchema("admin_batch_remove_characters", AdminBatchRemoveCharactersReducer),
+  __reducerSchema("admin_batch_upsert_characters", AdminBatchUpsertCharactersReducer),
   __reducerSchema("admin_bulk_upsert", AdminBulkUpsertReducer),
   __reducerSchema("admin_create_hsr_account", AdminCreateHsrAccountReducer),
   __reducerSchema("admin_delete_archetype", AdminDeleteArchetypeReducer),
@@ -1862,14 +1308,8 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_force_finalize", AdminForceFinalizeReducer),
   __reducerSchema("admin_gc_identities", AdminGcIdentitiesReducer),
   __reducerSchema("admin_gc_lobbies", AdminGcLobbiesReducer),
-  __reducerSchema(
-    "admin_recalculate_all_ratings",
-    AdminRecalculateAllRatingsReducer,
-  ),
-  __reducerSchema(
-    "admin_remove_character_archetypes",
-    AdminRemoveCharacterArchetypesReducer,
-  ),
+  __reducerSchema("admin_recalculate_all_ratings", AdminRecalculateAllRatingsReducer),
+  __reducerSchema("admin_remove_character_archetypes", AdminRemoveCharacterArchetypesReducer),
   __reducerSchema("admin_seed_elo_config", AdminSeedEloConfigReducer),
   __reducerSchema("admin_seed_rating_config", AdminSeedRatingConfigReducer),
   __reducerSchema("admin_set_bracket_winner", AdminSetBracketWinnerReducer),
@@ -1881,20 +1321,14 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_upsert_archetype", AdminUpsertArchetypeReducer),
   __reducerSchema("admin_void_match", AdminVoidMatchReducer),
   __reducerSchema("advance_bracket_match", AdvanceBracketMatchReducer),
-  __reducerSchema(
-    "advance_group_to_elimination",
-    AdvanceGroupToEliminationReducer,
-  ),
+  __reducerSchema("advance_group_to_elimination", AdvanceGroupToEliminationReducer),
   __reducerSchema("advance_stage", AdvanceStageReducer),
   __reducerSchema("advance_to_next_game", AdvanceToNextGameReducer),
   __reducerSchema("advance_tournament_stage", AdvanceTournamentStageReducer),
   __reducerSchema("approve_participant", ApproveParticipantReducer),
   __reducerSchema("approve_stand_in", ApproveStandInReducer),
   __reducerSchema("arrange_lineup", ArrangeLineupReducer),
-  __reducerSchema(
-    "assign_tournament_assistant",
-    AssignTournamentAssistantReducer,
-  ),
+  __reducerSchema("assign_tournament_assistant", AssignTournamentAssistantReducer),
   __reducerSchema("ban_character", BanCharacterReducer),
   __reducerSchema("ban_member", BanMemberReducer),
   __reducerSchema("batch_remove_characters", BatchRemoveCharactersReducer),
@@ -1962,15 +1396,9 @@ const reducersSchema = __reducers(
   __reducerSchema("register_for_tournament", RegisterForTournamentReducer),
   __reducerSchema("register_server", RegisterServerReducer),
   __reducerSchema("reject_team_request", RejectTeamRequestReducer),
-  __reducerSchema(
-    "remove_achievement_criteria",
-    RemoveAchievementCriteriaReducer,
-  ),
+  __reducerSchema("remove_achievement_criteria", RemoveAchievementCriteriaReducer),
   __reducerSchema("remove_invite", RemoveInviteReducer),
-  __reducerSchema(
-    "remove_tournament_assistant",
-    RemoveTournamentAssistantReducer,
-  ),
+  __reducerSchema("remove_tournament_assistant", RemoveTournamentAssistantReducer),
   __reducerSchema("request_join_team", RequestJoinTeamReducer),
   __reducerSchema("respond_to_invite", RespondToInviteReducer),
   __reducerSchema("resume_draft", ResumeDraftReducer),
@@ -2001,10 +1429,7 @@ const reducersSchema = __reducers(
   __reducerSchema("swap_seeds", SwapSeedsReducer),
   __reducerSchema("timer_expiry_auction", TimerExpiryAuctionReducer),
   __reducerSchema("timer_expiry_classic", TimerExpiryClassicReducer),
-  __reducerSchema(
-    "toggle_calendar_visibility",
-    ToggleCalendarVisibilityReducer,
-  ),
+  __reducerSchema("toggle_calendar_visibility", ToggleCalendarVisibilityReducer),
   __reducerSchema("transfer_referee", TransferRefereeReducer),
   __reducerSchema("unconfirm_ready", UnconfirmReadyReducer),
   __reducerSchema("undo_last_step", UndoLastStepReducer),
@@ -2025,7 +1450,8 @@ const reducersSchema = __reducers(
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
-const proceduresSchema = __procedures();
+const proceduresSchema = __procedures(
+);
 
 /** The remote SpacetimeDB module schema, both runtime and type information. */
 const REMOTE_MODULE = {
@@ -2042,33 +1468,24 @@ const REMOTE_MODULE = {
 >;
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */
-export const tables: __QueryBuilder<typeof tablesSchema.schemaType> =
-  __makeQueryBuilder(tablesSchema.schemaType);
+export const tables: __QueryBuilder<typeof tablesSchema.schemaType> = __makeQueryBuilder(tablesSchema.schemaType);
 
 /** The reducers available in this remote SpacetimeDB module. */
-export const reducers = __convertToAccessorMap(
-  reducersSchema.reducersType.reducers,
-);
+export const reducers = __convertToAccessorMap(reducersSchema.reducersType.reducers);
 
 /** The context type returned in callbacks for all possible events. */
 export type EventContext = __EventContextInterface<typeof REMOTE_MODULE>;
 /** The context type returned in callbacks for reducer events. */
-export type ReducerEventContext = __ReducerEventContextInterface<
-  typeof REMOTE_MODULE
->;
+export type ReducerEventContext = __ReducerEventContextInterface<typeof REMOTE_MODULE>;
 /** The context type returned in callbacks for subscription events. */
-export type SubscriptionEventContext = __SubscriptionEventContextInterface<
-  typeof REMOTE_MODULE
->;
+export type SubscriptionEventContext = __SubscriptionEventContextInterface<typeof REMOTE_MODULE>;
 /** The context type returned in callbacks for error events. */
 export type ErrorContext = __ErrorContextInterface<typeof REMOTE_MODULE>;
 /** The subscription handle type to manage active subscriptions created from a {@link SubscriptionBuilder}. */
 export type SubscriptionHandle = __SubscriptionHandleImpl<typeof REMOTE_MODULE>;
 
 /** Builder class to configure a new subscription to the remote SpacetimeDB instance. */
-export class SubscriptionBuilder extends __SubscriptionBuilderImpl<
-  typeof REMOTE_MODULE
-> {}
+export class SubscriptionBuilder extends __SubscriptionBuilderImpl<typeof REMOTE_MODULE> {}
 
 /** Builder class to configure a new database connection to the remote SpacetimeDB instance. */
 export class DbConnectionBuilder extends __DbConnectionBuilder<DbConnection> {}
@@ -2077,11 +1494,7 @@ export class DbConnectionBuilder extends __DbConnectionBuilder<DbConnection> {}
 export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
   /** Creates a new {@link DbConnectionBuilder} to configure and connect to the remote SpacetimeDB instance. */
   static builder = (): DbConnectionBuilder => {
-    return new DbConnectionBuilder(
-      REMOTE_MODULE,
-      (config: __DbConnectionConfig<typeof REMOTE_MODULE>) =>
-        new DbConnection(config),
-    );
+    return new DbConnectionBuilder(REMOTE_MODULE, (config: __DbConnectionConfig<typeof REMOTE_MODULE>) => new DbConnection(config));
   };
 
   /** Creates a new {@link SubscriptionBuilder} to configure a subscription to the remote SpacetimeDB instance. */
@@ -2089,3 +1502,4 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
+

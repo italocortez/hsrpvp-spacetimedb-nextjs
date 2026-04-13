@@ -9,7 +9,12 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import { TeamSide, DraftStep, TimerState } from "./types";
+import {
+  TeamSide,
+  DraftStep,
+  TimerState,
+} from "./types";
+
 
 export default __t.row({
   lobbyId: __t.u32().primaryKey().name("lobby_id"),

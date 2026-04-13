@@ -9,7 +9,11 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import { GameMode, TeamSide } from "./types";
+import {
+  GameMode,
+  TeamSide,
+} from "./types";
+
 
 export default __t.row({
   matchHistoryId: __t.u32().name("match_history_id"),
@@ -17,12 +21,8 @@ export default __t.row({
   get gameMode() {
     return GameMode.name("game_mode");
   },
-  teamBlueScreenshotUrl: __t
-    .option(__t.string())
-    .name("team_blue_screenshot_url"),
-  teamRedScreenshotUrl: __t
-    .option(__t.string())
-    .name("team_red_screenshot_url"),
+  teamBlueScreenshotUrl: __t.option(__t.string()).name("team_blue_screenshot_url"),
+  teamRedScreenshotUrl: __t.option(__t.string()).name("team_red_screenshot_url"),
   teamBlueCyclesUsed: __t.option(__t.u32()).name("team_blue_cycles_used"),
   teamRedCyclesUsed: __t.option(__t.u32()).name("team_red_cycles_used"),
   teamBlueScore: __t.option(__t.u64()).name("team_blue_score"),
