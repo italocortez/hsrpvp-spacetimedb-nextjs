@@ -287,12 +287,11 @@ function loadJson<T>(filePath: string): T[] {
     return JSON.parse(readFileSync(filePath, 'utf-8')) as T[];
 }
 
-function buildSeedPayloads(): Array<{ tableName: string; rows: object[] }> {
-    const dataDir = resolve(process.cwd(), 'test/data');
-    const characters = loadJson<RawCharacter>(resolve(dataDir, 'characters_table.json'));
-    const lightcones = loadJson<RawLightcone>(resolve(dataDir, 'lightcones_table.json'));
-    const pairings = loadJson<RawPairing>(resolve(dataDir, 'pairing_table.json'));
-
+function buildSeedPayloads(
+    characters: RawCharacter[],
+    lightcones: RawLightcone[],
+    pairings: RawPairing[]
+): Array<{ tableName: string; rows: object[] }> {
     const archetypeNames = extractArchetypeNames(characters);
 
     return [
@@ -310,7 +309,12 @@ function buildSeedPayloads(): Array<{ tableName: string; rows: object[] }> {
 /** Connect as server identity and upsert all game data tables.
  *  Exported for use by post-publish.ts. */
 export async function seedAll(serverToken: string): Promise<void> {
-    const payloads = buildSeedPayloads();
+    const dataDir = resolve(process.cwd(), 'test/data');
+    const characters = loadJson<RawCharacter>(resolve(dataDir, 'characters_table.json'));
+    const lightcones = loadJson<RawLightcone>(resolve(dataDir, 'lightcones_table.json'));
+    const pairings = loadJson<RawPairing>(resolve(dataDir, 'pairing_table.json'));
+
+    const payloads = buildSeedPayloads(characters, lightcones, pairings);
     if (payloads.length === 0) {
         console.log('[seed] No data files found. Skipping seed.');
         return;
@@ -361,7 +365,7 @@ export async function seedAll(serverToken: string): Promise<void> {
                 }
 
                 // Archetype junction seeding (D-07): subscribe to Archetype table to resolve name→id
-                const characters = loadJson<RawCharacter>(resolve(process.cwd(), 'test/data/characters_table.json'));
+                // Reuse `characters` loaded at the top of seedAll (WR-03 — avoid double-parse)
                 const assignments = extractArchetypeAssignments(characters);
 
                 if (assignments.length > 0) {
