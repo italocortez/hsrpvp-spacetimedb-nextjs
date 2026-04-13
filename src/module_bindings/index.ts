@@ -253,8 +253,13 @@ import ViewMyIdentityRow from "./view_my_identity_table";
 import ViewMyLobbiesRow from "./view_my_lobbies_table";
 import ViewMyLobbyChatRow from "./view_my_lobby_chat_table";
 import ViewMyLobbyMembersRow from "./view_my_lobby_members_table";
+import ViewMyMatchParticipantHistoryRow from "./view_my_match_participant_history_table";
 import ViewMyMatchParticipantsRow from "./view_my_match_participants_table";
+import ViewMyMatchResultGameHistoryRow from "./view_my_match_result_game_history_table";
+import ViewMyMatchSessionHistoryRow from "./view_my_match_session_history_table";
+import ViewMyMatchSessionStepHistoryRow from "./view_my_match_session_step_history_table";
 import ViewMyMatchStepsRow from "./view_my_match_steps_table";
+import ViewMyMmrHistoryRow from "./view_my_mmr_history_table";
 import ViewMyPlayerStatsRow from "./view_my_player_stats_table";
 import ViewMyProfileRow from "./view_my_profile_table";
 import ViewMyRelationshipsRow from "./view_my_relationships_table";
@@ -1646,6 +1651,14 @@ const tablesSchema = __schema({
     },
     ViewMyLobbyMembersRow,
   ),
+  view_my_match_participant_history: __table(
+    {
+      name: "view_my_match_participant_history",
+      indexes: [],
+      constraints: [],
+    },
+    ViewMyMatchParticipantHistoryRow,
+  ),
   view_my_match_participants: __table(
     {
       name: "view_my_match_participants",
@@ -1654,6 +1667,30 @@ const tablesSchema = __schema({
     },
     ViewMyMatchParticipantsRow,
   ),
+  view_my_match_result_game_history: __table(
+    {
+      name: "view_my_match_result_game_history",
+      indexes: [],
+      constraints: [],
+    },
+    ViewMyMatchResultGameHistoryRow,
+  ),
+  view_my_match_session_history: __table(
+    {
+      name: "view_my_match_session_history",
+      indexes: [],
+      constraints: [],
+    },
+    ViewMyMatchSessionHistoryRow,
+  ),
+  view_my_match_session_step_history: __table(
+    {
+      name: "view_my_match_session_step_history",
+      indexes: [],
+      constraints: [],
+    },
+    ViewMyMatchSessionStepHistoryRow,
+  ),
   view_my_match_steps: __table(
     {
       name: "view_my_match_steps",
@@ -1661,6 +1698,14 @@ const tablesSchema = __schema({
       constraints: [],
     },
     ViewMyMatchStepsRow,
+  ),
+  view_my_mmr_history: __table(
+    {
+      name: "view_my_mmr_history",
+      indexes: [],
+      constraints: [],
+    },
+    ViewMyMmrHistoryRow,
   ),
   view_my_player_stats: __table(
     {

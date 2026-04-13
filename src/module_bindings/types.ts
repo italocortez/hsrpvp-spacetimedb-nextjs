@@ -1944,14 +1944,49 @@ export type ViewMyLobbyChat = __Infer<typeof ViewMyLobbyChat>;
 export const ViewMyLobbyMembers = __t.object("ViewMyLobbyMembers", {});
 export type ViewMyLobbyMembers = __Infer<typeof ViewMyLobbyMembers>;
 
+export const ViewMyMatchParticipantHistory = __t.object(
+  "ViewMyMatchParticipantHistory",
+  {},
+);
+export type ViewMyMatchParticipantHistory = __Infer<
+  typeof ViewMyMatchParticipantHistory
+>;
+
 export const ViewMyMatchParticipants = __t.object(
   "ViewMyMatchParticipants",
   {},
 );
 export type ViewMyMatchParticipants = __Infer<typeof ViewMyMatchParticipants>;
 
+export const ViewMyMatchResultGameHistory = __t.object(
+  "ViewMyMatchResultGameHistory",
+  {},
+);
+export type ViewMyMatchResultGameHistory = __Infer<
+  typeof ViewMyMatchResultGameHistory
+>;
+
+export const ViewMyMatchSessionHistory = __t.object(
+  "ViewMyMatchSessionHistory",
+  {},
+);
+export type ViewMyMatchSessionHistory = __Infer<
+  typeof ViewMyMatchSessionHistory
+>;
+
+export const ViewMyMatchSessionStepHistory = __t.object(
+  "ViewMyMatchSessionStepHistory",
+  {},
+);
+export type ViewMyMatchSessionStepHistory = __Infer<
+  typeof ViewMyMatchSessionStepHistory
+>;
+
 export const ViewMyMatchSteps = __t.object("ViewMyMatchSteps", {});
 export type ViewMyMatchSteps = __Infer<typeof ViewMyMatchSteps>;
+
+export const ViewMyMmrHistory = __t.object("ViewMyMmrHistory", {});
+export type ViewMyMmrHistory = __Infer<typeof ViewMyMmrHistory>;
 
 export const ViewMyPlayerStats = __t.object("ViewMyPlayerStats", {});
 export type ViewMyPlayerStats = __Infer<typeof ViewMyPlayerStats>;

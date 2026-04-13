@@ -46,6 +46,11 @@ export {
     view_match_history,
     view_match_participant_history,
     view_match_step_history,
+    view_my_match_session_history,          // Phase 15 D-13
+    view_my_match_session_step_history,     // Phase 15 D-13
+    view_my_match_participant_history,      // Phase 15 D-13
+    view_my_mmr_history,                    // Phase 15 D-13
+    view_my_match_result_game_history,      // Phase 15 D-13
 } from './views/matchHistoryViews';
 export {
     view_my_tournaments,

@@ -67,7 +67,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 - [ ] **Phase 37: Leaderboards — UX + polish** — Paginated leaderboard UX (no bulk sub), approach research spike
 - [ ] **Phase 38: User & character stats — data** — Win/loss/spectated, per-character, global character stats wiring
 - [ ] **Phase 39: User & character stats — UX** — MMR history line chart, win rate breakdown
-- [ ] **Phase 40: Historical + replay — data** — `view_my_match_history`, `view_my_participant_history`, scoped list pagination
+- [ ] **Phase 40: Historical + replay — data** — `view_my_match_session_history`, `view_my_match_participant_history`, scoped list pagination
 - [ ] **Phase 41: Historical + replay — UX** — Match detail page, replay scrubber reusing pedestal read-only, 1x/2x/4x playback
 
 ---
@@ -130,9 +130,9 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 **Requirements**: FOUND-01, FOUND-02
 **Success Criteria** (what must be TRUE):
   1. Admin can set and update `skelUrl`, `atlasUrl`, `atlasImgUrls` on any `hsr_character` row via reducer; clients reading the published `hsr_character` table see the new columns in their generated SDK bindings.
-  2. A signed-in user subscribed to `view_my_match_history` receives rows only where they are a participant; rows belonging to other users never appear for them.
-  3. `view_my_mmr_history`, `view_my_session_history`, and `view_my_participant_history` are each filtered server-side by `ctx.sender` with no client-side filter required.
-  4. All four historical views are reachable from regenerated TypeScript bindings and covered by integration tests asserting cross-user isolation.
+  2. A signed-in user subscribed to `view_my_match_session_history` receives rows only where they are a participant; rows belonging to other users never appear for them.
+  3. `view_my_mmr_history`, `view_my_match_session_step_history`, `view_my_match_participant_history`, and `view_my_match_result_game_history` are each filtered server-side by `ctx.sender` with no client-side filter required.
+  4. All five historical views (`view_my_match_session_history`, `view_my_match_session_step_history`, `view_my_match_participant_history`, `view_my_mmr_history`, `view_my_match_result_game_history`) are reachable from regenerated TypeScript bindings and covered by integration tests asserting cross-user isolation.
 **Plans**: 6 plans
 - [x] 15-01-PLAN.md — View file reorganization (8 domain files; binding surface invariant)
 - [x] 15-02-PLAN.md — Spine + positioning columns on hsr_character (schema additions)
@@ -437,9 +437,9 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 **Depends on**: Phase 15 (views) + Phase 31 (pedestal component reused in replay).
 **Requirements**: HIST-01, HIST-06
 **Success Criteria** (what must be TRUE):
-  1. User's `/profile/matches` (or equivalent) subscribes to `view_my_match_history` with a pagination window (e.g., 20 rows); moving through pages swaps the active range without leaking other users' match rows.
+  1. User's `/profile/matches` (or equivalent) subscribes to `view_my_match_session_history` with a pagination window (e.g., 20 rows); moving through pages swaps the active range without leaking other users' match rows.
   2. Attempting to query match history for a user-id other than `ctx.sender` returns an empty row set server-side — not a blocked error at the client.
-  3. `view_my_participant_history` and `view_my_session_history` are consumed on demand by the replay flow (Phase 41); replay pre-loads the step-by-step rows for one match without subscribing to global history.
+  3. `view_my_match_participant_history` and `view_my_match_session_step_history` are consumed on demand by the replay flow (Phase 41); replay pre-loads the step-by-step rows for one match without subscribing to global history.
   4. Historical rows are visible even when the related live tables have been archived; user can browse matches from months prior without re-running the match.
 **Plans**: TBD
 
