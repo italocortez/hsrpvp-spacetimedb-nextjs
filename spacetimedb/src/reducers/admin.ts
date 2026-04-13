@@ -319,26 +319,67 @@ export const admin_bulk_upsert = spacetimedb.reducer(
 
         switch (tableName) {
             case 'HsrCharacter': {
+                // Fields that participate in partial-update on existing rows.
+                // Non-null values overwrite; null values preserve existing.
+                const HSR_CHARACTER_FIELDS = [
+                    'displayName', 'aliases', 'rarity', 'path', 'element', 'role',
+                    'imageUrl', 'versionReleased', 'treatAsVersion',
+                    'skelUrl', 'atlasUrl', 'atlasImgUrls', 'posX', 'posY', 'width',
+                ];
                 for (const r of rows) {
-                    validateEnum('path', r.path, ctx, tableName);
-                    validateEnum('element', r.element, ctx, tableName);
-                    validateEnum('role', r.role, ctx, tableName);
+                    // Enum validation: skip on null (preserve-existing path on update).
+                    validateEnumIfPresent('path', r.path, ctx, tableName);
+                    validateEnumIfPresent('element', r.element, ctx, tableName);
+                    validateEnumIfPresent('role', r.role, ctx, tableName);
                     const existing = ctx.db.HsrCharacter.name.find(r.name);
-                    const row = {
-                        name: r.name,
-                        displayName: r.displayName,
-                        aliases: r.aliases || [],
-                        rarity: r.rarity,
-                        path: { tag: r.path, value: {} },
-                        element: { tag: r.element, value: {} },
-                        role: { tag: r.role, value: {} },
-                        imageUrl: r.imageUrl || '',
-                        versionReleased: r.versionReleased ?? 0,
-                        treatAsVersion: r.treatAsVersion ?? 0,
-                    };
+
                     if (existing) {
-                        ctx.db.HsrCharacter.name.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
+                        // Build the incoming row with enum-tag wrappers ONLY for non-null enum fields.
+                        // mergeForUpdate then preserves existing values where incoming is null.
+                        const incoming: Record<string, any> = {
+                            displayName: r.displayName,
+                            aliases: r.aliases,
+                            rarity: r.rarity,
+                            path: r.path !== null && r.path !== undefined ? { tag: r.path, value: {} } : null,
+                            element: r.element !== null && r.element !== undefined ? { tag: r.element, value: {} } : null,
+                            role: r.role !== null && r.role !== undefined ? { tag: r.role, value: {} } : null,
+                            imageUrl: r.imageUrl,
+                            versionReleased: r.versionReleased,
+                            treatAsVersion: r.treatAsVersion,
+                            skelUrl: r.skelUrl,
+                            atlasUrl: r.atlasUrl,
+                            atlasImgUrls: r.atlasImgUrls,
+                            posX: r.posX,
+                            posY: r.posY,
+                            width: r.width,
+                        };
+                        const merged = mergeForUpdate(existing as any, incoming, HSR_CHARACTER_FIELDS as any);
+                        ctx.db.HsrCharacter.name.update({ ...merged, ...auditUpdate(ctx, existing, admin.id) } as any);
                     } else {
+                        // Insert branch: apply schema defaults for required columns; optional stays null.
+                        // Required enums must have a value on insert (validateEnum runs here unconditionally).
+                        validateEnum('path', r.path, ctx, tableName);
+                        validateEnum('element', r.element, ctx, tableName);
+                        validateEnum('role', r.role, ctx, tableName);
+                        const row = {
+                            name: r.name,
+                            displayName: r.displayName ?? '',
+                            aliases: r.aliases ?? [],
+                            rarity: r.rarity ?? 0,
+                            path: { tag: r.path, value: {} },
+                            element: { tag: r.element, value: {} },
+                            role: { tag: r.role, value: {} },
+                            imageUrl: r.imageUrl ?? '',
+                            versionReleased: r.versionReleased ?? 0,
+                            treatAsVersion: r.treatAsVersion ?? 0,
+                            // Plan 02 columns — optional stays null; required defaults to 0 / [].
+                            skelUrl: r.skelUrl ?? null,
+                            atlasUrl: r.atlasUrl ?? null,
+                            atlasImgUrls: r.atlasImgUrls ?? [],
+                            posX: r.posX ?? 0,
+                            posY: r.posY ?? 0,
+                            width: r.width ?? 0,
+                        };
                         ctx.db.HsrCharacter.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
@@ -383,110 +424,183 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                 break;
             }
             case 'HsrLightcone': {
+                const HSR_LIGHTCONE_FIELDS = [
+                    'displayName', 'aliases', 'path', 'rarity', 'imageUrl',
+                    'posX', 'posY', 'width',
+                ];
                 for (const r of rows) {
-                    validateEnum('path', r.path, ctx, tableName);
+                    validateEnumIfPresent('path', r.path, ctx, tableName);
                     const existing = ctx.db.HsrLightcone.name.find(r.name);
-                    const row = {
-                        name: r.name,
-                        displayName: r.displayName,
-                        aliases: r.aliases || [],
-                        path: { tag: r.path, value: {} },
-                        rarity: r.rarity,
-                        imageUrl: r.imageUrl || '',
-                        posX: r.posX || 0,
-                        posY: r.posY || 0,
-                        width: r.width || 0,
-                    };
+
                     if (existing) {
-                        ctx.db.HsrLightcone.name.update({ ...existing, ...row, ...auditUpdate(ctx, existing, admin.id) } as any);
+                        const incoming: Record<string, any> = {
+                            displayName: r.displayName,
+                            aliases: r.aliases,
+                            path: r.path !== null && r.path !== undefined ? { tag: r.path, value: {} } : null,
+                            rarity: r.rarity,
+                            imageUrl: r.imageUrl,
+                            posX: r.posX,
+                            posY: r.posY,
+                            width: r.width,
+                        };
+                        const merged = mergeForUpdate(existing as any, incoming, HSR_LIGHTCONE_FIELDS as any);
+                        ctx.db.HsrLightcone.name.update({ ...merged, ...auditUpdate(ctx, existing, admin.id) } as any);
                     } else {
+                        // Insert branch: required enum MUST be present on insert.
+                        validateEnum('path', r.path, ctx, tableName);
+                        const row = {
+                            name: r.name,
+                            displayName: r.displayName ?? '',
+                            aliases: r.aliases ?? [],
+                            path: { tag: r.path, value: {} },
+                            rarity: r.rarity ?? 0,
+                            imageUrl: r.imageUrl ?? '',
+                            posX: r.posX ?? 0,
+                            posY: r.posY ?? 0,
+                            width: r.width ?? 0,
+                        };
                         ctx.db.HsrLightcone.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
                     }
                 }
                 break;
             }
             case 'HsrCharacterCost': {
+                // D-09: Match existing rows on the FULL composite tuple (characterName, gameMode, costSetId).
+                // Previous behavior matched only on (characterName, gameMode), silently overwriting
+                // the default cost set when admin edited a non-default one.
+                const HSR_CHARACTER_COST_FIELDS = ['classicCosts', 'auctionBaseBid'];
                 for (const r of rows) {
-                    validateEnum('gameMode', r.gameMode, ctx, tableName);
-                    const gameMode = { tag: r.gameMode, value: {} };
-                    const row = {
-                        characterName: r.characterName,
-                        gameMode,
-                        classicCosts: r.classicCosts,
-                        auctionBaseBid: r.auctionBaseBid,
-                        costSetId: r.costSetId || 0,
-                    };
-                    let existing = null;
+                    validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
+                    const csId = r.costSetId ?? 0;
+
+                    // Existence check uses full composite tuple (D-09).
+                    // Tuple-filter with enum struct is unsupported (RESEARCH.md A2); use iter() fallback.
+                    let existing: any = null;
                     for (const e of ctx.db.HsrCharacterCost.iter()) {
-                        if (e.characterName === r.characterName && e.gameMode.tag === r.gameMode) {
+                        if (e.characterName === r.characterName &&
+                            e.gameMode.tag === r.gameMode &&
+                            e.costSetId === csId) {
                             existing = e;
                             break;
                         }
                     }
+
                     if (existing) {
+                        // Partial-update: preserve existing values where incoming is null.
+                        const incoming: Record<string, any> = {
+                            classicCosts: r.classicCosts,
+                            auctionBaseBid: r.auctionBaseBid,
+                        };
+                        const merged = mergeForUpdate(existing as any, incoming, HSR_CHARACTER_COST_FIELDS as any);
+                        // Re-insert pattern (no direct PK accessor for composite delete+insert is fine here).
                         ctx.db.HsrCharacterCost.delete(existing);
+                        ctx.db.HsrCharacterCost.insert({
+                            characterName: existing.characterName,
+                            gameMode: existing.gameMode,
+                            classicCosts: merged.classicCosts,
+                            auctionBaseBid: merged.auctionBaseBid,
+                            costSetId: csId,
+                            ...auditUpdate(ctx, existing, admin.id),
+                        } as any);
+                    } else {
+                        // Insert branch: required enum must be present.
+                        validateEnum('gameMode', r.gameMode, ctx, tableName);
+                        ctx.db.HsrCharacterCost.insert({
+                            characterName: r.characterName,
+                            gameMode: { tag: r.gameMode, value: {} },
+                            classicCosts: r.classicCosts,
+                            auctionBaseBid: r.auctionBaseBid,
+                            costSetId: csId,
+                            ...auditInsert(ctx, admin.id),
+                        } as any);
                     }
-                    ctx.db.HsrCharacterCost.insert({
-                        ...row,
-                        ...(existing ? auditUpdate(ctx, existing, admin.id) : auditInsert(ctx, admin.id)),
-                    } as any);
                 }
                 break;
             }
             case 'HsrLightconeCost': {
+                // D-09: Full composite tuple match (lightconeName, gameMode, costSetId).
+                const HSR_LIGHTCONE_COST_FIELDS = ['classicCosts', 'auctionBaseBid'];
                 for (const r of rows) {
-                    validateEnum('gameMode', r.gameMode, ctx, tableName);
-                    // Composite PK: lightconeName + gameMode — use iter() to find existing
+                    validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
+                    const csId = r.costSetId ?? 0;
+
                     let existing: any = null;
                     for (const e of ctx.db.HsrLightconeCost.iter()) {
-                        if (e.lightconeName === r.lightconeName && e.gameMode.tag === r.gameMode) {
+                        if (e.lightconeName === r.lightconeName &&
+                            e.gameMode.tag === r.gameMode &&
+                            e.costSetId === csId) {
                             existing = e;
                             break;
                         }
                     }
-                    const row = {
-                        lightconeName: r.lightconeName,
-                        gameMode: { tag: r.gameMode, value: undefined } as any,
-                        classicCosts: r.classicCosts,
-                        auctionBaseBid: r.auctionBaseBid,
-                        costSetId: r.costSetId || 0,
-                    };
+
                     if (existing) {
+                        const incoming: Record<string, any> = {
+                            classicCosts: r.classicCosts,
+                            auctionBaseBid: r.auctionBaseBid,
+                        };
+                        const merged = mergeForUpdate(existing as any, incoming, HSR_LIGHTCONE_COST_FIELDS as any);
                         ctx.db.HsrLightconeCost.delete(existing);
+                        ctx.db.HsrLightconeCost.insert({
+                            lightconeName: existing.lightconeName,
+                            gameMode: existing.gameMode,
+                            classicCosts: merged.classicCosts,
+                            auctionBaseBid: merged.auctionBaseBid,
+                            costSetId: csId,
+                            ...auditUpdate(ctx, existing, admin.id),
+                        } as any);
+                    } else {
+                        validateEnum('gameMode', r.gameMode, ctx, tableName);
+                        ctx.db.HsrLightconeCost.insert({
+                            lightconeName: r.lightconeName,
+                            gameMode: { tag: r.gameMode, value: {} },
+                            classicCosts: r.classicCosts,
+                            auctionBaseBid: r.auctionBaseBid,
+                            costSetId: csId,
+                            ...auditInsert(ctx, admin.id),
+                        } as any);
                     }
-                    ctx.db.HsrLightconeCost.insert({
-                        ...row,
-                        ...(existing ? auditUpdate(ctx, existing, admin.id) : auditInsert(ctx, admin.id)),
-                    } as any);
                 }
                 break;
             }
             case 'HsrSynergyCost': {
+                // D-09: Existence match uses (sourceName, targetName, gameMode, costSetId).
+                // PK is auto-inc id; the tuple above is the logical unique key.
+                const HSR_SYNERGY_COST_FIELDS = ['costModifier'];
                 for (const r of rows) {
-                    validateEnum('gameMode', r.gameMode, ctx, tableName);
-                    const gameMode = { tag: r.gameMode, value: {} };
-                    const row = {
-                        id: 0,
-                        sourceName: r.sourceName,
-                        targetName: r.targetName,
-                        gameMode,
-                        costModifier: r.costModifier,
-                        costSetId: r.costSetId || 0,
-                    };
-                    let existing = null;
+                    validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
+                    const csId = r.costSetId ?? 0;
+
+                    let existing: any = null;
                     for (const e of ctx.db.HsrSynergyCost.iter()) {
-                        if (e.sourceName === r.sourceName && e.targetName === r.targetName && e.gameMode.tag === r.gameMode) {
+                        if (e.sourceName === r.sourceName &&
+                            e.targetName === r.targetName &&
+                            e.gameMode.tag === r.gameMode &&
+                            e.costSetId === csId) {
                             existing = e;
                             break;
                         }
                     }
                     if (existing) {
+                        const incoming: Record<string, any> = {
+                            costModifier: r.costModifier,
+                        };
+                        const merged = mergeForUpdate(existing as any, incoming, HSR_SYNERGY_COST_FIELDS as any);
                         ctx.db.HsrSynergyCost.id.update({
                             ...existing,
-                            costModifier: r.costModifier,
+                            costModifier: merged.costModifier,
                             ...auditUpdate(ctx, existing, admin.id),
                         });
                     } else {
+                        validateEnum('gameMode', r.gameMode, ctx, tableName);
+                        const row = {
+                            id: 0,
+                            sourceName: r.sourceName,
+                            targetName: r.targetName,
+                            gameMode: { tag: r.gameMode, value: {} },
+                            costModifier: r.costModifier,
+                            costSetId: csId,
+                        };
                         ctx.db.HsrSynergyCost.insert({
                             ...row,
                             ...auditInsert(ctx, admin.id),
