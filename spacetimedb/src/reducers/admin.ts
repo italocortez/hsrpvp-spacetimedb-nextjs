@@ -74,14 +74,17 @@ function validateKeys(rows: any[], tableName: string, ctx: any): void {
  * Phase 15 D-08/D-10: Partial-update merge for the admin_bulk_upsert router.
  *
  * Wire convention:
- *   - Every EXPECTED_KEYS entry must appear in the incoming JSON row (validateKeys rule).
- *   - Value `null` on an EXISTING row = "preserve this field" (do not overwrite).
+ *   - Every EXPECTED_KEYS entry must appear in the incoming object (validateKeys rule
+ *     upstream; mergeForUpdate asserts this defensively).
+ *   - Value `null` or `undefined` on an EXISTING row = "preserve this field".
+ *     JSON inputs only produce `null`; programmatic router inputs may use either —
+ *     treated equivalently to match the router's own null-guards at the enum sites.
  *   - Value `null` on an INSERT row = "apply schema default" (required columns) OR
  *     "stay null" (optional columns like skelUrl/atlasUrl).
- *   - Non-null value = "set to this value".
+ *   - Non-null/undefined value = "set to this value".
  *
- * This helper returns the merged row for UPDATE only. The insert branch stays on its current
- * default-injection path per D-12 (insert still applies required defaults).
+ * This helper returns the merged row for UPDATE only. The insert branch stays on its
+ * current default-injection path per D-12.
  */
 function mergeForUpdate<T extends Record<string, any>>(
     existing: T,
@@ -91,10 +94,16 @@ function mergeForUpdate<T extends Record<string, any>>(
     const merged: T = { ...existing };
     for (const f of fields) {
         const key = f as string;
-        if (incoming[key] !== null && incoming[key] !== undefined) {
+        // validateKeys guarantees key presence; assert defensively so a future
+        // caller that bypasses validateKeys fails loudly instead of silently
+        // writing `undefined` or dropping fields.
+        if (!(key in incoming)) {
+            throw new Error(`mergeForUpdate: missing key '${key}' — validateKeys contract broken`);
+        }
+        // null | undefined → preserve existing value (merged already copied from existing)
+        if (incoming[key] != null) {
             (merged as any)[key] = incoming[key];
         }
-        // null | undefined → preserve existing[f] (no-op; merged already has existing value).
     }
     return merged;
 }
