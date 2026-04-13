@@ -141,6 +141,36 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 - [x] 15-05-PLAN.md — Seed/template/data rework (D-22 shape; both seed entry points)
 - [x] 15-06-PLAN.md — Integration tests (isolation, partial-update, cost-set PK, round-trip) + architecture docs
 
+### Phase 15.3: Audit Spread Type Helper (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 15.3 to break down)
+
+### Phase 15.2: User Directory View Performance (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 15.2 to break down)
+
+### Phase 15.1: Auction Cost Template Extension (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 15.1 to break down)
+
 ### Phase 16: Route + global foundation
 **Goal**: Every downstream phase builds on a route-group structure, primitives (`<ViewportGate>`, `<ViewportWriter>`, render-tier), middleware, and asset-caching Service Worker that are settled and non-negotiable.
 **Depends on**: Phase 15.
