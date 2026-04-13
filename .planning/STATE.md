@@ -4,16 +4,16 @@ milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15
 current_plan: 6
-status: executing
-stopped_at: Completed 15-05-PLAN.md (seed pipeline D-22 rework). Ready for Plan 06 (round-trip + docs).
-last_updated: "2026-04-13T00:21:15.446Z"
+status: awaiting-verify
+stopped_at: Completed 15-06-PLAN.md (tests + architecture docs). Phase 15 ready for /gsd-verify-work.
+last_updated: "2026-04-13T00:36:33.030Z"
 last_activity: 2026-04-13
 progress:
   total_phases: 27
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15
-**Current plan:** 6
-**Status:** Executing Phase 15
+**Current plan:** 6 (complete — ready for /gsd-verify-work)
+**Status:** Phase 15 executed; awaiting verify
 **Last activity:** 2026-04-13
 
-Progress: [████████░░] 83% (Phase 15: 5/6 plans complete)
+Progress: [██████████] 100% (Phase 15: 6/6 plans complete)
 
 ## Previous Milestone
 
@@ -78,6 +78,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15-backend-pre-work]: Plan 03: admin_bulk_upsert reworked — null=preserve partial-update semantics across 5 cases; costSetId now part of composite match tuple for all 3 cost tables; Spine + positioning columns editable via existing router (no new reducer per D-11). FOUND-01 editing half complete.
 - [Phase 15-backend-pre-work]: Plan 04: 5 self-scoped history views (view_my_match_session_history, view_my_match_session_step_history, view_my_match_participant_history, view_my_mmr_history, view_my_match_result_game_history) added to matchHistoryViews.ts; bindings regenerated (32 -> 37); ROADMAP + REQUIREMENTS canonicalised per D-14. FOUND-02 schema half complete.
 - [Phase 15-backend-pre-work]: Plan 05: seed pipeline rewritten to D-22 snake_case shape — scripts/seed-data.ts + test/shared/seed-data.ts both consume cost_set_id + 3-mode blocks + positioning + Spine fields. 3-mode fan-out for characters (21 rows), lightcones (15), pairings (3). cost.cost_set_id lifts to each row's costSetId honoring Plan 03's composite-PK tuple match. Audit clean on test/shared/fixtures.ts and scripts/post-publish.ts (no old-shape references).
+- [Phase 15-backend-pre-work]: Plan 06: 5 integration test files + 1 shared two-identity harness + 3 architecture docs (docs/admin, docs/views, NEW docs/match) land the regression guards and architectural memory for FOUND-01 + FOUND-02. Wave-0 spike confirmed conn.db.view_my_X.iter() works for all 5 new views. Isolation tests use invariants I1-I4 (userId match, subset-of-backing-SQL, fresh-user-sees-empty, no-cross-user-leakage) — strictly stronger than full-flow match seeding for the filter-logic property. Full suite 30/30 green in 42.6s (including 29/30 on first full-DB-reseed run, with 3 SpacetimeDB SQL dialect quirks auto-fixed). nyquist_compliant: true. Phase 15 ready for /gsd-verify-work.
 
 ## Blockers
 
@@ -93,7 +94,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-13T00:21:15.443Z
-Stopped at: Completed 15-05-PLAN.md (seed pipeline D-22 rework). Ready for Plan 06 (round-trip + docs).
+Last session: 2026-04-13T00:36:33.028Z
+Stopped at: Completed 15-06-PLAN.md (tests + architecture docs). Phase 15 ready for /gsd-verify-work.
 Resume file: None
 Next action: `/gsd-plan-phase 15`

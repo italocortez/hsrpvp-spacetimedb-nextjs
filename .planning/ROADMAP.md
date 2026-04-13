@@ -42,7 +42,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 
 ### v0.9 Frontend — Phase Summary
 
-- [ ] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views
+- [x] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views (completed 2026-04-13)
 - [ ] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
@@ -139,7 +139,7 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 - [x] 15-03-PLAN.md — Admin router rework (partial-update + costSetId tuple fix across 5 cases)
 - [x] 15-04-PLAN.md — 5 self-scoped history views + ROADMAP/REQUIREMENTS 4→5 rename
 - [x] 15-05-PLAN.md — Seed/template/data rework (D-22 shape; both seed entry points)
-- [ ] 15-06-PLAN.md — Integration tests (isolation, partial-update, cost-set PK, round-trip) + architecture docs
+- [x] 15-06-PLAN.md — Integration tests (isolation, partial-update, cost-set PK, round-trip) + architecture docs
 
 ### Phase 16: Route + global foundation
 **Goal**: Every downstream phase builds on a route-group structure, primitives (`<ViewportGate>`, `<ViewportWriter>`, render-tier), middleware, and asset-caching Service Worker that are settled and non-negotiable.
@@ -461,7 +461,7 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Backend pre-work | 5/6 | In Progress|  |
+| 15. Backend pre-work | 6/6 | Complete   | 2026-04-13 |
 | 16. Route + global foundation | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
