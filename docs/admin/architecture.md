@@ -163,7 +163,7 @@ The router reducer `admin_bulk_upsert` reworked for **true partial updates** acr
 - **`null` on an INSERT row** = "apply schema default" (required columns) OR "stay null" (optional columns like `skelUrl`, `atlasUrl`).
 - **Non-null value** = "set to this value".
 
-Implementation: `mergeForUpdate<T>()` helper (admin.ts:86-99) returns a new row with existing values preserved where incoming is `null`. `validateEnumIfPresent()` wrapper (admin.ts:~103) skips enum validation for null-valued fields on update (preserve-existing path). The insert branch retains its default-injection logic (per D-12) so schema-required fields still get sensible defaults on new rows.
+Implementation: `mergeForUpdate<T>()` (in `admin.ts`) returns a new row with existing values preserved where incoming is `null` or `undefined`, and asserts every expected key is present (validateKeys defensive guard). `validateEnumIfPresent()` (in `admin.ts`) skips enum validation for null-valued fields on update (preserve-existing path). The insert branch retains its default-injection logic (per D-12) so schema-required fields still get sensible defaults on new rows.
 
 **Before (pre-Plan-03 bug):** the router built full rows with aggressive default injection (`r.imageUrl || ''`) and spread them over existing rows, silently zeroing every unsent field. The reworked router only merges keys whose value is non-null/non-undefined on the update branch.
 
@@ -173,9 +173,9 @@ Implementation: `mergeForUpdate<T>()` helper (admin.ts:86-99) returns a new row 
 
 For the three cost tables, the existence check now matches on the full composite tuple including `costSetId`:
 
-- `HsrCharacterCost`: `(characterName, gameMode.tag, costSetId)` -- admin.ts:478-486
-- `HsrLightconeCost`: `(lightconeName, gameMode.tag, costSetId)` -- admin.ts:528-535
-- `HsrSynergyCost`: `(sourceName, targetName, gameMode.tag, costSetId)` -- admin.ts:574-583
+- `HsrCharacterCost`: `(characterName, gameMode.tag, costSetId)` -- see `admin.ts` HsrCharacterCost case
+- `HsrLightconeCost`: `(lightconeName, gameMode.tag, costSetId)` -- see `admin.ts` HsrLightconeCost case
+- `HsrSynergyCost`: `(sourceName, targetName, gameMode.tag, costSetId)` -- see `admin.ts` HsrSynergyCost case
 
 Previous behavior matched on `(characterName, gameMode)` only, silently overwriting non-default cost sets (e.g. `costSetId=5`) when the default set (`costSetId=0`) was upserted. The fix preserves the `costSetId=0` default-set sentinel (v0.5 convention) while allowing an arbitrary number of custom cost sets per `(name, mode)` pair to coexist.
 
