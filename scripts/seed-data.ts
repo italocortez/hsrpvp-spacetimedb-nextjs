@@ -63,25 +63,16 @@ type RawModeSuperpositionBlock = { S1?: number; S2?: number; S3?: number; S4?: n
 
 type RawCharacterCost = {
     cost_set_id: number;
-    memory_of_chaos?: RawModeEidolonBlock;
-    apocalyptic_shadow?: RawModeEidolonBlock;
-    anomaly_arbitration?: RawModeEidolonBlock;
     [mode: string]: RawModeEidolonBlock | number | undefined;
 };
 
 type RawLightconeCost = {
     cost_set_id: number;
-    memory_of_chaos?: RawModeSuperpositionBlock;
-    apocalyptic_shadow?: RawModeSuperpositionBlock;
-    anomaly_arbitration?: RawModeSuperpositionBlock;
     [mode: string]: RawModeSuperpositionBlock | number | undefined;
 };
 
 type RawPairingCost = {
     cost_set_id: number;
-    memory_of_chaos?: number;
-    apocalyptic_shadow?: number;
-    anomaly_arbitration?: number;
     [mode: string]: number | undefined;
 };
 
