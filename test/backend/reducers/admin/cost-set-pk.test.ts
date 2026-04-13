@@ -201,16 +201,20 @@ describe.skipIf(!hasServerToken())('admin_bulk_upsert — costSetId PK tuple iso
         });
         await admin.sync(1000);
 
-        // The costSetId=5 row must still exist, untouched.
+        // The costSetId=5 row must still exist with its custom values untouched.
         const set5 = await queryPrivateTable(
-            `SELECT cost_set_id FROM hsr_character_cost WHERE character_name = '${TEST_CHAR}' AND cost_set_id = 5`
+            `SELECT cost_set_id, classic_costs FROM hsr_character_cost
+             WHERE character_name = '${TEST_CHAR}' AND cost_set_id = 5 AND game_mode = 'ApocalypticShadow'`
         );
-        expect(set5.length).toBeGreaterThanOrEqual(1);
+        expect(set5.length).toBe(1);  // exactly one — extra rows indicate a different regression
+        const set5Costs = JSON.parse(String(set5[0].classic_costs));
+        expect(Number(set5Costs.e0)).toBe(99);  // custom value survived, not overwritten to 1
 
         const set0 = await queryPrivateTable(
-            `SELECT cost_set_id FROM hsr_character_cost WHERE character_name = '${TEST_CHAR}' AND cost_set_id = 0`
+            `SELECT cost_set_id FROM hsr_character_cost
+             WHERE character_name = '${TEST_CHAR}' AND cost_set_id = 0`
         );
         // Pre-existing set=0 row for MemoryOfChaos + newly inserted set=0 for ApocalypticShadow
-        expect(set0.length).toBeGreaterThanOrEqual(1);
+        expect(set0.length).toBe(2);  // exact count — catches duplicate-insert bugs
     });
 });
