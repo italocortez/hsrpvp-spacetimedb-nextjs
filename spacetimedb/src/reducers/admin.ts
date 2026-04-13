@@ -70,6 +70,45 @@ function validateKeys(rows: any[], tableName: string, ctx: any): void {
     }
 }
 
+/**
+ * Phase 15 D-08/D-10: Partial-update merge for the admin_bulk_upsert router.
+ *
+ * Wire convention:
+ *   - Every EXPECTED_KEYS entry must appear in the incoming JSON row (validateKeys rule).
+ *   - Value `null` on an EXISTING row = "preserve this field" (do not overwrite).
+ *   - Value `null` on an INSERT row = "apply schema default" (required columns) OR
+ *     "stay null" (optional columns like skelUrl/atlasUrl).
+ *   - Non-null value = "set to this value".
+ *
+ * This helper returns the merged row for UPDATE only. The insert branch stays on its current
+ * default-injection path per D-12 (insert still applies required defaults).
+ */
+function mergeForUpdate<T extends Record<string, any>>(
+    existing: T,
+    incoming: Record<string, any>,
+    fields: (keyof T)[]
+): T {
+    const merged: T = { ...existing };
+    for (const f of fields) {
+        const key = f as string;
+        if (incoming[key] !== null && incoming[key] !== undefined) {
+            (merged as any)[key] = incoming[key];
+        }
+        // null | undefined → preserve existing[f] (no-op; merged already has existing value).
+    }
+    return merged;
+}
+
+/**
+ * Wrap enum validation so `null` values on update (meaning "preserve") skip validation.
+ * The insert branch still validates because insert paths fall back to defaults before this runs
+ * (or explicitly guard the call site).
+ */
+function validateEnumIfPresent(field: string, value: any, ctx: any, tableName: string): void {
+    if (value === null || value === undefined) return;
+    validateEnum(field, value, ctx, tableName);
+}
+
 // ─── Generic row delete (works for any public table) ─────────────────────────
 
 export const admin_delete_row = spacetimedb.reducer(
@@ -247,7 +286,27 @@ export const admin_delete_row = spacetimedb.reducer(
 );
 
 // ─── Bulk upsert for game data tables ────────────────────────────────────────
-
+//
+// Wire convention (Phase 15 D-08/D-09/D-10):
+//
+//   1. validateKeys (strict): every row in `jsonData` MUST contain EXACTLY the expected
+//      key set for the table (no missing, no extra). Partial-update is NOT expressed by
+//      omitting keys — doing so trips validateKeys.
+//
+//   2. Partial-update is expressed in VALUES:
+//        - `null` on an EXISTING row  → preserve the existing field value (no overwrite).
+//        - `null` on an INSERT row    → apply schema default for required columns,
+//                                        or keep null for optional columns (skelUrl/atlasUrl).
+//        - non-null value              → set the field to that value.
+//
+//   3. Cost tables (HsrCharacterCost, HsrLightconeCost, HsrSynergyCost) match existing rows
+//      by the FULL composite tuple INCLUDING `costSetId` — distinct cost sets never collide.
+//      `r.costSetId ?? 0` honors the default-cost-set sentinel.
+//
+//   4. Insert branch retains its default-injection logic (per D-12); partial-update only
+//      kicks in when an existing row is found.
+//
+// Callers: `scripts/seed-data.ts`, `test/shared/seed-data.ts`, future admin UI editors.
 export const admin_bulk_upsert = spacetimedb.reducer(
     { tableName: t.string(), jsonData: t.string() },
     (ctx, { tableName, jsonData }) => {
