@@ -397,7 +397,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                 const ratingConfig = ctx.db.AccountRatingConfig.id.find(1);
                 if (ratingConfig) {
                     const allChars = [...ctx.db.HsrCharacter.iter()];
-                    const maxVersion = Math.max(...allChars.map((c: any) => c.versionReleased));
+                    const maxVersion = allChars.reduce((m: number, c: any) => Math.max(m, c.versionReleased), 0);
                     if (maxVersion > 0) {
                         const roleExponent: Record<string, number> = {
                             Dps: ratingConfig.roleExponentDps,
