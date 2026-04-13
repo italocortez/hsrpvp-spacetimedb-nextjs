@@ -1,16 +1,25 @@
 // ─── Match History Views ──────────────────────────────────────────────────────
 // Visibility-filtered history views spanning the archived *_history tables.
-// Plan 04 will add 5 more self-scoped `view_my_*_history` views to this file.
 //
-// 1. view_match_history              — visibility-filtered MatchSessionHistory (D-93)
-// 2. view_match_participant_history  — visibility-filtered MatchParticipantHistory (D-93)
-// 3. view_match_step_history         — visibility-filtered MatchSessionStepHistory (D-93)
+// Visibility-filtered (public OR participated — scouting-safe, D-93):
+// 1. view_match_history              — visibility-filtered MatchSessionHistory
+// 2. view_match_participant_history  — visibility-filtered MatchParticipantHistory
+// 3. view_match_step_history         — visibility-filtered MatchSessionStepHistory
+//
+// Self-scoped (caller's own rows only — Phase 15 D-13, D-17, D-18):
+// 4. view_my_mmr_history                    — Pattern A, MmrHistory.user_id filter
+// 5. view_my_match_participant_history      — Pattern A, MatchParticipantHistory.by_user filter
+// 6. view_my_match_session_history          — Pattern B, participant-first iteration
+// 7. view_my_match_session_step_history     — Pattern B, participant-first iteration
+// 8. view_my_match_result_game_history      — Pattern B, participant-first iteration
 
 import spacetimedb from '../schema';
 import { t } from 'spacetimedb/server';
 import { MatchSessionHistory } from '../tables/matchSessionHistory';
 import { MatchParticipantHistory } from '../tables/matchParticipantHistory';
 import { MatchSessionStepHistory } from '../tables/matchSessionStepHistory';
+import { MatchResultGameHistory } from '../tables/matchResultGameHistory';
+import { MmrHistory } from '../tables/mmrHistory';
 
 // ---------------------------------------------------------------------------
 // 1. view_match_history (per D-93)
@@ -142,3 +151,105 @@ function buildVisibleMatchIds(ctx: any): Set<number> {
 
     return visibleIds;
 }
+
+// ---------------------------------------------------------------------------
+// 4. view_my_mmr_history (Phase 15 D-13, D-17)
+//    Pattern A: caller's own MMR history rows via direct user_id index filter.
+// ---------------------------------------------------------------------------
+export const view_my_mmr_history = spacetimedb.view(
+    { name: 'view_my_mmr_history', public: true },
+    t.array(MmrHistory.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        return [...ctx.db.MmrHistory.user_id.filter(mapping.userId)];
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 5. view_my_match_participant_history (Phase 15 D-13, D-17)
+//    Pattern A: caller's own participant-history rows via direct by_user index.
+//    Distinct from `view_match_participant_history` above (visibility-filtered,
+//    no `my_` prefix). Both coexist — this one is the strict self-scope.
+// ---------------------------------------------------------------------------
+export const view_my_match_participant_history = spacetimedb.view(
+    { name: 'view_my_match_participant_history', public: true },
+    t.array(MatchParticipantHistory.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        return [...ctx.db.MatchParticipantHistory.by_user.filter(mapping.userId)];
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 6. view_my_match_session_history (Phase 15 D-13, D-18)
+//    Pattern B: MatchSessionHistory has no userId column.
+//    Seed participant set via by_user, then look up each session by PK.
+// ---------------------------------------------------------------------------
+export const view_my_match_session_history = spacetimedb.view(
+    { name: 'view_my_match_session_history', public: true },
+    t.array(MatchSessionHistory.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const myMatchIds = new Set<number>();
+        for (const p of ctx.db.MatchParticipantHistory.by_user.filter(mapping.userId)) {
+            myMatchIds.add(p.matchHistoryId);
+        }
+        const results: any[] = [];
+        for (const matchId of myMatchIds) {
+            const row = ctx.db.MatchSessionHistory.id.find(matchId);
+            if (row) results.push(row);
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 7. view_my_match_session_step_history (Phase 15 D-13, D-18)
+//    Pattern B: seed via participant set, fan out via by_match_history index.
+// ---------------------------------------------------------------------------
+export const view_my_match_session_step_history = spacetimedb.view(
+    { name: 'view_my_match_session_step_history', public: true },
+    t.array(MatchSessionStepHistory.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const myMatchIds = new Set<number>();
+        for (const p of ctx.db.MatchParticipantHistory.by_user.filter(mapping.userId)) {
+            myMatchIds.add(p.matchHistoryId);
+        }
+        const results: any[] = [];
+        for (const matchId of myMatchIds) {
+            for (const step of ctx.db.MatchSessionStepHistory.by_match_history.filter(matchId)) {
+                results.push(step);
+            }
+        }
+        return results;
+    }
+);
+
+// ---------------------------------------------------------------------------
+// 8. view_my_match_result_game_history (Phase 15 D-13, D-18)
+//    Pattern B: seed via participant set, fan out via by_match_history index.
+// ---------------------------------------------------------------------------
+export const view_my_match_result_game_history = spacetimedb.view(
+    { name: 'view_my_match_result_game_history', public: true },
+    t.array(MatchResultGameHistory.rowType),
+    (ctx) => {
+        const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+        if (!mapping) return [];
+        const myMatchIds = new Set<number>();
+        for (const p of ctx.db.MatchParticipantHistory.by_user.filter(mapping.userId)) {
+            myMatchIds.add(p.matchHistoryId);
+        }
+        const results: any[] = [];
+        for (const matchId of myMatchIds) {
+            for (const row of ctx.db.MatchResultGameHistory.by_match_history.filter(matchId)) {
+                results.push(row);
+            }
+        }
+        return results;
+    }
+);
