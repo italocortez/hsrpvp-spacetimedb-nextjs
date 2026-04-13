@@ -5,6 +5,10 @@
  * Mimics what the frontend admin panel does: receive combined JSON, split into
  * table-specific payloads, call admin_bulk_upsert for each table.
  *
+ * Phase 15 D-22 canonical shape: snake_case keys, `cost` wrapper with
+ * `cost_set_id` + 3-mode blocks (memory_of_chaos / apocalyptic_shadow /
+ * anomaly_arbitration), Spine + positioning passthrough on characters.
+ *
  * Run after bootstrap.ts: npx tsx test/shared/seed-data.ts
  */
 import { DbConnection } from '../../src/module_bindings';
@@ -25,17 +29,71 @@ if (!token) {
 const dataDir = path.resolve(import.meta.dirname || '.', '../data');
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const GAME_MODE_MAP: Record<string, string> = {
-  memoryofchaos: 'MemoryOfChaos',
-  apocalypticshadow: 'ApocalypticShadow',
-  anomalyarbitration: 'AnomalyArbitration',
+// Game mode mapping: snake_case JSON keys → enum variant names (D-22)
+const GAME_MODE_MAP: Record<string, 'MemoryOfChaos' | 'ApocalypticShadow' | 'AnomalyArbitration'> = {
+  memory_of_chaos: 'MemoryOfChaos',
+  apocalyptic_shadow: 'ApocalypticShadow',
+  anomaly_arbitration: 'AnomalyArbitration',
+};
+
+function snakeToPascalMode(k: string): 'MemoryOfChaos' | 'ApocalypticShadow' | 'AnomalyArbitration' | undefined {
+  return GAME_MODE_MAP[k];
+}
+
+// ── Raw types (D-22 canonical shape, mirrored from scripts/seed-data.ts) ──
+
+type RawPositioning = { x?: number; y?: number; width?: number };
+
+type RawCharacter = {
+  name: string;
+  display_name: string;
+  aliases?: string[];
+  rarity: number;
+  path: string;
+  element: string;
+  role: string;
+  archetype?: string[];
+  version_released?: number;
+  treat_as_version?: number;
+  image_url?: string;
+  skel_url?: string;
+  atlas_url?: string;
+  atlas_img_url?: string[];
+  positioning?: RawPositioning;
+  cost?: {
+    cost_set_id: number;
+    [mode: string]: { E0?: number; E1?: number; E2?: number; E3?: number; E4?: number; E5?: number; E6?: number } | number | undefined;
+  };
+};
+
+type RawLightcone = {
+  name: string;
+  display_name: string;
+  aliases?: string[];
+  path: string;
+  rarity: number;
+  image_url?: string;
+  positioning?: RawPositioning;
+  cost?: {
+    cost_set_id: number;
+    [mode: string]: { S1?: number; S2?: number; S3?: number; S4?: number; S5?: number } | number | undefined;
+  };
+};
+
+type RawPairing = {
+  source_name: string;
+  target_name: string;
+  cost?: {
+    cost_set_id: number;
+    [mode: string]: number | undefined;
+  };
 };
 
 // ── Transform characters (combined → HsrCharacter + HsrCharacterCost) ──
 
-const rawChars = JSON.parse(fs.readFileSync(path.join(dataDir, 'characters_table.json'), 'utf8'));
+const rawChars: RawCharacter[] = JSON.parse(fs.readFileSync(path.join(dataDir, 'characters_table.json'), 'utf8'));
 
-const chars = rawChars.map((c: any) => ({
+const chars = rawChars.map((c: RawCharacter) => ({
   name: c.name,
   displayName: c.display_name,
   aliases: c.aliases || [],
@@ -43,61 +101,122 @@ const chars = rawChars.map((c: any) => ({
   path: cap(c.path),
   element: cap(c.element),
   role: cap(c.role),
-  imageUrl: c.imageUrl || '',
+  imageUrl: c.image_url || '',
   versionReleased: c.version_released ?? 0,
   treatAsVersion: c.treat_as_version ?? 0,
+  skelUrl: c.skel_url && c.skel_url.length > 0 ? c.skel_url : null,
+  atlasUrl: c.atlas_url && c.atlas_url.length > 0 ? c.atlas_url : null,
+  atlasImgUrls: c.atlas_img_url ?? [],
+  posX: c.positioning?.x ?? 0,
+  posY: c.positioning?.y ?? 0,
+  width: c.positioning?.width ?? 0,
 }));
 
 // Extract unique archetype names from JSON (D-35)
-const archetypeNames = [...new Set(rawChars.flatMap((c: any) => c.archetype || []))].sort() as string[];
+const archetypeNames = [...new Set(rawChars.flatMap((c: RawCharacter) => c.archetype || []))].sort() as string[];
 const archetypes = archetypeNames.map((name: string) => ({ name, description: '' }));
 
+// D-22 3-mode fan-out: one row per (character, mode, eidolon), carrying cost.cost_set_id.
 const charCosts: any[] = [];
 for (const c of rawChars) {
   if (!c.cost) continue;
-  for (const [mode, eidolons] of Object.entries(c.cost) as [string, any][]) {
-    const gm = GAME_MODE_MAP[mode];
-    if (!gm) continue;
+  const csId = c.cost.cost_set_id ?? 0;
+  const modes = Object.keys(c.cost).filter(k => k !== 'cost_set_id');
+  for (const rawMode of modes) {
+    const modeBlock = c.cost[rawMode] as { E0?: number; E1?: number; E2?: number; E3?: number; E4?: number; E5?: number; E6?: number } | undefined;
+    if (!modeBlock || typeof modeBlock !== 'object') continue;
+    const gm = snakeToPascalMode(rawMode);
+    if (!gm) {
+      console.warn(`[seed] unknown game mode for character ${c.name}: ${rawMode}`);
+      continue;
+    }
     const eidolonCost = {
-      e0: eidolons['E0'] || 0, e1: eidolons['E1'] || 0, e2: eidolons['E2'] || 0,
-      e3: eidolons['E3'] || 0, e4: eidolons['E4'] || 0, e5: eidolons['E5'] || 0,
-      e6: eidolons['E6'] || 0,
+      e0: modeBlock.E0 ?? 0,
+      e1: modeBlock.E1 ?? 0,
+      e2: modeBlock.E2 ?? 0,
+      e3: modeBlock.E3 ?? 0,
+      e4: modeBlock.E4 ?? 0,
+      e5: modeBlock.E5 ?? 0,
+      e6: modeBlock.E6 ?? 0,
     };
     charCosts.push({
       characterName: c.name, gameMode: gm,
-      classicCosts: eidolonCost, auctionBaseBid: eidolonCost, costSetId: 0,
+      classicCosts: eidolonCost, auctionBaseBid: eidolonCost, costSetId: csId,
     });
   }
 }
 
 // ── Transform lightcones (combined → HsrLightcone + HsrLightconeCost) ──
 
-const rawLCs = JSON.parse(fs.readFileSync(path.join(dataDir, 'lightcones_table.json'), 'utf8'));
+const rawLCs: RawLightcone[] = JSON.parse(fs.readFileSync(path.join(dataDir, 'lightcones_table.json'), 'utf8'));
 
-const lightcones = rawLCs.map((lc: any) => ({
+const lightcones = rawLCs.map((lc: RawLightcone) => ({
   name: lc.name,
   displayName: lc.display_name,
   aliases: lc.aliases || [],
   path: cap(lc.path),
   rarity: lc.rarity,
-  imageUrl: lc.imageUrl || '',
-  posX: lc.positioning?.x || 0,
-  posY: lc.positioning?.y || 0,
-  width: typeof lc.positioning?.width === 'string' ? parseInt(lc.positioning.width) || 0 : (lc.positioning?.width || 0),
+  imageUrl: lc.image_url || '',
+  posX: lc.positioning?.x ?? 0,
+  posY: lc.positioning?.y ?? 0,
+  width: lc.positioning?.width ?? 0,
 }));
 
+// D-22 3-mode fan-out: one row per (lightcone, mode, superimpose), carrying cost.cost_set_id.
 const lcCosts: any[] = [];
 for (const lc of rawLCs) {
   if (!lc.cost) continue;
-  const supCost = {
-    s1: lc.cost['S1'] || 0, s2: lc.cost['S2'] || 0, s3: lc.cost['S3'] || 0,
-    s4: lc.cost['S4'] || 0, s5: lc.cost['S5'] || 0,
-  };
-  // Lightcone costs are the same across game modes — duplicate per mode
-  for (const gm of Object.values(GAME_MODE_MAP)) {
+  const csId = lc.cost.cost_set_id ?? 0;
+  const modes = Object.keys(lc.cost).filter(k => k !== 'cost_set_id');
+  for (const rawMode of modes) {
+    const modeBlock = lc.cost[rawMode] as { S1?: number; S2?: number; S3?: number; S4?: number; S5?: number } | undefined;
+    if (!modeBlock || typeof modeBlock !== 'object') continue;
+    const gm = snakeToPascalMode(rawMode);
+    if (!gm) {
+      console.warn(`[seed] unknown game mode for lightcone ${lc.name}: ${rawMode}`);
+      continue;
+    }
+    const supCost = {
+      s1: modeBlock.S1 ?? 0,
+      s2: modeBlock.S2 ?? 0,
+      s3: modeBlock.S3 ?? 0,
+      s4: modeBlock.S4 ?? 0,
+      s5: modeBlock.S5 ?? 0,
+    };
     lcCosts.push({
       lightconeName: lc.name, gameMode: gm,
-      classicCosts: supCost, auctionBaseBid: supCost, costSetId: 0,
+      classicCosts: supCost, auctionBaseBid: supCost, costSetId: csId,
+    });
+  }
+}
+
+// ── Transform pairings (combined → HsrSynergyCost) ──
+
+const pairingPath = path.join(dataDir, 'pairing_table.json');
+const rawPairings: RawPairing[] = fs.existsSync(pairingPath)
+  ? JSON.parse(fs.readFileSync(pairingPath, 'utf8'))
+  : [];
+
+// D-22 3-mode fan-out: one row per (source, target, mode), carrying cost.cost_set_id.
+const synergyCosts: any[] = [];
+for (const p of rawPairings) {
+  if (!p.cost) continue;
+  const csId = p.cost.cost_set_id ?? 0;
+  const modes = Object.keys(p.cost).filter(k => k !== 'cost_set_id');
+  for (const rawMode of modes) {
+    const modifier = p.cost[rawMode] as number | undefined;
+    if (modifier === undefined || modifier === null) continue;
+    const gm = snakeToPascalMode(rawMode);
+    if (!gm) {
+      console.warn(`[seed] unknown game mode for pairing ${p.source_name}->${p.target_name}: ${rawMode}`);
+      continue;
+    }
+    synergyCosts.push({
+      sourceName: p.source_name,
+      targetName: p.target_name,
+      gameMode: gm,
+      costModifier: Number(modifier),
+      costSetId: csId,
     });
   }
 }
@@ -109,6 +228,7 @@ const tables: [string, string, any[]][] = [
   ['HsrLightcone', 'lightcones', lightcones],
   ['HsrCharacterCost', 'character costs', charCosts],
   ['HsrLightconeCost', 'lightcone costs', lcCosts],
+  ['HsrSynergyCost', 'synergy costs', synergyCosts],
   ['Archetype', 'archetypes', archetypes],
 ];
 
@@ -134,8 +254,8 @@ DbConnection.builder()
 
     // Archetype junction seeding (D-07): subscribe to resolve name→id
     const assignments = rawChars
-      .filter((c: any) => c.archetype && c.archetype.length > 0)
-      .map((c: any) => ({ characterName: c.name, archetypeNames: c.archetype as string[] }));
+      .filter((c: RawCharacter) => c.archetype && c.archetype.length > 0)
+      .map((c: RawCharacter) => ({ characterName: c.name, archetypeNames: c.archetype as string[] }));
 
     if (assignments.length > 0) {
       console.log(`  Waiting 3s for Archetype IDs to settle...`);
