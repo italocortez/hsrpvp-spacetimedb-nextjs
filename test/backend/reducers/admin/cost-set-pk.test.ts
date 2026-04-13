@@ -202,13 +202,18 @@ describe.skipIf(!hasServerToken())('admin_bulk_upsert — costSetId PK tuple iso
         await admin.sync(1000);
 
         // The costSetId=5 row must still exist with its custom values untouched.
-        const set5 = await queryPrivateTable(
-            `SELECT cost_set_id, classic_costs FROM hsr_character_cost
-             WHERE character_name = '${TEST_CHAR}' AND cost_set_id = 5 AND game_mode = 'ApocalypticShadow'`
+        // Note: spacetime SQL cannot parse enum tag literals for game_mode, so
+        // filter in JS after the SQL WHERE on the scalar columns.
+        const set5All = await queryPrivateTable(
+            `SELECT cost_set_id, game_mode, classic_costs FROM hsr_character_cost
+             WHERE character_name = '${TEST_CHAR}' AND cost_set_id = 5`
         );
+        const set5 = set5All.filter((r: any) => String(r.game_mode).toLowerCase().includes('apocalypticshadow'));
         expect(set5.length).toBe(1);  // exactly one — extra rows indicate a different regression
-        const set5Costs = JSON.parse(String(set5[0].classic_costs));
-        expect(Number(set5Costs.e0)).toBe(99);  // custom value survived, not overwritten to 1
+        // classic_costs comes back as a tuple literal "(e_0 = 99, e_1 = 99, ...)"; grep e_0.
+        const e0Match = String(set5[0].classic_costs).match(/e_0\s*=\s*(-?\d+)/);
+        expect(e0Match).not.toBeNull();
+        expect(Number(e0Match![1])).toBe(99);  // custom value survived, not overwritten to 1
 
         const set0 = await queryPrivateTable(
             `SELECT cost_set_id FROM hsr_character_cost
