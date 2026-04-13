@@ -136,7 +136,7 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 **Plans**: 6 plans
 - [x] 15-01-PLAN.md — View file reorganization (8 domain files; binding surface invariant)
 - [x] 15-02-PLAN.md — Spine + positioning columns on hsr_character (schema additions)
-- [ ] 15-03-PLAN.md — Admin router rework (partial-update + costSetId tuple fix across 5 cases)
+- [x] 15-03-PLAN.md — Admin router rework (partial-update + costSetId tuple fix across 5 cases)
 - [ ] 15-04-PLAN.md — 5 self-scoped history views + ROADMAP/REQUIREMENTS 4→5 rename
 - [ ] 15-05-PLAN.md — Seed/template/data rework (D-22 shape; both seed entry points)
 - [ ] 15-06-PLAN.md — Integration tests (isolation, partial-update, cost-set PK, round-trip) + architecture docs
@@ -461,7 +461,7 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Backend pre-work | 2/6 | In Progress|  |
+| 15. Backend pre-work | 3/6 | In Progress|  |
 | 16. Route + global foundation | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |

@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 15-02-PLAN.md (Spine + positioning columns); schema live on maincloud. Ready for Plan 03 (admin router rework).
-last_updated: "2026-04-13T00:01:38.607Z"
-last_activity: 2026-04-12
+stopped_at: Completed 15-03-PLAN.md (admin router rework); build + publish clean. Ready for Plan 04 (self-scoped history views).
+last_updated: "2026-04-13T00:07:59.069Z"
+last_activity: 2026-04-13
 progress:
   total_phases: 27
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 3
+  percent: 50
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15
-**Current plan:** 3
+**Current plan:** 4
 **Status:** Executing Phase 15
 **Last activity:** 2026-04-13
 
-Progress: [███░░░░░░░] 33% (Phase 15: 2/6 plans complete)
+Progress: [█████░░░░░] 50% (Phase 15: 3/6 plans complete)
 
 ## Previous Milestone
 
@@ -75,6 +75,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 
 - [Phase 15]: Move-only view reorg: all 32 existing views split into 8 domain files matching tables/ layout; binding surface unchanged.
 - [Phase 15]: Plan 02: Spine (skelUrl/atlasUrl/atlasImgUrls) + positioning (posX/posY/width) columns added to hsr_character; schema live on maincloud; bindings regenerated. Admin router + seed pipeline reworks handled by Plans 03 and 05.
+- [Phase 15-backend-pre-work]: Plan 03: admin_bulk_upsert reworked — null=preserve partial-update semantics across 5 cases; costSetId now part of composite match tuple for all 3 cost tables; Spine + positioning columns editable via existing router (no new reducer per D-11). FOUND-01 editing half complete.
 
 ## Blockers
 
@@ -90,7 +91,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-13T00:01:38.604Z
-Stopped at: Completed 15-02-PLAN.md (Spine + positioning columns); schema live on maincloud. Ready for Plan 03 (admin router rework).
+Last session: 2026-04-13T00:07:59.066Z
+Stopped at: Completed 15-03-PLAN.md (admin router rework); build + publish clean. Ready for Plan 04 (self-scoped history views).
 Resume file: None
 Next action: `/gsd-plan-phase 15`
