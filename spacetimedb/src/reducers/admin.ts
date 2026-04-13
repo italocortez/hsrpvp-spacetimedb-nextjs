@@ -118,6 +118,18 @@ function validateEnumIfPresent(field: string, value: any, ctx: any, tableName: s
     validateEnum(field, value, ctx, tableName);
 }
 
+/**
+ * Parse a numeric primary key from the wire string. Throws SenderError with context
+ * if the input is not a valid non-negative integer (e.g. malformed admin UI input).
+ */
+function parseNumericPk(raw: string, tableName: string): number {
+    const id = Number(raw);
+    if (!Number.isInteger(id) || id < 0) {
+        throw new SenderError(`Invalid primary key for ${tableName}: '${raw}' — expected non-negative integer`);
+    }
+    return id;
+}
+
 // ─── Generic row delete (works for any public table) ─────────────────────────
 
 export const admin_delete_row = spacetimedb.reducer(
@@ -127,7 +139,7 @@ export const admin_delete_row = spacetimedb.reducer(
 
         switch (tableName) {
             case 'User': {
-                const id = Number(primaryKeyJson);
+                const id = parseNumericPk(primaryKeyJson, 'User');
                 const user = ctx.db.User.id.find(id);
                 if (!user) throw new SenderError('Row not found');
 
@@ -227,13 +239,13 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'HsrSynergyCost': {
-                const id = Number(primaryKeyJson);
+                const id = parseNumericPk(primaryKeyJson, 'HsrSynergyCost');
                 if (!ctx.db.HsrSynergyCost.id.find(id)) throw new SenderError('Row not found');
                 ctx.db.HsrSynergyCost.id.delete(id);
                 break;
             }
             case 'Archetype': {
-                const id = Number(primaryKeyJson);
+                const id = parseNumericPk(primaryKeyJson, 'Archetype');
                 if (!ctx.db.Archetype.id.find(id)) throw new SenderError('Row not found');
                 // Cascade: delete all HsrCharacterArchetype rows for this archetype
                 const junctions = [...ctx.db.HsrCharacterArchetype.archetype_id.filter(id)];
@@ -249,7 +261,7 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'Lobby': {
-                const id = Number(primaryKeyJson);
+                const id = parseNumericPk(primaryKeyJson, 'Lobby');
                 if (!ctx.db.Lobby.id.find(id)) throw new SenderError('Row not found');
                 ctx.db.Lobby.id.delete(id);
                 break;
@@ -262,13 +274,13 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'MatchSession': {
-                const id = Number(primaryKeyJson);
+                const id = parseNumericPk(primaryKeyJson, 'MatchSession');
                 if (!ctx.db.MatchSession.lobbyId.find(id)) throw new SenderError('Row not found');
                 ctx.db.MatchSession.lobbyId.delete(id);
                 break;
             }
             case 'MatchSessionStep': {
-                const id = Number(primaryKeyJson);
+                const id = parseNumericPk(primaryKeyJson, 'MatchSessionStep');
                 if (!ctx.db.MatchSessionStep.id.find(id)) throw new SenderError('Row not found');
                 ctx.db.MatchSessionStep.id.delete(id);
                 break;
