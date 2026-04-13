@@ -16,7 +16,7 @@ Requirements for the v0.9 Frontend Milestone. Each maps to exactly one phase (15
 Infrastructure delivery. Enables every feature phase.
 
 - [x] **FOUND-01**: Backend exposes `skelUrl`, `atlasUrl`, `atlasImgUrls` columns on `hsr_character` with admin editing reducer
-- [ ] **FOUND-02**: Backend exposes `view_my_match_session_history`, `view_my_match_session_step_history`, `view_my_match_participant_history`, `view_my_mmr_history`, `view_my_match_result_game_history` — all filtered server-side by `ctx.sender`
+- [x] **FOUND-02**: Backend exposes `view_my_match_session_history`, `view_my_match_session_step_history`, `view_my_match_participant_history`, `view_my_mmr_history`, `view_my_match_result_game_history` — all filtered server-side by `ctx.sender`
 - [ ] **FOUND-03**: Frontend runs on Next.js ≥15.2.3 with `experimental.typedRoutes: true` enabled
 - [ ] **FOUND-04**: Route groups renamed: `(landing-page)` → `(public)`, `(authenticated)` → `(authed)`, `(game)/draft` collapsed into `(authed)/(match)/draft`; all `<Link>` and `router.push` callers updated
 - [ ] **FOUND-05**: `user` subscription moved from `useAuth.ts` to `(authed)/layout.tsx`; `useAuth.ts` retains only `view_my_profile` bootstrap
@@ -241,7 +241,7 @@ Each requirement maps to exactly one phase. Coverage validated by roadmapper.
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | FOUND-01 | 15 | Complete |
-| FOUND-02 | 15 | Pending |
+| FOUND-02 | 15 | Complete |
 | FOUND-03 | 16 | Pending |
 | FOUND-04 | 16 | Pending |
 | FOUND-05 | 16 | Pending |
