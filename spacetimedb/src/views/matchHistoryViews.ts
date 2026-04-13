@@ -35,31 +35,49 @@ import { MmrHistory } from '../tables/mmrHistory';
 //    combine with participated matchHistoryIds from MatchParticipantHistory.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Shared helper: walks MatchSessionHistory via the 3 game-mode indexes once,
+// returns both the visible ID set (for fan-out views) and the row array
+// (for view_match_history's direct emission). Phase 15 WR-05.
+// ---------------------------------------------------------------------------
+
+function buildVisibleMatches(ctx: any): { ids: Set<number>; sessions: any[] } {
+    const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
+
+    const participatedIds = new Set<number>();
+    if (mapping) {
+        const callerUserId = mapping.userId;
+        for (const row of ctx.db.MatchParticipantHistory.by_user.filter(callerUserId)) {
+            participatedIds.add(row.matchHistoryId);
+        }
+    }
+
+    const ids = new Set<number>();
+    const sessions: any[] = [];
+
+    const gameModes: any[] = [
+        { tag: 'MemoryOfChaos', value: {} },
+        { tag: 'ApocalypticShadow', value: {} },
+        { tag: 'AnomalyArbitration', value: {} },
+    ];
+
+    for (const gm of gameModes) {
+        for (const history of ctx.db.MatchSessionHistory.game_mode.filter(gm)) {
+            if (history.isPubliclyVisible || participatedIds.has(history.id)) {
+                ids.add(history.id);
+                sessions.push(history);
+            }
+        }
+    }
+
+    return { ids, sessions };
+}
+
 // Phase 15 D-01/D-02: moved from anonymousViews.ts
 export const view_match_history = spacetimedb.view(
     { name: 'view_match_history', public: true },
     t.array(MatchSessionHistory.rowType),
-    (ctx) => {
-        const visibleIds = buildVisibleMatchIds(ctx);
-
-        // Return full MatchSessionHistory rows for visible matches
-        const results: any[] = [];
-        const gameModes: any[] = [
-            { tag: 'MemoryOfChaos', value: {} },
-            { tag: 'ApocalypticShadow', value: {} },
-            { tag: 'AnomalyArbitration', value: {} },
-        ];
-
-        for (const gm of gameModes) {
-            for (const history of ctx.db.MatchSessionHistory.game_mode.filter(gm)) {
-                if (visibleIds.has(history.id)) {
-                    results.push(history);
-                }
-            }
-        }
-
-        return results;
-    }
+    (ctx) => buildVisibleMatches(ctx).sessions
 );
 
 // ---------------------------------------------------------------------------
@@ -76,15 +94,13 @@ export const view_match_participant_history = spacetimedb.view(
     { name: 'view_match_participant_history', public: true },
     t.array(MatchParticipantHistory.rowType),
     (ctx) => {
-        const visibleIds = buildVisibleMatchIds(ctx);
-
+        const { ids } = buildVisibleMatches(ctx);
         const results: any[] = [];
-        for (const matchId of visibleIds) {
+        for (const matchId of ids) {
             for (const row of ctx.db.MatchParticipantHistory.by_match_history.filter(matchId)) {
                 results.push(row);
             }
         }
-
         return results;
     }
 );
@@ -101,56 +117,16 @@ export const view_match_step_history = spacetimedb.view(
     { name: 'view_match_step_history', public: true },
     t.array(MatchSessionStepHistory.rowType),
     (ctx) => {
-        const visibleIds = buildVisibleMatchIds(ctx);
-
+        const { ids } = buildVisibleMatches(ctx);
         const results: any[] = [];
-        for (const matchId of visibleIds) {
+        for (const matchId of ids) {
             for (const row of ctx.db.MatchSessionStepHistory.by_match_history.filter(matchId)) {
                 results.push(row);
             }
         }
-
         return results;
     }
 );
-
-// ---------------------------------------------------------------------------
-// Shared helper: builds the set of matchHistoryIds visible to the caller.
-// Used by view_match_history, view_match_participant_history, and
-// view_match_step_history to enforce the same visibility gate.
-// ---------------------------------------------------------------------------
-
-function buildVisibleMatchIds(ctx: any): Set<number> {
-    const mapping = ctx.db.UserIdentity.identity.find(ctx.sender);
-
-    // Build a set of matchHistoryIds the caller participated in
-    const participatedIds = new Set<number>();
-    if (mapping) {
-        const callerUserId = mapping.userId;
-        for (const row of ctx.db.MatchParticipantHistory.by_user.filter(callerUserId)) {
-            participatedIds.add(row.matchHistoryId);
-        }
-    }
-
-    // Build set of visible matchHistoryIds (publicly visible OR participated)
-    const visibleIds = new Set<number>();
-
-    const gameModes: any[] = [
-        { tag: 'MemoryOfChaos', value: {} },
-        { tag: 'ApocalypticShadow', value: {} },
-        { tag: 'AnomalyArbitration', value: {} },
-    ];
-
-    for (const gm of gameModes) {
-        for (const history of ctx.db.MatchSessionHistory.game_mode.filter(gm)) {
-            if (history.isPubliclyVisible || participatedIds.has(history.id)) {
-                visibleIds.add(history.id);
-            }
-        }
-    }
-
-    return visibleIds;
-}
 
 // ---------------------------------------------------------------------------
 // 4. view_my_mmr_history (Phase 15 D-13, D-17)
