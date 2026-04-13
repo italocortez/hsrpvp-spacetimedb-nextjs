@@ -48,6 +48,7 @@ next-env.d.ts
 excalidraw.log
 .claude/gsd-local-patches/
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 notes
 notes/
 /notes
