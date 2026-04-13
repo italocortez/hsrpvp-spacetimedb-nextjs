@@ -199,7 +199,9 @@ describe.skipIf(!hasServerToken())('admin_bulk_upsert — partial-update preserv
         expect(rows.length).toBe(1);
         const row = rows[0];
         // Required columns: default-injected (empty string / 0 / []).
-        expect(row.display_name === '""' || row.display_name === '').toBe(true);
+        // Normalize "quoted" vs bare string output from queryPrivateTable
+        const displayName = String(row.display_name).replace(/^"|"$/g, '');
+        expect(displayName).toBe('');
         expect(Number(row.rarity)).toBe(0);
         expect(Number(row.pos_x)).toBe(0);
         expect(Number(row.pos_y)).toBe(0);
