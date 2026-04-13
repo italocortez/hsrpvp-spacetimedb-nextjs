@@ -14,6 +14,14 @@
 import { DbConnection } from '../../src/module_bindings';
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'node:url';
+
+// Guard: this is a CLI script, never import it.
+// Side-effects (file reads, DbConnection, reducer calls, process.exit) run at module
+// top level; importing this file would execute all of them.
+if (import.meta.url !== pathToFileURL(process.argv[1] || '').href) {
+    throw new Error('test/shared/seed-data.ts is a CLI entry point — do not import');
+}
 
 const envPath = path.resolve(import.meta.dirname || '.', '../../.env.local');
 const envContent = fs.readFileSync(envPath, 'utf8');
