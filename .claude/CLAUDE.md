@@ -5,6 +5,44 @@
 
 ---
 
+# Autonomous Execution (applies ONLY during `/gsd-execute-phase` and inline sub-workflows)
+
+This repo runs `mode: yolo` in `.planning/config.json`. During execution workflows — and ONLY during execution — operate autonomously. Structural gates (gitignore pre-audit, post-commit stat verification, hooks, `files_modified` frontmatter) provide the safety payoff. Extra "proceed?" prompts are pure friction.
+
+**Does NOT apply during** `/gsd-discuss-phase`, `/gsd-plan-phase`, `/gsd-verify-work`, `/gsd-code-review`, architectural discussions, or any conversational phase — there, asking IS the design.
+
+## During execution, never pause for:
+- git commits on the current branch (gsd-tools, direct, amending unpushed)
+- Approach-selection decisions reversible within the session (sequential vs parallel, wave ordering)
+- Branch creation on the current feature branch
+- Routine reads (`git log/diff/show/status/blame/check-ignore`)
+- File writes inside the plan's `files_modified` frontmatter
+- Running tests, builds, seed scripts
+
+## During execution, DO pause for:
+- File / branch / worktree deletion
+- Force operations (`git push --force`, destructive `git reset --hard`, `--no-verify` bypass)
+- Cross-boundary actions (pushes to remote, PRs, external APIs, deploys)
+- Real problems (stranger paths in commits, hook rejections, unexpected test failures, merge conflicts)
+- Plan-level `human-action` checkpoints baked into PLAN.md (D-11/D-12 gates, etc.)
+
+---
+
+# Gitignore Guardrail (applies during execution commits only)
+
+NEVER commit anything under `test/data/`, `tmp/`, or `.env*`. The rule is about the ACTION:
+
+- No `git add -f` / `git add --force`, ever, for any reason
+- Plan `files_modified` frontmatter must not contain gitignored paths — pre-execution audit catches this
+- Data-transform scripts for gitignored files are local-only: described as "user runs `tmp/migrate.ts` locally", never committed
+- If verification needs a gitignored file, verification is wrong — use a fixture under `test/data-templates/` (whitelist path)
+
+**Scope note:** this rule is absolute about force-adding gitignored paths during an execution commit. It does NOT imply extra caution on adjacent decisions — the structural pre-execution gate already prices in the risk.
+
+Recovery procedure (if it happens anyway): see `memory/feedback_never_force_add_gitignored.md`.
+
+---
+
 # Mandatory Skills
 
 When working on ANY task in this project, use the appropriate skill:
