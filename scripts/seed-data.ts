@@ -57,10 +57,13 @@ function snakeToPascalMode(k: string): 'MemoryOfChaos' | 'ApocalypticShadow' | '
     return GAME_MODE_MAP[k];
 }
 
-// ─── Raw types (D-22 canonical shape) ─────────────────────────────────────────
+// ─── Raw types (D-22 canonical shape, D-01 sibling-block shape) ───────────────
 
-type RawModeEidolonBlock = { E0?: number; E1?: number; E2?: number; E3?: number; E4?: number; E5?: number; E6?: number };
-type RawModeSuperpositionBlock = { S1?: number; S2?: number; S3?: number; S4?: number; S5?: number };
+type EidolonSubBlock = { E0?: number; E1?: number; E2?: number; E3?: number; E4?: number; E5?: number; E6?: number };
+type RawModeEidolonBlock = { classic?: EidolonSubBlock; auction?: EidolonSubBlock };
+
+type SuperpositionSubBlock = { S1?: number; S2?: number; S3?: number; S4?: number; S5?: number };
+type RawModeSuperpositionBlock = { classic?: SuperpositionSubBlock; auction?: SuperpositionSubBlock };
 
 type RawCharacterCost = {
     cost_set_id: number;
@@ -157,7 +160,36 @@ function extractArchetypeAssignments(raw: RawCharacter[]): Array<{ characterName
         .map(c => ({ characterName: c.name, archetypeNames: c.archetype! }));
 }
 
-/** Extract HsrCharacterCost rows from characters_table.json (D-22 3-mode fan-out) */
+// ─── Zero-pad constants + sub-block extractors (D-07, D-08) ──────────────────
+
+const ZERO_EIDOLON = { e0: 0, e1: 0, e2: 0, e3: 0, e4: 0, e5: 0, e6: 0 };
+const ZERO_SUPERPOSITION = { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 };
+
+function extractEidolonCost(block: EidolonSubBlock | undefined) {
+    if (!block || typeof block !== 'object') return undefined;
+    return {
+        e0: block.E0 ?? 0,
+        e1: block.E1 ?? 0,
+        e2: block.E2 ?? 0,
+        e3: block.E3 ?? 0,
+        e4: block.E4 ?? 0,
+        e5: block.E5 ?? 0,
+        e6: block.E6 ?? 0,
+    };
+}
+
+function extractSuperpositionCost(block: SuperpositionSubBlock | undefined) {
+    if (!block || typeof block !== 'object') return undefined;
+    return {
+        s1: block.S1 ?? 0,
+        s2: block.S2 ?? 0,
+        s3: block.S3 ?? 0,
+        s4: block.S4 ?? 0,
+        s5: block.S5 ?? 0,
+    };
+}
+
+/** Extract HsrCharacterCost rows (D-22 3-mode fan-out + D-01 sibling-block shape). */
 function normalizeCharacterCosts(raw: RawCharacter[]): object[] {
     const rows: object[] = [];
     for (const c of raw) {
@@ -167,25 +199,26 @@ function normalizeCharacterCosts(raw: RawCharacter[]): object[] {
         for (const rawMode of modes) {
             const modeBlock = c.cost[rawMode] as RawModeEidolonBlock | undefined;
             if (!modeBlock || typeof modeBlock !== 'object') continue;
+
+            const classicCosts = extractEidolonCost(modeBlock.classic);
+            const auctionBaseBid = extractEidolonCost(modeBlock.auction);
+
+            // D-09 rule: both sub-blocks absent → skip the mode entirely (no row).
+            if (!classicCosts && !auctionBaseBid) continue;
+
             const gameMode = snakeToPascalMode(rawMode);
             if (!gameMode) {
                 console.warn(`[seed] Unknown game mode "${rawMode}" for character "${c.name}" — skipping`);
                 continue;
             }
-            const costs = {
-                e0: modeBlock.E0 ?? 0,
-                e1: modeBlock.E1 ?? 0,
-                e2: modeBlock.E2 ?? 0,
-                e3: modeBlock.E3 ?? 0,
-                e4: modeBlock.E4 ?? 0,
-                e5: modeBlock.E5 ?? 0,
-                e6: modeBlock.E6 ?? 0,
-            };
+
+            // D-07 zero-pad on insert (seed always hits insert branch post --clear-database).
+            // D-08 explicitly removes the placeholder `auctionBaseBid: { ...classicCosts }`.
             rows.push({
                 characterName: c.name,
                 gameMode,
-                classicCosts: costs,
-                auctionBaseBid: { ...costs },  // same values as placeholder
+                classicCosts: classicCosts ?? ZERO_EIDOLON,
+                auctionBaseBid: auctionBaseBid ?? ZERO_EIDOLON,
                 costSetId: csId,
             });
         }
@@ -208,7 +241,7 @@ function normalizeLightcones(raw: RawLightcone[]): object[] {
     }));
 }
 
-/** Extract HsrLightconeCost rows from lightcones_table.json (D-22 3-mode fan-out) */
+/** Extract HsrLightconeCost rows (D-22 3-mode fan-out + D-01 sibling-block shape). */
 function normalizeLightconeCosts(raw: RawLightcone[]): object[] {
     const rows: object[] = [];
     for (const lc of raw) {
@@ -218,23 +251,25 @@ function normalizeLightconeCosts(raw: RawLightcone[]): object[] {
         for (const rawMode of modes) {
             const modeBlock = lc.cost[rawMode] as RawModeSuperpositionBlock | undefined;
             if (!modeBlock || typeof modeBlock !== 'object') continue;
+
+            const classicCosts = extractSuperpositionCost(modeBlock.classic);
+            const auctionBaseBid = extractSuperpositionCost(modeBlock.auction);
+
+            // D-09 rule: both sub-blocks absent → skip the mode entirely.
+            if (!classicCosts && !auctionBaseBid) continue;
+
             const gameMode = snakeToPascalMode(rawMode);
             if (!gameMode) {
                 console.warn(`[seed] Unknown game mode "${rawMode}" for lightcone "${lc.name}" — skipping`);
                 continue;
             }
-            const costs = {
-                s1: modeBlock.S1 ?? 0,
-                s2: modeBlock.S2 ?? 0,
-                s3: modeBlock.S3 ?? 0,
-                s4: modeBlock.S4 ?? 0,
-                s5: modeBlock.S5 ?? 0,
-            };
+
+            // D-07 zero-pad on insert, D-08 no placeholder copy.
             rows.push({
                 lightconeName: lc.name,
                 gameMode,
-                classicCosts: costs,
-                auctionBaseBid: { ...costs },  // same values as placeholder
+                classicCosts: classicCosts ?? ZERO_SUPERPOSITION,
+                auctionBaseBid: auctionBaseBid ?? ZERO_SUPERPOSITION,
                 costSetId: csId,
             });
         }
