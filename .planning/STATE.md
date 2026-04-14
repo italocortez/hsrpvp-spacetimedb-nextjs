@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.1
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Completed 15.1-01-PLAN.md (template extension)
-last_updated: "2026-04-14T18:12:51.682Z"
+stopped_at: Completed 15.1-02-PLAN.md (README transform tables rewrite)
+last_updated: "2026-04-14T18:23:18.602Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 30
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_plans: 8
+  percent: 80
 ---
 
 # Session State
@@ -75,6 +75,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 
 - [Phase 15.1]: D-01 honored: sibling-block cost shape (classic+auction optional sub-blocks) in both char and lc templates
 - [Phase 15.1]: D-09 permutations distributed: entry-1=P1(classic-only), entry-2=P2+P3+P4 in each template file
+- [Phase 15.1]: D-17 honored: README transform tables rewritten to sibling-block shape; L84 placeholder deleted
+- [Phase 15.1]: D-02/D-13 honored: pairing section untouched in Plan 02 README rewrite
 
 ### Roadmap Evolution
 
@@ -103,7 +105,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-14T18:12:44.336Z
-Stopped at: Completed 15.1-01-PLAN.md (template extension)
+Last session: 2026-04-14T18:23:18.599Z
+Stopped at: Completed 15.1-02-PLAN.md (README transform tables rewrite)
 Resume file: None
 Next action: `/gsd-plan-phase 15`
