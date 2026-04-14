@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.1
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 15.1-02-PLAN.md (README transform tables rewrite)
-last_updated: "2026-04-14T18:23:18.602Z"
+stopped_at: Completed 15.1-03-PLAN.md (seed pipeline sibling-block rewrite)
+last_updated: "2026-04-14T18:36:54.588Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 30
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Session State
@@ -77,6 +77,9 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.1]: D-09 permutations distributed: entry-1=P1(classic-only), entry-2=P2+P3+P4 in each template file
 - [Phase 15.1]: D-17 honored: README transform tables rewritten to sibling-block shape; L84 placeholder deleted
 - [Phase 15.1]: D-02/D-13 honored: pairing section untouched in Plan 02 README rewrite
+- [Phase 15.1]: D-06/D-07/D-08/D-09/D-10 honored: sibling-block extractor with zero-pad on insert and no classic→auction copy in both seed pipelines
+- [Phase 15.1]: D-11/D-12 honored: local test/data/*.json re-migrated to sibling-block shape on disk only; gitignored path never committed
+- [Phase 15.1]: D-15/D-16 guard confirmed: no reducer, validation, or reader source file in Plan 03 diff
 
 ### Roadmap Evolution
 
@@ -105,7 +108,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-14T18:23:18.599Z
-Stopped at: Completed 15.1-02-PLAN.md (README transform tables rewrite)
+Last session: 2026-04-14T18:36:49.068Z
+Stopped at: Completed 15.1-03-PLAN.md (seed pipeline sibling-block rewrite)
 Resume file: None
 Next action: `/gsd-plan-phase 15`

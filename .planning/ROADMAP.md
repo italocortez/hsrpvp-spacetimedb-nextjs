@@ -166,12 +166,12 @@ Plans:
 **Goal:** Close Phase 15 IN-10 — extend the committed character + lightcone templates (and both seed pipelines that consume them) to the parallel sibling-block cost shape so auction data is ingested from template JSON instead of silently duplicated from classic values. Schema, reducer signatures, bindings, synergy tables, and pairing data all remain unchanged; scope is surgically template + seed only.
 **Requirements**: D-01..D-19 (CONTEXT.md is authoritative — no ROADMAP requirement IDs; decisions are the requirement surface)
 **Depends on:** Phase 15
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 15.1-01-PLAN.md — Extend character + lightcone templates to sibling-block shape (D-01, D-02)
 - [x] 15.1-02-PLAN.md — Rewrite README transform tables for char/lc; delete L84 placeholder note (D-17)
-- [ ] 15.1-03-PLAN.md — Rewrite both seed pipelines for sibling-block extraction; local-only data re-migration (D-06..D-16)
+- [x] 15.1-03-PLAN.md — Rewrite both seed pipelines for sibling-block extraction; local-only data re-migration (D-06..D-16)
 - [ ] 15.1-04-PLAN.md — D-18 partial-ingestion regression tests + D-19 guardrail (D-18, D-19)
 
 ### Phase 16: Route + global foundation
