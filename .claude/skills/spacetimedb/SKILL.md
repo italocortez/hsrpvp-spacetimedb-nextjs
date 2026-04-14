@@ -268,6 +268,26 @@ Each column declaration type produces a different accessor with a different API.
 
 Single-column btree with `.filter([val])` (one-element array) auto-coerces to scalar and works, but prefer `.filter(scalar)` for clarity.
 
+**Multi-column `primaryKey: [...]` declarations are a no-op (verified 2026-04-14, v2.1.0):**
+
+Declaring composite PK at the `table()` options level produces **no engine enforcement and no accessor**:
+```typescript
+// ❌ Decorative only — NOT engine-enforced
+table({ name: 't', primaryKey: ['a', 'b'] }, { a: t.string(), b: t.string(), v: t.u32() });
+```
+Live probe: published such a table, inserted `(x,y,1)` then `(x,y,2)` — both rows persisted. Generated bindings showed `indexes: [ ]` and `constraints: [ ]`. No `.pk` accessor (calling it at runtime panics).
+
+**Real engine-enforced uniqueness requires single-column declarations:**
+- `t.xxx().primaryKey()` on one column → generates `constraint: 'unique'` in bindings
+- `t.xxx().unique()` on one column → generates `constraint: 'unique'` in bindings
+
+**For tuple uniqueness across multiple columns:**
+1. Add a multi-column btree index for fast O(log n) lookup via `.filter([val1, val2, ...])`.
+2. Enforce uniqueness in the reducer itself (tuple-match-before-insert pattern) — the engine will not do it.
+3. Optionally keep an autoInc `id: t.u32().primaryKey().autoInc()` as a real unique cursor for `.id.find/update/delete`, separate from the logical tuple key.
+
+**How to verify in future:** Grep `src/module_bindings/index.ts` for the `constraints: [...]` array on any table. If empty, tuple uniqueness is not engine-enforced regardless of what `table()` options declared. The `primaryKey: [...]` option on `table()` is **documentation-only** — it can stay in source as a reader hint, but the real guarantee is in reducer code + the matching btree index.
+
 **Multi-column btree index definition and usage:**
 ```typescript
 // Table definition with multi-column btree index
