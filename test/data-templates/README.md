@@ -34,12 +34,16 @@ optional (empty string / empty array = absent).
 | `positioning.y` | `posY` | nested -> flat int; missing block -> `0` |
 | `positioning.width` | `width` | nested -> flat int; missing block -> `0` |
 | `cost.cost_set_id` | (lifts to `costSetId` on each fanned row) | missing -> `0` |
-| `cost.memory_of_chaos.E0..E6` | HsrCharacterCost row | gameMode: `"MemoryOfChaos"`, classicCosts+auctionBaseBid: `{e0..e6}`, costSetId: `cost.cost_set_id` |
-| `cost.apocalyptic_shadow.E0..E6` | HsrCharacterCost row | gameMode: `"ApocalypticShadow"` |
-| `cost.anomaly_arbitration.E0..E6` | HsrCharacterCost row | gameMode: `"AnomalyArbitration"` |
+| `cost.memory_of_chaos.classic.E0..E6` | HsrCharacterCost.classicCosts | gameMode: `"MemoryOfChaos"`; missing sub-block → zero-pad on insert (D-07); present → apply values |
+| `cost.memory_of_chaos.auction.E0..E6` | HsrCharacterCost.auctionBaseBid | gameMode: `"MemoryOfChaos"`; missing sub-block → zero-pad on insert (D-07); present → apply values |
+| `cost.apocalyptic_shadow.classic.E0..E6` | HsrCharacterCost.classicCosts | gameMode: `"ApocalypticShadow"`; same rules |
+| `cost.apocalyptic_shadow.auction.E0..E6` | HsrCharacterCost.auctionBaseBid | gameMode: `"ApocalypticShadow"`; same rules |
+| `cost.anomaly_arbitration.classic.E0..E6` | HsrCharacterCost.classicCosts | gameMode: `"AnomalyArbitration"`; same rules |
+| `cost.anomaly_arbitration.auction.E0..E6` | HsrCharacterCost.auctionBaseBid | gameMode: `"AnomalyArbitration"`; same rules |
+| (mode block present but both `classic` + `auction` sub-blocks absent) | (no row written) | Skip the mode entirely (D-09/D-10) |
 | `E0..E6` (uppercase) | `e0..e6` | lowercase keys in EidolonCost struct |
 
-**Fan-out count:** 7 eidolons × 3 game modes = **21 HsrCharacterCost rows per character**.
+**Fan-out count:** Up to 7 eidolons × 2 draft modes (classic/auction) × 3 game modes = **42 HsrCharacterCost writable fields per character** (2 struct columns × 3 game modes = 6 row-level slots). A row is written for a game mode only if at least one of `classic` / `auction` is present in the template; the missing side is zero-padded on insert (D-07) and preserved on update (D-06).
 
 ### lightcones_table.json -> HsrLightcone + HsrLightconeCost
 
@@ -55,12 +59,16 @@ optional (empty string / empty array = absent).
 | `positioning.y` | `posY` | nested -> flat int; missing block -> `0` |
 | `positioning.width` | `width` | plain int (was `"120%"` string with parseInt in pre-D-22 shape; now always int) |
 | `cost.cost_set_id` | (lifts to `costSetId` on each fanned row) | missing -> `0` |
-| `cost.memory_of_chaos.S1..S5` | HsrLightconeCost row | gameMode: `"MemoryOfChaos"`, classicCosts+auctionBaseBid: `{s1..s5}`, costSetId: `cost.cost_set_id` |
-| `cost.apocalyptic_shadow.S1..S5` | HsrLightconeCost row | gameMode: `"ApocalypticShadow"` |
-| `cost.anomaly_arbitration.S1..S5` | HsrLightconeCost row | gameMode: `"AnomalyArbitration"` |
+| `cost.memory_of_chaos.classic.S1..S5` | HsrLightconeCost.classicCosts | gameMode: `"MemoryOfChaos"`; missing sub-block → zero-pad on insert (D-07); present → apply values |
+| `cost.memory_of_chaos.auction.S1..S5` | HsrLightconeCost.auctionBaseBid | gameMode: `"MemoryOfChaos"`; missing sub-block → zero-pad on insert (D-07); present → apply values |
+| `cost.apocalyptic_shadow.classic.S1..S5` | HsrLightconeCost.classicCosts | gameMode: `"ApocalypticShadow"`; same rules |
+| `cost.apocalyptic_shadow.auction.S1..S5` | HsrLightconeCost.auctionBaseBid | gameMode: `"ApocalypticShadow"`; same rules |
+| `cost.anomaly_arbitration.classic.S1..S5` | HsrLightconeCost.classicCosts | gameMode: `"AnomalyArbitration"`; same rules |
+| `cost.anomaly_arbitration.auction.S1..S5` | HsrLightconeCost.auctionBaseBid | gameMode: `"AnomalyArbitration"`; same rules |
+| (mode block present but both `classic` + `auction` sub-blocks absent) | (no row written) | Skip the mode entirely (D-09/D-10) |
 | `S1..S5` (uppercase) | `s1..s5` | lowercase keys in SuperimpositionCost struct |
 
-**Fan-out count:** 5 superimpositions × 3 game modes = **15 HsrLightconeCost rows per lightcone**. Per-mode blocks carry their own values; they are NOT duplicated across modes at the seed level — whatever the JSON says wins.
+**Fan-out count:** Up to 5 superimpositions × 2 draft modes (classic/auction) × 3 game modes = **30 HsrLightconeCost writable fields per lightcone** (2 struct columns × 3 game modes = 6 row-level slots). A row is written for a game mode only if at least one of `classic` / `auction` is present; the missing side is zero-padded on insert (D-07) and preserved on update (D-06).
 
 ### pairing_table.json -> HsrSynergyCost
 
@@ -81,5 +89,5 @@ optional (empty string / empty array = absent).
 - Characters with no `cost` entry in the JSON get no HsrCharacterCost rows.
 - Lightcone `positioning` is optional — omitting the block defaults `posX`/`posY`/`width` to `0`. Characters follow the same rule.
 - Spine fields (`skel_url`, `atlas_url`, `atlas_img_url`) are all optional on characters; empty-string -> `null`, missing array -> `[]`. Lightcones have no Spine fields.
-- `auctionBaseBid` uses the same values as `classicCosts` for now (placeholder; the auction format may diverge in a later phase).
+- `auctionBaseBid` is populated from `cost.<mode>.auction` sub-blocks (D-01). Missing on insert → zero-padded per D-07. Missing on update → existing value preserved per D-06. There is no silent classic → auction copy at the seed layer (D-08).
 - Unknown mode keys (anything other than the three snake_case modes above) are logged as warnings and skipped at the seed layer. The router's `validateEnum` is a second defensive gate.
