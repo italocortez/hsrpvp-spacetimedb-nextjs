@@ -209,4 +209,70 @@ describe.skipIf(!hasServerToken())('admin_bulk_upsert — partial-update preserv
         // Optional columns (skelUrl / atlasUrl): stay null.
         // atlasImgUrls: [] default.
     });
+
+    // ── D-18-4: struct-column preservation on partial update ────────────────────
+
+    it('D-18-4: partial update with only classicCosts preserves auctionBaseBid struct column', async () => {
+        // Phase 15.1, D-18 scenario 4.
+        //
+        // Wire semantics (admin.ts mergeForUpdate + validateKeys):
+        //   - validateKeys enforces EXACTLY: characterName, gameMode, classicCosts,
+        //     auctionBaseBid, costSetId in every HsrCharacterCost row.
+        //   - mergeForUpdate: null value = "preserve existing". Key MUST be present.
+        //   - Sending auctionBaseBid: null triggers the preserve path (D-06).
+        //
+        // Note: the plan describes this as "key-absent → preserve". In the actual
+        // reducer, validateKeys enforces key presence, so null is the preserve signal.
+        // Semantically equivalent: the caller expresses "I am not changing this column"
+        // by sending null — the reducer preserves the existing struct value.
+
+        const costSetId = 9994; // unique costSetId — isolates from default seed (0) and D-18-1/2/3
+
+        const initialClassic = { e0: 5, e1: 6, e2: 7, e3: 8, e4: 9, e5: 10, e6: 20 };
+        const initialAuction = { e0: 50, e1: 60, e2: 70, e3: 80, e4: 90, e5: 100, e6: 200 };
+
+        // Pre-insert row with BOTH sides populated.
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrCharacterCost',
+            jsonData: JSON.stringify([{
+                characterName: TEST_CHAR,
+                gameMode: 'MemoryOfChaos',
+                classicCosts: initialClassic,
+                auctionBaseBid: initialAuction,
+                costSetId,
+            }]),
+        });
+        await admin.sync(1000);
+
+        // Partial update: change classicCosts only.
+        // auctionBaseBid is sent as null — D-06 "preserve existing" signal.
+        // The key MUST be present (validateKeys contract); null is the preserve value.
+        const updatedClassic = { e0: 7, e1: 8, e2: 11, e3: 12, e4: 13, e5: 14, e6: 22 };
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrCharacterCost',
+            jsonData: JSON.stringify([{
+                characterName: TEST_CHAR,
+                gameMode: 'MemoryOfChaos',
+                classicCosts: updatedClassic,
+                auctionBaseBid: null,   // D-06: null = preserve existing (NOT zero, NOT copy)
+                costSetId,
+            }]),
+        });
+        await admin.sync(1000);
+
+        // Verify via subscription cache (HsrCharacterCost is public: true)
+        const row = [...admin.conn.db.HsrCharacterCost.iter()].find(
+            r => r.characterName === TEST_CHAR &&
+                 r.gameMode.tag === 'MemoryOfChaos' &&
+                 r.costSetId === costSetId
+        );
+
+        expect(row).toBeDefined();
+        // classicCosts: updated to new values
+        expect(row!.classicCosts.e0).toBe(7);
+        expect(row!.classicCosts.e6).toBe(22);
+        // auctionBaseBid: preserved — NOT zeroed, NOT copied from classic
+        expect(row!.auctionBaseBid.e0).toBe(50);
+        expect(row!.auctionBaseBid.e6).toBe(200);
+    }, 60_000);
 });
