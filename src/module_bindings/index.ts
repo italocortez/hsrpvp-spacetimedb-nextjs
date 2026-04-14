@@ -128,6 +128,7 @@ import OverrideMatchResultReducer from "./override_match_result_reducer";
 import PassBidReducer from "./pass_bid_reducer";
 import PauseDraftReducer from "./pause_draft_reducer";
 import PickCharacterReducer from "./pick_character_reducer";
+import PkTestInsertReducer from "./pk_test_insert_reducer";
 import PlaceBidReducer from "./place_bid_reducer";
 import ProcessTournamentMmrReducer from "./process_tournament_mmr_reducer";
 import PublishCostSetReducer from "./publish_cost_set_reducer";
@@ -227,6 +228,7 @@ import MatchSessionStepRow from "./match_session_step_table";
 import MatchSessionStepHistoryRow from "./match_session_step_history_table";
 import MmrHistoryRow from "./mmr_history_table";
 import MmrRatingRow from "./mmr_rating_table";
+import PkTestRow from "./pk_test_table";
 import SavedCalendarRow from "./saved_calendar_table";
 import SeasonRow from "./season_table";
 import TournamentRow from "./tournament_table";
@@ -840,6 +842,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MmrRatingRow),
+  PkTest: __table({
+    name: 'pk_test',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, PkTestRow),
   SavedCalendar: __table({
     name: 'saved_calendar',
     indexes: [
@@ -1388,6 +1397,7 @@ const reducersSchema = __reducers(
   __reducerSchema("pass_bid", PassBidReducer),
   __reducerSchema("pause_draft", PauseDraftReducer),
   __reducerSchema("pick_character", PickCharacterReducer),
+  __reducerSchema("pk_test_insert", PkTestInsertReducer),
   __reducerSchema("place_bid", PlaceBidReducer),
   __reducerSchema("process_tournament_mmr", ProcessTournamentMmrReducer),
   __reducerSchema("publish_cost_set", PublishCostSetReducer),

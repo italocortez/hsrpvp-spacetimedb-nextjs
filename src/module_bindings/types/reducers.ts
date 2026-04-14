@@ -100,6 +100,7 @@ import OverrideMatchResultReducer from "../override_match_result_reducer";
 import PassBidReducer from "../pass_bid_reducer";
 import PauseDraftReducer from "../pause_draft_reducer";
 import PickCharacterReducer from "../pick_character_reducer";
+import PkTestInsertReducer from "../pk_test_insert_reducer";
 import PlaceBidReducer from "../place_bid_reducer";
 import ProcessTournamentMmrReducer from "../process_tournament_mmr_reducer";
 import PublishCostSetReducer from "../publish_cost_set_reducer";
@@ -254,6 +255,7 @@ export type OverrideMatchResultParams = __Infer<typeof OverrideMatchResultReduce
 export type PassBidParams = __Infer<typeof PassBidReducer>;
 export type PauseDraftParams = __Infer<typeof PauseDraftReducer>;
 export type PickCharacterParams = __Infer<typeof PickCharacterReducer>;
+export type PkTestInsertParams = __Infer<typeof PkTestInsertReducer>;
 export type PlaceBidParams = __Infer<typeof PlaceBidReducer>;
 export type ProcessTournamentMmrParams = __Infer<typeof ProcessTournamentMmrReducer>;
 export type PublishCostSetParams = __Infer<typeof PublishCostSetReducer>;

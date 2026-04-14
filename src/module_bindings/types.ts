@@ -1373,6 +1373,13 @@ export const PickPayload = __t.object("PickPayload", {
 });
 export type PickPayload = __Infer<typeof PickPayload>;
 
+export const PkTest = __t.object("PkTest", {
+  a: __t.string(),
+  b: __t.string(),
+  v: __t.u32(),
+});
+export type PkTest = __Infer<typeof PkTest>;
+
 export const PlayerCharacterStat = __t.object("PlayerCharacterStat", {
   userId: __t.u32(),
   characterName: __t.string(),
