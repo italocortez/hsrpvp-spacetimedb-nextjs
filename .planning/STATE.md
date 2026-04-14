@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.1
-current_plan: Not started
-status: planning
-stopped_at: Completed 15-06-PLAN.md (tests + architecture docs). Phase 15 ready for /gsd-verify-work.
-last_updated: "2026-04-14T17:51:02.368Z"
+current_plan: 1
+status: executing
+stopped_at: Completed 15.1-01-PLAN.md (template extension)
+last_updated: "2026-04-14T18:12:51.682Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 30
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
-  percent: 60
+  completed_plans: 7
+  percent: 70
 ---
 
 # Session State
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 15 — backend-pre-work
+**Current focus:** Phase 15.1 — auction-cost-template-extension
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.1
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current plan:** 1
+**Status:** Executing Phase 15.1
 **Last activity:** 2026-04-14
 
 Progress: [██████████] 100% (Phase 15: 6/6 plans complete)
@@ -73,6 +73,9 @@ Recent v0.9-scope decisions:
 
 Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 
+- [Phase 15.1]: D-01 honored: sibling-block cost shape (classic+auction optional sub-blocks) in both char and lc templates
+- [Phase 15.1]: D-09 permutations distributed: entry-1=P1(classic-only), entry-2=P2+P3+P4 in each template file
+
 ### Roadmap Evolution
 
 - Phase 15.1 inserted after Phase 15: Auction Cost Template Extension (URGENT) — template JSON shape and seed normalization gap; schema + admin router already auction-aware.
@@ -100,7 +103,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-13T00:36:33.028Z
-Stopped at: Completed 15-06-PLAN.md (tests + architecture docs). Phase 15 ready for /gsd-verify-work.
+Last session: 2026-04-14T18:12:44.336Z
+Stopped at: Completed 15.1-01-PLAN.md (template extension)
 Resume file: None
 Next action: `/gsd-plan-phase 15`
