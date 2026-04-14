@@ -146,7 +146,7 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 **Goal:** [Urgent work - to be planned]
 **Requirements**: TBD
 **Depends on:** Phase 15
-**Plans:** 0 plans
+**Plans:** 6/6 plans complete
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 15.3 to break down)
@@ -494,7 +494,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Backend pre-work | 6/6 | Complete   | 2026-04-13 |
+| 15. Backend pre-work | 6/6 | Complete    | 2026-04-14 |
 | 16. Route + global foundation | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
