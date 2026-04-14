@@ -141,12 +141,23 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 - [x] 15-05-PLAN.md — Seed/template/data rework (D-22 shape; both seed entry points)
 - [x] 15-06-PLAN.md — Integration tests (isolation, partial-update, cost-set PK, round-trip) + architecture docs
 
+### Phase 15.4: Cost-table draftMode restructure (INSERTED)
+
+**Goal:** Replace `classicCosts` + `auctionBaseBid` parallel-column design on `HsrCharacterCost`/`HsrLightconeCost` with a single `costs` struct + `draftMode: DraftMode` column; add `draftMode` to `HsrSynergyCost` (introduces synergy auction support). Extends PK tuple with `draftMode`; row-absence = "not configured for that draft mode". Foundation for Phase 16/17 — must land before cost-tables frontend is written.
+**Requirements**: TBD (seed from .planning/todos/pending/2026-04-14-cost-table-draft-mode-restructure.md)
+**Depends on:** Phase 15, Phase 15.1
+**Plans:** 0 plans
+**Priority:** Run BEFORE Phase 15.2 and 15.3 — bindings regen would invalidate pre-restructure work in those phases.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 15.4 to break down)
+
 ### Phase 15.3: Audit Spread Type Helper (INSERTED)
 
 **Goal:** [Urgent work - to be planned]
 **Requirements**: TBD
-**Depends on:** Phase 15
-**Plans:** 6/6 plans complete
+**Depends on:** Phase 15, Phase 15.4
+**Plans:** 0 plans (note: prior "6/6" was stale — phase has never been planned)
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 15.3 to break down)
@@ -155,7 +166,7 @@ Plans:
 
 **Goal:** [Urgent work - to be planned]
 **Requirements**: TBD
-**Depends on:** Phase 15
+**Depends on:** Phase 15, Phase 15.4
 **Plans:** 0 plans
 
 Plans:
