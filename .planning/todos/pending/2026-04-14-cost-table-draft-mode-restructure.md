@@ -1,22 +1,61 @@
 ---
 created: 2026-04-14T14:28:59.981Z
+updated: 2026-04-14T15:30:00Z (full blast-radius audit after Phase 15.1 close)
 title: Cost-table draftMode column restructure
 area: database
+roadmap_phase: 15.4 (inserted 2026-04-14, commit b19b873)
 files:
+  # Schema + tables (6)
   - spacetimedb/src/tables/hsrCharacterCost.ts
   - spacetimedb/src/tables/hsrLightconeCost.ts
   - spacetimedb/src/tables/hsrSynergyCost.ts
   - spacetimedb/src/tables/costSetDraftCharacter.ts
   - spacetimedb/src/tables/costSetDraftLightcone.ts
   - spacetimedb/src/tables/costSetDraftSynergy.ts
-  - spacetimedb/src/reducers/admin.ts:491-624
-  - spacetimedb/src/reducers/costSetManagement.ts:113-314
-  - spacetimedb/src/reducers/draftClassic.ts:360-368
-  - spacetimedb/src/reducers/draftAuction.ts:45-62
-  - spacetimedb/src/reducers/postDraft.ts:47-61
-  - components/features/game-data/components/DataHelpers.ts:30-54
-  - components/features/costs/hooks/useCharacterCostTable.ts:91-99
-  - components/features/costs/hooks/useLightconeCostTable.ts:51-53
+  - spacetimedb/src/schema.ts
+  # Reducers (6)
+  - spacetimedb/src/reducers/admin.ts (HsrCharacterCost / HsrLightconeCost / HsrSynergyCost cases — old line refs ~491-624 stale post-Phase 15.1)
+  - spacetimedb/src/reducers/costSetManagement.ts (create_cost_set + publish_cost_set clone/copy logic)
+  - spacetimedb/src/reducers/draftClassic.ts (getCharacterBaseCost — filter by draftMode=Classic)
+  - spacetimedb/src/reducers/draftAuction.ts (getCharacterBaseCost — filter by draftMode=Auction; remove auctionBaseBid key access)
+  - spacetimedb/src/reducers/postDraft.ts (lightcone cost lookup — filter by draftMode=Classic)
+  - spacetimedb/src/reducers/server.ts (touches cost types — verify scope during discussion)
+  # Views (1)
+  - spacetimedb/src/views/costSetViews.ts
+  # Frontend (10) — module bindings regen will break TS across all of these
+  - components/features/game-data/components/DataHelpers.ts (toEidolonCost / toSuperimpositionCost — collapse to costs filtered by draftMode)
+  - components/features/game-data/components/GameDataProvider.tsx
+  - components/features/costs/components/CharacterCostTable.tsx
+  - components/features/costs/hooks/useCharacterCostTable.ts (filter by draftMode column instead of struct field selection)
+  - components/features/costs/hooks/useLightconeCostTable.ts (same pattern)
+  - components/features/admin-view/components/BulkUpsert.tsx (admin payload shape)
+  - components/features/admin-view/components/TableExplorer.tsx
+  - components/features/team-builder/SynergyDisplay.tsx (synergy auction support is new — display path)
+  - components/features/team-builder/cost-breakdown-chart/CostBreakdownChart.tsx
+  - components/features/types/enums.ts (DraftMode enum location — add if not present)
+  - components/features/types/tableColumns.ts
+  # Seed (1)
+  - scripts/seed-data.ts
+  # Test files (7) — full audit, NOT just the 4 from Phase 15.1
+  - test/backend/reducers/admin/seed-cost-extraction.test.ts (40 hits — full rewrite, D-18 scenarios)
+  - test/backend/reducers/admin/cost-set-pk.test.ts (30 hits — full rewrite, PK tuple is the point)
+  - test/backend/reducers/admin/partial-update.test.ts (20 hits — heavy rewrite, struct-column preservation tests)
+  - test/shared/seed-data.ts (17 hits — harness rewrite, mirrors prod seed)
+  - test/backend/cost-sets/cost-set-lifecycle.test.ts (10 hits — full rewrite, draft→live copy semantics)
+  - test/backend/seed/round-trip.test.ts (9 hits — full rewrite, serialization shape)
+  - test/backend/match-session/post-draft.test.ts (1 hit — minor update, lightcone cost via reducer call)
+  # Module bindings (regen via `spacetime generate`) — both dirs
+  - spacetimedb/src/module_bindings/hsr_character_cost_table.ts
+  - spacetimedb/src/module_bindings/hsr_lightcone_cost_table.ts
+  - spacetimedb/src/module_bindings/hsr_synergy_cost_table.ts
+  - spacetimedb/src/module_bindings/edit_draft_character_cost_reducer.ts
+  - spacetimedb/src/module_bindings/edit_draft_lightcone_cost_reducer.ts
+  - spacetimedb/src/module_bindings/edit_draft_synergy_cost_reducer.ts
+  - spacetimedb/src/module_bindings/{index.ts, types.ts}
+  - src/module_bindings/* (mirror — same file set, regenerated together)
+  - src/module_bindings/view_my_draft_{character,lightcone,synergy}_costs_table.ts
+  # Templates (no shape change — confirm)
+  - test/data-templates/README.md (mention 15.4 if seed transformation layer changes affect docs)
 ---
 
 ## Problem
