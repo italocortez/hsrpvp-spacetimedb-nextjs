@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 16
-current_plan: Not started
-status: planning
-stopped_at: Phase 15.2 context gathered (discuss mode)
-last_updated: "2026-04-15T11:38:22.484Z"
+current_phase: 15.2
+current_plan: 1
+status: executing
+stopped_at: Completed 15.2-01-PLAN.md
+last_updated: "2026-04-15T13:41:21.643Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 31
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
+  total_plans: 19
+  completed_plans: 15
+  percent: 79
 ---
 
 # Session State
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 15.1 — auction-cost-template-extension
+**Current focus:** Phase 15.2 — user-directory-view-performance
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 16
-**Current plan:** Not started
-**Status:** Ready to plan
+**Current phase:** 15.2
+**Current plan:** 1
+**Status:** Executing Phase 15.2
 **Last activity:** 2026-04-15
 
 Progress: [██████████] 100% (Phase 15: 6/6 plans complete)
@@ -83,6 +83,10 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.1]: D-18 test split: scenarios 1/2/3/5 in seed-cost-extraction.test.ts; D-18-4 in partial-update.test.ts; D-06 null-semantics: validateKeys requires all keys present, null is the preserve signal
 - [Phase 15.1]: D-19 guardrail confirmed: cost-set-lifecycle.test.ts and cost-set-pk.test.ts pass unchanged (15/15 tests, zero Phase 15.1 commits on either file)
 - [Phase 15.4-cost-table-draftmode-restructure]: Plan 04: rewrote 6 cost-table integration tests + added synergy auction round-trip (first-ever D-25a); full suite 58/58 files, 615/615 tests green; Pitfall 1/6/7 regression guards in place; validateKeys rejects missing draftMode key on all 3 cost tables
+- [Phase 15.2]: D-02: isPrivate removed from User schema everywhere — dead code, never read for gating
+- [Phase 15.2]: D-05: DeletedUser private archive table created with public: false, 4 columns, no audit columns
+- [Phase 15.2]: D-13/D-14: deletedAt: undefined retained in insert payloads — SpacetimeDB insert type requires option() keys present even as undefined
+- [Phase 15.2]: Binding files manually trimmed of isPrivate for TSC compliance; full spacetime generate deferred to Plan 04
 
 ### Roadmap Evolution
 
@@ -118,7 +122,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-15T11:38:22.479Z
-Stopped at: Phase 15.2 context gathered (discuss mode)
-Resume file: .planning/phases/15.2-user-directory-view-performance/15.2-CONTEXT.md
+Last session: 2026-04-15T13:41:21.638Z
+Stopped at: Completed 15.2-01-PLAN.md
+Resume file: None
 Next action: `/gsd-plan-phase 15`
