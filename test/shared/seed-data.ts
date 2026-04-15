@@ -37,13 +37,12 @@ if (!token) {
 const dataDir = path.resolve(import.meta.dirname || '.', '../data');
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-// ── Zero-pad constants + sub-block extractors (D-07, D-08) ──
-
-const ZERO_EIDOLON = { e0: 0, e1: 0, e2: 0, e3: 0, e4: 0, e5: 0, e6: 0 };
-const ZERO_SUPERPOSITION = { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 };
+// ── Sub-block extractors (Phase 15.4 D-14: no zero-pad; absent = no row) ──
 
 type EidolonSubBlock = { E0?: number; E1?: number; E2?: number; E3?: number; E4?: number; E5?: number; E6?: number };
 type SuperpositionSubBlock = { S1?: number; S2?: number; S3?: number; S4?: number; S5?: number };
+type PairingSubBlock = { modifier: number };
+type RawPairingModeBlock = { classic?: PairingSubBlock; auction?: PairingSubBlock };
 
 function extractEidolonCost(block: EidolonSubBlock | undefined) {
   if (!block || typeof block !== 'object') return undefined;
@@ -116,7 +115,7 @@ type RawPairing = {
   target_name: string;
   cost?: {
     cost_set_id: number;
-    [mode: string]: number | undefined;
+    [mode: string]: RawPairingModeBlock | number | undefined;
   };
 };
 
@@ -147,7 +146,7 @@ const chars = rawChars.map((c: RawCharacter) => ({
 const archetypeNames = [...new Set(rawChars.flatMap((c: RawCharacter) => c.archetype || []))].sort() as string[];
 const archetypes = archetypeNames.map((name: string) => ({ name, description: '' }));
 
-// D-22 3-mode fan-out: one row per (character, mode), D-01 sibling-block shape.
+// Phase 15.4 D-14: one row per present sub-block (classic/auction); absent = no row.
 const charCosts: any[] = [];
 for (const c of rawChars) {
   if (!c.cost) continue;
@@ -158,10 +157,10 @@ for (const c of rawChars) {
     if (!modeBlock || typeof modeBlock !== 'object') continue;
 
     const classicCosts = extractEidolonCost(modeBlock.classic);
-    const auctionBaseBid = extractEidolonCost(modeBlock.auction);
+    const auctionCosts = extractEidolonCost(modeBlock.auction);
 
-    // D-09: both sub-blocks absent → skip mode.
-    if (!classicCosts && !auctionBaseBid) continue;
+    // D-14: both sub-blocks absent → skip mode.
+    if (!classicCosts && !auctionCosts) continue;
 
     const gm = snakeToPascalMode(rawMode);
     if (!gm) {
@@ -169,13 +168,21 @@ for (const c of rawChars) {
       continue;
     }
 
-    // D-07 zero-pad on insert, D-08 no placeholder copy.
-    charCosts.push({
-      characterName: c.name, gameMode: gm,
-      classicCosts: classicCosts ?? ZERO_EIDOLON,
-      auctionBaseBid: auctionBaseBid ?? ZERO_EIDOLON,
-      costSetId: csId,
-    });
+    // D-14: one row per present sub-block. Absent sub-block → no row for that draftMode.
+    if (classicCosts) {
+      charCosts.push({
+        characterName: c.name, gameMode: gm,
+        draftMode: 'Classic', costs: classicCosts,
+        costSetId: csId,
+      });
+    }
+    if (auctionCosts) {
+      charCosts.push({
+        characterName: c.name, gameMode: gm,
+        draftMode: 'Auction', costs: auctionCosts,
+        costSetId: csId,
+      });
+    }
   }
 }
 
@@ -195,7 +202,7 @@ const lightcones = rawLCs.map((lc: RawLightcone) => ({
   width: lc.positioning?.width ?? 0,
 }));
 
-// D-22 3-mode fan-out: one row per (lightcone, mode), D-01 sibling-block shape.
+// Phase 15.4 D-14: one row per present sub-block (classic/auction); absent = no row.
 const lcCosts: any[] = [];
 for (const lc of rawLCs) {
   if (!lc.cost) continue;
@@ -206,10 +213,10 @@ for (const lc of rawLCs) {
     if (!modeBlock || typeof modeBlock !== 'object') continue;
 
     const classicCosts = extractSuperpositionCost(modeBlock.classic);
-    const auctionBaseBid = extractSuperpositionCost(modeBlock.auction);
+    const auctionCosts = extractSuperpositionCost(modeBlock.auction);
 
-    // D-09: both sub-blocks absent → skip mode.
-    if (!classicCosts && !auctionBaseBid) continue;
+    // D-14: both sub-blocks absent → skip mode.
+    if (!classicCosts && !auctionCosts) continue;
 
     const gm = snakeToPascalMode(rawMode);
     if (!gm) {
@@ -217,13 +224,21 @@ for (const lc of rawLCs) {
       continue;
     }
 
-    // D-07 zero-pad on insert, D-08 no placeholder copy.
-    lcCosts.push({
-      lightconeName: lc.name, gameMode: gm,
-      classicCosts: classicCosts ?? ZERO_SUPERPOSITION,
-      auctionBaseBid: auctionBaseBid ?? ZERO_SUPERPOSITION,
-      costSetId: csId,
-    });
+    // D-14: one row per present sub-block. Absent sub-block → no row for that draftMode.
+    if (classicCosts) {
+      lcCosts.push({
+        lightconeName: lc.name, gameMode: gm,
+        draftMode: 'Classic', costs: classicCosts,
+        costSetId: csId,
+      });
+    }
+    if (auctionCosts) {
+      lcCosts.push({
+        lightconeName: lc.name, gameMode: gm,
+        draftMode: 'Auction', costs: auctionCosts,
+        costSetId: csId,
+      });
+    }
   }
 }
 
@@ -234,27 +249,41 @@ const rawPairings: RawPairing[] = fs.existsSync(pairingPath)
   ? JSON.parse(fs.readFileSync(pairingPath, 'utf8'))
   : [];
 
-// D-22 3-mode fan-out: one row per (source, target, mode), carrying cost.cost_set_id.
+// Phase 15.4 D-12 / D-14: sibling-block pairing input, one row per present sub-block.
 const synergyCosts: any[] = [];
 for (const p of rawPairings) {
   if (!p.cost) continue;
   const csId = p.cost.cost_set_id ?? 0;
   const modes = Object.keys(p.cost).filter(k => k !== 'cost_set_id');
   for (const rawMode of modes) {
-    const modifier = p.cost[rawMode] as number | undefined;
-    if (modifier === undefined || modifier === null) continue;
+    const modeBlock = p.cost[rawMode] as RawPairingModeBlock | undefined;
+    if (!modeBlock || typeof modeBlock !== 'object') continue;
     const gm = snakeToPascalMode(rawMode);
     if (!gm) {
       console.warn(`[seed] unknown game mode for pairing ${p.source_name}->${p.target_name}: ${rawMode}`);
       continue;
     }
-    synergyCosts.push({
-      sourceName: p.source_name,
-      targetName: p.target_name,
-      gameMode: gm,
-      costModifier: Number(modifier),
-      costSetId: csId,
-    });
+
+    if (modeBlock.classic !== undefined) {
+      synergyCosts.push({
+        sourceName: p.source_name,
+        targetName: p.target_name,
+        gameMode: gm,
+        draftMode: 'Classic',
+        costModifier: Number(modeBlock.classic.modifier),
+        costSetId: csId,
+      });
+    }
+    if (modeBlock.auction !== undefined) {
+      synergyCosts.push({
+        sourceName: p.source_name,
+        targetName: p.target_name,
+        gameMode: gm,
+        draftMode: 'Auction',
+        costModifier: Number(modeBlock.auction.modifier),
+        costSetId: csId,
+      });
+    }
   }
 }
 
