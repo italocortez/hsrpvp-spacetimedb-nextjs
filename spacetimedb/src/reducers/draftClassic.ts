@@ -355,17 +355,20 @@ export const pick_character = spacetimedb.reducer(
             }
         }
 
-        // Determine cost from HsrCharacterCost table
+        // Determine cost from HsrCharacterCost table (15.4 D-10/D-11: filter draftMode='Classic').
         let cost = 0;
         if (characterName !== 'EMPTY') {
             const costRows = [...ctx.db.HsrCharacterCost.cost_set_id.filter(lobby.costSetId)];
             const costRow = costRows.find(
-                (r: any) => r.characterName === characterName && r.gameMode.tag === lobby.gameMode.tag
+                (r: any) =>
+                    r.characterName === characterName &&
+                    r.gameMode.tag === lobby.gameMode.tag &&
+                    r.draftMode.tag === 'Classic'
             );
             if (costRow) {
-                // Get cost for the specific eidolon level
-                const eidolonKey = `e${eidolon}` as keyof typeof costRow.classicCosts;
-                cost = costRow.classicCosts[eidolonKey] ?? 0;
+                // Get cost for the specific eidolon level (15.4 D-01: unified costs struct).
+                const eidolonKey = `e${eidolon}` as keyof typeof costRow.costs;
+                cost = costRow.costs[eidolonKey] ?? 0;
             }
         }
 

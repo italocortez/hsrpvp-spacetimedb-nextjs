@@ -44,17 +44,30 @@ export const equip_lightcone = spacetimedb.reducer(
         const session = ctx.db.MatchSession.lobbyId.find(lobbyId);
         if (!session) throw new SenderError('Match session not found.');
 
-        // Look up LC cost from HsrLightconeCost table
-        // (lightconeName, gameMode, costSetId) → SuperimpositionCost object → s1..s5 field
+        // Look up LC cost from HsrLightconeCost table (15.4 D-10/D-11/Pitfall 6).
+        // (lightconeName, gameMode, draftMode='Classic', costSetId) → SuperimpositionCost → s1..s5 field.
+        // LC equip happens in the classic draft context regardless of char-phase draftMode.
+        const CLASSIC_DRAFT_MODE = { tag: 'Classic', value: {} } as any;
         const costSetId = lobby.costSetId;
         let lcCost: number = 0;
-        // Try lobby's cost set first, then fall back to default (0)
+        // Tuple-filter with enum struct is unsupported (RESEARCH.md A2); fall back to
+        // cost_set_id filter + predicate find including draftMode.tag match.
+        const tryFind = (csId: number) => {
+            const rows = [...ctx.db.HsrLightconeCost.cost_set_id.filter(csId)];
+            return rows.find((r: any) =>
+                r.lightconeName === lightconeName &&
+                r.gameMode.tag === lobby.gameMode.tag &&
+                r.draftMode.tag === 'Classic'
+            );
+        };
         const costSetIdToTry = costSetId !== 0 ? costSetId : 0;
-        const costRow = [...ctx.db.HsrLightconeCost.by_lightcone_mode_and_set.filter([lightconeName, lobby.gameMode, costSetIdToTry])][0]
-            ?? (costSetId !== 0 ? [...ctx.db.HsrLightconeCost.by_lightcone_mode_and_set.filter([lightconeName, lobby.gameMode, 0])][0] : undefined);
-        if (costRow && costRow.classicCosts) {
-            const sField = `s${superimposition}` as keyof typeof costRow.classicCosts;
-            const rawCost = (costRow.classicCosts as any)[sField];
+        const costRow = tryFind(costSetIdToTry)
+            ?? (costSetId !== 0 ? tryFind(0) : undefined);
+        // Reference CLASSIC_DRAFT_MODE for future btree-filter migration if A2 is revisited.
+        void CLASSIC_DRAFT_MODE;
+        if (costRow && costRow.costs) {
+            const sField = `s${superimposition}` as keyof typeof costRow.costs;
+            const rawCost = (costRow.costs as any)[sField];
             if (typeof rawCost === 'number') {
                 lcCost = rawCost;
             }

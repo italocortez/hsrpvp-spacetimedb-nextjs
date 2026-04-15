@@ -54,7 +54,8 @@ export const create_cost_set = spacetimedb.reducer(
             ...auditInsert(ctx, user.id),
         } as any);
 
-        // Clone character costs from source into draft table (filtered by gameModeTag)
+        // 15.4 D-20: Clone character costs (source row's draftMode passes through).
+        // Both Classic and Auction rows match the gameMode filter and are cloned together.
         const sourceCharCosts = [...ctx.db.HsrCharacterCost.cost_set_id.filter(sourceSetId)];
         for (const row of sourceCharCosts) {
             if (row.gameMode.tag === gameModeTag) {
@@ -62,14 +63,14 @@ export const create_cost_set = spacetimedb.reducer(
                     costSetId: costSet.id,
                     characterName: row.characterName,
                     gameMode: row.gameMode,
-                    classicCosts: row.classicCosts,
-                    auctionBaseBid: row.auctionBaseBid,
+                    draftMode: row.draftMode,
+                    costs: row.costs,
                     ...auditInsert(ctx, user.id),
                 } as any);
             }
         }
 
-        // Clone lightcone costs from source into draft table (filtered by gameModeTag)
+        // 15.4 D-20: Clone lightcone costs (draftMode passes through).
         const sourceLcCosts = [...ctx.db.HsrLightconeCost.cost_set_id.filter(sourceSetId)];
         for (const row of sourceLcCosts) {
             if (row.gameMode.tag === gameModeTag) {
@@ -77,14 +78,14 @@ export const create_cost_set = spacetimedb.reducer(
                     costSetId: costSet.id,
                     lightconeName: row.lightconeName,
                     gameMode: row.gameMode,
-                    classicCosts: row.classicCosts,
-                    auctionBaseBid: row.auctionBaseBid,
+                    draftMode: row.draftMode,
+                    costs: row.costs,
                     ...auditInsert(ctx, user.id),
                 } as any);
             }
         }
 
-        // Clone synergy costs from source into draft table (filtered by gameModeTag)
+        // 15.4 D-20: Clone synergy costs (draftMode passes through).
         const sourceSynCosts = [...ctx.db.HsrSynergyCost.cost_set_id.filter(sourceSetId)];
         for (const row of sourceSynCosts) {
             if (row.gameMode.tag === gameModeTag) {
@@ -93,6 +94,7 @@ export const create_cost_set = spacetimedb.reducer(
                     sourceName: row.sourceName,
                     targetName: row.targetName,
                     gameMode: row.gameMode,
+                    draftMode: row.draftMode,
                     costModifier: row.costModifier,
                     ...auditInsert(ctx, user.id),
                 } as any);
@@ -110,10 +112,10 @@ export const edit_draft_character_cost = spacetimedb.reducer(
         costSetId: t.u32(),
         characterName: t.string(),
         gameModeTag: t.string(),
-        classicCostsJson: t.string(),
-        auctionBaseBidJson: t.string(),
+        draftModeTag: t.string(),
+        costsJson: t.string(),
     },
-    (ctx, { costSetId, characterName, gameModeTag, classicCostsJson, auctionBaseBidJson }) => {
+    (ctx, { costSetId, characterName, gameModeTag, draftModeTag, costsJson }) => {
         const user = getAuthenticatedUser(ctx);
 
         const costSet = ctx.db.CostSet.id.find(costSetId);
@@ -130,32 +132,31 @@ export const edit_draft_character_cost = spacetimedb.reducer(
             throw new SenderError('Cannot edit a cost set that is not in draft state. Publish creates a live copy; clone to make a new draft.');
         }
 
-        // Parse JSON cost objects
-        let classicCosts: any;
-        let auctionBaseBid: any;
+        // Parse JSON cost object (15.4 D-16: single costsJson, one row = one draftMode)
+        let costs: any;
         try {
-            classicCosts = JSON.parse(classicCostsJson);
-            auctionBaseBid = JSON.parse(auctionBaseBidJson);
+            costs = JSON.parse(costsJson);
         } catch {
-            throw new SenderError('classicCostsJson and auctionBaseBidJson must be valid JSON objects.');
+            throw new SenderError('costsJson must be a valid JSON object.');
         }
 
         // Validate EidolonCost structure (e0-e6 as numbers)
         const eidolonKeys = ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6'];
         for (const key of eidolonKeys) {
-            if (typeof classicCosts[key] !== 'number') {
-                throw new SenderError(`classicCostsJson must have numeric field "${key}".`);
-            }
-            if (typeof auctionBaseBid[key] !== 'number') {
-                throw new SenderError(`auctionBaseBidJson must have numeric field "${key}".`);
+            if (typeof costs[key] !== 'number') {
+                throw new SenderError(`costsJson must have numeric field "${key}".`);
             }
         }
 
         const gameMode = { tag: gameModeTag, value: {} } as any;
+        const draftMode = { tag: draftModeTag, value: {} } as any;
 
-        // Find existing draft row via indexed filter + manual match
+        // Find existing draft row via indexed filter + manual match (5-tuple including draftMode)
         const drafts = [...ctx.db.CostSetDraftCharacter.cost_set_id.filter(costSetId)];
-        const existing = drafts.find(d => d.characterName === characterName && d.gameMode.tag === gameModeTag);
+        const existing = drafts.find(d =>
+            d.characterName === characterName &&
+            d.gameMode.tag === gameModeTag &&
+            d.draftMode.tag === draftModeTag);
 
         if (existing) {
             // Delete old row, insert updated row (composite PK upsert pattern)
@@ -164,8 +165,8 @@ export const edit_draft_character_cost = spacetimedb.reducer(
                 costSetId,
                 characterName,
                 gameMode,
-                classicCosts,
-                auctionBaseBid,
+                draftMode,
+                costs,
                 ...auditUpdate(ctx, existing, user.id),
             } as any);
         } else {
@@ -173,8 +174,8 @@ export const edit_draft_character_cost = spacetimedb.reducer(
                 costSetId,
                 characterName,
                 gameMode,
-                classicCosts,
-                auctionBaseBid,
+                draftMode,
+                costs,
                 ...auditInsert(ctx, user.id),
             } as any);
         }
@@ -190,10 +191,10 @@ export const edit_draft_lightcone_cost = spacetimedb.reducer(
         costSetId: t.u32(),
         lightconeName: t.string(),
         gameModeTag: t.string(),
-        classicCostsJson: t.string(),
-        auctionBaseBidJson: t.string(),
+        draftModeTag: t.string(),
+        costsJson: t.string(),
     },
-    (ctx, { costSetId, lightconeName, gameModeTag, classicCostsJson, auctionBaseBidJson }) => {
+    (ctx, { costSetId, lightconeName, gameModeTag, draftModeTag, costsJson }) => {
         const user = getAuthenticatedUser(ctx);
 
         const costSet = ctx.db.CostSet.id.find(costSetId);
@@ -209,32 +210,31 @@ export const edit_draft_lightcone_cost = spacetimedb.reducer(
             throw new SenderError('Cannot edit a cost set that is not in draft state.');
         }
 
-        // Parse JSON cost objects
-        let classicCosts: any;
-        let auctionBaseBid: any;
+        // Parse JSON cost object (15.4 D-17: single costsJson, one row = one draftMode)
+        let costs: any;
         try {
-            classicCosts = JSON.parse(classicCostsJson);
-            auctionBaseBid = JSON.parse(auctionBaseBidJson);
+            costs = JSON.parse(costsJson);
         } catch {
-            throw new SenderError('classicCostsJson and auctionBaseBidJson must be valid JSON objects.');
+            throw new SenderError('costsJson must be a valid JSON object.');
         }
 
         // Validate SuperimpositionCost structure (s1-s5 as numbers)
         const superimpositionKeys = ['s1', 's2', 's3', 's4', 's5'];
         for (const key of superimpositionKeys) {
-            if (typeof classicCosts[key] !== 'number') {
-                throw new SenderError(`classicCostsJson must have numeric field "${key}".`);
-            }
-            if (typeof auctionBaseBid[key] !== 'number') {
-                throw new SenderError(`auctionBaseBidJson must have numeric field "${key}".`);
+            if (typeof costs[key] !== 'number') {
+                throw new SenderError(`costsJson must have numeric field "${key}".`);
             }
         }
 
         const gameMode = { tag: gameModeTag, value: {} } as any;
+        const draftMode = { tag: draftModeTag, value: {} } as any;
 
-        // Find existing draft row via indexed filter + manual match
+        // Find existing draft row via indexed filter + manual match (5-tuple including draftMode)
         const drafts = [...ctx.db.CostSetDraftLightcone.cost_set_id.filter(costSetId)];
-        const existing = drafts.find(d => d.lightconeName === lightconeName && d.gameMode.tag === gameModeTag);
+        const existing = drafts.find(d =>
+            d.lightconeName === lightconeName &&
+            d.gameMode.tag === gameModeTag &&
+            d.draftMode.tag === draftModeTag);
 
         if (existing) {
             ctx.db.CostSetDraftLightcone.delete(existing);
@@ -242,8 +242,8 @@ export const edit_draft_lightcone_cost = spacetimedb.reducer(
                 costSetId,
                 lightconeName,
                 gameMode,
-                classicCosts,
-                auctionBaseBid,
+                draftMode,
+                costs,
                 ...auditUpdate(ctx, existing, user.id),
             } as any);
         } else {
@@ -251,8 +251,8 @@ export const edit_draft_lightcone_cost = spacetimedb.reducer(
                 costSetId,
                 lightconeName,
                 gameMode,
-                classicCosts,
-                auctionBaseBid,
+                draftMode,
+                costs,
                 ...auditInsert(ctx, user.id),
             } as any);
         }
@@ -269,9 +269,10 @@ export const edit_draft_synergy_cost = spacetimedb.reducer(
         sourceName: t.string(),
         targetName: t.string(),
         gameModeTag: t.string(),
+        draftModeTag: t.string(),
         costModifier: t.f32(),
     },
-    (ctx, { costSetId, sourceName, targetName, gameModeTag, costModifier }) => {
+    (ctx, { costSetId, sourceName, targetName, gameModeTag, draftModeTag, costModifier }) => {
         const user = getAuthenticatedUser(ctx);
 
         const costSet = ctx.db.CostSet.id.find(costSetId);
@@ -288,11 +289,15 @@ export const edit_draft_synergy_cost = spacetimedb.reducer(
         }
 
         const gameMode = { tag: gameModeTag, value: {} } as any;
+        const draftMode = { tag: draftModeTag, value: {} } as any;
 
-        // Find existing draft row via indexed filter + manual match
+        // 15.4 D-18: Find existing draft row by 5-tuple (source, target, gameMode, draftMode, costSetId).
         const drafts = [...ctx.db.CostSetDraftSynergy.cost_set_id.filter(costSetId)];
-        const existing = drafts.find(
-            d => d.sourceName === sourceName && d.targetName === targetName && d.gameMode.tag === gameModeTag
+        const existing = drafts.find(d =>
+            d.sourceName === sourceName &&
+            d.targetName === targetName &&
+            d.gameMode.tag === gameModeTag &&
+            d.draftMode.tag === draftModeTag
         );
 
         if (existing) {
@@ -302,6 +307,7 @@ export const edit_draft_synergy_cost = spacetimedb.reducer(
                 sourceName,
                 targetName,
                 gameMode,
+                draftMode,
                 costModifier,
                 ...auditUpdate(ctx, existing, user.id),
             } as any);
@@ -311,6 +317,7 @@ export const edit_draft_synergy_cost = spacetimedb.reducer(
                 sourceName,
                 targetName,
                 gameMode,
+                draftMode,
                 costModifier,
                 ...auditInsert(ctx, user.id),
             } as any);
@@ -343,13 +350,15 @@ export const publish_cost_set = spacetimedb.reducer(
             throw new SenderError('Cannot publish a cost set that is not in draft state.');
         }
 
-        // Phase A: Copy draft character costs to live HsrCharacterCost table
+        // Phase A: Copy draft character costs to live HsrCharacterCost table (15.4 D-21 Pitfall 7).
+        // existingLive predicate extended with draftMode.tag match.
         const draftChars = [...ctx.db.CostSetDraftCharacter.cost_set_id.filter(costSetId)];
         for (const draft of draftChars) {
-            // Check if a live row already exists for this costSetId + char + gameMode
             const liveRows = [...ctx.db.HsrCharacterCost.cost_set_id.filter(costSetId)];
             const existingLive = liveRows.find(
-                r => r.characterName === draft.characterName && r.gameMode.tag === draft.gameMode.tag
+                r => r.characterName === draft.characterName &&
+                     r.gameMode.tag === draft.gameMode.tag &&
+                     r.draftMode.tag === draft.draftMode.tag
             );
             if (existingLive) {
                 ctx.db.HsrCharacterCost.delete(existingLive);
@@ -357,19 +366,21 @@ export const publish_cost_set = spacetimedb.reducer(
             ctx.db.HsrCharacterCost.insert({
                 characterName: draft.characterName,
                 gameMode: draft.gameMode,
-                classicCosts: draft.classicCosts,
-                auctionBaseBid: draft.auctionBaseBid,
+                draftMode: draft.draftMode,
+                costs: draft.costs,
                 costSetId: costSetId,
                 ...(existingLive ? auditUpdate(ctx, existingLive, user.id) : auditInsert(ctx, user.id)),
             } as any);
         }
 
-        // Phase B: Copy draft lightcone costs to live HsrLightconeCost table
+        // Phase B: Copy draft lightcone costs to live HsrLightconeCost table (15.4 D-21).
         const draftLcs = [...ctx.db.CostSetDraftLightcone.cost_set_id.filter(costSetId)];
         for (const draft of draftLcs) {
             const liveRows = [...ctx.db.HsrLightconeCost.cost_set_id.filter(costSetId)];
             const existingLive = liveRows.find(
-                r => r.lightconeName === draft.lightconeName && r.gameMode.tag === draft.gameMode.tag
+                r => r.lightconeName === draft.lightconeName &&
+                     r.gameMode.tag === draft.gameMode.tag &&
+                     r.draftMode.tag === draft.draftMode.tag
             );
             if (existingLive) {
                 ctx.db.HsrLightconeCost.delete(existingLive);
@@ -377,15 +388,15 @@ export const publish_cost_set = spacetimedb.reducer(
             ctx.db.HsrLightconeCost.insert({
                 lightconeName: draft.lightconeName,
                 gameMode: draft.gameMode,
-                classicCosts: draft.classicCosts,
-                auctionBaseBid: draft.auctionBaseBid,
+                draftMode: draft.draftMode,
+                costs: draft.costs,
                 costSetId: costSetId,
                 ...(existingLive ? auditUpdate(ctx, existingLive, user.id) : auditInsert(ctx, user.id)),
             } as any);
         }
 
-        // Phase C: Copy draft synergy costs to live HsrSynergyCost table
-        // HsrSynergyCost uses autoInc id PK — find existing by [sourceName, targetName, gameMode.tag, costSetId]
+        // Phase C: Copy draft synergy costs to live HsrSynergyCost table (15.4 D-21).
+        // HsrSynergyCost uses autoInc id PK — find existing by 5-tuple including draftMode.
         const draftSyns = [...ctx.db.CostSetDraftSynergy.cost_set_id.filter(costSetId)];
         for (const draft of draftSyns) {
             const liveSyns = [...ctx.db.HsrSynergyCost.cost_set_id.filter(costSetId)];
@@ -393,10 +404,11 @@ export const publish_cost_set = spacetimedb.reducer(
                 r =>
                     r.sourceName === draft.sourceName &&
                     r.targetName === draft.targetName &&
-                    r.gameMode.tag === draft.gameMode.tag
+                    r.gameMode.tag === draft.gameMode.tag &&
+                    r.draftMode.tag === draft.draftMode.tag
             );
             if (existingLive) {
-                // Update via id.update() — preserves autoInc id
+                // Update via id.update() — preserves autoInc id and existing draftMode (via spread).
                 ctx.db.HsrSynergyCost.id.update({
                     ...existingLive,
                     costModifier: draft.costModifier,
@@ -408,6 +420,7 @@ export const publish_cost_set = spacetimedb.reducer(
                     sourceName: draft.sourceName,
                     targetName: draft.targetName,
                     gameMode: draft.gameMode,
+                    draftMode: draft.draftMode,
                     costModifier: draft.costModifier,
                     costSetId: costSetId,
                     ...auditInsert(ctx, user.id),

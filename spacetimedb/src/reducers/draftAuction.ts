@@ -50,15 +50,17 @@ function getCharacterBaseCost(
     gameMode: any
 ): number {
     if (characterName === 'EMPTY') return 0;
+    // 15.4 D-10/D-11: filter draftMode='Auction' and read unified costs struct.
     const costRows = [...ctx.db.HsrCharacterCost.cost_set_id.filter(costSetId)];
     const costRow = costRows.find(
         (r: any) =>
             r.characterName === characterName &&
-            r.gameMode.tag === gameMode.tag
+            r.gameMode.tag === gameMode.tag &&
+            r.draftMode.tag === 'Auction'
     );
     if (!costRow) return 0;
-    const eidolonKey = `e${eidolon}` as keyof typeof costRow.auctionBaseBid;
-    return costRow.auctionBaseBid[eidolonKey] ?? 0;
+    const eidolonKey = `e${eidolon}` as keyof typeof costRow.costs;
+    return costRow.costs[eidolonKey] ?? 0;
 }
 
 // ─── Helper: Determine next sequence number ─────────────────────────────────

@@ -3,7 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { ScheduleAt } from 'spacetimedb';
 import { ensureAdmin } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
-import { Path, Element, CharRole, GameMode, Role } from '../types/enums';
+import { Path, Element, CharRole, GameMode, DraftMode, Role } from '../types/enums';
 import { computeMaxPossible, updateAccountRating } from '../helpers/accountRating';
 import { hsrCharacterColumns } from '../tables/hsrCharacter';
 import { hsrLightconeColumns } from '../tables/hsrLightcone';
@@ -20,6 +20,7 @@ const ENUM_VARIANTS: Record<string, string[]> = {
     element: Object.keys(Element.variants),
     role: Object.keys(CharRole.variants),
     gameMode: Object.keys(GameMode.variants),
+    draftMode: Object.keys(DraftMode.variants),
     userRole: Object.keys(Role.variants),
 };
 
@@ -485,20 +486,22 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                 break;
             }
             case 'HsrCharacterCost': {
-                // D-09: Match existing rows on the FULL composite tuple (characterName, gameMode, costSetId).
-                // Previous behavior matched only on (characterName, gameMode), silently overwriting
-                // the default cost set when admin edited a non-default one.
-                const HSR_CHARACTER_COST_FIELDS = ['classicCosts', 'auctionBaseBid'];
+                // 15.4 D-19: Match existing rows on the FULL composite tuple
+                // (characterName, gameMode, draftMode, costSetId). Row absence = "not configured
+                // for that draft mode" (15.4 D-10). One row per (name, gameMode, draftMode, costSetId).
+                const HSR_CHARACTER_COST_FIELDS = ['costs'];
                 for (const r of rows) {
                     validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
+                    validateEnumIfPresent('draftMode', r.draftMode, ctx, tableName);
                     const csId = r.costSetId ?? 0;
 
-                    // Existence check uses full composite tuple (D-09).
-                    // Tuple-filter with enum struct is unsupported (RESEARCH.md A2); use iter() fallback.
+                    // Tuple-filter with enum struct is unsupported (RESEARCH.md A2); use iter() fallback
+                    // with extended predicate including draftMode.
                     let existing: any = null;
                     for (const e of ctx.db.HsrCharacterCost.iter()) {
                         if (e.characterName === r.characterName &&
                             e.gameMode.tag === r.gameMode &&
+                            e.draftMode.tag === r.draftMode &&
                             e.costSetId === csId) {
                             existing = e;
                             break;
@@ -508,8 +511,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                     if (existing) {
                         // Partial-update: preserve existing values where incoming is null.
                         const incoming: Record<string, any> = {
-                            classicCosts: r.classicCosts,
-                            auctionBaseBid: r.auctionBaseBid,
+                            costs: r.costs,
                         };
                         const merged = mergeForUpdate(existing as any, incoming, HSR_CHARACTER_COST_FIELDS as any);
                         // Re-insert pattern (no direct PK accessor for composite delete+insert is fine here).
@@ -517,19 +519,20 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         ctx.db.HsrCharacterCost.insert({
                             characterName: existing.characterName,
                             gameMode: existing.gameMode,
-                            classicCosts: merged.classicCosts,
-                            auctionBaseBid: merged.auctionBaseBid,
+                            draftMode: existing.draftMode,
+                            costs: merged.costs,
                             costSetId: csId,
                             ...auditUpdate(ctx, existing, admin.id),
                         } as any);
                     } else {
-                        // Insert branch: required enum must be present.
+                        // Insert branch: required enums must be present.
                         validateEnum('gameMode', r.gameMode, ctx, tableName);
+                        validateEnum('draftMode', r.draftMode, ctx, tableName);
                         ctx.db.HsrCharacterCost.insert({
                             characterName: r.characterName,
                             gameMode: { tag: r.gameMode, value: {} },
-                            classicCosts: r.classicCosts,
-                            auctionBaseBid: r.auctionBaseBid,
+                            draftMode: { tag: r.draftMode, value: {} },
+                            costs: r.costs,
                             costSetId: csId,
                             ...auditInsert(ctx, admin.id),
                         } as any);
@@ -538,16 +541,18 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                 break;
             }
             case 'HsrLightconeCost': {
-                // D-09: Full composite tuple match (lightconeName, gameMode, costSetId).
-                const HSR_LIGHTCONE_COST_FIELDS = ['classicCosts', 'auctionBaseBid'];
+                // 15.4 D-19: Full composite tuple match (lightconeName, gameMode, draftMode, costSetId).
+                const HSR_LIGHTCONE_COST_FIELDS = ['costs'];
                 for (const r of rows) {
                     validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
+                    validateEnumIfPresent('draftMode', r.draftMode, ctx, tableName);
                     const csId = r.costSetId ?? 0;
 
                     let existing: any = null;
                     for (const e of ctx.db.HsrLightconeCost.iter()) {
                         if (e.lightconeName === r.lightconeName &&
                             e.gameMode.tag === r.gameMode &&
+                            e.draftMode.tag === r.draftMode &&
                             e.costSetId === csId) {
                             existing = e;
                             break;
@@ -556,26 +561,26 @@ export const admin_bulk_upsert = spacetimedb.reducer(
 
                     if (existing) {
                         const incoming: Record<string, any> = {
-                            classicCosts: r.classicCosts,
-                            auctionBaseBid: r.auctionBaseBid,
+                            costs: r.costs,
                         };
                         const merged = mergeForUpdate(existing as any, incoming, HSR_LIGHTCONE_COST_FIELDS as any);
                         ctx.db.HsrLightconeCost.delete(existing);
                         ctx.db.HsrLightconeCost.insert({
                             lightconeName: existing.lightconeName,
                             gameMode: existing.gameMode,
-                            classicCosts: merged.classicCosts,
-                            auctionBaseBid: merged.auctionBaseBid,
+                            draftMode: existing.draftMode,
+                            costs: merged.costs,
                             costSetId: csId,
                             ...auditUpdate(ctx, existing, admin.id),
                         } as any);
                     } else {
                         validateEnum('gameMode', r.gameMode, ctx, tableName);
+                        validateEnum('draftMode', r.draftMode, ctx, tableName);
                         ctx.db.HsrLightconeCost.insert({
                             lightconeName: r.lightconeName,
                             gameMode: { tag: r.gameMode, value: {} },
-                            classicCosts: r.classicCosts,
-                            auctionBaseBid: r.auctionBaseBid,
+                            draftMode: { tag: r.draftMode, value: {} },
+                            costs: r.costs,
                             costSetId: csId,
                             ...auditInsert(ctx, admin.id),
                         } as any);
@@ -584,11 +589,12 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                 break;
             }
             case 'HsrSynergyCost': {
-                // D-09: Existence match uses (sourceName, targetName, gameMode, costSetId).
+                // 15.4 D-19: Existence match uses (sourceName, targetName, gameMode, draftMode, costSetId).
                 // PK is auto-inc id; the tuple above is the logical unique key.
                 const HSR_SYNERGY_COST_FIELDS = ['costModifier'];
                 for (const r of rows) {
                     validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
+                    validateEnumIfPresent('draftMode', r.draftMode, ctx, tableName);
                     const csId = r.costSetId ?? 0;
 
                     let existing: any = null;
@@ -596,6 +602,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         if (e.sourceName === r.sourceName &&
                             e.targetName === r.targetName &&
                             e.gameMode.tag === r.gameMode &&
+                            e.draftMode.tag === r.draftMode &&
                             e.costSetId === csId) {
                             existing = e;
                             break;
@@ -613,11 +620,13 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         });
                     } else {
                         validateEnum('gameMode', r.gameMode, ctx, tableName);
+                        validateEnum('draftMode', r.draftMode, ctx, tableName);
                         const row = {
                             id: 0,
                             sourceName: r.sourceName,
                             targetName: r.targetName,
                             gameMode: { tag: r.gameMode, value: {} },
+                            draftMode: { tag: r.draftMode, value: {} },
                             costModifier: r.costModifier,
                             costSetId: csId,
                         };
