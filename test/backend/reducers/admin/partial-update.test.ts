@@ -1,7 +1,7 @@
 /**
- * Phase 15, D-08/D-10, D-21 — admin_bulk_upsert partial-update preservation.
+ * Phase 15, D-08/D-10 + Phase 15.4 D-19 — admin_bulk_upsert partial-update preservation.
  *
- * Wire convention under test (see spacetimedb/src/reducers/admin.ts:73-98):
+ * Wire convention under test (see spacetimedb/src/reducers/admin.ts):
  *   - Every EXPECTED_KEYS entry must appear in the incoming JSON row
  *     (validateKeys strict-key contract).
  *   - `null` on an EXISTING row = "preserve this field" (do not overwrite).
@@ -9,12 +9,22 @@
  *     OR "stay null" (optional columns: skelUrl, atlasUrl).
  *   - Non-null value = "set to this value".
  *
- * This file is the regression guard for the pre-Plan-03 bug where the router
- * built full rows with aggressive default injection (e.g. `r.imageUrl || ''`)
- * and then spread them over existing rows, silently zeroing every unsent field.
+ * ────────────────────────────────────────────────────────────────────────────
+ * Phase 15.4 note on cost-table partial-update granularity:
  *
- * Contract: docs/admin/contract.md (Phase 15 partial-update scenarios — to be
- * added post-execution per project rule).
+ * Under the new draftMode-discriminated shape, the partial-update granularity
+ * shrinks from (name, mode, costSetId) with dual struct columns (classicCosts +
+ * auctionBaseBid) to (name, mode, draftMode, costSetId) with a SINGLE `costs`
+ * struct column. To update only the Classic payload, send a row with
+ * draftMode='Classic'; to update only Auction, send a separate row with
+ * draftMode='Auction'. The old "send auctionBaseBid: null to preserve while
+ * updating classicCosts" pattern is no longer applicable — those are now two
+ * distinct rows in the PK tuple, each with its own preserve-via-null semantics.
+ *
+ * Valid preserve-via-null field on the new shape: the single `costs` column.
+ * validateKeys requires `costs` to be present on every HsrCharacterCost row;
+ * sending `costs: null` on an EXISTING row preserves the existing struct.
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -22,6 +32,7 @@ import {
     createVerifiedTestHarness,
     hasServerToken,
     queryPrivateTable,
+    expectReducerError,
     type TestHarness,
 } from '../../../shared/connection';
 import { promoteToRole } from '../../../shared/helpers/promoteUser';
@@ -40,18 +51,33 @@ const fullEidolonCost = (base: number) => ({
     e6: base + 6,
 });
 
-describe.skipIf(!hasServerToken())('admin_bulk_upsert — partial-update preservation (D-08/D-10)', () => {
+describe.skipIf(!hasServerToken())('admin_bulk_upsert — partial-update preservation (D-08/D-10 + 15.4 D-19)', () => {
     let admin: TestHarness;
 
     beforeAll(async () => {
         admin = await createVerifiedTestHarness();
         await promoteToRole(admin, 'Admin');
         await admin.sync(1000);
+
+        // Parent character for cost rows.
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrCharacter',
+            jsonData: JSON.stringify([{
+                name: TEST_CHAR, displayName: 'PU Char', aliases: [], rarity: 5,
+                path: 'Destruction', element: 'Physical', role: 'Dps',
+                imageUrl: '', versionReleased: 1, treatAsVersion: 1,
+                skelUrl: null, atlasUrl: null, atlasImgUrls: [],
+                posX: 0, posY: 0, width: 0,
+            }]),
+        });
+        await admin.sync(500);
     }, 60000);
 
     afterAll(async () => {
         await admin?.disconnect();
     });
+
+    // ── Non-cost tables: baseline partial-update preservation ──────────────
 
     it('HsrCharacter: updating skelUrl alone preserves imageUrl, displayName, posX, etc.', async () => {
         // Seed a fully populated row.
@@ -108,10 +134,7 @@ describe.skipIf(!hasServerToken())('admin_bulk_upsert — partial-update preserv
         expect(rows.length).toBe(1);
         const row = rows[0];
 
-        // Field under change:
         expect(row.skel_url).toContain('skel.NEW');
-
-        // Preserved fields (the whole point of partial update):
         expect(row.display_name).toContain('Partial Update Test');
         expect(row.image_url).toContain('img.orig');
         expect(row.atlas_url).toContain('atlas.orig');
@@ -138,7 +161,6 @@ describe.skipIf(!hasServerToken())('admin_bulk_upsert — partial-update preserv
         });
         await admin.sync(1000);
 
-        // Change only imageUrl.
         await admin.call.adminBulkUpsert({
             tableName: 'HsrLightcone',
             jsonData: JSON.stringify([{
@@ -177,7 +199,7 @@ describe.skipIf(!hasServerToken())('admin_bulk_upsert — partial-update preserv
                 displayName: null,
                 aliases: null,
                 rarity: null,
-                path: 'Destruction',      // required enum must be present on insert
+                path: 'Destruction',
                 element: 'Physical',
                 role: 'Dps',
                 imageUrl: null,
@@ -198,81 +220,214 @@ describe.skipIf(!hasServerToken())('admin_bulk_upsert — partial-update preserv
         );
         expect(rows.length).toBe(1);
         const row = rows[0];
-        // Required columns: default-injected (empty string / 0 / []).
-        // Normalize "quoted" vs bare string output from queryPrivateTable
         const displayName = String(row.display_name).replace(/^"|"$/g, '');
         expect(displayName).toBe('');
         expect(Number(row.rarity)).toBe(0);
         expect(Number(row.pos_x)).toBe(0);
         expect(Number(row.pos_y)).toBe(0);
         expect(Number(row.width)).toBe(0);
-        // Optional columns (skelUrl / atlasUrl): stay null.
-        // atlasImgUrls: [] default.
     });
 
-    // ── D-18-4: struct-column preservation on partial update ────────────────────
+    // ── 15.4 D-19: cost-table partial-update (single `costs` column) ───────
 
-    it('D-18-4: partial update with only classicCosts preserves auctionBaseBid struct column', async () => {
-        // Phase 15.1, D-18 scenario 4.
-        //
-        // Wire semantics (admin.ts mergeForUpdate + validateKeys):
-        //   - validateKeys enforces EXACTLY: characterName, gameMode, classicCosts,
-        //     auctionBaseBid, costSetId in every HsrCharacterCost row.
-        //   - mergeForUpdate: null value = "preserve existing". Key MUST be present.
-        //   - Sending auctionBaseBid: null triggers the preserve path (D-06).
-        //
-        // Note: the plan describes this as "key-absent → preserve". In the actual
-        // reducer, validateKeys enforces key presence, so null is the preserve signal.
-        // Semantically equivalent: the caller expresses "I am not changing this column"
-        // by sending null — the reducer preserves the existing struct value.
-
-        const costSetId = 9994; // unique costSetId — isolates from default seed (0) and D-18-1/2/3
+    it('15.4 D-19: HsrCharacterCost — null costs on UPDATE preserves existing struct', async () => {
+        const costSetId = 9994;
 
         const initialClassic = { e0: 5, e1: 6, e2: 7, e3: 8, e4: 9, e5: 10, e6: 20 };
-        const initialAuction = { e0: 50, e1: 60, e2: 70, e3: 80, e4: 90, e5: 100, e6: 200 };
 
-        // Pre-insert row with BOTH sides populated.
+        // Pre-insert Classic row with populated costs.
         await admin.call.adminBulkUpsert({
             tableName: 'HsrCharacterCost',
             jsonData: JSON.stringify([{
                 characterName: TEST_CHAR,
                 gameMode: 'MemoryOfChaos',
-                classicCosts: initialClassic,
-                auctionBaseBid: initialAuction,
+                draftMode: 'Classic',
+                costs: initialClassic,
                 costSetId,
             }]),
         });
         await admin.sync(1000);
 
-        // Partial update: change classicCosts only.
-        // auctionBaseBid is sent as null — D-06 "preserve existing" signal.
-        // The key MUST be present (validateKeys contract); null is the preserve value.
-        const updatedClassic = { e0: 7, e1: 8, e2: 11, e3: 12, e4: 13, e5: 14, e6: 22 };
+        // Partial update: same tuple, send costs: null — D-08 "preserve existing" signal.
+        // The row already exists, so null-on-update must NOT zero or drop the column.
         await admin.call.adminBulkUpsert({
             tableName: 'HsrCharacterCost',
             jsonData: JSON.stringify([{
                 characterName: TEST_CHAR,
                 gameMode: 'MemoryOfChaos',
-                classicCosts: updatedClassic,
-                auctionBaseBid: null,   // D-06: null = preserve existing (NOT zero, NOT copy)
+                draftMode: 'Classic',
+                costs: null,  // preserve existing
                 costSetId,
             }]),
         });
-        await admin.sync(1000);
+        await admin.sync(1500);
 
-        // Verify via subscription cache (HsrCharacterCost is public: true)
         const row = [...admin.conn.db.HsrCharacterCost.iter()].find(
             r => r.characterName === TEST_CHAR &&
                  r.gameMode.tag === 'MemoryOfChaos' &&
+                 r.draftMode.tag === 'Classic' &&
                  r.costSetId === costSetId
         );
 
         expect(row).toBeDefined();
-        // classicCosts: updated to new values
-        expect(row!.classicCosts.e0).toBe(7);
-        expect(row!.classicCosts.e6).toBe(22);
-        // auctionBaseBid: preserved — NOT zeroed, NOT copied from classic
-        expect(row!.auctionBaseBid.e0).toBe(50);
-        expect(row!.auctionBaseBid.e6).toBe(200);
+        expect(row!.costs.e0).toBe(5);     // Preserved, not zeroed.
+        expect(row!.costs.e6).toBe(20);
     }, 60_000);
+
+    it('15.4 D-19: Classic and Auction rows preserve independently (per-draftMode granularity)', async () => {
+        const costSetId = 9995;
+
+        // Seed BOTH Classic and Auction rows for same (char, mode, csId).
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrCharacterCost',
+            jsonData: JSON.stringify([
+                {
+                    characterName: TEST_CHAR,
+                    gameMode: 'MemoryOfChaos',
+                    draftMode: 'Classic',
+                    costs: fullEidolonCost(100),
+                    costSetId,
+                },
+                {
+                    characterName: TEST_CHAR,
+                    gameMode: 'MemoryOfChaos',
+                    draftMode: 'Auction',
+                    costs: fullEidolonCost(500),
+                    costSetId,
+                },
+            ]),
+        });
+        await admin.sync(1000);
+
+        // Update ONLY Classic — send an explicit new Classic row.
+        // Auction row is never sent — remains untouched at 500-series values.
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrCharacterCost',
+            jsonData: JSON.stringify([{
+                characterName: TEST_CHAR,
+                gameMode: 'MemoryOfChaos',
+                draftMode: 'Classic',
+                costs: fullEidolonCost(200),
+                costSetId,
+            }]),
+        });
+        await admin.sync(1500);
+
+        const rows = [...admin.conn.db.HsrCharacterCost.iter()].filter(
+            r => r.characterName === TEST_CHAR &&
+                 r.gameMode.tag === 'MemoryOfChaos' &&
+                 r.costSetId === costSetId
+        );
+        expect(rows).toHaveLength(2);
+
+        const classic = rows.find(r => r.draftMode.tag === 'Classic')!;
+        const auction = rows.find(r => r.draftMode.tag === 'Auction')!;
+
+        // Classic updated to 200-series.
+        expect(classic.costs.e0).toBe(200);
+        expect(classic.costs.e6).toBe(206);
+        // Auction untouched — preserved at 500-series (D-19 per-draftMode granularity).
+        expect(auction.costs.e0).toBe(500);
+        expect(auction.costs.e6).toBe(506);
+    }, 60_000);
+
+    it('15.4 D-19: mergeForUpdate replaces `costs` struct wholesale when non-null (no field-level merge inside struct)', async () => {
+        const costSetId = 9996;
+
+        const initial = { e0: 11, e1: 12, e2: 13, e3: 14, e4: 15, e5: 16, e6: 17 };
+        const replacement = { e0: 111, e1: 112, e2: 113, e3: 114, e4: 115, e5: 116, e6: 117 };
+
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrCharacterCost',
+            jsonData: JSON.stringify([{
+                characterName: TEST_CHAR,
+                gameMode: 'AnomalyArbitration',
+                draftMode: 'Classic',
+                costs: initial,
+                costSetId,
+            }]),
+        });
+        await admin.sync(1000);
+
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrCharacterCost',
+            jsonData: JSON.stringify([{
+                characterName: TEST_CHAR,
+                gameMode: 'AnomalyArbitration',
+                draftMode: 'Classic',
+                costs: replacement,
+                costSetId,
+            }]),
+        });
+        await admin.sync(1500);
+
+        const row = [...admin.conn.db.HsrCharacterCost.iter()].find(
+            r => r.characterName === TEST_CHAR &&
+                 r.gameMode.tag === 'AnomalyArbitration' &&
+                 r.draftMode.tag === 'Classic' &&
+                 r.costSetId === costSetId
+        );
+
+        expect(row).toBeDefined();
+        // Full struct replacement — every field swapped.
+        expect(row!.costs.e0).toBe(111);
+        expect(row!.costs.e1).toBe(112);
+        expect(row!.costs.e6).toBe(117);
+    }, 60_000);
+
+    // ── 15.4 D-19: missing-draftMode rejection (validateKeys) ──────────────
+
+    it('15.4 D-19: admin_bulk_upsert rejects HsrCharacterCost rows with missing `draftMode` key', async () => {
+        // validateKeys enforces the exact key set on every incoming row. Under
+        // the new schema, `draftMode` is a required column, so omitting it MUST
+        // be rejected before any tuple-match or insert logic runs. This is the
+        // regression guard that Auction rows can't accidentally leak into the
+        // Classic lane (or vice versa) just because the caller forgot the key.
+        const err = await expectReducerError(
+            admin.call.adminBulkUpsert({
+                tableName: 'HsrCharacterCost',
+                jsonData: JSON.stringify([{
+                    characterName: TEST_CHAR,
+                    gameMode: 'MemoryOfChaos',
+                    // draftMode OMITTED — validateKeys must reject.
+                    costs: fullEidolonCost(1),
+                    costSetId: 9997,
+                }]),
+            })
+        );
+        expect(err).toMatch(/draftMode|key mismatch/i);
+    });
+
+    it('15.4 D-19: admin_bulk_upsert rejects HsrLightconeCost rows with missing `draftMode` key', async () => {
+        const err = await expectReducerError(
+            admin.call.adminBulkUpsert({
+                tableName: 'HsrLightconeCost',
+                jsonData: JSON.stringify([{
+                    lightconeName: TEST_LC,
+                    gameMode: 'MemoryOfChaos',
+                    // draftMode OMITTED
+                    costs: { s1: 1, s2: 1, s3: 1, s4: 1, s5: 1 },
+                    costSetId: 9998,
+                }]),
+            })
+        );
+        expect(err).toMatch(/draftMode|key mismatch/i);
+    });
+
+    it('15.4 D-19: admin_bulk_upsert rejects HsrSynergyCost rows with missing `draftMode` key', async () => {
+        const err = await expectReducerError(
+            admin.call.adminBulkUpsert({
+                tableName: 'HsrSynergyCost',
+                jsonData: JSON.stringify([{
+                    sourceName: 'cs-test-src',
+                    targetName: 'cs-test-tgt',
+                    gameMode: 'MemoryOfChaos',
+                    // draftMode OMITTED
+                    costModifier: 1.0,
+                    costSetId: 9999,
+                }]),
+            })
+        );
+        expect(err).toMatch(/draftMode|key mismatch/i);
+    });
 });
