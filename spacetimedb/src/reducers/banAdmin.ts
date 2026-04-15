@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
+import { ScheduleAt } from 'spacetimedb';
 import { ensureAdmin } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
 
@@ -62,6 +63,14 @@ export const admin_ban_user = spacetimedb.reducer({
                 ...user,
                 deletedAt: ctx.timestamp,
                 ...auditUpdate(ctx, user, admin.id),
+            });
+            // D-10 R1 fix: schedule deletion cascade 5s out (matches admin.ts:181-188 pattern)
+            const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
+            ctx.db.UserDeletionJob.insert({
+                scheduledId: 0n,
+                scheduledAt: ScheduleAt.time(deleteAt),
+                userId: priv.userId,
+                ...auditInsert(ctx, admin.id),
             });
             console.log(`[BAN] User #${user.id} soft-deleted due to ban on ${banTypeTag}:${providerId}`);
         }

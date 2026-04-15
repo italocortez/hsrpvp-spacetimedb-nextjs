@@ -1,4 +1,5 @@
 import spacetimedb from './schema';
+import { ScheduleAt } from 'spacetimedb';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
 import { transferCaptain, transferReferee, transferHost } from './helpers/flagTransferHelpers';
 import { checkProviderBan, DISCORD_BAN_TYPE } from './helpers/banHelper';
@@ -140,6 +141,15 @@ spacetimedb.clientConnected((ctx) => {
             isOnline: false,
             deletedAt: ctx.timestamp,
             ...auditUpdate(ctx, user, user.id),
+          });
+          // D-10 R1 fix: schedule deletion cascade 5s out (matches admin.ts:181-188 pattern)
+          // Actor is user.id — no human admin present on reconnect; matches existing audit pattern
+          const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
+          ctx.db.UserDeletionJob.insert({
+            scheduledId: 0n,
+            scheduledAt: ScheduleAt.time(deleteAt),
+            userId: user.id,
+            ...auditInsert(ctx, user.id),
           });
           console.log(`[BAN-RECONNECT] User #${user.id} soft-deleted -- banned Discord ID detected on reconnect.`);
         }
