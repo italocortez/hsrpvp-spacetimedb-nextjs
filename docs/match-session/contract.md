@@ -223,7 +223,7 @@ The match session system manages the entire draft lifecycle within a lobby: char
 7. Turn check: caller's team must match `nextNominatorTeam`
 8. Captain check
 9. If characterName is not "EMPTY": reject if character already won (AuctionSold), reject if banned
-10. Look up base cost from `HsrCharacterCost` using `auctionBaseBid[eN]` (D-53). EMPTY = 0.
+10. Look up base cost from `HsrCharacterCost` filtered by `(characterName, gameMode, draftMode=Auction, costSetId)` and read `costs.eN` (D-53 retained, Phase 15.4 shape). EMPTY = 0. Tuple-filter with enum struct unsupported (A2_FALLBACK_ITER): reducer uses `cost_set_id` btree filter + predicate match on `draftMode.tag === 'Auction'`.
 11. Budget check: base cost must not exceed nominating team's `teamBlue/RedCharBudget` (D-53)
 12. Insert `Nominate` step
 13. Update session: `currentNomination=characterName`, `currentBidAmount=baseCost`, `currentBidTeam=nominatingTeam`; reset timer
@@ -534,7 +534,7 @@ The match session system manages the entire draft lifecycle within a lobby: char
 2. Verify lobby is in `Equipping` stage
 3. Coach guard (D-39): reject coaches
 4. Reject spectators
-5. Look up LC cost from `HsrLightconeCost` table using (lightconeName, gameMode, costSetId) and `classicCosts.sN`
+5. Look up LC cost from `HsrLightconeCost` filtered by `(lightconeName, gameMode, draftMode=Classic, costSetId)` and read `costs.sN` (Phase 15.4 D-10/D-11, Pitfall 6 regression guard). LC equip happens in the classic draft context regardless of char-phase draftMode. Tuple-filter with enum struct unsupported (A2_FALLBACK_ITER): `cost_set_id` btree filter + predicate match on `draftMode.tag === 'Classic'`
 6. Budget check: LC cost must not exceed team's `teamBlue/RedLcBudget` (D-55)
 7. Insert `EquipLightcone` step with costPaid
 8. Deduct cost from team's LC budget
@@ -931,8 +931,12 @@ D-50 applies to ALL Drafting→Equipping transitions: auto (last Classic pick, l
 | AwaitingResult stage: submit_match_result sets AwaitingResult (frees players), finalization cascade-deletes lobby | Phase 9 execution | 2026-03-29 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 | Phase 12.3 execution | timer_expiry_classic auto-pick pool migrated from HsrAccount.isActive (global active account) to LobbyMemberAccount (per-match selected accounts) when requireOwnership=true (D-I-01/02); closes last in-gameplay runtime read of HsrAccount.isActive introduced in Phase 10.4 migration gap | 2026-04-12 |
+| Post-draft LC lookup filters by `(lightconeName, gameMode, draftMode=Classic, costSetId)` and reads `costs.sN` (was `classicCosts.sN`); Pitfall 6 regression guard | Phase 15.4 execution | 2026-04-15 |
+| Auction nomination base-cost lookup filters by `draftMode=Auction` and reads `costs.eN` (was `auctionBaseBid[eN]`); D-53 semantics retained, column shape updated | Phase 15.4 execution | 2026-04-15 |
+| `timer_expiry_classic` autoRandomPick pool builders now filter `draftMode=Classic` — prevents 0-cost auto-picks of Auction-only characters (WR-02 fix) | Phase 15.4 execution | 2026-04-15 |
+| `equip_lightcone`, `arrange_lineup`, `confirm_lineup` stamp `gameNumber: session.currentGameNumber` on MatchSessionStep inserts — matches draft-phase invariant; preserves step-to-game attribution in MatchSessionStepHistory for bestOf>1 archives (WR-04 fix) | Phase 15.4 execution | 2026-04-15 |
 
 ---
 
-*Last updated: 2026-04-12*
-*Feature owner: Phase 9 / Phase 12.3*
+*Last updated: 2026-04-15*
+*Feature owner: Phase 9 / Phase 12.3 / Phase 15.4*
