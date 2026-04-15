@@ -23,6 +23,8 @@ import {
 } from '../../shared/connection';
 import { defaultLobbyArgs } from '../../shared/helpers/lobbies';
 import { completeDraft as sharedCompleteDraft, startDraftAndSync } from '../../shared/helpers/drafts';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
+import { hasServerToken } from '../../shared/connection';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -199,8 +201,11 @@ describe('Post-Draft (Equipping + Scoring)', () => {
         });
 
         it('equips a lightcone — EquipLightcone step inserted', async () => {
-            // Use superimposition=1 with costSetId=0. Since there are no HsrLightconeCost
-            // rows for costSetId=0, the reducer falls back to lcCost=0 — budget-safe always.
+            // 15.4 D-10/D-11/Pitfall 6: the LC cost lookup now filters by
+            // (lightconeName, gameMode, draftMode='Classic', costSetId). The seeded
+            // LC 'in-the-night' has no HsrLightconeCost row at costSetId=0 under the
+            // default-seed shape, so the reducer's absence-path returns 0 — budget-safe.
+            // The reducer reads costRow.costs (single struct column) when a row exists.
             const sessionBefore = getSession(blue, lobbyId);
             expect(sessionBefore).toBeDefined();
             const lcBudgetBefore = sessionBefore!.teamBlueLcBudget;
@@ -579,5 +584,96 @@ describe('Post-Draft (Equipping + Scoring)', () => {
             );
             expect(err).toContain('Coaches cannot confirm lineups.');
         });
+    });
+});
+
+// ── 15.4 D-10/D-11/Pitfall 6: LC cost lookup uses Classic filter + `costs` column ──
+//
+// The equip_lightcone reducer reads HsrLightconeCost filtering by
+// (lightconeName, gameMode, draftMode='Classic', costSetId). D-10 semantic:
+// row absence → 0 (no throw). D-11: LC equip is Classic-only regardless of
+// char-phase draftMode. This block asserts both the positive path (Classic row
+// present → costs.sN read) and the Auction-only negative path (absent-Classic →
+// returns 0 per D-10).
+describe.skipIf(!hasServerToken())('15.4 D-10/D-11 LC cost lookup — Classic filter + costs column (Pitfall 6)', () => {
+    let admin: TestHarness;
+
+    beforeAll(async () => {
+        admin = await createVerifiedTestHarness();
+        await promoteToRole(admin, 'Admin');
+        await admin.sync(1000);
+    }, 30_000);
+
+    afterAll(async () => {
+        await admin?.disconnect();
+    });
+
+    it('positive path: Classic LC cost row is readable via the new 4-positional filter shape', async () => {
+        // Insert a Classic HsrLightconeCost row for a specific (name, mode, csId)
+        // via admin_bulk_upsert. Then verify it's present in the subscription
+        // cache with the expected shape (draftMode.tag, costs.s3).
+        const LC = 'adreamscentedinwheat';  // seeded LC
+        const csId = 9501;
+
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrLightconeCost',
+            jsonData: JSON.stringify([{
+                lightconeName: LC,
+                gameMode: 'MemoryOfChaos',
+                draftMode: 'Classic',
+                costs: { s1: 1, s2: 2, s3: 5, s4: 4, s5: 5 },
+                costSetId: csId,
+            }]),
+        });
+        await admin.sync(1500);
+
+        const row = [...admin.conn.db.HsrLightconeCost.iter()].find(
+            r => r.lightconeName === LC &&
+                 r.gameMode.tag === 'MemoryOfChaos' &&
+                 r.draftMode.tag === 'Classic' &&
+                 r.costSetId === csId
+        );
+        expect(row).toBeDefined();
+        expect(row!.costs.s3).toBe(5);
+    });
+
+    it('D-10 negative: Auction-only row for same (name, mode, csId) → Classic filter finds 0 rows', async () => {
+        // Simulate the post-draft LC lookup's absence path: insert ONLY an
+        // Auction row. The equip reducer filters by draftMode.tag === 'Classic'
+        // so this row must NOT match; client-side test mirrors the filter.
+        const LC = 'adreamscentedinwheat';
+        const csId = 9502;
+
+        await admin.call.adminBulkUpsert({
+            tableName: 'HsrLightconeCost',
+            jsonData: JSON.stringify([{
+                lightconeName: LC,
+                gameMode: 'MemoryOfChaos',
+                draftMode: 'Auction',
+                costs: { s1: 10, s2: 20, s3: 30, s4: 40, s5: 50 },
+                costSetId: csId,
+            }]),
+        });
+        await admin.sync(1500);
+
+        const classicRow = [...admin.conn.db.HsrLightconeCost.iter()].find(
+            r => r.lightconeName === LC &&
+                 r.gameMode.tag === 'MemoryOfChaos' &&
+                 r.draftMode.tag === 'Classic' &&
+                 r.costSetId === csId
+        );
+        // D-10: no Classic row means the reducer returns 0 (no throw).
+        expect(classicRow).toBeUndefined();
+
+        // Auction row exists — proves the insert worked; just didn't satisfy
+        // the Classic filter that equip_lightcone uses.
+        const auctionRow = [...admin.conn.db.HsrLightconeCost.iter()].find(
+            r => r.lightconeName === LC &&
+                 r.gameMode.tag === 'MemoryOfChaos' &&
+                 r.draftMode.tag === 'Auction' &&
+                 r.costSetId === csId
+        );
+        expect(auctionRow).toBeDefined();
+        expect(auctionRow!.costs.s3).toBe(30);
     });
 });
