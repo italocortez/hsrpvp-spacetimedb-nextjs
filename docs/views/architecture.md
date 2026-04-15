@@ -26,9 +26,10 @@ Views are server-side read reducers that return filtered data to authenticated o
 - **Purpose:** Admin access to private user data (email, provider tokens)
 
 #### view_user_directory
-- **Auth:** Authenticated
-- **Returns:** `User[]` filtered by search query (username prefix)
+- **Auth:** Authenticated only (`spacetimedb.view()`) — anonymous callers receive a framework-level SenderError before the body executes. Phase 15.2 D-06: flipped from `spacetimedb.anonymousView()`.
+- **Returns:** `UserDirectoryRow[]` — safe D-16 subset: `id, username, displayName, role, avatarCharacterName, isOnline, isGuest, hasDiscordLinked, displayedAchievementId` (excludes deletedAt, lastLoginAt, isPrivate, audit columns)
 - **Purpose:** User search for invites, team requests, etc.
+- **Phase 15.2 note:** Ghost users no longer accumulate in the backing `user` table — `performUserDeletion` evicts non-guest-with-history users to the `deleted_user` archive (private, D-05). The iter cost is bounded by live users only. The dead `.filter(u => !u.deletedAt)` filter was removed from the view body (D-09 eliminates ghosts at the write path).
 
 #### view_my_roster
 - **Auth:** Authenticated
@@ -183,10 +184,11 @@ Added to `matchHistoryViews.ts`, bindings at `src/module_bindings/view_my_*_hist
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 | Views layer split from 2 files into 8 domain files (lobbyViews, identityViews, costSetViews, statsViews, socialViews, matchViews, matchHistoryViews, tournamentViews); move-only invariant (D-01..D-04) | Phase 15 execution | 2026-04-13 |
 | 5 new self-scoped history views added to matchHistoryViews.ts (D-13); binding count 32 -> 37; Pattern A vs Pattern B filter registry documented | Phase 15 execution | 2026-04-13 |
+| view_user_directory flipped from anonymousView to authenticated-only spacetimedb.view() (D-06); dead .filter(u => !u.deletedAt) removed (D-09 eliminates ghosts at write path); ghost accumulation bounded by DeletedUser archive (D-05/D-09) | Phase 15.2 execution | 2026-04-15 |
 
 ---
 
-*Last updated: 2026-04-13*
+*Last updated: 2026-04-15*
 *Feature owner: Phase 03 / Phase 06 / Phase 08 / Phase 09 / Phase 10.4 / Phase 15*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

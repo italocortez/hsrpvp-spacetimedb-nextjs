@@ -16,14 +16,23 @@ User (id: u32 autoInc PK)  [public: true]
   +-- displayName: string
   +-- isGuest: bool
   +-- isOnline: bool
-  +-- isPrivate: bool
   +-- lastLoginAt: Timestamp
   +-- role: Role (User | TournamentHost | Moderator | Admin)
   +-- hasDiscordLinked: bool
   +-- avatarCharacterName: string -> HsrCharacter.name
   +-- displayedAchievementId: u32? -> Achievement.id
-  +-- deletedAt: Timestamp? (soft-delete marker)
+  +-- deletedAt: Timestamp? (transient pending-deletion flag — at most ~1 row set during 5s cascade window)
   +-- audit columns
+
+DeletedUser (id: u32 PK)  [PRIVATE -- public: false]
+  +-- id: u32 (same as was User.id — preserves FK semantics for history tables)
+  +-- displayName: string (preserved from User.displayName at eviction time)
+  +-- isGuest: bool
+  +-- deletedAt: Timestamp
+  No audit columns (write-once archive; no update path).
+  No btree indexes (resolveUserLabel uses PK lookup only).
+  Writer: performUserDeletion non-guest-with-history branch only.
+  Reader: resolveUserLabel helper (see §resolveUserLabel below).
 
 UserIdentity (identity: Identity PK)  [PRIVATE -- public: false]
   +-- identity -> SpacetimeDB sender identity (hex)
@@ -71,6 +80,7 @@ BanRecord (id: u32 autoInc PK)  [PRIVATE -- public: false]
 1. Find `UserIdentity.identity.find(ctx.sender)`
 2. If found: set `User.isOnline=true`, update `UserIdentity.lastSeenAt`
 3. D-08 point 2: if `UserPrivate.discordId` is in BanRecord -> soft-delete user immediately
+4. Phase 15.2 D-10: insert `UserDeletionJob` (scheduled 5s out) after ban-reconnect soft-delete (R1 fix)
 
 ### clientDisconnected() -- lifecycle hook
 1. Find `UserIdentity.identity.find(ctx.sender)`
@@ -81,6 +91,7 @@ BanRecord (id: u32 autoInc PK)  [PRIVATE -- public: false]
 2. Validate inputs; check for existing ban (single-column index + in-memory filter)
 3. Insert `BanRecord`
 4. Find user via `UserPrivate.user_private_discord_id.filter(providerId)`, soft-delete if found (D-08 point 3)
+5. Phase 15.2 D-10: insert `UserDeletionJob` (scheduled 5s out) to complete the two-phase delete (R1 fix)
 
 ### admin_unban_user(banRecordId)
 1. `ensureAdmin(ctx)` -- requires Admin role
@@ -94,15 +105,59 @@ BanRecord (id: u32 autoInc PK)  [PRIVATE -- public: false]
 | `view_my_profile` | ctx.sender only | Merged User + UserPrivate fields (MyProfileRow) |
 | `view_my_identity` | ctx.sender only | Caller's UserIdentity row |
 | `view_admin_user_private` | Moderator+ only | All UserPrivate rows |
-| `view_user_directory` | All clients | Projected UserDirectoryRow -- safe D-16 subset (excludes audit cols, deletedAt, lastLoginAt, isPrivate, auth IDs) |
+| `view_user_directory` | Authenticated clients only | Projected UserDirectoryRow -- safe D-16 subset (excludes audit cols, deletedAt, lastLoginAt, auth IDs); Phase 15.2 D-06: authenticated-only via `spacetimedb.view()` |
 
 ### MyProfileRow fields (view_my_profile)
 ```
-id, username, displayName, isGuest, isOnline, isPrivate, lastLoginAt, role,
+id, username, displayName, isGuest, isOnline, lastLoginAt, role,
 hasDiscordLinked, avatarCharacterName, displayedAchievementId?, deletedAt?,
 discordId?, discordUsername?, email?,
 createdById, createdDate, lastModifiedById, lastModifiedDate
 ```
+Note: `isPrivate` removed from schema (Phase 15.2 D-02 -- dead code, never gated).
+
+## performUserDeletion Flow (Phase 15.2 D-09)
+
+`performUserDeletion(ctx, userId, actorId)` is the single entry point for cascade deletion, called by the `UserDeletionJob` scheduled reducer.
+
+```
+performUserDeletion
+  ├─ Cascade: hard-delete UserPrivate, calendar data, UserIdentity rows, HsrAccount + characters
+  │
+  ├─ [isGuest && !hasHistoryReferences(ctx, userId)]
+  │     → hard-delete User row (fast path, no archive)
+  │
+  └─ [non-guest OR has history references]
+        → insert DeletedUser { id, displayName, isGuest, deletedAt }
+        → hard-delete User row
+        (Ghost accumulation eliminated — User table contains only live users)
+```
+
+**Two-phase soft-delete pattern (uniform across all three writers, Phase 15.2 D-10):**
+
+| Writer | File | Step 1 | Step 2 |
+|--------|------|--------|--------|
+| `admin_delete_row` | `admin.ts` | Set `User.deletedAt` | Insert `UserDeletionJob` (5s) |
+| `admin_ban_user` | `banAdmin.ts` | Set `User.deletedAt` | Insert `UserDeletionJob` (5s) ← D-10 R1 fix |
+| `clientConnected` ban-on-reconnect | `index.ts` | Set `User.deletedAt` | Insert `UserDeletionJob` (5s) ← D-10 R1 fix |
+
+Prior to Phase 15.2, `admin_ban_user` and `clientConnected` set `deletedAt` but never scheduled the cascade job — the `UserDeletionJob.insert` was missing at both sites (R1 latent bug).
+
+## resolveUserLabel Helper (Phase 15.2 D-12)
+
+`resolveUserLabel(ctx, userId) → { displayName: string; isDeleted: boolean }`
+
+Three-path lookup for display names at history render sites where the referenced user may have been evicted:
+
+1. `ctx.db.User.id.find(userId)` → live user → `{ displayName: user.displayName, isDeleted: false }`
+2. `ctx.db.DeletedUser.id.find(userId)` → archived user → `{ displayName: archive.displayName, isDeleted: true }`
+3. Fallback → `{ displayName: \`User #${userId}\`, isDeleted: true }`
+
+**Location:** `spacetimedb/src/helpers/userLabel.ts`
+
+**Call sites (5):** `lobbyViews.ts:view_my_lobby_members`, `finalizationHelpers.ts:actorDisplayName`, `finalizationHelpers.ts:participantDisplayName`, `lobbyLifecycle.ts:kick_member`, `lobbyLifecycle.ts:ban_member`.
+
+Do NOT use at sites where the user is the caller (`ctx.sender` is always live by construction).
 
 ## API Route: /api/auth/link-discord (D-09, D-10)
 
@@ -153,10 +208,11 @@ Reactive callbacks: `conn.db.User.onInsert` and `conn.db.User.onUpdate` trigger 
 | Link-discord API route uses ephemeral connection identity verification (replaces trusting client-supplied hex) (SEC-04) | Phase 12 execution | 2026-04-05 |
 | Multi-column index on BanRecord causes PANIC; use single-column index + in-memory filter (WR-01) | Phase 12 execution | 2026-04-05 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
+| User.isPrivate removed (D-02 dead code); DeletedUser private archive table added (D-05); view_user_directory flipped to authenticated-only spacetimedb.view() (D-06); performUserDeletion eviction rewrite (D-09); R1 fix — all three soft-delete writers now insert UserDeletionJob (D-10); resolveUserLabel helper added (D-12) | Phase 15.2 execution | 2026-04-15 |
 
 ---
 
-*Last updated: 2026-04-09*
+*Last updated: 2026-04-15*
 *Feature owner: Phase 01 / Phase 12*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
