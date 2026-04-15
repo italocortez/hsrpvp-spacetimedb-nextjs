@@ -5,15 +5,15 @@ milestone_name: Frontend — Phase Summary
 current_phase: 15.2
 current_plan: 1
 status: executing
-stopped_at: Completed 15.2-03-PLAN.md
-last_updated: "2026-04-15T13:53:49.559Z"
+stopped_at: Completed 15.2-05-PLAN.md
+last_updated: "2026-04-15T17:41:06.368Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 31
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 19
-  completed_plans: 17
-  percent: 89
+  completed_plans: 19
+  percent: 100
 ---
 
 # Session State
@@ -92,6 +92,9 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.2]: D-09: non-guest deletion is evict-and-hard-delete; ghost accumulation in User table eliminated
 - [Phase 15.2]: D-12: resolveUserLabel returns struct for future badge use; 5 call sites migrated
 - [Phase 15.2]: schema.ts registration required for all tables — DeletedUser missed in Plan 01, fixed in Plan 03
+- [Phase 15.2]: D-17 eviction: verified user isGuest=false always hits eviction branch; mmr_history SQL INSERT not needed to exercise the path
+- [Phase 15.2]: D-16/D-19 clientConnected: Pitfall-8 structural pattern applied; reconnect-race test deferred to Phase 16+ harness infrastructure
+- [Phase 15.2]: contract.md deferred to gsd-verify-work per CLAUDE.md; all Phase 15.2 contract entries must be tagged 'Phase 15.2 execution'
 
 ### Roadmap Evolution
 
@@ -127,7 +130,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-15T13:53:49.554Z
-Stopped at: Completed 15.2-03-PLAN.md
+Last session: 2026-04-15T17:41:06.364Z
+Stopped at: Completed 15.2-05-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 15`
