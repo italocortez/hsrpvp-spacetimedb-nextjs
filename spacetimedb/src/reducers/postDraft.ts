@@ -90,6 +90,7 @@ export const equip_lightcone = spacetimedb.reducer(
         ctx.db.MatchSessionStep.insert({
             id: 0, // autoInc
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: nextSequence,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -155,6 +156,10 @@ export const arrange_lineup = spacetimedb.reducer(
             throw new SenderError('Spectators cannot arrange lineups.');
         }
 
+        // Load session for gameNumber stamping (WR-04 Phase 15.4: archival integrity).
+        const session = ctx.db.MatchSession.lobbyId.find(lobbyId);
+        if (!session) throw new SenderError('Match session not found.');
+
         // Validate positions is valid JSON array of strings
         let parsedPositions: string[];
         try {
@@ -176,6 +181,7 @@ export const arrange_lineup = spacetimedb.reducer(
         ctx.db.MatchSessionStep.insert({
             id: 0, // autoInc
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: nextSequence,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -225,6 +231,10 @@ export const confirm_lineup = spacetimedb.reducer(
             throw new SenderError('Spectators cannot confirm lineups.');
         }
 
+        // Load session for gameNumber stamping (WR-04 Phase 15.4: archival integrity).
+        const session = ctx.db.MatchSession.lobbyId.find(lobbyId);
+        if (!session) throw new SenderError('Match session not found.');
+
         // Determine next sequence number
         const existingSteps = [...ctx.db.MatchSessionStep.lobby_id.filter(lobbyId)];
         const nextSequence = existingSteps.length > 0
@@ -235,6 +245,7 @@ export const confirm_lineup = spacetimedb.reducer(
         ctx.db.MatchSessionStep.insert({
             id: 0, // autoInc
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: nextSequence,
             actorUserId: user.id,
             anonymousLabel: undefined,
