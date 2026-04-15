@@ -146,11 +146,11 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 **Goal:** Replace `classicCosts` + `auctionBaseBid` parallel-column design on `HsrCharacterCost`/`HsrLightconeCost` with a single `costs` struct + `draftMode: DraftMode` column; add `draftMode` to `HsrSynergyCost` (introduces synergy auction support). Extends PK tuple with `draftMode`; row-absence = "not configured for that draft mode". Foundation for Phase 16/17 — must land before cost-tables frontend is written.
 **Requirements**: REQ-154-01, REQ-154-02, REQ-154-03, REQ-154-04, REQ-154-05, REQ-154-06, REQ-154-07, REQ-154-08, REQ-154-09, REQ-154-10, REQ-154-11, REQ-154-12
 **Depends on:** Phase 15, Phase 15.1
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 **Priority:** Run BEFORE Phase 15.2 and 15.3 — bindings regen would invalidate pre-restructure work in those phases.
 
 Plans:
-- [ ] 15.4-01-PLAN.md — Backend schema + reducers + publish + bindings regen + arch docs (Wave 1)
+- [x] 15.4-01-PLAN.md — Backend schema + reducers + publish + bindings regen + arch docs (Wave 1)
 - [ ] 15.4-02-PLAN.md — Frontend fix-to-compile across ~10 files + tableColumns + BulkUpsert templates (Wave 2, parallel with 03)
 - [ ] 15.4-03-PLAN.md — Seed pipelines + pairing template + README + harness mirror + local data re-migration checkpoint (Wave 2, parallel with 02)
 - [ ] 15.4-04-PLAN.md — Test rewrites for 7 files + new synergy auction round-trip + draftMode filter coverage (Wave 3)
