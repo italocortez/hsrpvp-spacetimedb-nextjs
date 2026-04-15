@@ -13,6 +13,7 @@ import { rebuildLeaderboard } from './leaderboardRebuild';
 import { advanceBracketMatch } from './bracketHelpers';
 import { checkAndAwardAchievements } from './achievementChecker';
 import { slotIsCoach, slotIsSpectator, slotToTeamSide } from './lobbyHelpers';
+import { resolveUserLabel } from './userLabel';
 import { hardDeleteLobby } from '../reducers/lobbyGc';
 
 // ─── Internal: getOrCreateRating ─────────────────────────────────────────────
@@ -330,7 +331,6 @@ export function runFinalization(
     if (!isConcede || concedeFlags.doArchiveSteps) {
         if (historyRow) {
             for (const step of steps) {
-                const user = ctx.db.User.id.find(step.actorUserId);
                 let targetName: string | undefined;
                 if (step.payload) {
                     const tag = step.payload.tag;
@@ -350,7 +350,7 @@ export function runFinalization(
                     gameNumber: step.gameNumber ?? 1,
                     sequence: step.sequence,
                     actorUserId: step.actorUserId,
-                    actorDisplayName: user ? user.displayName : `User#${step.actorUserId}`,
+                    actorDisplayName: resolveUserLabel(ctx, step.actorUserId).displayName,
                     teamSide: step.actorSlot,
                     action: step.action,
                     targetName,
@@ -390,13 +390,12 @@ export function runFinalization(
     if (!isConcede || concedeFlags.doArchiveParticipants) {
         if (historyRow) {
             for (const p of effectiveParticipants) {
-                const pUser = ctx.db.User.id.find(p.userId);
                 const memberRow = [...ctx.db.LobbyMember.by_lobby_and_user.filter([matchResult.lobbyId, p.userId])][0];
                 ctx.db.MatchParticipantHistory.insert({
                     userId: p.userId,
                     matchHistoryId: historyRow.id,
                     teamSide: p.teamSide,
-                    displayName: pUser ? pUser.displayName : `User#${p.userId}`,
+                    displayName: resolveUserLabel(ctx, p.userId).displayName,
                     isReferee: memberRow ? memberRow.isReferee : false,
                     isCoach: memberRow ? slotIsCoach(memberRow.lobbySlot) : false,
                     isCaptain: p.isCaptain,

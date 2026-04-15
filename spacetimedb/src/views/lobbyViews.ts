@@ -14,6 +14,7 @@ import { CostSet } from '../tables/costSet';
 import { GameMode, DraftMode, MatchType, LobbyStage, ChatSenderType, LobbySlot } from '../types/enums';
 import { shouldAnonymize } from '../helpers/anonymousHelpers';
 import { computeAnonymousLabel } from '../helpers/anonymousLabels';
+import { resolveUserLabel } from '../helpers/userLabel';
 
 // ---------------------------------------------------------------------------
 // 1. Lobby Browser (anonymous view) — projected subset of lobby columns
@@ -223,9 +224,8 @@ export const view_my_lobby_members = spacetimedb.view(
             for (const member of ctx.db.LobbyMember.lobby_id.filter(lobbyId)) {
                 const anonymize = shouldAnonymize(ctx, lobbyId, member.userId, lobby ?? undefined);
 
-                // Resolve display name from User table
-                const user = ctx.db.User.id.find(member.userId);
-                const realDisplayName = user ? user.displayName : `User#${member.userId}`;
+                // Resolve display name — falls back to DeletedUser archive then 'User #N' (D-12)
+                const { displayName: realDisplayName } = resolveUserLabel(ctx, member.userId);
 
                 // Compute anonymous label if anonymizing
                 const anonLabel = anonymize

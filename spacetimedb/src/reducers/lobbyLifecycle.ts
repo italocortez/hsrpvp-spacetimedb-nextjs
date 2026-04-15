@@ -18,6 +18,7 @@ import {
 } from '../helpers/lobbyHelpers';
 import { hardDeleteLobby } from './lobbyGc';
 import { transferCaptain, transferReferee, transferHost } from '../helpers/flagTransferHelpers';
+import { resolveUserLabel } from '../helpers/userLabel';
 import { isThirdPartyReferee } from '../helpers/disconnectHelpers';
 import { performConcede } from './concede';
 
@@ -631,9 +632,8 @@ export const kick_member = spacetimedb.reducer(
             throw new SenderError('Target user is not a member of this lobby.');
         }
 
-        // Resolve target's display name for system message
-        const targetUser = ctx.db.User.id.find(targetUserId);
-        const targetName = targetUser ? targetUser.displayName : `User #${targetUserId}`;
+        // Resolve target's display name for system message (D-12: falls back to DeletedUser archive)
+        const { displayName: targetName } = resolveUserLabel(ctx, targetUserId);
 
         // Remove target from lobby
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
@@ -703,9 +703,8 @@ export const ban_member = spacetimedb.reducer(
             throw new SenderError('Cannot ban the host.');
         }
 
-        // Resolve target's display name for system message
-        const targetUser = ctx.db.User.id.find(targetUserId);
-        const targetName = targetUser ? targetUser.displayName : `User #${targetUserId}`;
+        // Resolve target's display name for system message (D-12: falls back to DeletedUser archive)
+        const { displayName: targetName } = resolveUserLabel(ctx, targetUserId);
 
         // Insert ban record
         ctx.db.LobbyBan.insert({
