@@ -13,13 +13,14 @@
  * Phase 15.4 note on cost-table partial-update granularity:
  *
  * Under the new draftMode-discriminated shape, the partial-update granularity
- * shrinks from (name, mode, costSetId) with dual struct columns (classicCosts +
- * auctionBaseBid) to (name, mode, draftMode, costSetId) with a SINGLE `costs`
- * struct column. To update only the Classic payload, send a row with
- * draftMode='Classic'; to update only Auction, send a separate row with
- * draftMode='Auction'. The old "send auctionBaseBid: null to preserve while
- * updating classicCosts" pattern is no longer applicable — those are now two
- * distinct rows in the PK tuple, each with its own preserve-via-null semantics.
+ * shrinks from (name, mode, costSetId) with dual struct columns to
+ * (name, mode, draftMode, costSetId) with a SINGLE `costs` struct column. To
+ * update only the Classic payload, send a row with draftMode='Classic'; to
+ * update only Auction, send a separate row with draftMode='Auction'. The old
+ * "send the paired struct column as null to preserve while updating its
+ * sibling" pattern is no longer applicable — those are now two distinct rows
+ * in the PK tuple, each with its own preserve-via-null semantics on the
+ * single `costs` column.
  *
  * Valid preserve-via-null field on the new shape: the single `costs` column.
  * validateKeys requires `costs` to be present on every HsrCharacterCost row;

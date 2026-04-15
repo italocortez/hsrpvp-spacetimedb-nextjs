@@ -3,7 +3,7 @@
  * REWRITTEN for the new draftMode-discriminated row shape.
  *
  * OLD invariant (Phase 15.1 D-07/D-08): absent sub-block → zero-pad the paired
- * column (classicCosts+auctionBaseBid both always present, one of them zeroed).
+ * struct column (both classic + auction columns always present, one zeroed).
  *
  * NEW invariant (Phase 15.4 D-14): absent sub-block → NO row for that draftMode.
  * One template sub-block = one emitted row. Row absence = "not configured".
