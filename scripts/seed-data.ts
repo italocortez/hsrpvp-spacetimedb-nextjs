@@ -75,9 +75,11 @@ type RawLightconeCost = {
     [mode: string]: RawModeSuperpositionBlock | number | undefined;
 };
 
+type RawPairingModeBlock = { classic?: { modifier: number }; auction?: { modifier: number } };
+
 type RawPairingCost = {
     cost_set_id: number;
-    [mode: string]: number | undefined;
+    [mode: string]: RawPairingModeBlock | number | undefined;
 };
 
 type RawPositioning = { x?: number; y?: number; width?: number };
@@ -160,10 +162,7 @@ function extractArchetypeAssignments(raw: RawCharacter[]): Array<{ characterName
         .map(c => ({ characterName: c.name, archetypeNames: c.archetype! }));
 }
 
-// ─── Zero-pad constants + sub-block extractors (D-07, D-08) ──────────────────
-
-const ZERO_EIDOLON = { e0: 0, e1: 0, e2: 0, e3: 0, e4: 0, e5: 0, e6: 0 };
-const ZERO_SUPERPOSITION = { s1: 0, s2: 0, s3: 0, s4: 0, s5: 0 };
+// ─── Sub-block extractors (Phase 15.4 D-14: no zero-pad; absent = no row) ────
 
 function extractEidolonCost(block: EidolonSubBlock | undefined) {
     if (!block || typeof block !== 'object') return undefined;
@@ -189,7 +188,8 @@ function extractSuperpositionCost(block: SuperpositionSubBlock | undefined) {
     };
 }
 
-/** Extract HsrCharacterCost rows (D-22 3-mode fan-out + D-01 sibling-block shape). */
+/** Extract HsrCharacterCost rows (Phase 15.4 D-14: one row per present sub-block,
+ *  no zero-pad fallback; `draftMode` discriminates Classic vs Auction). */
 function normalizeCharacterCosts(raw: RawCharacter[]): object[] {
     const rows: object[] = [];
     for (const c of raw) {
@@ -201,10 +201,10 @@ function normalizeCharacterCosts(raw: RawCharacter[]): object[] {
             if (!modeBlock || typeof modeBlock !== 'object') continue;
 
             const classicCosts = extractEidolonCost(modeBlock.classic);
-            const auctionBaseBid = extractEidolonCost(modeBlock.auction);
+            const auctionCosts = extractEidolonCost(modeBlock.auction);
 
-            // D-09 rule: both sub-blocks absent → skip the mode entirely (no row).
-            if (!classicCosts && !auctionBaseBid) continue;
+            // D-14: both sub-blocks absent → skip the mode entirely.
+            if (!classicCosts && !auctionCosts) continue;
 
             const gameMode = snakeToPascalMode(rawMode);
             if (!gameMode) {
@@ -212,15 +212,25 @@ function normalizeCharacterCosts(raw: RawCharacter[]): object[] {
                 continue;
             }
 
-            // D-07 zero-pad on insert (seed always hits insert branch post --clear-database).
-            // D-08 explicitly removes the placeholder `auctionBaseBid: { ...classicCosts }`.
-            rows.push({
-                characterName: c.name,
-                gameMode,
-                classicCosts: classicCosts ?? ZERO_EIDOLON,
-                auctionBaseBid: auctionBaseBid ?? ZERO_EIDOLON,
-                costSetId: csId,
-            });
+            // D-14: one row per present sub-block. Absent sub-block → no row for that draftMode.
+            if (classicCosts) {
+                rows.push({
+                    characterName: c.name,
+                    gameMode,
+                    draftMode: 'Classic',
+                    costs: classicCosts,
+                    costSetId: csId,
+                });
+            }
+            if (auctionCosts) {
+                rows.push({
+                    characterName: c.name,
+                    gameMode,
+                    draftMode: 'Auction',
+                    costs: auctionCosts,
+                    costSetId: csId,
+                });
+            }
         }
     }
     return rows;
@@ -241,7 +251,8 @@ function normalizeLightcones(raw: RawLightcone[]): object[] {
     }));
 }
 
-/** Extract HsrLightconeCost rows (D-22 3-mode fan-out + D-01 sibling-block shape). */
+/** Extract HsrLightconeCost rows (Phase 15.4 D-14: one row per present sub-block,
+ *  no zero-pad fallback; `draftMode` discriminates Classic vs Auction). */
 function normalizeLightconeCosts(raw: RawLightcone[]): object[] {
     const rows: object[] = [];
     for (const lc of raw) {
@@ -253,10 +264,10 @@ function normalizeLightconeCosts(raw: RawLightcone[]): object[] {
             if (!modeBlock || typeof modeBlock !== 'object') continue;
 
             const classicCosts = extractSuperpositionCost(modeBlock.classic);
-            const auctionBaseBid = extractSuperpositionCost(modeBlock.auction);
+            const auctionCosts = extractSuperpositionCost(modeBlock.auction);
 
-            // D-09 rule: both sub-blocks absent → skip the mode entirely.
-            if (!classicCosts && !auctionBaseBid) continue;
+            // D-14: both sub-blocks absent → skip the mode entirely.
+            if (!classicCosts && !auctionCosts) continue;
 
             const gameMode = snakeToPascalMode(rawMode);
             if (!gameMode) {
@@ -264,20 +275,32 @@ function normalizeLightconeCosts(raw: RawLightcone[]): object[] {
                 continue;
             }
 
-            // D-07 zero-pad on insert, D-08 no placeholder copy.
-            rows.push({
-                lightconeName: lc.name,
-                gameMode,
-                classicCosts: classicCosts ?? ZERO_SUPERPOSITION,
-                auctionBaseBid: auctionBaseBid ?? ZERO_SUPERPOSITION,
-                costSetId: csId,
-            });
+            // D-14: one row per present sub-block. Absent sub-block → no row for that draftMode.
+            if (classicCosts) {
+                rows.push({
+                    lightconeName: lc.name,
+                    gameMode,
+                    draftMode: 'Classic',
+                    costs: classicCosts,
+                    costSetId: csId,
+                });
+            }
+            if (auctionCosts) {
+                rows.push({
+                    lightconeName: lc.name,
+                    gameMode,
+                    draftMode: 'Auction',
+                    costs: auctionCosts,
+                    costSetId: csId,
+                });
+            }
         }
     }
     return rows;
 }
 
-/** Extract HsrSynergyCost rows from pairing_table.json (D-22 3-mode fan-out) */
+/** Extract HsrSynergyCost rows from pairing_table.json (Phase 15.4 D-12 / D-14:
+ *  sibling-block shape with classic + auction sub-blocks; one row per present sub-block). */
 function normalizePairings(raw: RawPairing[]): object[] {
     const rows: object[] = [];
     for (const p of raw) {
@@ -285,20 +308,34 @@ function normalizePairings(raw: RawPairing[]): object[] {
         const csId = p.cost.cost_set_id ?? 0;
         const modes = Object.keys(p.cost).filter(k => k !== 'cost_set_id');
         for (const rawMode of modes) {
-            const modifier = p.cost[rawMode] as number | undefined;
-            if (modifier === undefined || modifier === null) continue;
+            const modeBlock = p.cost[rawMode] as RawPairingModeBlock | undefined;
+            if (!modeBlock || typeof modeBlock !== 'object') continue;
             const gameMode = snakeToPascalMode(rawMode);
             if (!gameMode) {
                 console.warn(`[seed] Unknown game mode "${rawMode}" for pairing "${p.source_name}+${p.target_name}" — skipping`);
                 continue;
             }
-            rows.push({
-                sourceName: p.source_name,
-                targetName: p.target_name,
-                gameMode,
-                costModifier: Number(modifier),
-                costSetId: csId,
-            });
+
+            if (modeBlock.classic !== undefined) {
+                rows.push({
+                    sourceName: p.source_name,
+                    targetName: p.target_name,
+                    gameMode,
+                    draftMode: 'Classic',
+                    costModifier: Number(modeBlock.classic.modifier),
+                    costSetId: csId,
+                });
+            }
+            if (modeBlock.auction !== undefined) {
+                rows.push({
+                    sourceName: p.source_name,
+                    targetName: p.target_name,
+                    gameMode,
+                    draftMode: 'Auction',
+                    costModifier: Number(modeBlock.auction.modifier),
+                    costSetId: csId,
+                });
+            }
         }
     }
     return rows;
