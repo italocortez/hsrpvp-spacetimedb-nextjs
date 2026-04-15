@@ -4,9 +4,9 @@
     "target_name": "anaxa",
     "cost": {
       "cost_set_id": 0,
-      "memory_of_chaos": 3.0,
-      "apocalyptic_shadow": 3.0,
-      "anomaly_arbitration": 3.0
+      "memory_of_chaos":     { "classic": { "modifier": 3.0 }, "auction": { "modifier": 0.0 } },
+      "apocalyptic_shadow":  { "classic": { "modifier": 3.0 }, "auction": { "modifier": 0.0 } },
+      "anomaly_arbitration": { "classic": { "modifier": 3.0 }, "auction": { "modifier": 0.0 } }
     }
   },
   {
@@ -14,9 +14,9 @@
     "target_name": "moze",
     "cost": {
       "cost_set_id": 0,
-      "memory_of_chaos": 4.0,
-      "apocalyptic_shadow": 4.0,
-      "anomaly_arbitration": 4.0
+      "memory_of_chaos":     { "classic": { "modifier": 4.0 }, "auction": { "modifier": 0.0 } },
+      "apocalyptic_shadow":  { "classic": { "modifier": 4.0 }, "auction": { "modifier": 0.0 } },
+      "anomaly_arbitration": { "classic": { "modifier": 4.0 }, "auction": { "modifier": 0.0 } }
     }
   }
 ]
