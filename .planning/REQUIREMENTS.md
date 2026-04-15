@@ -31,6 +31,23 @@ Infrastructure delivery. Enables every feature phase.
 - [ ] **FOUND-14**: `(authed)/layout.tsx` subscribes only to `user` and `hsr_account` (minimal base); each authed feature page owns its own additional subscriptions
 - [ ] **FOUND-15**: `<AuthRequired>` gate handles tri-state (unknown, anon, authed) and integrates with middleware; cross-tab auth sync via `BroadcastChannel('hsr-auth')`
 
+### Foundation — Phase 15.4 cost-table draftMode restructure (REQ-154)
+
+Schema migration foundation that must land before Phase 16/17. Sourced from `.planning/todos/pending/2026-04-14-cost-table-draft-mode-restructure.md` and CONTEXT.md decisions D-01..D-30.
+
+- [ ] **REQ-154-01**: `HsrCharacterCost` / `HsrLightconeCost` / `HsrSynergyCost` table definitions drop `classicCosts` + `auctionBaseBid`; add single `costs` struct (char/lc) and `draftMode: DraftMode` discriminator on all three; PK tuples extended to include `draftMode`; `by_character_mode_and_set` / `by_lightcone_mode_and_set` / `by_tuple` btree indexes extended to multi-col (D-01, D-02, D-03, D-06, D-07, D-08).
+- [ ] **REQ-154-02**: `CostSetDraftCharacter` / `CostSetDraftLightcone` / `CostSetDraftSynergy` mirror REQ-154-01 schema shape; composite-PK tuple extended to include `draftMode`; `by_tuple` btree on draft synergy (D-04, D-09).
+- [ ] **REQ-154-03**: PkTest probe artifacts removed in same publish: `spacetimedb/src/tables/pkTest.ts`, `spacetimedb/src/reducers/pkTest.ts` deleted; `pk_test` table dropped via `--delete-data=on-conflict` (D-23).
+- [ ] **REQ-154-04**: Module bindings regenerated for both `spacetimedb/src/module_bindings/` and `src/module_bindings/`; new `costs` / `draftMode` accessors present on hsr_character_cost_table, hsr_lightcone_cost_table, hsr_synergy_cost_table; old `classicCosts` / `auctionBaseBid` removed; bindings committed.
+- [ ] **REQ-154-05**: `admin_bulk_upsert` HsrCharacterCost / HsrLightconeCost / HsrSynergyCost cases rewritten — tuple match uses extended btree filter (4-tuple char/lc, 5-tuple synergy) including `draftMode`; insert payload uses single `costs` (char/lc) + `draftMode: { tag, value }`; `mergeForUpdate` field arrays shrunk to `['costs']` (char/lc) / `['costModifier']` (synergy); no zero-padding branch (D-19).
+- [ ] **REQ-154-06**: `edit_draft_character_cost` / `edit_draft_lightcone_cost` reducer signatures replace `classicCostsJson` + `auctionBaseBidJson` with `costsJson` + `draftModeTag`; `edit_draft_synergy_cost` adds `draftModeTag` arg; one call = one row per (name, gameMode, draftMode, costSetId) (D-16, D-17, D-18).
+- [ ] **REQ-154-07**: `create_cost_set` clone carries `draftMode` through unchanged on all three draft tables; `publish_cost_set` `existingLive.find` predicate extended to include `r.draftMode.tag === draft.draftMode.tag` for chars/lcs/synergies (Pitfall 7 fix) (D-20, D-21).
+- [ ] **REQ-154-08**: Reader filters: `draftClassic.getCharacterBaseCost` matches `draftMode.tag === 'Classic'` and reads `costRow.costs[eidolonKey]`; `draftAuction.getCharacterBaseCost` matches `draftMode.tag === 'Auction'` (removes `auctionBaseBid` access); `postDraft.ts` LC lookup extends btree filter to 4 positional values with `CLASSIC_DRAFT_MODE` and reads `costRow.costs`; absence returns 0 (D-10, D-11).
+- [ ] **REQ-154-09**: Frontend fix-to-compile across `DataHelpers.ts`, `useCharacterCostTable.ts`, `useLightconeCostTable.ts`, `SynergyDisplay.tsx`, `CostBreakdownChart.tsx`, `BulkUpsert.tsx`, `TableExplorer.tsx`, `CharacterCostTable.tsx`, `tableColumns.ts`, `enums.ts`, `GameDataProvider.tsx`; `npm run build` exits 0 with no `classicCosts` / `auctionBaseBid` references remaining; `UPSERT_TABLE_COLUMNS` map updated per D-27 (D-26, D-27).
+- [ ] **REQ-154-10**: `docs/cost-sets/architecture.md` and `docs/cost-tables/architecture.md` updated during execution to reflect new `draftMode` column, extended PK tuples, btree index changes, and row-absence semantic; updates land in the same plan as the code they describe (D-28).
+- [ ] **REQ-154-11**: Seed pipelines (`scripts/seed-data.ts` and `test/shared/seed-data.ts`) emit one row per present sub-block — no zero-padding fallback; `pairing_template.json` extended to sibling-block `{ classic?, auction? }` shape with both modifiers; `test/data-templates/README.md` transform tables rewritten for char / lc / pairing all three; `ZERO_EIDOLON` / `ZERO_SUPERPOSITION` constants removed (D-12, D-14, D-15).
+- [ ] **REQ-154-12**: 7 affected test files (`seed-cost-extraction.test.ts`, `cost-set-pk.test.ts`, `partial-update.test.ts`, `cost-set-lifecycle.test.ts`, `round-trip.test.ts`, `post-draft.test.ts`, plus `test/shared/seed-data.ts` harness) rewritten/updated against new shape; new coverage added for synergy auction round-trip (first-ever) and `draftMode` filter assertions; full `npm run test:integration` suite green (D-24, D-25).
+
 ### Public Features (PUB)
 
 Anonymous-accessible pages. No auth gate.
@@ -255,6 +272,18 @@ Each requirement maps to exactly one phase. Coverage validated by roadmapper.
 | FOUND-13 | 16 | Pending |
 | FOUND-14 | 21 | Pending |
 | FOUND-15 | 21 | Pending |
+| REQ-154-01 | 15.4 | Pending |
+| REQ-154-02 | 15.4 | Pending |
+| REQ-154-03 | 15.4 | Pending |
+| REQ-154-04 | 15.4 | Pending |
+| REQ-154-05 | 15.4 | Pending |
+| REQ-154-06 | 15.4 | Pending |
+| REQ-154-07 | 15.4 | Pending |
+| REQ-154-08 | 15.4 | Pending |
+| REQ-154-09 | 15.4 | Pending |
+| REQ-154-10 | 15.4 | Pending |
+| REQ-154-11 | 15.4 | Pending |
+| REQ-154-12 | 15.4 | Pending |
 | PUB-01 | 17 | Pending |
 | PUB-02 | 17 | Pending |
 | PUB-03 | 17 | Pending |
@@ -338,13 +367,13 @@ Each requirement maps to exactly one phase. Coverage validated by roadmapper.
 | MOBILE-12 | 35.1 | Deferred |
 
 **Coverage:**
-- Core v0.9 requirements: 84 total (FOUND 15 + PUB 16 + AUTHED 15 + MATCH 17 + COMP 10 + STATS 5 + HIST 6)
-- Mapped to core phases (15–41): 84
+- Core v0.9 requirements: 96 total (FOUND 15 + REQ-154 12 + PUB 16 + AUTHED 15 + MATCH 17 + COMP 10 + STATS 5 + HIST 6)
+- Mapped to core phases (15–41 plus 15.4): 96
 - Unmapped: 0 ✓
 - Mobile XX.1 requirements: 12 (deferred, opportunistic)
-- Total: 96
+- Total: 108
 
 ---
 
 *Requirements defined: 2026-04-12*
-*Last updated: 2026-04-12 during milestone kickoff*
+*Last updated: 2026-04-14 — REQ-154-XX family added during /gsd-plan-phase 15.4 to seed phase 15.4 traceability from todo source spec*
