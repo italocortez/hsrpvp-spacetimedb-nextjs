@@ -43,7 +43,6 @@ export const register_server = spacetimedb.reducer((ctx) => {
         displayName: 'SYSTEM',
         isGuest: false,
         isOnline: false,
-        isPrivate: false,
         lastLoginAt: ctx.timestamp,
         role: { tag: 'Admin' },
         hasDiscordLinked: false,

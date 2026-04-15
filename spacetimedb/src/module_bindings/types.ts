@@ -1301,7 +1301,6 @@ export const MyProfileRow = __t.object("MyProfileRow", {
   displayName: __t.string(),
   isGuest: __t.bool(),
   isOnline: __t.bool(),
-  isPrivate: __t.bool(),
   lastLoginAt: __t.timestamp(),
   get role() {
     return Role;
@@ -1795,7 +1794,6 @@ export const User = __t.object("User", {
   displayName: __t.string(),
   isGuest: __t.bool(),
   isOnline: __t.bool(),
-  isPrivate: __t.bool(),
   lastLoginAt: __t.timestamp(),
   get role() {
     return Role;

@@ -7,7 +7,6 @@ export const userColumns = {
     displayName: t.string(),
     isGuest: t.bool(),
     isOnline: t.bool(),
-    isPrivate: t.bool(),
     lastLoginAt: t.timestamp(),
     role: Role,
     hasDiscordLinked: t.bool(),           // D-02: replaces sensitive auth ID; only bool exposed on public table
