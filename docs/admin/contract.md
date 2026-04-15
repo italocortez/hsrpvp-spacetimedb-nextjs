@@ -159,6 +159,7 @@ Admin and server operations handle privileged actions: server identity registrat
 3. Validate each row's keys against `EXPECTED_KEYS[tableName]`
 4. For each row: find existing by PK → update if exists, insert if not
 5. Table-specific side effects (e.g., HsrCharacter upsert triggers accountRating recomputation)
+6. Phase 15.4 shape for cost tables (HsrCharacterCost, HsrLightconeCost, HsrSynergyCost): each row object in jsonData must include the new `draftMode` key ("Classic" or "Auction") and the unified `costs` struct (replacing the prior separate `classicCosts` + `auctionBaseBid` keys). `EXPECTED_KEYS` enforcement rejects rows missing `draftMode`; `ENUM_VARIANTS.draftMode` is validated against `Object.keys(DraftMode.variants)`. Existence match for upsert uses a full tuple comparison: character/lightcone = `(name, gameMode.tag, draftMode.tag, costSetId)`, synergy = `(sourceName, targetName, gameMode.tag, draftMode.tag, costSetId)`. Tuple-filter with tagged-union enum values is unsupported by current bindings (A2_FALLBACK_ITER, extends Phase 15.1 precedent) so the match is implemented via `ctx.db.<Table>.iter()` with an extended predicate, not via multi-column btree filter. Character/lightcone upserts use delete+insert on the composite tuple; synergy upsert uses `id.update()` (autoInc PK) after the tuple-iter predicate match.
 
 **Error Cases:**
 | Condition | Error Message |
@@ -309,3 +310,6 @@ Admin and server operations handle privileged actions: server identity registrat
 | Calendar cascade in performUserDeletion | Phase 8 execution | 2026-03-28 |
 | Auth/Admin doc separation | Pre-Phase 11 cleanup | 2026-04-06 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+| `admin_bulk_upsert` HsrCharacterCost/HsrLightconeCost/HsrSynergyCost EXPECTED_KEYS updated: new `draftMode` key, unified `costs` struct replaces separate `classicCosts`+`auctionBaseBid` keys | Phase 15.4 execution | 2026-04-15 |
+| HsrCharacterCost+HsrLightconeCost upsert branches: delete+insert pattern retained; A2_FALLBACK_ITER (SpacetimeDB 2.1.0 enum-struct btree limitation) extends Phase 15.1 precedent | Phase 15.4 execution | 2026-04-15 |
+| HsrSynergyCost upsert uses `id.update()` (autoInc PK) — tuple match via iter()+predicate follows the Phase 15.4 reducer pattern | Phase 15.4 execution | 2026-04-15 |
