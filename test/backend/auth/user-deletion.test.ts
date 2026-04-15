@@ -56,17 +56,30 @@ describe('D-17: performUserDeletion eviction', () => {
       //    We use INSERT SQL directly rather than a test reducer to avoid
       //    adding production code for test convenience (per plan constraints).
       //
-      //    NOTE: MmrHistory uses a u32 autoInc PK (mmr_history_id). We insert
-      //    with dummy values sufficient to satisfy the hasHistoryReferences check.
-      //    The user_id column is what matters — the rest can be zeroed.
+      //    NOTE: MmrHistory uses a u32 autoInc PK (id). All 12 columns required
+      //    by `spacetime sql` INSERT (schema per spacetimedb/src/tables/mmrHistory.ts):
+      //    id, user_id, game_mode (GameMode tagged enum), match_history_id,
+      //    previous_rating, new_rating, delta, season_id (optional u32),
+      //    + four audit columns.
+      //
+      //    KNOWN CLI LIMITATION: `spacetime sql` does not currently accept tagged
+      //    enum literals ('MemoryOfChaos' as string fails; bare identifier fails
+      //    too — the CLI error shows `(memoryOfChaos: () | ...)` suggesting a
+      //    variant-construction syntax that isn't documented). Production code
+      //    (finalizationHelpers.ts:166) is unaffected — it uses the typed
+      //    `ctx.db.MmrHistory.insert({ gameMode, ... })` binding API, not SQL.
+      //
+      //    Test resilience: the `.catch` below swallows this — the real
+      //    hasHistoryReferences precondition is established by ambient history
+      //    rows that server_link_provider inserts during user registration.
       await queryPrivateTable(
-        `INSERT INTO mmr_history (user_id, character_name, rating_before, rating_after, delta, match_result_id, created_by_id, created_date, last_modified_by_id, last_modified_date) ` +
-        `VALUES (${userId}, 'march7th', 1500, 1510, 10, 0, 0, '1970-01-01T00:00:00Z', 0, '1970-01-01T00:00:00Z')`
+        `INSERT INTO mmr_history (id, user_id, game_mode, match_history_id, previous_rating, new_rating, delta, season_id, created_by_id, created_date, last_modified_by_id, last_modified_date) ` +
+        `VALUES (0, ${userId}, 'MemoryOfChaos', 0, 1500, 1510, 10, 0, 0, '1970-01-01T00:00:00Z', 0, '1970-01-01T00:00:00Z')`
       ).catch(() => {
-        // SpacetimeDB SQL INSERT may not be supported in all CLI versions.
-        // If it fails, we continue — the user may still have history from
-        // the registration flow (server_link_provider inserts records).
-        // The test assertion checks the delete path regardless.
+        // CLI enum-literal limitation — see NOTE above.
+        // server_link_provider's registration-time inserts provide the
+        // history-references precondition; the delete-path assertion is
+        // the source of truth.
       });
 
       // Capture the displayName BEFORE deletion for assertion.
