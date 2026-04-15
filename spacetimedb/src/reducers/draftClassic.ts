@@ -690,11 +690,16 @@ export const timer_expiry_classic = spacetimedb.reducer(
                         (name) => !bannedChars.has(name) && !pickedChars.has(name)
                     );
                 } else {
-                    // All characters in the cost table for this game mode (not banned/picked)
+                    // All characters in the cost table for this game mode (not banned/picked).
+                    // 15.4 D-10/D-11: filter draftMode='Classic' so Auction-only rows don't
+                    // leak into the Classic auto-pool (WR-02 Phase 15.4).
                     const costRows = [...ctx.db.HsrCharacterCost.cost_set_id.filter(lobby.costSetId)];
                     const allChars = [...new Set(
                         costRows
-                            .filter((r: any) => r.gameMode.tag === lobby.gameMode.tag)
+                            .filter((r: any) =>
+                                r.gameMode.tag === lobby.gameMode.tag &&
+                                r.draftMode.tag === 'Classic'
+                            )
                             .map((r: any) => r.characterName)
                     )];
                     availablePool = allChars.filter(
@@ -746,10 +751,15 @@ export const timer_expiry_classic = spacetimedb.reducer(
                         .map((s: any) => s.payload.value.characterName)
                 );
 
+                // 15.4 D-10/D-11: filter draftMode='Classic' so Auction-only rows don't
+                // leak into the Classic auto-ban pool (WR-02 Phase 15.4).
                 const costRows = [...ctx.db.HsrCharacterCost.cost_set_id.filter(lobby.costSetId)];
                 const allChars = [...new Set(
                     costRows
-                        .filter((r: any) => r.gameMode.tag === lobby.gameMode.tag)
+                        .filter((r: any) =>
+                            r.gameMode.tag === lobby.gameMode.tag &&
+                            r.draftMode.tag === 'Classic'
+                        )
                         .map((r: any) => r.characterName)
                 )];
                 const availablePool = allChars.filter(
