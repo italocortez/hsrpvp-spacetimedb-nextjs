@@ -173,6 +173,42 @@ the last in-gameplay runtime read of `HsrAccount.isActive`.
 `requireOwnership=false`, the pool comes from the cost table for the game mode
 (no account read needed), which was unchanged.
 
+### Phase 15.4: draftMode-aware reads + postDraft gameNumber stamping
+
+Two code-review follow-ups from the Phase 15.4 restructure (`draftMode: DraftMode`
+column added to all cost tables) touch this feature's reducers:
+
+**WR-02 — `timer_expiry_classic` autoRandomPick pool filters `draftMode='Classic'`**
+(`draftClassic.ts:694-703` + `:749-757`)
+
+When `autoRandomPick=true` fires on a Classic-mode pick or ban timer expiry, the
+available-pool build now filters cost rows by `r.draftMode.tag === 'Classic'` in
+addition to `r.gameMode.tag === lobby.gameMode.tag`. Without this filter, a
+character whose cost set only has an Auction row (no Classic row, per the D-10
+row-absence rule) could be auto-picked in Classic mode with `costPaid: 0`, which
+doesn't reflect "not configured for Classic" — it actively breaks the invariant.
+Pattern matches the `draftMode` filter already present in the normal
+`pick_character` cost lookup at `draftClassic.ts:361-367`.
+
+**WR-04 — postDraft step inserts stamp `gameNumber`**
+(`postDraft.ts` — `equip_lightcone`, `arrange_lineup`, `confirm_lineup`)
+
+Every draft-phase `MatchSessionStep.insert` in `draftClassic.ts` and
+`draftAuction.ts` writes `gameNumber: session.currentGameNumber`. The three
+Equipping-stage inserts in `postDraft.ts` previously omitted this field; the
+`as any` cast silenced the TypeScript error and SpacetimeDB defaulted the u8
+to 0. No in-game reducer re-reads postDraft steps by `gameNumber`, so this was
+not a runtime correctness bug. The impact surfaces at **archival**: when the
+series finalizes and steps flow into `MatchSessionStepHistory` (whose PK is
+`[matchHistoryId, gameNumber, sequence]`), draft steps carried their correct
+game number while equip/arrange/confirm steps collapsed to `gameNumber=0`,
+leaving them dangling relative to their actual game in any per-game replay
+query. Cosmetic for `bestOf=1`, genuine inconsistency for `bestOf>1` archives.
+
+`arrange_lineup` and `confirm_lineup` also gained a `MatchSession` lookup +
+`SenderError('Match session not found.')` guard at reducer entry, matching the
+pattern already present in `equip_lightcone`.
+
 ## Phase History
 
 | Decision | Source | Date |
@@ -188,10 +224,12 @@ the last in-gameplay runtime read of `HsrAccount.isActive`.
 | BetweenGames stage added for best-of-N series; advance_to_next_game resets draft state | Phase 07 execution | 2026-03-07 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 | Phase 12.3 execution | timer_expiry_classic auto-pick pool migrated from HsrAccount.isActive to LobbyMemberAccount per-match selection (D-I-01/02); closes last in-gameplay isActive read from Phase 10.4 migration gap | 2026-04-12 |
+| Phase 15.4 execution | timer_expiry_classic autoRandomPick pool builders now filter `draftMode='Classic'` — prevents 0-cost auto-picks of Auction-only characters (WR-02, matches pick_character cost lookup pattern) | 2026-04-15 |
+| Phase 15.4 execution | postDraft step inserts (equip_lightcone, arrange_lineup, confirm_lineup) stamp `gameNumber: session.currentGameNumber` — matches draft-phase invariant; preserves step-to-game attribution in MatchSessionStepHistory for bestOf>1 archives (WR-04); arrange_lineup + confirm_lineup gained session-lookup guard matching equip_lightcone | 2026-04-15 |
 
 ---
 
-*Last updated: 2026-04-12*
-*Feature owner: Phase 07 / Phase 09 / Phase 12.3*
+*Last updated: 2026-04-15*
+*Feature owner: Phase 07 / Phase 09 / Phase 12.3 / Phase 15.4*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
