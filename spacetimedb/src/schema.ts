@@ -9,7 +9,6 @@ import { HsrLightcone } from './tables/hsrLightcone';
 import { HsrCharacterCost } from './tables/hsrCharacterCost';
 import { HsrLightconeCost } from './tables/hsrLightconeCost';
 import { HsrSynergyCost } from './tables/hsrSynergyCost';
-import { PkTest } from './tables/pkTest';
 
 // Roster Management
 import { HsrAccount } from './tables/hsrAccount';
@@ -128,7 +127,6 @@ const spacetimedb = schema({
     HsrCharacterCost,
     HsrLightconeCost,
     HsrSynergyCost,
-    PkTest,
 
     // Roster Management
     HsrAccount,

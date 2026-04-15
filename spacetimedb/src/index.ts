@@ -64,7 +64,6 @@ export {
     view_tournament_registrant_accounts,
 } from './views/tournamentViews';
 export { broadcast_cursor } from './reducers/cursor';
-export { pk_test_insert } from './reducers/pkTest';
 export { login_as_guest } from './reducers/auth';
 export { delete_guest_account, update_display_name, update_username, update_avatar } from './reducers/profile';
 export { register_server, server_link_provider, server_set_role, server_delete_user, server_set_datetime, server_set_online, server_set_mmr, server_nuke_test_data } from './reducers/server';
