@@ -35,12 +35,15 @@ export function useLightconeCostTable(
 
     // Build cost lookup: lightconeName -> cost row for selected draftMode.
     // NOTE (15.4 D-26 fix-to-compile): post-restructure rows are also split by gameMode.
-    // This hook has no gameMode parameter today (Phase 17 concern); last-wins collapse
-    // across gameMode matches pre-15.4 non-gameMode-aware behavior.
+    // This hook has no gameMode parameter today (Phase 17 concern); deterministically
+    // collapse to a canonical gameMode (MemoryOfChaos) to avoid nondeterministic
+    // last-row-wins behavior across gameModes (WR-01 Phase 15.4).
     const costMap = useMemo(() => {
+        const CANONICAL_MODE = 'MemoryOfChaos';
         const map = new Map<string, HsrLightconeCostRow>();
         const wantDraft = draftMode === 'classic' ? 'Classic' : 'Auction';
         for (const cost of lightconeCosts) {
+            if (cost.gameMode.tag !== CANONICAL_MODE) continue;
             if (cost.draftMode?.tag === wantDraft) {
                 map.set(cost.lightconeName, cost);
             }

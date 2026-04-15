@@ -39,10 +39,10 @@ export const getCharacterCost = (characterCostRows: readonly HsrCharacterCostRow
 
 export const getLightconeCost = (lightconeCostRows: readonly HsrLightconeCostRow[], lightconeName: string): LightconeCost => {
     // Post-15.4: one row per (lightconeName, gameMode, draftMode, costSetId).
-    // Aggregate all rows matching the name; dispatch on draftMode tag. gameMode is
-    // lost in this type (LightconeCost has no gameMode axis today — that is a
-    // Phase 17 redesign concern). Last-row-wins across gameMode is acceptable
-    // because the UI currently reads lightcone cost without a gameMode lookup.
+    // LightconeCost has no gameMode axis today (Phase 17 redesign concern), so we
+    // deterministically collapse to a canonical gameMode (MemoryOfChaos) to avoid
+    // nondeterministic last-row-wins behavior across gameModes (WR-01 Phase 15.4).
+    const CANONICAL_MODE = 'MemoryOfChaos';
     const lcCosts = lightconeCostRows.filter(r => r.lightconeName === lightconeName);
 
     const emptyImpositionCost = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
@@ -55,6 +55,7 @@ export const getLightconeCost = (lightconeCostRows: readonly HsrLightconeCostRow
 
     const sheet: LightconeCost = { Classic: { ...emptyImpositionCost }, Auction: { ...emptyImpositionCost } };
     for (const row of lcCosts) {
+        if (row.gameMode.tag !== CANONICAL_MODE) continue;
         const draftMode = row.draftMode?.tag;
         if (draftMode === 'Classic') {
             sheet.Classic = toCost(row.costs);
