@@ -107,6 +107,8 @@ All backend feature documentation lives in `docs/{feature}/`:
 
 Architecture docs cross-reference behavior specs. No duplication between them.
 
+**Enforcement:** The `/gsd-verify-work` workflow includes a mandatory doc-update checkpoint (step `doc_update_checkpoint`) that runs after UAT passes and before the phase is marked complete. It detects which `docs/{feature}/` directories the phase touched via git diff and prompts per-feature for architecture.md / contract.md / both / skip (with reason). Phase completion is blocked until every touched feature is answered. This is the structural enforcement of the two "update" rules above — it is not a replacement for them, and automated (AST/timestamp) staleness checkers are explicitly out of scope (see `memory/feedback_doc_updates_human_gated.md`).
+
 ## Editing Behavior
 
 - Make the smallest change necessary
