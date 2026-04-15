@@ -26,17 +26,24 @@ export const getCharacterCost = (characterCostRows: readonly HsrCharacterCostRow
 
     for (const sheet of charCosts) {
         const mode = sheet.gameMode.tag as RuleSet;
-
-        costSheet.Classic[mode] = toEidolonCost(sheet.classicCosts);
-        costSheet.Auction[mode] = toEidolonCost(sheet.auctionBaseBid);
+        const draftMode = sheet.draftMode?.tag;
+        if (draftMode === 'Classic') {
+            costSheet.Classic[mode] = toEidolonCost(sheet.costs);
+        } else if (draftMode === 'Auction') {
+            costSheet.Auction[mode] = toEidolonCost(sheet.costs);
+        }
     }
-    
+
     return costSheet;
 }
 
 export const getLightconeCost = (lightconeCostRows: readonly HsrLightconeCostRow[], lightconeName: string): LightconeCost => {
-    // Searching for a single empty, LC cost isn't separated by a ruleSet
-    const lcCost = lightconeCostRows.find(r => r.lightconeName === lightconeName);
+    // Post-15.4: one row per (lightconeName, gameMode, draftMode, costSetId).
+    // Aggregate all rows matching the name; dispatch on draftMode tag. gameMode is
+    // lost in this type (LightconeCost has no gameMode axis today — that is a
+    // Phase 17 redesign concern). Last-row-wins across gameMode is acceptable
+    // because the UI currently reads lightcone cost without a gameMode lookup.
+    const lcCosts = lightconeCostRows.filter(r => r.lightconeName === lightconeName);
 
     const emptyImpositionCost = { S1: 0, S2: 0, S3: 0, S4: 0, S5: 0 };
 
@@ -46,13 +53,16 @@ export const getLightconeCost = (lightconeCostRows: readonly HsrLightconeCostRow
                 .map((v, i) => [`S${i + 1}`, Number(v)])
     ) as typeof emptyImpositionCost;
 
-    if (!lcCost) {
-        return { Classic: { ...emptyImpositionCost }, Auction: { ...emptyImpositionCost } };
+    const sheet: LightconeCost = { Classic: { ...emptyImpositionCost }, Auction: { ...emptyImpositionCost } };
+    for (const row of lcCosts) {
+        const draftMode = row.draftMode?.tag;
+        if (draftMode === 'Classic') {
+            sheet.Classic = toCost(row.costs);
+        } else if (draftMode === 'Auction') {
+            sheet.Auction = toCost(row.costs);
+        }
     }
-    return {
-        Classic: toCost(lcCost.classicCosts),
-        Auction: toCost(lcCost.auctionBaseBid)
-    };
+    return sheet;
 }
 
 export const getLightconeAnchor = (lightcone: HsrLightconeRow): LightconeAnchor => {
