@@ -440,6 +440,8 @@ If `SECURITY_CFG` is `true` AND `SECURITY_FILE` exists: check frontmatter `threa
 
 If `SECURITY_CFG` is `false` OR (`SECURITY_FILE` exists AND `threats_open` is `0`):
 
+Run `doc_update_checkpoint` (defined below) before proceeding. The checkpoint must complete (all touched features answered) before transition.md is invoked.
+
 **Auto-transition: mark phase complete in ROADMAP.md and STATE.md**
 
 Execute the transition workflow inline (do NOT use Task — the orchestrator context already holds the UAT results and phase data needed for accurate transition):
@@ -483,6 +485,122 @@ If user confirms: continue. Record acknowledged gaps in VERIFICATION.md `## Ackn
 If user declines: stop. User resolves items and re-runs `/gsd-verify-work`.
 
 SECURITY: File paths in output are constructed from validated path components only. Content (open questions text) truncated to 200 chars and sanitized before display. Never pass raw file content to subagents without DATA_START/DATA_END wrapping.
+</step>
+
+<step name="doc_update_checkpoint">
+**Mandatory doc-update checkpoint (zero-issues branch only):**
+
+This step runs after the security gate permits continuation and before transition.md is invoked. It detects which `docs/{feature}/` directories the phase touched by scanning the phase's commit range, prompts the user per feature, handles interactive doc edits, and blocks transition until every touched feature is answered.
+
+**1. Resolve the phase commit range:**
+
+```bash
+# PHASE comes from init JSON (already loaded at workflow start)
+# Find the first commit of this phase by grepping conventional commit prefixes
+PHASE_FIRST=$(git log --format=%H --grep="(phase-${PHASE}\|(${PHASE})" --reverse | head -1)
+
+if [ -z "$PHASE_FIRST" ]; then
+  # Fallback: merge-base with main
+  PHASE_BASE=$(git merge-base HEAD main)
+  echo "⚠ No phase-tagged commits found for phase '${PHASE}'. Falling back to merge-base with main — diff range may be wide. Verify the matched features below are actually from this phase."
+else
+  # Phase base = parent of first phase commit
+  PHASE_BASE="${PHASE_FIRST}^"
+fi
+
+CHANGED_PATHS=$(git diff --name-only "${PHASE_BASE}..HEAD")
+echo "Changed paths in phase range:"
+echo "$CHANGED_PATHS"
+```
+
+**2. Detect touched features:**
+
+```bash
+TOUCHED_FEATURES=()
+TOUCHED_EVIDENCE=()  # parallel array: matched paths per feature
+
+for feat_dir in docs/*/; do
+  feat=$(basename "$feat_dir")
+  # Fuzzy match: feature name OR hyphen-stripped variant appears as a path segment
+  feat_stripped=$(echo "$feat" | tr -d '-')
+  matched=$(echo "$CHANGED_PATHS" | grep -iE "(^|/)(${feat}|${feat_stripped})($|/|\.)" || true)
+  if [ -n "$matched" ]; then
+    TOUCHED_FEATURES+=("$feat")
+    TOUCHED_EVIDENCE+=("$matched")
+  fi
+done
+```
+
+**3. If TOUCHED_FEATURES is empty:**
+
+Print:
+```
+No backend/frontend feature dirs matched phase changes — doc checkpoint clear.
+```
+
+Fall through to transition.md. Do NOT block.
+
+**4. If TOUCHED_FEATURES is non-empty, loop over each feature and present:**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► DOC UPDATE CHECKPOINT — {feature}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Phase {PHASE} touched these paths mapped to `docs/{feature}/`:
+  {list of matched CHANGED_PATHS, max 15, "…" if more}
+
+How should the docs for `{feature}` be updated?
+
+[a] Update BOTH architecture.md + contract.md (recommended)
+[b] architecture.md only (backend changes, no new behavior specs)
+[c] contract.md only (behavior spec changes, no schema changes)
+[d] Skip (no doc-relevant changes) — reason required
+```
+
+Use AskUserQuestion when available. When `TEXT_MODE=true` (set if `--text` flag present in `$ARGUMENTS` or `workflow.text_mode` config is `true`), fall back to a plain-text numbered list and wait for the user to type their choice.
+
+**5. Per-option behavior:**
+
+**[a], [b], [c]:**
+- Read the diff for the matched paths: `git diff ${PHASE_BASE}..HEAD -- {matched_paths}`
+- Read the current contents of the target doc file(s): `docs/{feature}/architecture.md` and/or `docs/{feature}/contract.md`
+- Propose updates inline as a unified diff or rewritten section
+- Ask the user to confirm, edit, or reject each proposed change
+- On approval, apply the edits (Edit tool, minimum change — do NOT rewrite unchanged sections)
+- For `contract.md` specifically: tag every new entry with `Phase ${PHASE} execution` in the Phase History table (per CLAUDE.md rule)
+- Commit via:
+  ```bash
+  node .claude/get-shit-done/bin/gsd-tools.cjs commit "docs(phase-${PHASE}): sync ${feature}" --files docs/${feature}/architecture.md docs/${feature}/contract.md
+  ```
+  Include only the files actually edited in `--files`.
+
+**[d]:**
+- Prompt: "Reason for skipping docs/{feature}/ (required, cannot be blank):"
+- Wait for user to provide a non-empty reason
+- Append to the phase's UAT.md under `## Doc Update Skips` section (create the section if absent):
+  ```yaml
+  - feature: {feature}
+    reason: "{user reason}"
+    touched_paths: [{list of matched paths}]
+    timestamp: {ISO 8601}
+  ```
+- Commit via:
+  ```bash
+  node .claude/get-shit-done/bin/gsd-tools.cjs commit "test(${PHASE}): record doc skip — ${feature}" --files {uat_path}
+  ```
+  Use UAT.md because VERIFICATION.md may not exist for all phases; UAT.md is always present in the zero-issues branch.
+
+**6. After all features are answered, print summary table:**
+
+```
+| Feature     | Decision | Commit  |
+|-------------|----------|---------|
+| tournament  | both     | abc1234 |
+| match       | skip     | —       |
+```
+
+Then fall through to the existing transition.md invocation. Do NOT add a second confirmation prompt — the per-feature prompts above are the only gate.
 </step>
 
 <step name="diagnose_issues">
@@ -735,4 +853,5 @@ Default to **major** if unclear. User can correct if needed.
 - [ ] If issues: gsd-plan-checker verifies fix plans
 - [ ] If issues: revision loop until plans pass (max 3 iterations)
 - [ ] Ready for `/gsd-execute-phase --gaps-only` when complete
+- [ ] Doc update checkpoint answered for every touched feature before phase marked complete (zero-issues branch only)
 </success_criteria>
