@@ -1,4 +1,3 @@
-import { auditUpdate } from './auditColumns';
 import { deleteAllCalendarDataForUser } from './calendarCascade';
 
 /**
@@ -76,17 +75,15 @@ export function performUserDeletion(ctx: any, userId: number, actorId: number): 
         return;
     }
 
-    // Soft-delete: preserve row for history table FK integrity
-    // - username sentinel frees the unique constraint for reuse
-    // - hasDiscordLinked cleared (UserPrivate hard-deleted above; BanRecord preserved)
-    // - displayName preserved for history/stat table lookups
-    ctx.db.User.id.update({
-        ...user,
-        username: `deleted_${userId}`,
-        hasDiscordLinked: false,
-        isOnline: false,
+    // Phase 15.2 D-09: evict non-guest-with-history users to DeletedUser archive
+    // and hard-delete the live User row. Ghosts no longer accumulate in User.iter().
+    // displayName is preserved in DeletedUser for resolveUserLabel (D-12).
+    ctx.db.DeletedUser.insert({
+        id: user.id,
+        displayName: user.displayName,
+        isGuest: user.isGuest,
         deletedAt: user.deletedAt ?? ctx.timestamp,
-        ...auditUpdate(ctx, user, actorId),
     });
-    console.log(`[DELETE] User #${userId} soft-deleted. Display name preserved: "${user.displayName}".`);
+    ctx.db.User.id.delete(user.id);
+    console.log(`[DELETE] User #${userId} evicted to DeletedUser archive. Display name preserved: "${user.displayName}".`);
 }

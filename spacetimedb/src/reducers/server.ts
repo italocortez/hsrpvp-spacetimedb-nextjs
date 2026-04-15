@@ -544,6 +544,11 @@ export const server_nuke_test_data = spacetimedb.reducer({
     if (userPrivates.length > 0) console.log(`[NUKE] UserPrivate: ${userPrivates.length}`);
     totalDeleted += userPrivates.length;
 
+    const deletedUsers = [...ctx.db.DeletedUser.iter()];
+    for (const du of deletedUsers) { ctx.db.DeletedUser.id.delete(du.id); }
+    if (deletedUsers.length > 0) console.log(`[NUKE] DeletedUser: ${deletedUsers.length}`);
+    totalDeleted += deletedUsers.length;
+
     const userIdents = [...ctx.db.UserIdentity.iter()]
         .filter((ui: any) => systemUserRowId === undefined || ui.userId !== systemUserRowId);
     for (const ui of userIdents) { ctx.db.UserIdentity.delete(ui); }
