@@ -170,13 +170,13 @@ Plans:
 **Goal:** Close Phase 15 IN-07 — eliminate ghost-user accumulation in the live User table by evicting soft-deleted non-guests to a new private DeletedUser archive, flip view_user_directory from anonymous to authenticated-only (server-side anchor for Phase 16 subscription lifecycle), and fix the R1 latent bug where admin_ban_user and clientConnected ban-on-reconnect never schedule UserDeletionJob.
 **Requirements**: D-01..D-19 (CONTEXT.md is authoritative — no ROADMAP requirement IDs; decisions are the requirement surface)
 **Depends on:** Phase 15, Phase 15.4
-**Plans:** 2/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [x] 15.2-01-PLAN.md — Schema: DeletedUser table + drop User.isPrivate + trim init payloads + drop MyProfileRow.isPrivate (Wave 1)
 - [x] 15.2-02-PLAN.md — View flip (anonymousView→view) + R1 bug fix (UserDeletionJob at banAdmin and clientConnected) (Wave 2, parallel with 03)
-- [ ] 15.2-03-PLAN.md — Cascade refactor: performUserDeletion evicts to DeletedUser + resolveUserLabel helper + 5 call-site migration + nuke flow (Wave 2, parallel with 02)
-- [ ] 15.2-04-PLAN.md — Publish to maincloud non-destructively + regenerate bindings (server + frontend) + human verify checkpoint (Wave 3)
+- [x] 15.2-03-PLAN.md — Cascade refactor: performUserDeletion evicts to DeletedUser + resolveUserLabel helper + 5 call-site migration + nuke flow (Wave 2, parallel with 02)
+- [x] 15.2-04-PLAN.md — Publish to maincloud non-destructively + regenerate bindings (server + frontend) + human verify checkpoint (Wave 3)
 - [ ] 15.2-05-PLAN.md — Tests (D-15/D-16/D-17/D-18/D-19) + docs/auth/architecture.md + docs/views/architecture.md updates (Wave 4)
 
 ### Phase 15.1: Auction Cost Template Extension (INSERTED)
