@@ -97,6 +97,12 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15-backend-pre-work]: Plan 05: seed pipeline rewritten to D-22 snake_case shape — scripts/seed-data.ts + test/shared/seed-data.ts both consume cost_set_id + 3-mode blocks + positioning + Spine fields. 3-mode fan-out for characters (21 rows), lightcones (15), pairings (3). cost.cost_set_id lifts to each row's costSetId honoring Plan 03's composite-PK tuple match. Audit clean on test/shared/fixtures.ts and scripts/post-publish.ts (no old-shape references).
 - [Phase 15-backend-pre-work]: Plan 06: 5 integration test files + 1 shared two-identity harness + 3 architecture docs (docs/admin, docs/views, NEW docs/match) land the regression guards and architectural memory for FOUND-01 + FOUND-02. Wave-0 spike confirmed conn.db.view_my_X.iter() works for all 5 new views. Isolation tests use invariants I1-I4 (userId match, subset-of-backing-SQL, fresh-user-sees-empty, no-cross-user-leakage) — strictly stronger than full-flow match seeding for the filter-logic property. Full suite 30/30 green in 42.6s (including 29/30 on first full-DB-reseed run, with 3 SpacetimeDB SQL dialect quirks auto-fixed). nyquist_compliant: true. Phase 15 ready for /gsd-verify-work.
 
+## Quick Tasks Completed
+
+| ID | Date | Description | Commits |
+|----|------|-------------|---------|
+| 260414-sg8 | 2026-04-15 | Doc-update checkpoint in `/gsd-verify-work` — detect touched features from phase commits, prompt per-feature for architecture.md/contract.md updates, block completion until answered. Structural enforcement of the CLAUDE.md Backend Feature Docs rules. | d169f3e, 741934b |
+
 ## Blockers
 
 None at kickoff. Open items for phase-time research tracked in `.planning/research/DECISIONS.md` "Open items for phase-time research":
