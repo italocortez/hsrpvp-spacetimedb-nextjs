@@ -44,13 +44,17 @@ const UserDirectoryRow = t.object('UserDirectoryRow', {
     displayedAchievementId: t.u32().optional(),
 });
 
-// Phase 15 D-01/D-02: moved from securityViews.ts
-export const view_user_directory = spacetimedb.anonymousView(
+// Phase 15.2 D-06: Flipped from anonymousView to view — rejects anonymous subscribers
+// at the framework level before the body executes. No explicit getAuthenticatedUser()
+// call needed (matches view_my_identity pattern at line 22).
+// Phase 15.2 D-09: Removed .filter(u => !u.deletedAt) — ghost users are now evicted to
+// DeletedUser archive instead of accumulating in the live User table, making this filter
+// a permanent no-op. Removing it prevents future-reader confusion.
+export const view_user_directory = spacetimedb.view(
     { name: 'view_user_directory', public: true },
     t.array(UserDirectoryRow),
     (ctx) => {
         return [...ctx.db.User.iter()]
-            .filter(u => !u.deletedAt)
             .map(u => ({
                 id: u.id,
                 username: u.username,
