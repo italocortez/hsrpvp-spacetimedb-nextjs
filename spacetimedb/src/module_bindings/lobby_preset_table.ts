@@ -11,10 +11,10 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
+  DraftMode,
   RosterVisibility,
   DisconnectPolicy,
   MatchType,
-  DraftMode,
   BanMode,
 } from "./types";
 

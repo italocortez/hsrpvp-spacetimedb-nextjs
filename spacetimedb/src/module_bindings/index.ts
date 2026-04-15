@@ -46,6 +46,8 @@ import AdminDeleteArchetypeReducer from "./admin_delete_archetype_reducer";
 import AdminDeleteHsrAccountReducer from "./admin_delete_hsr_account_reducer";
 import AdminDeleteRowReducer from "./admin_delete_row_reducer";
 import AdminForceFinalizeReducer from "./admin_force_finalize_reducer";
+import AdminGcIdentitiesReducer from "./admin_gc_identities_reducer";
+import AdminGcLobbiesReducer from "./admin_gc_lobbies_reducer";
 import AdminRecalculateAllRatingsReducer from "./admin_recalculate_all_ratings_reducer";
 import AdminRemoveCharacterArchetypesReducer from "./admin_remove_character_archetypes_reducer";
 import AdminSeedEloConfigReducer from "./admin_seed_elo_config_reducer";
@@ -144,11 +146,16 @@ import ResumeSeriesReducer from "./resume_series_reducer";
 import RollbackBracketMatchReducer from "./rollback_bracket_match_reducer";
 import SaveCalendarReducer from "./save_calendar_reducer";
 import SeedBracketReducer from "./seed_bracket_reducer";
+import SeedIdentityGcJobReducer from "./seed_identity_gc_job_reducer";
+import SeedLobbyGcJobReducer from "./seed_lobby_gc_job_reducer";
 import SelectMatchAccountReducer from "./select_match_account_reducer";
 import SendChatMessageReducer from "./send_chat_message_reducer";
 import ServerDeleteUserReducer from "./server_delete_user_reducer";
 import ServerLinkProviderReducer from "./server_link_provider_reducer";
+import ServerNukeTestDataReducer from "./server_nuke_test_data_reducer";
+import ServerSetDatetimeReducer from "./server_set_datetime_reducer";
 import ServerSetMmrReducer from "./server_set_mmr_reducer";
+import ServerSetOnlineReducer from "./server_set_online_reducer";
 import ServerSetRoleReducer from "./server_set_role_reducer";
 import SetActiveHsrAccountReducer from "./set_active_hsr_account_reducer";
 import SetActiveSeasonReducer from "./set_active_season_reducer";
@@ -197,7 +204,6 @@ import CostSetRow from "./cost_set_table";
 import EloConfigTableRow from "./elo_config_table_table";
 import GlobalCharacterStatRow from "./global_character_stat_table";
 import GroupPhaseRecordRow from "./group_phase_record_table";
-import HsrAccountLightconeRow from "./hsr_account_lightcone_table";
 import HsrCharacterRow from "./hsr_character_table";
 import HsrCharacterArchetypeRow from "./hsr_character_archetype_table";
 import HsrCharacterCostRow from "./hsr_character_cost_table";
@@ -233,6 +239,43 @@ import TournamentTeamMemberRow from "./tournament_team_member_table";
 import TournamentTeamRequestRow from "./tournament_team_request_table";
 import UserRow from "./user_table";
 import UserAchievementRow from "./user_achievement_table";
+import ViewAdminUserPrivateRow from "./view_admin_user_private_table";
+import ViewLobbyBrowserRow from "./view_lobby_browser_table";
+import ViewMatchHistoryRow from "./view_match_history_table";
+import ViewMatchParticipantHistoryRow from "./view_match_participant_history_table";
+import ViewMatchStepHistoryRow from "./view_match_step_history_table";
+import ViewMyCharacterStatsRow from "./view_my_character_stats_table";
+import ViewMyCostSetsRow from "./view_my_cost_sets_table";
+import ViewMyDraftCharacterCostsRow from "./view_my_draft_character_costs_table";
+import ViewMyDraftLightconeCostsRow from "./view_my_draft_lightcone_costs_table";
+import ViewMyDraftSynergyCostsRow from "./view_my_draft_synergy_costs_table";
+import ViewMyIdentityRow from "./view_my_identity_table";
+import ViewMyLobbiesRow from "./view_my_lobbies_table";
+import ViewMyLobbyChatRow from "./view_my_lobby_chat_table";
+import ViewMyLobbyMembersRow from "./view_my_lobby_members_table";
+import ViewMyMatchParticipantHistoryRow from "./view_my_match_participant_history_table";
+import ViewMyMatchParticipantsRow from "./view_my_match_participants_table";
+import ViewMyMatchResultGameHistoryRow from "./view_my_match_result_game_history_table";
+import ViewMyMatchSessionHistoryRow from "./view_my_match_session_history_table";
+import ViewMyMatchSessionStepHistoryRow from "./view_my_match_session_step_history_table";
+import ViewMyMatchStepsRow from "./view_my_match_steps_table";
+import ViewMyMmrHistoryRow from "./view_my_mmr_history_table";
+import ViewMyPlayerStatsRow from "./view_my_player_stats_table";
+import ViewMyProfileRow from "./view_my_profile_table";
+import ViewMyRelationshipsRow from "./view_my_relationships_table";
+import ViewMyRosterRow from "./view_my_roster_table";
+import ViewMyRosterVisibilityRow from "./view_my_roster_visibility_table";
+import ViewMyTournamentEnrolledRow from "./view_my_tournament_enrolled_table";
+import ViewMyTournamentGroupStandingsRow from "./view_my_tournament_group_standings_table";
+import ViewMyTournamentLobbiesRow from "./view_my_tournament_lobbies_table";
+import ViewMyTournamentMatchResultsRow from "./view_my_tournament_match_results_table";
+import ViewMyTournamentMatchesRow from "./view_my_tournament_matches_table";
+import ViewMyTournamentTeamMembersRow from "./view_my_tournament_team_members_table";
+import ViewMyTournamentTeamsRow from "./view_my_tournament_teams_table";
+import ViewMyTournamentsRow from "./view_my_tournaments_table";
+import ViewPublicAccountsRow from "./view_public_accounts_table";
+import ViewTournamentRegistrantAccountsRow from "./view_tournament_registrant_accounts_table";
+import ViewUserDirectoryRow from "./view_user_directory_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -435,20 +478,6 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, GroupPhaseRecordRow),
-  HsrAccountLightcone: __table({
-    name: 'hsr_account_lightcone',
-    indexes: [
-      { accessor: 'hsr_account_id', name: 'hsr_account_lightcone_hsr_account_id_idx_btree', algorithm: 'btree', columns: [
-        'hsrAccountId',
-      ] },
-      { accessor: 'by_account_and_lightcone', name: 'hsr_account_lightcone_hsr_account_id_lightcone_name_idx_btree', algorithm: 'btree', columns: [
-        'hsrAccountId',
-        'lightconeName',
-      ] },
-    ],
-    constraints: [
-    ],
-  }, HsrAccountLightconeRow),
   HsrCharacter: __table({
     name: 'hsr_character',
     indexes: [
@@ -489,9 +518,10 @@ const tablesSchema = __schema({
   HsrCharacterCost: __table({
     name: 'hsr_character_cost',
     indexes: [
-      { accessor: 'by_character_mode_and_set', name: 'hsr_character_cost_character_name_game_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_character_mode_and_set', name: 'hsr_character_cost_character_name_game_mode_draft_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'characterName',
         'gameMode',
+        'draftMode',
         'costSetId',
       ] },
       { accessor: 'cost_set_id', name: 'hsr_character_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
@@ -521,9 +551,10 @@ const tablesSchema = __schema({
       { accessor: 'cost_set_id', name: 'hsr_lightcone_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'costSetId',
       ] },
-      { accessor: 'by_lightcone_mode_and_set', name: 'hsr_lightcone_cost_lightcone_name_game_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_lightcone_mode_and_set', name: 'hsr_lightcone_cost_lightcone_name_game_mode_draft_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'lightconeName',
         'gameMode',
+        'draftMode',
         'costSetId',
       ] },
     ],
@@ -539,9 +570,17 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'hsr_synergy_cost_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'source_mode', name: 'hsr_synergy_cost_source_name_game_mode_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'source_mode', name: 'hsr_synergy_cost_source_name_game_mode_draft_mode_idx_btree', algorithm: 'btree', columns: [
         'sourceName',
         'gameMode',
+        'draftMode',
+      ] },
+      { accessor: 'by_tuple', name: 'hsr_synergy_cost_source_name_target_name_game_mode_draft_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'sourceName',
+        'targetName',
+        'gameMode',
+        'draftMode',
+        'costSetId',
       ] },
       { accessor: 'target_name', name: 'hsr_synergy_cost_target_name_idx_btree', algorithm: 'btree', columns: [
         'targetName',
@@ -752,6 +791,9 @@ const tablesSchema = __schema({
   MatchSessionStep: __table({
     name: 'match_session_step',
     indexes: [
+      { accessor: 'by_actor_user', name: 'match_session_step_actor_user_id_idx_btree', algorithm: 'btree', columns: [
+        'actorUserId',
+      ] },
       { accessor: 'id', name: 'match_session_step_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
@@ -999,6 +1041,265 @@ const tablesSchema = __schema({
       { name: 'user_achievement_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, UserAchievementRow),
+  view_admin_user_private: __table({
+    name: 'view_admin_user_private',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewAdminUserPrivateRow),
+  view_lobby_browser: __table({
+    name: 'view_lobby_browser',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewLobbyBrowserRow),
+  view_match_history: __table({
+    name: 'view_match_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchHistoryRow),
+  view_match_participant_history: __table({
+    name: 'view_match_participant_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchParticipantHistoryRow),
+  view_match_step_history: __table({
+    name: 'view_match_step_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMatchStepHistoryRow),
+  view_my_character_stats: __table({
+    name: 'view_my_character_stats',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyCharacterStatsRow),
+  view_my_cost_sets: __table({
+    name: 'view_my_cost_sets',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyCostSetsRow),
+  view_my_draft_character_costs: __table({
+    name: 'view_my_draft_character_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftCharacterCostsRow),
+  view_my_draft_lightcone_costs: __table({
+    name: 'view_my_draft_lightcone_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftLightconeCostsRow),
+  view_my_draft_synergy_costs: __table({
+    name: 'view_my_draft_synergy_costs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyDraftSynergyCostsRow),
+  view_my_identity: __table({
+    name: 'view_my_identity',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyIdentityRow),
+  view_my_lobbies: __table({
+    name: 'view_my_lobbies',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbiesRow),
+  view_my_lobby_chat: __table({
+    name: 'view_my_lobby_chat',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbyChatRow),
+  view_my_lobby_members: __table({
+    name: 'view_my_lobby_members',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyLobbyMembersRow),
+  view_my_match_participant_history: __table({
+    name: 'view_my_match_participant_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchParticipantHistoryRow),
+  view_my_match_participants: __table({
+    name: 'view_my_match_participants',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchParticipantsRow),
+  view_my_match_result_game_history: __table({
+    name: 'view_my_match_result_game_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchResultGameHistoryRow),
+  view_my_match_session_history: __table({
+    name: 'view_my_match_session_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchSessionHistoryRow),
+  view_my_match_session_step_history: __table({
+    name: 'view_my_match_session_step_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchSessionStepHistoryRow),
+  view_my_match_steps: __table({
+    name: 'view_my_match_steps',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMatchStepsRow),
+  view_my_mmr_history: __table({
+    name: 'view_my_mmr_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyMmrHistoryRow),
+  view_my_player_stats: __table({
+    name: 'view_my_player_stats',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyPlayerStatsRow),
+  view_my_profile: __table({
+    name: 'view_my_profile',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyProfileRow),
+  view_my_relationships: __table({
+    name: 'view_my_relationships',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRelationshipsRow),
+  view_my_roster: __table({
+    name: 'view_my_roster',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRosterRow),
+  view_my_roster_visibility: __table({
+    name: 'view_my_roster_visibility',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyRosterVisibilityRow),
+  view_my_tournament_enrolled: __table({
+    name: 'view_my_tournament_enrolled',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentEnrolledRow),
+  view_my_tournament_group_standings: __table({
+    name: 'view_my_tournament_group_standings',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentGroupStandingsRow),
+  view_my_tournament_lobbies: __table({
+    name: 'view_my_tournament_lobbies',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentLobbiesRow),
+  view_my_tournament_match_results: __table({
+    name: 'view_my_tournament_match_results',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentMatchResultsRow),
+  view_my_tournament_matches: __table({
+    name: 'view_my_tournament_matches',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentMatchesRow),
+  view_my_tournament_team_members: __table({
+    name: 'view_my_tournament_team_members',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentTeamMembersRow),
+  view_my_tournament_teams: __table({
+    name: 'view_my_tournament_teams',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentTeamsRow),
+  view_my_tournaments: __table({
+    name: 'view_my_tournaments',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewMyTournamentsRow),
+  view_public_accounts: __table({
+    name: 'view_public_accounts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewPublicAccountsRow),
+  view_tournament_registrant_accounts: __table({
+    name: 'view_tournament_registrant_accounts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewTournamentRegistrantAccountsRow),
+  view_user_directory: __table({
+    name: 'view_user_directory',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ViewUserDirectoryRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -1015,6 +1316,8 @@ const reducersSchema = __reducers(
   __reducerSchema("admin_delete_hsr_account", AdminDeleteHsrAccountReducer),
   __reducerSchema("admin_delete_row", AdminDeleteRowReducer),
   __reducerSchema("admin_force_finalize", AdminForceFinalizeReducer),
+  __reducerSchema("admin_gc_identities", AdminGcIdentitiesReducer),
+  __reducerSchema("admin_gc_lobbies", AdminGcLobbiesReducer),
   __reducerSchema("admin_recalculate_all_ratings", AdminRecalculateAllRatingsReducer),
   __reducerSchema("admin_remove_character_archetypes", AdminRemoveCharacterArchetypesReducer),
   __reducerSchema("admin_seed_elo_config", AdminSeedEloConfigReducer),
@@ -1113,11 +1416,16 @@ const reducersSchema = __reducers(
   __reducerSchema("rollback_bracket_match", RollbackBracketMatchReducer),
   __reducerSchema("save_calendar", SaveCalendarReducer),
   __reducerSchema("seed_bracket", SeedBracketReducer),
+  __reducerSchema("seed_identity_gc_job", SeedIdentityGcJobReducer),
+  __reducerSchema("seed_lobby_gc_job", SeedLobbyGcJobReducer),
   __reducerSchema("select_match_account", SelectMatchAccountReducer),
   __reducerSchema("send_chat_message", SendChatMessageReducer),
   __reducerSchema("server_delete_user", ServerDeleteUserReducer),
   __reducerSchema("server_link_provider", ServerLinkProviderReducer),
+  __reducerSchema("server_nuke_test_data", ServerNukeTestDataReducer),
+  __reducerSchema("server_set_datetime", ServerSetDatetimeReducer),
   __reducerSchema("server_set_mmr", ServerSetMmrReducer),
+  __reducerSchema("server_set_online", ServerSetOnlineReducer),
   __reducerSchema("server_set_role", ServerSetRoleReducer),
   __reducerSchema("set_active_hsr_account", SetActiveHsrAccountReducer),
   __reducerSchema("set_active_season", SetActiveSeasonReducer),

@@ -11,6 +11,7 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
+  DraftMode,
 } from "./types";
 
 
@@ -20,6 +21,9 @@ export default __t.row({
   targetName: __t.string().name("target_name"),
   get gameMode() {
     return GameMode.name("game_mode");
+  },
+  get draftMode() {
+    return DraftMode.name("draft_mode");
   },
   costModifier: __t.f32().name("cost_modifier"),
   costSetId: __t.u32().name("cost_set_id"),

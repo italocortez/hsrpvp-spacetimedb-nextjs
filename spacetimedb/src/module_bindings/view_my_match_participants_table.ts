@@ -9,9 +9,17 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
+import {
+  TeamSide,
+} from "./types";
 
-export default {
-  a: __t.string(),
-  b: __t.string(),
-  v: __t.u32(),
-};
+
+export default __t.row({
+  matchResultId: __t.u32().name("match_result_id"),
+  userId: __t.u32().name("user_id"),
+  get teamSide() {
+    return TeamSide.name("team_side");
+  },
+  isCaptain: __t.bool().name("is_captain"),
+  anonymousLabel: __t.option(__t.string()).name("anonymous_label"),
+});

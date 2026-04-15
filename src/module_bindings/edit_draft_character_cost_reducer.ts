@@ -14,6 +14,6 @@ export default {
   costSetId: __t.u32(),
   characterName: __t.string(),
   gameModeTag: __t.string(),
-  classicCostsJson: __t.string(),
-  auctionBaseBidJson: __t.string(),
+  draftModeTag: __t.string(),
+  costsJson: __t.string(),
 };

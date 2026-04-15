@@ -128,7 +128,6 @@ import OverrideMatchResultReducer from "./override_match_result_reducer";
 import PassBidReducer from "./pass_bid_reducer";
 import PauseDraftReducer from "./pause_draft_reducer";
 import PickCharacterReducer from "./pick_character_reducer";
-import PkTestInsertReducer from "./pk_test_insert_reducer";
 import PlaceBidReducer from "./place_bid_reducer";
 import ProcessTournamentMmrReducer from "./process_tournament_mmr_reducer";
 import PublishCostSetReducer from "./publish_cost_set_reducer";
@@ -228,7 +227,6 @@ import MatchSessionStepRow from "./match_session_step_table";
 import MatchSessionStepHistoryRow from "./match_session_step_history_table";
 import MmrHistoryRow from "./mmr_history_table";
 import MmrRatingRow from "./mmr_rating_table";
-import PkTestRow from "./pk_test_table";
 import SavedCalendarRow from "./saved_calendar_table";
 import SeasonRow from "./season_table";
 import TournamentRow from "./tournament_table";
@@ -520,9 +518,10 @@ const tablesSchema = __schema({
   HsrCharacterCost: __table({
     name: 'hsr_character_cost',
     indexes: [
-      { accessor: 'by_character_mode_and_set', name: 'hsr_character_cost_character_name_game_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_character_mode_and_set', name: 'hsr_character_cost_character_name_game_mode_draft_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'characterName',
         'gameMode',
+        'draftMode',
         'costSetId',
       ] },
       { accessor: 'cost_set_id', name: 'hsr_character_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
@@ -552,9 +551,10 @@ const tablesSchema = __schema({
       { accessor: 'cost_set_id', name: 'hsr_lightcone_cost_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'costSetId',
       ] },
-      { accessor: 'by_lightcone_mode_and_set', name: 'hsr_lightcone_cost_lightcone_name_game_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'by_lightcone_mode_and_set', name: 'hsr_lightcone_cost_lightcone_name_game_mode_draft_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
         'lightconeName',
         'gameMode',
+        'draftMode',
         'costSetId',
       ] },
     ],
@@ -570,9 +570,17 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'hsr_synergy_cost_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
-      { accessor: 'source_mode', name: 'hsr_synergy_cost_source_name_game_mode_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'source_mode', name: 'hsr_synergy_cost_source_name_game_mode_draft_mode_idx_btree', algorithm: 'btree', columns: [
         'sourceName',
         'gameMode',
+        'draftMode',
+      ] },
+      { accessor: 'by_tuple', name: 'hsr_synergy_cost_source_name_target_name_game_mode_draft_mode_cost_set_id_idx_btree', algorithm: 'btree', columns: [
+        'sourceName',
+        'targetName',
+        'gameMode',
+        'draftMode',
+        'costSetId',
       ] },
       { accessor: 'target_name', name: 'hsr_synergy_cost_target_name_idx_btree', algorithm: 'btree', columns: [
         'targetName',
@@ -842,13 +850,6 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MmrRatingRow),
-  PkTest: __table({
-    name: 'pk_test',
-    indexes: [
-    ],
-    constraints: [
-    ],
-  }, PkTestRow),
   SavedCalendar: __table({
     name: 'saved_calendar',
     indexes: [
@@ -1397,7 +1398,6 @@ const reducersSchema = __reducers(
   __reducerSchema("pass_bid", PassBidReducer),
   __reducerSchema("pause_draft", PauseDraftReducer),
   __reducerSchema("pick_character", PickCharacterReducer),
-  __reducerSchema("pk_test_insert", PkTestInsertReducer),
   __reducerSchema("place_bid", PlaceBidReducer),
   __reducerSchema("process_tournament_mmr", ProcessTournamentMmrReducer),
   __reducerSchema("publish_cost_set", PublishCostSetReducer),

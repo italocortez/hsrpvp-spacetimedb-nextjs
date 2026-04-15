@@ -376,10 +376,10 @@ export const CostSetDraftCharacter = __t.object("CostSetDraftCharacter", {
   get gameMode() {
     return GameMode;
   },
-  get classicCosts() {
-    return EidolonCost;
+  get draftMode() {
+    return DraftMode;
   },
-  get auctionBaseBid() {
+  get costs() {
     return EidolonCost;
   },
   createdById: __t.u32(),
@@ -395,10 +395,10 @@ export const CostSetDraftLightcone = __t.object("CostSetDraftLightcone", {
   get gameMode() {
     return GameMode;
   },
-  get classicCosts() {
-    return SuperimpositionCost;
+  get draftMode() {
+    return DraftMode;
   },
-  get auctionBaseBid() {
+  get costs() {
     return SuperimpositionCost;
   },
   createdById: __t.u32(),
@@ -414,6 +414,9 @@ export const CostSetDraftSynergy = __t.object("CostSetDraftSynergy", {
   targetName: __t.string(),
   get gameMode() {
     return GameMode;
+  },
+  get draftMode() {
+    return DraftMode;
   },
   costModifier: __t.f32(),
   createdById: __t.u32(),
@@ -640,10 +643,10 @@ export const HsrCharacterCost = __t.object("HsrCharacterCost", {
   get gameMode() {
     return GameMode;
   },
-  get classicCosts() {
-    return EidolonCost;
+  get draftMode() {
+    return DraftMode;
   },
-  get auctionBaseBid() {
+  get costs() {
     return EidolonCost;
   },
   costSetId: __t.u32(),
@@ -678,10 +681,10 @@ export const HsrLightconeCost = __t.object("HsrLightconeCost", {
   get gameMode() {
     return GameMode;
   },
-  get classicCosts() {
-    return SuperimpositionCost;
+  get draftMode() {
+    return DraftMode;
   },
-  get auctionBaseBid() {
+  get costs() {
     return SuperimpositionCost;
   },
   costSetId: __t.u32(),
@@ -698,6 +701,9 @@ export const HsrSynergyCost = __t.object("HsrSynergyCost", {
   targetName: __t.string(),
   get gameMode() {
     return GameMode;
+  },
+  get draftMode() {
+    return DraftMode;
   },
   costModifier: __t.f32(),
   costSetId: __t.u32(),
@@ -1372,13 +1378,6 @@ export const PickPayload = __t.object("PickPayload", {
   costPaid: __t.f32(),
 });
 export type PickPayload = __Infer<typeof PickPayload>;
-
-export const PkTest = __t.object("PkTest", {
-  a: __t.string(),
-  b: __t.string(),
-  v: __t.u32(),
-});
-export type PkTest = __Infer<typeof PkTest>;
 
 export const PlayerCharacterStat = __t.object("PlayerCharacterStat", {
   userId: __t.u32(),

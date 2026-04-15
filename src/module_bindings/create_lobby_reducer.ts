@@ -12,10 +12,10 @@ import {
 
 import {
   GameMode,
+  DraftMode,
   RosterVisibility,
   DisconnectPolicy,
   MatchType,
-  DraftMode,
   BanMode,
 } from "./types";
 

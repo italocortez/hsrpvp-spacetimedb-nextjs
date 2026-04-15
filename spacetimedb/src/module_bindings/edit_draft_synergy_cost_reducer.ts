@@ -15,5 +15,6 @@ export default {
   sourceName: __t.string(),
   targetName: __t.string(),
   gameModeTag: __t.string(),
+  draftModeTag: __t.string(),
   costModifier: __t.f32(),
 };

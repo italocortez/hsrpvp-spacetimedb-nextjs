@@ -86,6 +86,65 @@ export const ActionType = __t.enum("ActionType", {
 });
 export type ActionType = __Infer<typeof ActionType>;
 
+export const AnonymousChatRow = __t.object("AnonymousChatRow", {
+  id: __t.u32(),
+  lobbyId: __t.u32(),
+  senderUserId: __t.u32(),
+  get senderType() {
+    return ChatSenderType;
+  },
+  content: __t.string(),
+  metadata: __t.option(__t.string()),
+  anonymousLabel: __t.option(__t.string()),
+  createdDate: __t.timestamp(),
+});
+export type AnonymousChatRow = __Infer<typeof AnonymousChatRow>;
+
+export const AnonymousLobbyMemberRow = __t.object("AnonymousLobbyMemberRow", {
+  lobbyId: __t.u32(),
+  userId: __t.u32(),
+  isOnline: __t.bool(),
+  get lobbySlot() {
+    return LobbySlot;
+  },
+  isReferee: __t.bool(),
+  isConfirmed: __t.bool(),
+  isCaptain: __t.bool(),
+  displayName: __t.string(),
+  anonymousLabel: __t.option(__t.string()),
+});
+export type AnonymousLobbyMemberRow = __Infer<typeof AnonymousLobbyMemberRow>;
+
+export const AnonymousMatchParticipantRow = __t.object("AnonymousMatchParticipantRow", {
+  matchResultId: __t.u32(),
+  userId: __t.u32(),
+  get teamSide() {
+    return TeamSide;
+  },
+  isCaptain: __t.bool(),
+  anonymousLabel: __t.option(__t.string()),
+});
+export type AnonymousMatchParticipantRow = __Infer<typeof AnonymousMatchParticipantRow>;
+
+export const AnonymousMatchStepRow = __t.object("AnonymousMatchStepRow", {
+  id: __t.u32(),
+  lobbyId: __t.u32(),
+  sequence: __t.u32(),
+  actorUserId: __t.u32(),
+  anonymousLabel: __t.option(__t.string()),
+  get actorSlot() {
+    return TeamSide;
+  },
+  get action() {
+    return ActionType;
+  },
+  get payload() {
+    return StepPayload;
+  },
+  timestamp: __t.timestamp(),
+});
+export type AnonymousMatchStepRow = __Infer<typeof AnonymousMatchStepRow>;
+
 export const Archetype = __t.object("Archetype", {
   id: __t.u32(),
   name: __t.string(),
@@ -317,10 +376,10 @@ export const CostSetDraftCharacter = __t.object("CostSetDraftCharacter", {
   get gameMode() {
     return GameMode;
   },
-  get classicCosts() {
-    return EidolonCost;
+  get draftMode() {
+    return DraftMode;
   },
-  get auctionBaseBid() {
+  get costs() {
     return EidolonCost;
   },
   createdById: __t.u32(),
@@ -336,10 +395,10 @@ export const CostSetDraftLightcone = __t.object("CostSetDraftLightcone", {
   get gameMode() {
     return GameMode;
   },
-  get classicCosts() {
-    return SuperimpositionCost;
+  get draftMode() {
+    return DraftMode;
   },
-  get auctionBaseBid() {
+  get costs() {
     return SuperimpositionCost;
   },
   createdById: __t.u32(),
@@ -355,6 +414,9 @@ export const CostSetDraftSynergy = __t.object("CostSetDraftSynergy", {
   targetName: __t.string(),
   get gameMode() {
     return GameMode;
+  },
+  get draftMode() {
+    return DraftMode;
   },
   costModifier: __t.f32(),
   createdById: __t.u32(),
@@ -446,6 +508,20 @@ export const GameMode = __t.enum("GameMode", {
 });
 export type GameMode = __Infer<typeof GameMode>;
 
+export const GcResult = __t.object("GcResult", {
+  id: __t.u32(),
+  gcType: __t.string(),
+  ranAt: __t.timestamp(),
+  itemsScanned: __t.u32(),
+  itemsDeleted: __t.u32(),
+  details: __t.string(),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type GcResult = __Infer<typeof GcResult>;
+
 export const GlobalCharacterStat = __t.object("GlobalCharacterStat", {
   characterName: __t.string(),
   get gameMode() {
@@ -522,17 +598,6 @@ export const HsrAccountCharacter = __t.object("HsrAccountCharacter", {
 });
 export type HsrAccountCharacter = __Infer<typeof HsrAccountCharacter>;
 
-export const HsrAccountLightcone = __t.object("HsrAccountLightcone", {
-  hsrAccountId: __t.u32(),
-  lightconeName: __t.string(),
-  superimpositionLevel: __t.u8(),
-  createdById: __t.u32(),
-  createdDate: __t.timestamp(),
-  lastModifiedById: __t.u32(),
-  lastModifiedDate: __t.timestamp(),
-});
-export type HsrAccountLightcone = __Infer<typeof HsrAccountLightcone>;
-
 export const HsrCharacter = __t.object("HsrCharacter", {
   name: __t.string(),
   displayName: __t.string(),
@@ -550,6 +615,12 @@ export const HsrCharacter = __t.object("HsrCharacter", {
   imageUrl: __t.string(),
   versionReleased: __t.f64(),
   treatAsVersion: __t.f64(),
+  skelUrl: __t.option(__t.string()),
+  atlasUrl: __t.option(__t.string()),
+  atlasImgUrls: __t.array(__t.string()),
+  posX: __t.i32(),
+  posY: __t.i32(),
+  width: __t.i32(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -572,10 +643,10 @@ export const HsrCharacterCost = __t.object("HsrCharacterCost", {
   get gameMode() {
     return GameMode;
   },
-  get classicCosts() {
-    return EidolonCost;
+  get draftMode() {
+    return DraftMode;
   },
-  get auctionBaseBid() {
+  get costs() {
     return EidolonCost;
   },
   costSetId: __t.u32(),
@@ -610,10 +681,10 @@ export const HsrLightconeCost = __t.object("HsrLightconeCost", {
   get gameMode() {
     return GameMode;
   },
-  get classicCosts() {
-    return SuperimpositionCost;
+  get draftMode() {
+    return DraftMode;
   },
-  get auctionBaseBid() {
+  get costs() {
     return SuperimpositionCost;
   },
   costSetId: __t.u32(),
@@ -631,6 +702,9 @@ export const HsrSynergyCost = __t.object("HsrSynergyCost", {
   get gameMode() {
     return GameMode;
   },
+  get draftMode() {
+    return DraftMode;
+  },
   costModifier: __t.f32(),
   costSetId: __t.u32(),
   createdById: __t.u32(),
@@ -639,6 +713,12 @@ export const HsrSynergyCost = __t.object("HsrSynergyCost", {
   lastModifiedDate: __t.timestamp(),
 });
 export type HsrSynergyCost = __Infer<typeof HsrSynergyCost>;
+
+export const IdentityGcJob = __t.object("IdentityGcJob", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type IdentityGcJob = __Infer<typeof IdentityGcJob>;
 
 // The tagged union or sum type for the algebraic type `InviteStatus`.
 export const InviteStatus = __t.enum("InviteStatus", {
@@ -740,6 +820,31 @@ export const LobbyBan = __t.object("LobbyBan", {
   lastModifiedDate: __t.timestamp(),
 });
 export type LobbyBan = __Infer<typeof LobbyBan>;
+
+export const LobbyBrowserRow = __t.object("LobbyBrowserRow", {
+  id: __t.u32(),
+  joinCode: __t.string(),
+  get gameMode() {
+    return GameMode;
+  },
+  get draftMode() {
+    return DraftMode;
+  },
+  get matchType() {
+    return MatchType;
+  },
+  currentPlayerCount: __t.u8(),
+  isTournamentControlled: __t.bool(),
+  isAnonymousPlayers: __t.bool(),
+  get stage() {
+    return LobbyStage;
+  },
+  isPublic: __t.bool(),
+  teamSize: __t.u8(),
+  tournamentName: __t.option(__t.string()),
+  costSetName: __t.option(__t.string()),
+});
+export type LobbyBrowserRow = __Infer<typeof LobbyBrowserRow>;
 
 export const LobbyConfigSnapshot = __t.object("LobbyConfigSnapshot", {
   teamSize: __t.u8(),
@@ -984,6 +1089,7 @@ export const MatchResultParticipant = __t.object("MatchResultParticipant", {
     return TeamSide;
   },
   isCaptain: __t.bool(),
+  accountRatingSnapshot: __t.f64(),
   createdById: __t.u32(),
   createdDate: __t.timestamp(),
   lastModifiedById: __t.u32(),
@@ -1189,6 +1295,46 @@ export const MmrRating = __t.object("MmrRating", {
 });
 export type MmrRating = __Infer<typeof MmrRating>;
 
+export const MyProfileRow = __t.object("MyProfileRow", {
+  id: __t.u32(),
+  username: __t.string(),
+  displayName: __t.string(),
+  isGuest: __t.bool(),
+  isOnline: __t.bool(),
+  isPrivate: __t.bool(),
+  lastLoginAt: __t.timestamp(),
+  get role() {
+    return Role;
+  },
+  hasDiscordLinked: __t.bool(),
+  avatarCharacterName: __t.string(),
+  displayedAchievementId: __t.option(__t.u32()),
+  deletedAt: __t.option(__t.timestamp()),
+  discordId: __t.option(__t.string()),
+  discordUsername: __t.option(__t.string()),
+  email: __t.option(__t.string()),
+  createdById: __t.u32(),
+  createdDate: __t.timestamp(),
+  lastModifiedById: __t.u32(),
+  lastModifiedDate: __t.timestamp(),
+});
+export type MyProfileRow = __Infer<typeof MyProfileRow>;
+
+export const MyRosterAccountRow = __t.object("MyRosterAccountRow", {
+  accountId: __t.u32(),
+  uid: __t.string(),
+  region: __t.string(),
+  displayLabel: __t.string(),
+  isActive: __t.bool(),
+  isRosterPublic: __t.bool(),
+  isRatingPublic: __t.bool(),
+  isDuplicateUid: __t.bool(),
+  accountRating: __t.u32(),
+  characterName: __t.option(__t.string()),
+  eidolonLevel: __t.option(__t.u8()),
+});
+export type MyRosterAccountRow = __Infer<typeof MyRosterAccountRow>;
+
 export const NominatePayload = __t.object("NominatePayload", {
   characterName: __t.string(),
   eidolon: __t.u8(),
@@ -1311,6 +1457,18 @@ export const PlayerStat = __t.object("PlayerStat", {
 });
 export type PlayerStat = __Infer<typeof PlayerStat>;
 
+export const PublicAccountRow = __t.object("PublicAccountRow", {
+  accountId: __t.u32(),
+  userId: __t.u32(),
+  uid: __t.string(),
+  region: __t.string(),
+  displayLabel: __t.string(),
+  accountRating: __t.option(__t.u32()),
+  characterName: __t.option(__t.string()),
+  eidolonLevel: __t.option(__t.u8()),
+});
+export type PublicAccountRow = __Infer<typeof PublicAccountRow>;
+
 export const RecurrenceRule = __t.object("RecurrenceRule", {
   get recurrenceType() {
     return RecurrenceType;
@@ -1346,6 +1504,16 @@ export const RosterVisibility = __t.enum("RosterVisibility", {
   ClosedNoRating: __t.unit(),
 });
 export type RosterVisibility = __Infer<typeof RosterVisibility>;
+
+export const RosterVisibilityRow = __t.object("RosterVisibilityRow", {
+  lobbyId: __t.u32(),
+  memberUserId: __t.u32(),
+  hsrAccountId: __t.u32(),
+  characterName: __t.string(),
+  eidolonLevel: __t.u8(),
+  accountRating: __t.option(__t.u32()),
+});
+export type RosterVisibilityRow = __Infer<typeof RosterVisibilityRow>;
 
 export const SavedCalendar = __t.object("SavedCalendar", {
   userId: __t.u32(),
@@ -1480,6 +1648,7 @@ export const Tournament = __t.object("Tournament", {
   groupSize: __t.u8(),
   has3RdPlaceMatch: __t.bool(),
   autoAdvanceBracket: __t.bool(),
+  requireOwnership: __t.bool(),
   requireVerified: __t.bool(),
   requireRoster: __t.bool(),
   minimumMmr: __t.option(__t.u32()),
@@ -1546,6 +1715,17 @@ export const TournamentPlayerAccount = __t.object("TournamentPlayerAccount", {
   lastModifiedDate: __t.timestamp(),
 });
 export type TournamentPlayerAccount = __Infer<typeof TournamentPlayerAccount>;
+
+export const TournamentRegistrantAccountRow = __t.object("TournamentRegistrantAccountRow", {
+  tournamentId: __t.u32(),
+  userId: __t.u32(),
+  hsrAccountId: __t.u32(),
+  displayLabel: __t.string(),
+  accountRating: __t.option(__t.u32()),
+  characterName: __t.option(__t.string()),
+  eidolonLevel: __t.option(__t.u8()),
+});
+export type TournamentRegistrantAccountRow = __Infer<typeof TournamentRegistrantAccountRow>;
 
 // The tagged union or sum type for the algebraic type `TournamentStage`.
 export const TournamentStage = __t.enum("TournamentStage", {
@@ -1654,6 +1834,21 @@ export const UserDeletionJob = __t.object("UserDeletionJob", {
 });
 export type UserDeletionJob = __Infer<typeof UserDeletionJob>;
 
+export const UserDirectoryRow = __t.object("UserDirectoryRow", {
+  id: __t.u32(),
+  username: __t.string(),
+  displayName: __t.string(),
+  get role() {
+    return Role;
+  },
+  avatarCharacterName: __t.string(),
+  isOnline: __t.bool(),
+  isGuest: __t.bool(),
+  hasDiscordLinked: __t.bool(),
+  displayedAchievementId: __t.option(__t.u32()),
+});
+export type UserDirectoryRow = __Infer<typeof UserDirectoryRow>;
+
 export const UserIdentity = __t.object("UserIdentity", {
   identity: __t.identity(),
   userId: __t.u32(),
@@ -1684,4 +1879,115 @@ export const ValidationStatus = __t.enum("ValidationStatus", {
   Disputed: __t.unit(),
 });
 export type ValidationStatus = __Infer<typeof ValidationStatus>;
+
+export const ViewAdminUserPrivate = __t.object("ViewAdminUserPrivate", {});
+export type ViewAdminUserPrivate = __Infer<typeof ViewAdminUserPrivate>;
+
+export const ViewLobbyBrowser = __t.object("ViewLobbyBrowser", {});
+export type ViewLobbyBrowser = __Infer<typeof ViewLobbyBrowser>;
+
+export const ViewMatchHistory = __t.object("ViewMatchHistory", {});
+export type ViewMatchHistory = __Infer<typeof ViewMatchHistory>;
+
+export const ViewMatchParticipantHistory = __t.object("ViewMatchParticipantHistory", {});
+export type ViewMatchParticipantHistory = __Infer<typeof ViewMatchParticipantHistory>;
+
+export const ViewMatchStepHistory = __t.object("ViewMatchStepHistory", {});
+export type ViewMatchStepHistory = __Infer<typeof ViewMatchStepHistory>;
+
+export const ViewMyCharacterStats = __t.object("ViewMyCharacterStats", {});
+export type ViewMyCharacterStats = __Infer<typeof ViewMyCharacterStats>;
+
+export const ViewMyCostSets = __t.object("ViewMyCostSets", {});
+export type ViewMyCostSets = __Infer<typeof ViewMyCostSets>;
+
+export const ViewMyDraftCharacterCosts = __t.object("ViewMyDraftCharacterCosts", {});
+export type ViewMyDraftCharacterCosts = __Infer<typeof ViewMyDraftCharacterCosts>;
+
+export const ViewMyDraftLightconeCosts = __t.object("ViewMyDraftLightconeCosts", {});
+export type ViewMyDraftLightconeCosts = __Infer<typeof ViewMyDraftLightconeCosts>;
+
+export const ViewMyDraftSynergyCosts = __t.object("ViewMyDraftSynergyCosts", {});
+export type ViewMyDraftSynergyCosts = __Infer<typeof ViewMyDraftSynergyCosts>;
+
+export const ViewMyIdentity = __t.object("ViewMyIdentity", {});
+export type ViewMyIdentity = __Infer<typeof ViewMyIdentity>;
+
+export const ViewMyLobbies = __t.object("ViewMyLobbies", {});
+export type ViewMyLobbies = __Infer<typeof ViewMyLobbies>;
+
+export const ViewMyLobbyChat = __t.object("ViewMyLobbyChat", {});
+export type ViewMyLobbyChat = __Infer<typeof ViewMyLobbyChat>;
+
+export const ViewMyLobbyMembers = __t.object("ViewMyLobbyMembers", {});
+export type ViewMyLobbyMembers = __Infer<typeof ViewMyLobbyMembers>;
+
+export const ViewMyMatchParticipantHistory = __t.object("ViewMyMatchParticipantHistory", {});
+export type ViewMyMatchParticipantHistory = __Infer<typeof ViewMyMatchParticipantHistory>;
+
+export const ViewMyMatchParticipants = __t.object("ViewMyMatchParticipants", {});
+export type ViewMyMatchParticipants = __Infer<typeof ViewMyMatchParticipants>;
+
+export const ViewMyMatchResultGameHistory = __t.object("ViewMyMatchResultGameHistory", {});
+export type ViewMyMatchResultGameHistory = __Infer<typeof ViewMyMatchResultGameHistory>;
+
+export const ViewMyMatchSessionHistory = __t.object("ViewMyMatchSessionHistory", {});
+export type ViewMyMatchSessionHistory = __Infer<typeof ViewMyMatchSessionHistory>;
+
+export const ViewMyMatchSessionStepHistory = __t.object("ViewMyMatchSessionStepHistory", {});
+export type ViewMyMatchSessionStepHistory = __Infer<typeof ViewMyMatchSessionStepHistory>;
+
+export const ViewMyMatchSteps = __t.object("ViewMyMatchSteps", {});
+export type ViewMyMatchSteps = __Infer<typeof ViewMyMatchSteps>;
+
+export const ViewMyMmrHistory = __t.object("ViewMyMmrHistory", {});
+export type ViewMyMmrHistory = __Infer<typeof ViewMyMmrHistory>;
+
+export const ViewMyPlayerStats = __t.object("ViewMyPlayerStats", {});
+export type ViewMyPlayerStats = __Infer<typeof ViewMyPlayerStats>;
+
+export const ViewMyProfile = __t.object("ViewMyProfile", {});
+export type ViewMyProfile = __Infer<typeof ViewMyProfile>;
+
+export const ViewMyRelationships = __t.object("ViewMyRelationships", {});
+export type ViewMyRelationships = __Infer<typeof ViewMyRelationships>;
+
+export const ViewMyRoster = __t.object("ViewMyRoster", {});
+export type ViewMyRoster = __Infer<typeof ViewMyRoster>;
+
+export const ViewMyRosterVisibility = __t.object("ViewMyRosterVisibility", {});
+export type ViewMyRosterVisibility = __Infer<typeof ViewMyRosterVisibility>;
+
+export const ViewMyTournamentEnrolled = __t.object("ViewMyTournamentEnrolled", {});
+export type ViewMyTournamentEnrolled = __Infer<typeof ViewMyTournamentEnrolled>;
+
+export const ViewMyTournamentGroupStandings = __t.object("ViewMyTournamentGroupStandings", {});
+export type ViewMyTournamentGroupStandings = __Infer<typeof ViewMyTournamentGroupStandings>;
+
+export const ViewMyTournamentLobbies = __t.object("ViewMyTournamentLobbies", {});
+export type ViewMyTournamentLobbies = __Infer<typeof ViewMyTournamentLobbies>;
+
+export const ViewMyTournamentMatchResults = __t.object("ViewMyTournamentMatchResults", {});
+export type ViewMyTournamentMatchResults = __Infer<typeof ViewMyTournamentMatchResults>;
+
+export const ViewMyTournamentMatches = __t.object("ViewMyTournamentMatches", {});
+export type ViewMyTournamentMatches = __Infer<typeof ViewMyTournamentMatches>;
+
+export const ViewMyTournamentTeamMembers = __t.object("ViewMyTournamentTeamMembers", {});
+export type ViewMyTournamentTeamMembers = __Infer<typeof ViewMyTournamentTeamMembers>;
+
+export const ViewMyTournamentTeams = __t.object("ViewMyTournamentTeams", {});
+export type ViewMyTournamentTeams = __Infer<typeof ViewMyTournamentTeams>;
+
+export const ViewMyTournaments = __t.object("ViewMyTournaments", {});
+export type ViewMyTournaments = __Infer<typeof ViewMyTournaments>;
+
+export const ViewPublicAccounts = __t.object("ViewPublicAccounts", {});
+export type ViewPublicAccounts = __Infer<typeof ViewPublicAccounts>;
+
+export const ViewTournamentRegistrantAccounts = __t.object("ViewTournamentRegistrantAccounts", {});
+export type ViewTournamentRegistrantAccounts = __Infer<typeof ViewTournamentRegistrantAccounts>;
+
+export const ViewUserDirectory = __t.object("ViewUserDirectory", {});
+export type ViewUserDirectory = __Infer<typeof ViewUserDirectory>;
 
