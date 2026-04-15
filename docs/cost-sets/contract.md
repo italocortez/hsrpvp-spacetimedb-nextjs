@@ -27,15 +27,15 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 3. Validate gameModeTag is one of the 3 valid values
 4. If sourceSetId !== 0: verify source exists and isPublished=true
 5. Insert CostSet row (isDraft=true, isPublished=false, isLocked=false, creatorId=caller)
-6. Clone HsrCharacterCost rows from source into CostSetDraftCharacter, filtered by gameModeTag
-7. Clone HsrLightconeCost rows from source into CostSetDraftLightcone, filtered by gameModeTag
-8. Clone HsrSynergyCost rows from source into CostSetDraftSynergy, filtered by gameModeTag
+6. Clone HsrCharacterCost rows from source into CostSetDraftCharacter, filtered by gameModeTag. Source `draftMode` passes through unchanged — both Classic and Auction rows clone together (Phase 15.4 D-20).
+7. Clone HsrLightconeCost rows from source into CostSetDraftLightcone, filtered by gameModeTag (draftMode passes through).
+8. Clone HsrSynergyCost rows from source into CostSetDraftSynergy, filtered by gameModeTag (draftMode passes through).
 
 **Expected State Changes:**
 - CostSet row inserted (isDraft=true, isPublished=false)
-- CostSetDraftCharacter rows inserted (cloned from source, filtered by gameMode)
-- CostSetDraftLightcone rows inserted (cloned from source, filtered by gameMode)
-- CostSetDraftSynergy rows inserted (cloned from source, filtered by gameMode)
+- CostSetDraftCharacter rows inserted (cloned from source, filtered by gameMode; both Classic + Auction draftModes preserved)
+- CostSetDraftLightcone rows inserted (cloned from source, filtered by gameMode; both draftModes preserved)
+- CostSetDraftSynergy rows inserted (cloned from source, filtered by gameMode; both draftModes preserved)
 
 **Error Cases:**
 | Condition | Error Message |
@@ -48,7 +48,7 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 
 ### edit_draft_character_cost
 
-**Purpose:** Upsert a character's cost row in the draft table (delete+insert pattern for composite PK)
+**Purpose:** Upsert a character's cost row in the draft table for a single `(characterName, gameMode, draftMode, costSetId)` tuple (delete+insert pattern for composite PK)
 
 **Permission:** Cost set owner or Moderator+
 
@@ -58,21 +58,23 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 | costSetId | u32 | Yes | Target draft cost set |
 | characterName | string | Yes | Character to edit |
 | gameModeTag | string | Yes | Game mode for this cost entry |
-| classicCostsJson | string | Yes | JSON object with e0–e6 numeric fields (EidolonCost) |
-| auctionBaseBidJson | string | Yes | JSON object with e0–e6 numeric fields (auction base bids) |
+| draftModeTag | string | Yes | "Classic" or "Auction" — selects which draft-mode row is upserted (Phase 15.4 D-16) |
+| costsJson | string | Yes | JSON object with e0–e6 numeric fields (EidolonCost) |
 
 **Flow:**
 1. Authenticate caller
 2. Find CostSet by ID
 3. Ownership check: caller is creator or Moderator+
 4. Verify costSet.isDraft=true
-5. Parse and validate classicCostsJson and auctionBaseBidJson: must be valid JSON with numeric e0–e6 fields
-6. Find existing CostSetDraftCharacter row (by costSetId + characterName + gameModeTag)
+5. Parse and validate costsJson: must be valid JSON with numeric e0–e6 fields
+6. Find existing CostSetDraftCharacter row by 4-tuple (costSetId + characterName + gameModeTag + draftModeTag) via `cost_set_id` btree filter + in-memory predicate (A2_FALLBACK_ITER; SpacetimeDB 2.1.0 enum-struct btree limitation)
 7. If found: delete old row, insert updated row (composite PK upsert pattern)
 8. If not found: insert new row
 
+One call = one row. Editing both Classic and Auction for the same character requires two reducer calls.
+
 **Expected State Changes:**
-- CostSetDraftCharacter row upserted for (costSetId, characterName, gameModeTag)
+- CostSetDraftCharacter row upserted for (costSetId, characterName, gameModeTag, draftModeTag)
 
 **Error Cases:**
 | Condition | Error Message |
@@ -80,11 +82,12 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 | Cost set not found | "Cost set {costSetId} not found." |
 | Not owner and not Moderator+ | "Forbidden: You do not own this cost set and are not a Moderator." |
 | Cost set not in draft state | "Cannot edit a cost set that is not in draft state. Publish creates a live copy; clone to make a new draft." |
-| Invalid JSON or missing e0–e6 fields | "classicCostsJson and auctionBaseBidJson must be valid JSON objects." / "classicCostsJson must have numeric field \"{key}\"." |
+| Invalid JSON | "costsJson must be a valid JSON object." |
+| Missing e0–e6 field | "costsJson must have numeric field \"{key}\"." |
 
 ### edit_draft_lightcone_cost
 
-**Purpose:** Upsert a lightcone's cost row in the draft table
+**Purpose:** Upsert a lightcone's cost row in the draft table for a single `(lightconeName, gameMode, draftMode, costSetId)` tuple
 
 **Permission:** Cost set owner or Moderator+
 
@@ -94,16 +97,18 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 | costSetId | u32 | Yes | Target draft cost set |
 | lightconeName | string | Yes | Lightcone to edit |
 | gameModeTag | string | Yes | Game mode for this cost entry |
-| classicCostsJson | string | Yes | JSON object with s1–s5 numeric fields (SuperimpositionCost) |
-| auctionBaseBidJson | string | Yes | JSON object with s1–s5 numeric fields |
+| draftModeTag | string | Yes | "Classic" or "Auction" — selects which draft-mode row is upserted (Phase 15.4 D-17) |
+| costsJson | string | Yes | JSON object with s1–s5 numeric fields (SuperimpositionCost) |
 
 **Flow:**
 1. Authenticate caller; find CostSet; ownership check; verify isDraft
-2. Parse and validate classicCostsJson and auctionBaseBidJson: must be valid JSON with numeric s1–s5 fields
-3. Upsert CostSetDraftLightcone row (delete+insert for composite PK)
+2. Parse and validate costsJson: must be valid JSON with numeric s1–s5 fields
+3. 4-tuple draft lookup (costSetId + lightconeName + gameModeTag + draftModeTag); delete+insert upsert on CostSetDraftLightcone
+
+One call = one row per draft mode.
 
 **Expected State Changes:**
-- CostSetDraftLightcone row upserted for (costSetId, lightconeName, gameModeTag)
+- CostSetDraftLightcone row upserted for (costSetId, lightconeName, gameModeTag, draftModeTag)
 
 **Error Cases:**
 | Condition | Error Message |
@@ -111,11 +116,12 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 | Cost set not found | "Cost set {costSetId} not found." |
 | Not owner and not Moderator+ | "Forbidden: You do not own this cost set and are not a Moderator." |
 | Cost set not in draft state | "Cannot edit a cost set that is not in draft state." |
-| Invalid JSON or missing s1–s5 fields | "classicCostsJson and auctionBaseBidJson must be valid JSON objects." / "classicCostsJson must have numeric field \"{key}\"." |
+| Invalid JSON | "costsJson must be a valid JSON object." |
+| Missing s1–s5 field | "costsJson must have numeric field \"{key}\"." |
 
 ### edit_draft_synergy_cost
 
-**Purpose:** Upsert a synergy cost modifier in the draft table
+**Purpose:** Upsert a synergy cost modifier in the draft table for a single `(sourceName, targetName, gameMode, draftMode, costSetId)` tuple
 
 **Permission:** Cost set owner or Moderator+
 
@@ -126,15 +132,18 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 | sourceName | string | Yes | Source character name for synergy |
 | targetName | string | Yes | Target character name for synergy |
 | gameModeTag | string | Yes | Game mode for this synergy entry |
+| draftModeTag | string | Yes | "Classic" or "Auction" — part of composite PK (Phase 15.4 D-18) |
 | costModifier | f32 | Yes | Synergy cost modifier value |
 
 **Flow:**
 1. Authenticate caller; find CostSet; ownership check; verify isDraft
-2. Find existing CostSetDraftSynergy row (by costSetId + sourceName + targetName + gameModeTag)
+2. Find existing CostSetDraftSynergy row by 5-tuple (costSetId + sourceName + targetName + gameModeTag + draftModeTag)
 3. Upsert (delete+insert for composite PK)
 
+Phase 15.4 introduced first-ever synergy auction rows — the default seed set now contains synergy rows with `draftMode=Auction` in addition to the pre-existing Classic rows (D-13 zero-value default).
+
 **Expected State Changes:**
-- CostSetDraftSynergy row upserted for (costSetId, sourceName, targetName, gameModeTag)
+- CostSetDraftSynergy row upserted for (costSetId, sourceName, targetName, gameModeTag, draftModeTag)
 
 **Error Cases:**
 | Condition | Error Message |
@@ -145,7 +154,7 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 
 ### publish_cost_set
 
-**Purpose:** Copy all draft rows to live cost tables, clean up draft tables, mark CostSet as published
+**Purpose:** Copy all draft rows (both Classic and Auction draftModes) to live cost tables, clean up draft tables, mark CostSet as published
 
 **Permission:** Cost set owner or Moderator+
 
@@ -157,16 +166,16 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 **Flow:**
 1. Authenticate caller; find CostSet; ownership check
 2. Verify costSet.isDraft=true
-3. Phase A: For each CostSetDraftCharacter row → upsert into HsrCharacterCost (delete existing live row if present, then insert)
-4. Phase B: For each CostSetDraftLightcone row → upsert into HsrLightconeCost
-5. Phase C: For each CostSetDraftSynergy row → upsert into HsrSynergyCost (id.update if exists, insert if not — preserves autoInc id)
+3. Phase A: For each CostSetDraftCharacter row → upsert into HsrCharacterCost. `existingLive` predicate matches on `(characterName, gameMode.tag, draftMode.tag)` (Phase 15.4 D-21, Pitfall 7 regression guard locked by `test/backend/cost-sets/cost-set-lifecycle.test.ts`). Delete existing live row if present, then insert. Both Classic and Auction rows are copied.
+4. Phase B: For each CostSetDraftLightcone row → upsert into HsrLightconeCost (same 3-way predicate match: name + gameMode + draftMode). Both Classic and Auction rows are copied.
+5. Phase C: For each CostSetDraftSynergy row → upsert into HsrSynergyCost. Existing live row matched by 4-tuple `(sourceName, targetName, gameMode.tag, draftMode.tag)`; `id.update()` preserves autoInc id. Both Classic and Auction rows are copied.
 6. Phase D: Delete all CostSetDraft* rows for this costSetId
 7. Phase E: Update CostSet: isPublished=true, isDraft=false
 
 **Expected State Changes:**
-- HsrCharacterCost rows upserted from draft (live table updated)
-- HsrLightconeCost rows upserted from draft
-- HsrSynergyCost rows upserted from draft
+- HsrCharacterCost rows upserted from draft, covering both draftMode variants present in the draft set
+- HsrLightconeCost rows upserted from draft, covering both draftMode variants
+- HsrSynergyCost rows upserted from draft, covering both draftMode variants
 - All CostSetDraftCharacter, CostSetDraftLightcone, CostSetDraftSynergy rows deleted
 - CostSet.isPublished=true, CostSet.isDraft=false
 
@@ -279,21 +288,21 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 ### Create Cost Set (clone from source)
 **Given:** User with TournamentHost+ role, source cost set exists and is published
 **When:** `create_cost_set(name, sourceSetId, gameModeTag)`
-**Then:** CostSet row created (isDraft=true, isPublished=false). Draft tables populated with cloned rows from source set filtered by gameMode.
+**Then:** CostSet row created (isDraft=true, isPublished=false). Draft tables populated with cloned rows from source set filtered by gameMode. Both Classic and Auction draftMode rows clone together (source `draftMode` passes through).
 
 ### Edit Draft Costs
 **Given:** Unpublished cost set owned by caller
-**When:** `edit_draft_character_cost(costSetId, characterName, gameModeTag, classicCostsJson, auctionBaseBidJson)`
-**Then:** Draft character cost row upserted
-**When:** `edit_draft_lightcone_cost(costSetId, lightconeName, gameModeTag, classicCostsJson, auctionBaseBidJson)`
-**Then:** Draft lightcone cost row upserted
-**When:** `edit_draft_synergy_cost(costSetId, sourceName, targetName, gameModeTag, costModifier)`
-**Then:** Draft synergy cost row upserted
+**When:** `edit_draft_character_cost(costSetId, characterName, gameModeTag, draftModeTag, costsJson)`
+**Then:** Draft character cost row upserted for the specified `(characterName, gameMode, draftMode)` tuple. Editing the other draftMode for the same character requires a second call.
+**When:** `edit_draft_lightcone_cost(costSetId, lightconeName, gameModeTag, draftModeTag, costsJson)`
+**Then:** Draft lightcone cost row upserted for the specified `(lightconeName, gameMode, draftMode)` tuple.
+**When:** `edit_draft_synergy_cost(costSetId, sourceName, targetName, gameModeTag, draftModeTag, costModifier)`
+**Then:** Draft synergy cost row upserted for the specified `(sourceName, targetName, gameMode, draftMode)` tuple.
 
 ### Publish Cost Set
-**Given:** Draft cost set with edits
+**Given:** Draft cost set with edits (may contain both Classic and Auction rows)
 **When:** `publish_cost_set(costSetId)`
-**Then:** Draft rows copied to live HsrCharacterCost/HsrLightconeCost/HsrSynergyCost tables. Draft rows deleted. CostSet: isDraft=false, isPublished=true.
+**Then:** Draft rows copied to live HsrCharacterCost/HsrLightconeCost/HsrSynergyCost tables — both Classic and Auction draftMode rows copied. Draft rows deleted. CostSet: isDraft=false, isPublished=true.
 
 ### Lock Cost Set
 **Given:** Published cost set
@@ -328,8 +337,9 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 | Clone from unpublished source | Throws "Source cost set {id} must be published before cloning." | |
 | Name too long (>100 chars) | Throws "Cost set name must be between 1 and 100 characters." | |
 | Empty name after trim | Throws "Cost set name must be between 1 and 100 characters." | |
-| classicCostsJson missing e0 field for character | Throws "classicCostsJson must have numeric field \"e0\"." | |
-| classicCostsJson missing s1 field for lightcone | Throws "classicCostsJson must have numeric field \"s1\"." | |
+| costsJson missing e0 field for character | Throws "costsJson must have numeric field \"e0\"." | |
+| costsJson missing s1 field for lightcone | Throws "costsJson must have numeric field \"s1\"." | |
+| costsJson not a valid JSON object | Throws "costsJson must be a valid JSON object." | |
 
 ## Integration Points
 
@@ -355,8 +365,14 @@ Cost sets define the per-character, per-lightcone, and synergy cost values used 
 | Full lifecycle verified: create→edit→publish→lock→unpublish→delete | Phase 3 execution | 2026-03-19 |
 | Default protection verified on all 3 lifecycle reducers | Phase 3 execution | 2026-03-19 |
 | Full hydration from codebase — Reducers section added | Phase 13 normalization | 2026-04-09 |
+| `edit_draft_{character,lightcone}_cost` args: replaced `classicCostsJson`+`auctionBaseBidJson` with `costsJson`+`draftModeTag`; one call = one row per `(name, gameMode, draftMode, costSetId)` (D-16, D-17, D-18, REQ-154-06) | Phase 15.4 execution | 2026-04-15 |
+| `edit_draft_synergy_cost` args: added `draftModeTag`; one call = one row per `(source, target, gameMode, draftMode, costSetId)` (D-16, D-17, D-18, REQ-154-06) | Phase 15.4 execution | 2026-04-15 |
+| `publish_cost_set` copies BOTH Classic and Auction draft rows to live tables (Pitfall 7 regression guard locked by `test/backend/cost-sets/cost-set-lifecycle.test.ts`) | Phase 15.4 execution | 2026-04-15 |
+| `draftMode` column added to all 6 cost tables; PK tuples extended by `draftMode`; reducer tuple match uses A2_FALLBACK_ITER (SpacetimeDB 2.1.0 enum-struct btree limitation) — extends Phase 15.1 precedent | Phase 15.4 execution | 2026-04-15 |
+| First-ever Auction synergy rows seeded (D-13 zero-value default on default seed set) | Phase 15.4 execution | 2026-04-15 |
+| Synergy auction round-trip test coverage added: `test/backend/cost-sets/synergy-auction-round-trip.test.ts` (D-25a) | Phase 15.4 execution | 2026-04-15 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 3*
+*Last updated: 2026-04-15*
+*Feature owner: Phase 3 / Phase 15.4*
