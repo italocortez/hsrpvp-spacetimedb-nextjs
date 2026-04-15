@@ -426,6 +426,14 @@ export const CostSetDraftSynergy = __t.object("CostSetDraftSynergy", {
 });
 export type CostSetDraftSynergy = __Infer<typeof CostSetDraftSynergy>;
 
+export const DeletedUser = __t.object("DeletedUser", {
+  id: __t.u32(),
+  displayName: __t.string(),
+  isGuest: __t.bool(),
+  deletedAt: __t.timestamp(),
+});
+export type DeletedUser = __Infer<typeof DeletedUser>;
+
 // The tagged union or sum type for the algebraic type `DisconnectPolicy`.
 export const DisconnectPolicy = __t.enum("DisconnectPolicy", {
   Standard: __t.unit(),

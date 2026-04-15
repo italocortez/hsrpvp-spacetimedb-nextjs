@@ -20,7 +20,6 @@ export default __t.row({
   displayName: __t.string().name("display_name"),
   isGuest: __t.bool().name("is_guest"),
   isOnline: __t.bool().name("is_online"),
-  isPrivate: __t.bool().name("is_private"),
   lastLoginAt: __t.timestamp().name("last_login_at"),
   get role() {
     return Role;
