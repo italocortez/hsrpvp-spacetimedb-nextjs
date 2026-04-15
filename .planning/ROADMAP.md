@@ -146,7 +146,7 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 **Goal:** Replace `classicCosts` + `auctionBaseBid` parallel-column design on `HsrCharacterCost`/`HsrLightconeCost` with a single `costs` struct + `draftMode: DraftMode` column; add `draftMode` to `HsrSynergyCost` (introduces synergy auction support). Extends PK tuple with `draftMode`; row-absence = "not configured for that draft mode". Foundation for Phase 16/17 — must land before cost-tables frontend is written.
 **Requirements**: REQ-154-01, REQ-154-02, REQ-154-03, REQ-154-04, REQ-154-05, REQ-154-06, REQ-154-07, REQ-154-08, REQ-154-09, REQ-154-10, REQ-154-11, REQ-154-12
 **Depends on:** Phase 15, Phase 15.1
-**Plans:** 4/4 plans complete
+**Plans:** 6/6 plans complete
 **Priority:** Run BEFORE Phase 15.2 and 15.3 — bindings regen would invalidate pre-restructure work in those phases.
 
 Plans:
@@ -512,7 +512,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Backend pre-work | 6/6 | Complete    | 2026-04-14 |
+| 15. Backend pre-work | 6/6 | Complete   | 2026-04-15 |
 | 16. Route + global foundation | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
