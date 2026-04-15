@@ -5,14 +5,14 @@ milestone_name: Frontend — Phase Summary
 current_phase: 15.2
 current_plan: Not started
 status: planning
-stopped_at: Phase 15.4 context gathered (discuss mode, 8 areas, composite PK live-probed)
-last_updated: "2026-04-14T22:37:07.372Z"
+stopped_at: Completed 15.4-04-PLAN.md (test rewrites + synergy auction round-trip)
+last_updated: "2026-04-15T04:31:36.967Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 31
-  completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
+  completed_phases: 3
+  total_plans: 14
+  completed_plans: 14
   percent: 100
 ---
 
@@ -82,6 +82,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.1]: D-15/D-16 guard confirmed: no reducer, validation, or reader source file in Plan 03 diff
 - [Phase 15.1]: D-18 test split: scenarios 1/2/3/5 in seed-cost-extraction.test.ts; D-18-4 in partial-update.test.ts; D-06 null-semantics: validateKeys requires all keys present, null is the preserve signal
 - [Phase 15.1]: D-19 guardrail confirmed: cost-set-lifecycle.test.ts and cost-set-pk.test.ts pass unchanged (15/15 tests, zero Phase 15.1 commits on either file)
+- [Phase 15.4-cost-table-draftmode-restructure]: Plan 04: rewrote 6 cost-table integration tests + added synergy auction round-trip (first-ever D-25a); full suite 58/58 files, 615/615 tests green; Pitfall 1/6/7 regression guards in place; validateKeys rejects missing draftMode key on all 3 cost tables
 
 ### Roadmap Evolution
 
@@ -117,7 +118,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-14T22:37:07.369Z
-Stopped at: Phase 15.4 context gathered (discuss mode, 8 areas, composite PK live-probed)
-Resume file: .planning/phases/15.4-cost-table-draftmode-restructure/15.4-CONTEXT.md
+Last session: 2026-04-15T04:31:20.355Z
+Stopped at: Completed 15.4-04-PLAN.md (test rewrites + synergy auction round-trip)
+Resume file: None
 Next action: `/gsd-plan-phase 15`

@@ -46,7 +46,7 @@ Schema migration foundation that must land before Phase 16/17. Sourced from `.pl
 - [ ] **REQ-154-09**: Frontend fix-to-compile across `DataHelpers.ts`, `useCharacterCostTable.ts`, `useLightconeCostTable.ts`, `SynergyDisplay.tsx`, `CostBreakdownChart.tsx`, `BulkUpsert.tsx`, `TableExplorer.tsx`, `CharacterCostTable.tsx`, `tableColumns.ts`, `enums.ts`, `GameDataProvider.tsx`; `npm run build` exits 0 with no `classicCosts` / `auctionBaseBid` references remaining; `UPSERT_TABLE_COLUMNS` map updated per D-27 (D-26, D-27).
 - [ ] **REQ-154-10**: `docs/cost-sets/architecture.md` and `docs/cost-tables/architecture.md` updated during execution to reflect new `draftMode` column, extended PK tuples, btree index changes, and row-absence semantic; updates land in the same plan as the code they describe (D-28).
 - [ ] **REQ-154-11**: Seed pipelines (`scripts/seed-data.ts` and `test/shared/seed-data.ts`) emit one row per present sub-block — no zero-padding fallback; `pairing_template.json` extended to sibling-block `{ classic?, auction? }` shape with both modifiers; `test/data-templates/README.md` transform tables rewritten for char / lc / pairing all three; `ZERO_EIDOLON` / `ZERO_SUPERPOSITION` constants removed (D-12, D-14, D-15).
-- [ ] **REQ-154-12**: 7 affected test files (`seed-cost-extraction.test.ts`, `cost-set-pk.test.ts`, `partial-update.test.ts`, `cost-set-lifecycle.test.ts`, `round-trip.test.ts`, `post-draft.test.ts`, plus `test/shared/seed-data.ts` harness) rewritten/updated against new shape; new coverage added for synergy auction round-trip (first-ever) and `draftMode` filter assertions; full `npm run test:integration` suite green (D-24, D-25).
+- [x] **REQ-154-12**: 7 affected test files (`seed-cost-extraction.test.ts`, `cost-set-pk.test.ts`, `partial-update.test.ts`, `cost-set-lifecycle.test.ts`, `round-trip.test.ts`, `post-draft.test.ts`, plus `test/shared/seed-data.ts` harness) rewritten/updated against new shape; new coverage added for synergy auction round-trip (first-ever) and `draftMode` filter assertions; full `npm run test:integration` suite green (D-24, D-25).
 
 ### Public Features (PUB)
 
@@ -283,7 +283,7 @@ Each requirement maps to exactly one phase. Coverage validated by roadmapper.
 | REQ-154-09 | 15.4 | Pending |
 | REQ-154-10 | 15.4 | Pending |
 | REQ-154-11 | 15.4 | Pending |
-| REQ-154-12 | 15.4 | Pending |
+| REQ-154-12 | 15.4 | Complete |
 | PUB-01 | 17 | Pending |
 | PUB-02 | 17 | Pending |
 | PUB-03 | 17 | Pending |
