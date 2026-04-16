@@ -36,8 +36,10 @@ export function useAuth() {
         if (!conn) return;
         stage1Ref.current = true;
 
+        console.log('[useAuth] Stage 1 subscribing: view_my_profile (always-on, anon-safe)');
         conn.subscriptionBuilder()
             .onApplied(() => {
+                console.log('[useAuth] Stage 1 onApplied: view_my_profile subscription active');
                 setProfileReady(true);
                 readProfileRef.current(conn);
             })
@@ -72,13 +74,23 @@ export function useAuth() {
     // Stage 2: SELECT * FROM user subscription, gated on stage2Gate (D-01).
     // Anonymous visitors never fire this effect — the gate is false until auth evidence exists.
     useEffect(() => {
-        if (!isActive || !stage2Gate || stage2Ref.current) return;
+        if (!isActive) {
+            console.log('[useAuth] Stage 2 skip: connection not active');
+            return;
+        }
+        if (!stage2Gate) {
+            console.log(`[useAuth] Stage 2 gated (anon-safe): no auth signal yet (currentUser=null, hadToken=${hadTokenOnMount.current}, hadCookie=${hadSessionCookie.current})`);
+            return;
+        }
+        if (stage2Ref.current) return;
         const conn = getConnection();
         if (!conn) return;
         stage2Ref.current = true;
 
+        console.log(`[useAuth] Stage 2 subscribing: SELECT * FROM user (gate opened via ${currentUser ? 'currentUser' : hadTokenOnMount.current ? 'token' : 'cookie'})`);
         conn.subscriptionBuilder()
             .onApplied(() => {
+                console.log('[useAuth] Stage 2 onApplied: User subscription active');
                 readProfileRef.current(conn);
             })
             .subscribe('SELECT * FROM user');
@@ -320,6 +332,7 @@ export function useAuth() {
     // Error path clears inside loginGuest's .catch above.
     useEffect(() => {
         if (currentUser) {
+            console.log(`[useAuth] guestLoginPending → false (currentUser resolved: id=${currentUser.id})`);
             setGuestLoginPending(false);
         }
     }, [currentUser]);
@@ -347,9 +360,11 @@ export function useAuth() {
             console.error("SpacetimeDB connection not active.");
             return;
         }
+        console.log('[useAuth] guestLoginPending → true (loginAsGuest click)');
         setGuestLoginPending(true);
         conn.reducers.loginAsGuest({}).catch((err: any) => {
             console.error('[useAuth] loginGuest failed:', err);
+            console.log('[useAuth] guestLoginPending → false (error path)');
             setGuestLoginPending(false);
         });
         // Success path: cleared reactively by the useEffect([currentUser]) below.
