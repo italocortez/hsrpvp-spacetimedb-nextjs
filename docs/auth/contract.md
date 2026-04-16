@@ -156,10 +156,40 @@ Authentication manages how users connect to the SpacetimeDB module, create accou
 **When:** Client WebSocket connects (`clientConnected`)
 **Then:** User soft-deleted immediately (deletedAt set). User cannot interact with the system.
 
-### Ban Enforcement at Ban-Time — Phase 12
+### Ban Enforcement at Ban-Time — Phase 12 / Phase 15.2 D-10
 **Given:** A verified user has UserPrivate with discordId='abc123'
 **When:** `admin_ban_user` called with providerId='abc123'
-**Then:** BanRecord inserted. User soft-deleted (deletedAt set).
+**Then:** BanRecord inserted. User soft-deleted (`deletedAt` set) AND `UserDeletionJob` row inserted scheduled 5s in the future. After 5s elapse, `performUserDeletion` cascade runs (route per D-09 branching below). Pre-D-10 the UserDeletionJob row was never inserted — the cascade silently never ran (R1 latent bug).
+
+### User Deletion — Cascade Branching (Phase 15.2 D-09)
+**Given:** A user exists with `deletedAt` set (via soft-delete writer: `admin_delete_row`, `admin_ban_user`, or `clientConnected` ban-on-reconnect) AND a matching `UserDeletionJob` row is scheduled
+**When:** The scheduled reducer fires `performUserDeletion(ctx, userId, actorId)` after 5s elapse
+**Then:** Cascade proceeds as follows:
+
+| Case | `isGuest` | Has history references? | Outcome |
+|------|-----------|-------------------------|---------|
+| 1 | `true` | **false** | **Hard-delete fast path** — `User` row removed; NO `DeletedUser` row created |
+| 2 | `true` | true | **Archive** — `DeletedUser` row inserted (preserves `displayName`, `isGuest=true`, `deletedAt`); `User` row removed |
+| 3 | `false` | any | **Archive** — `DeletedUser` row inserted (preserves `displayName`, `isGuest=false`, `deletedAt`); `User` row removed |
+
+History tables scanned by `hasHistoryReferences` (any row present triggers archive): `MatchResultParticipant`, `MmrHistory`, `PlayerStat`, `PlayerCharacterStat`, `PlayerRelationship`, `Leaderboard`, `TournamentEnrolled`, `UserAchievement`.
+
+Cascade also hard-deletes `UserPrivate`, all `UserIdentity` rows, all `HsrAccount` + `HsrAccountCharacter` rows, and all calendar data for the user — regardless of branch. Ghost accumulation in `User` eliminated: soft-deleted non-guests no longer remain in the live table with `username='deleted_<id>'`. History FK references stay intact by id (SpacetimeDB does not enforce FK — references remain pointing at the archived id).
+
+### Display Name Resolution for Deleted Users (Phase 15.2 D-12)
+**Given:** A render site (lobby members, match history step actor, match finalization participant, kick/ban target label) calls `resolveUserLabel(ctx, userId)`
+**When:** The helper looks up the id
+**Then:** Three-path resolution:
+1. Live user → `{ displayName: user.displayName, isDeleted: false }`
+2. Archived user (in `DeletedUser`) → `{ displayName: archive.displayName, isDeleted: true }`
+3. Unknown id (not in either table) → `{ displayName: 'User #${id}', isDeleted: true }` synthetic fallback
+
+Pre-15.2, path 2 did not exist — archived users were soft-deleted in `User` with `username='deleted_<id>'`, producing a ghost string at render sites. Post-15.2 the real displayName is preserved.
+
+### Test Data Nuke Preserves SYSTEM (Phase 15.2 D-11)
+**Given:** `deleted_user` has archived rows from prior deletions; `user` contains SYSTEM (id=1) plus test users
+**When:** `server_nuke_test_data({ confirmation: 'NUKE_TEST_DATA' })` called with the server token
+**Then:** All `deleted_user` rows removed; all non-SYSTEM `User`/`UserIdentity`/`UserPrivate` rows removed; SYSTEM (id=1) untouched in `User` and `UserIdentity`.
 
 ### UserIdentity Privacy — Phase 12
 **Given:** Client subscribes to all tables
@@ -239,3 +269,5 @@ Authentication manages how users connect to the SpacetimeDB module, create accou
 | server_link_provider Case 1b: identity merge (re-point identity, delete orphaned guest) verified across all 4 auth paths | Phase 12 execution | 2026-04-08 |
 | Phase 12.1 implemented: Identity GC with 90-day TTL, guards (guests, online, preserve-newest, orphans), GcResult audit — see [smoke/contract.md](../smoke/contract.md#identity-garbage-collection-phase-121) | Phase 12.1 execution | 2026-04-08 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+| User deletion cascade branches on `isGuest && !hasHistoryReferences` — only clean guests hard-delete, all other cases archive to `DeletedUser` (D-09); `admin_ban_user` + `clientConnected` ban-on-reconnect now insert `UserDeletionJob` (D-10 R1 fix); `resolveUserLabel` helper resolves displayName across live/archive/synthetic fallback (D-12); `server_nuke_test_data` also clears `deleted_user` (D-11); `User.isPrivate` column removed (D-02 dead code) | Phase 15.2 execution | 2026-04-15 |
+| UAT verify-work (Test 6) surfaced doc wording oversimplification — "guest fast-path / non-guest eviction only" framing is incorrect. Actual rule: hard-delete only when `isGuest=true` AND `hasHistoryReferences=false`; a guest that has played a match will be archived, not hard-deleted. Scenario block above corrected | Phase 15.2 execution | 2026-04-16 |
