@@ -273,9 +273,8 @@ import ViewMyTournamentMatchesRow from "./view_my_tournament_matches_table";
 import ViewMyTournamentTeamMembersRow from "./view_my_tournament_team_members_table";
 import ViewMyTournamentTeamsRow from "./view_my_tournament_teams_table";
 import ViewMyTournamentsRow from "./view_my_tournaments_table";
-import ViewPublicAccountsRow from "./view_public_accounts_table";
+import ViewPublicHsrAccountsRow from "./view_public_hsr_accounts_table";
 import ViewTournamentRegistrantAccountsRow from "./view_tournament_registrant_accounts_table";
-import ViewUserDirectoryRow from "./view_user_directory_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -1279,13 +1278,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ViewMyTournamentsRow),
-  view_public_accounts: __table({
-    name: 'view_public_accounts',
+  view_public_hsr_accounts: __table({
+    name: 'view_public_hsr_accounts',
     indexes: [
     ],
     constraints: [
     ],
-  }, ViewPublicAccountsRow),
+  }, ViewPublicHsrAccountsRow),
   view_tournament_registrant_accounts: __table({
     name: 'view_tournament_registrant_accounts',
     indexes: [
@@ -1293,13 +1292,6 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ViewTournamentRegistrantAccountsRow),
-  view_user_directory: __table({
-    name: 'view_user_directory',
-    indexes: [
-    ],
-    constraints: [
-    ],
-  }, ViewUserDirectoryRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */

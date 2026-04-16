@@ -1464,7 +1464,7 @@ export const PlayerStat = __t.object("PlayerStat", {
 });
 export type PlayerStat = __Infer<typeof PlayerStat>;
 
-export const PublicAccountRow = __t.object("PublicAccountRow", {
+export const PublicHsrAccountRow = __t.object("PublicHsrAccountRow", {
   accountId: __t.u32(),
   userId: __t.u32(),
   uid: __t.string(),
@@ -1474,7 +1474,7 @@ export const PublicAccountRow = __t.object("PublicAccountRow", {
   characterName: __t.option(__t.string()),
   eidolonLevel: __t.option(__t.u8()),
 });
-export type PublicAccountRow = __Infer<typeof PublicAccountRow>;
+export type PublicHsrAccountRow = __Infer<typeof PublicHsrAccountRow>;
 
 export const RecurrenceRule = __t.object("RecurrenceRule", {
   get recurrenceType() {
@@ -1840,21 +1840,6 @@ export const UserDeletionJob = __t.object("UserDeletionJob", {
 });
 export type UserDeletionJob = __Infer<typeof UserDeletionJob>;
 
-export const UserDirectoryRow = __t.object("UserDirectoryRow", {
-  id: __t.u32(),
-  username: __t.string(),
-  displayName: __t.string(),
-  get role() {
-    return Role;
-  },
-  avatarCharacterName: __t.string(),
-  isOnline: __t.bool(),
-  isGuest: __t.bool(),
-  hasDiscordLinked: __t.bool(),
-  displayedAchievementId: __t.option(__t.u32()),
-});
-export type UserDirectoryRow = __Infer<typeof UserDirectoryRow>;
-
 export const UserIdentity = __t.object("UserIdentity", {
   identity: __t.identity(),
   userId: __t.u32(),
@@ -1988,12 +1973,9 @@ export type ViewMyTournamentTeams = __Infer<typeof ViewMyTournamentTeams>;
 export const ViewMyTournaments = __t.object("ViewMyTournaments", {});
 export type ViewMyTournaments = __Infer<typeof ViewMyTournaments>;
 
-export const ViewPublicAccounts = __t.object("ViewPublicAccounts", {});
-export type ViewPublicAccounts = __Infer<typeof ViewPublicAccounts>;
+export const ViewPublicHsrAccounts = __t.object("ViewPublicHsrAccounts", {});
+export type ViewPublicHsrAccounts = __Infer<typeof ViewPublicHsrAccounts>;
 
 export const ViewTournamentRegistrantAccounts = __t.object("ViewTournamentRegistrantAccounts", {});
 export type ViewTournamentRegistrantAccounts = __Infer<typeof ViewTournamentRegistrantAccounts>;
-
-export const ViewUserDirectory = __t.object("ViewUserDirectory", {});
-export type ViewUserDirectory = __Infer<typeof ViewUserDirectory>;
 
