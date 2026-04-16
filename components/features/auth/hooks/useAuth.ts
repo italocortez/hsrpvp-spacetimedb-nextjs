@@ -20,12 +20,16 @@ export function useAuth() {
 
     // D-01: Stage 2 gate signals. Refs initialized once at mount.
     const hadSessionCookie = useRef(typeof document !== 'undefined' && document.cookie.includes('stdb_session'));
-    const hadTokenOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem(SPACETIMEDB_TOKEN_KEY));
+    // D-01 revision: gate signal switched from SPACETIMEDB_TOKEN_KEY to USER_ID_KEY.
+    // The SDK auto-stores an identity token on first anonymous WS connect (see app/providers.tsx onConnect),
+    // so a token alone does NOT indicate prior authentication. USER_ID_KEY is only written inside
+    // setResolvedUser after a real User row resolves — the correct "has authenticated" signal.
+    const hadUserIdOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem('spacetimedb_user_id'));
 
     // Stage 2 gate (D-01): opens when any of the three auth signals is present.
     // Mirrors isWaitingForData's signal set, plus currentUser != null so Stage 2
     // stays open after auth resolution.
-    const stage2Gate = currentUser != null || hadTokenOnMount.current || hadSessionCookie.current;
+    const stage2Gate = currentUser != null || hadUserIdOnMount.current || hadSessionCookie.current;
 
     // Stage 1: always-on view_my_profile subscription
     // Fires as soon as SpacetimeDB connection is active, regardless of auth state.
@@ -79,7 +83,7 @@ export function useAuth() {
             return;
         }
         if (!stage2Gate) {
-            console.log(`[useAuth] Stage 2 gated (anon-safe): no auth signal yet (currentUser=null, hadToken=${hadTokenOnMount.current}, hadCookie=${hadSessionCookie.current})`);
+            console.log(`[useAuth] Stage 2 gated (anon-safe): no auth signal yet (currentUser=null, hadUserId=${hadUserIdOnMount.current}, hadCookie=${hadSessionCookie.current})`);
             return;
         }
         if (stage2Ref.current) return;
@@ -87,7 +91,7 @@ export function useAuth() {
         if (!conn) return;
         stage2Ref.current = true;
 
-        console.log(`[useAuth] Stage 2 subscribing: SELECT * FROM user (gate opened via ${currentUser ? 'currentUser' : hadTokenOnMount.current ? 'token' : 'cookie'})`);
+        console.log(`[useAuth] Stage 2 subscribing: SELECT * FROM user (gate opened via ${currentUser ? 'currentUser' : hadUserIdOnMount.current ? 'userId' : 'cookie'})`);
         conn.subscriptionBuilder()
             .onApplied(() => {
                 console.log('[useAuth] Stage 2 onApplied: User subscription active');
@@ -340,9 +344,9 @@ export function useAuth() {
     const isLinkingDiscord = hasDiscordIntent && nextAuthStatus === "authenticated" && (!currentUser || currentUser.isGuest);
 
     // If a session cookie exists, suppress LOGIN until auth resolves.
-    // (hadSessionCookie / hadTokenOnMount refs are declared at mount, above the Stage 2 gate.)
+    // (hadSessionCookie / hadUserIdOnMount refs are declared at mount, above the Stage 2 gate.)
     const isOrphanedIdentity = profileReady && !hasMapping;
-    const isWaitingForData = !currentUser && (hadTokenOnMount.current || hadSessionCookie.current) && !isOrphanedIdentity;
+    const isWaitingForData = !currentUser && (hadUserIdOnMount.current || hadSessionCookie.current) && !isOrphanedIdentity;
     const isConnecting = !isActive && !connectionError;
 
     const authState: AuthState = {
