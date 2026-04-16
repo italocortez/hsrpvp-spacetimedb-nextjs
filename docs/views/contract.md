@@ -12,7 +12,7 @@ Views are server-side computed projections that replace direct table subscriptio
 |--------|-------|---------|
 | `view_my_*` | Strictly scoped to the caller's own data or the caller's current lobbies | `view_my_lobbies`, `view_my_lobby_chat`, `view_my_match_steps` |
 | `view_*` (no "my") | Caller's data **plus** publicly visible data | `view_match_history`, `view_match_participant_history` |
-| `view_*` (anonymous) | No authentication required; accessible to all clients | `view_lobby_browser`, `view_user_directory` |
+| `view_*` (anonymous) | No authentication required; accessible to all clients | `view_lobby_browser`, `view_public_accounts` (`view_user_directory` — dead code, removal scheduled Phase 15.5) |
 
 The `view_my_*` prefix guarantees the caller never sees another user's private data. Views without "my" combine caller-participated rows with publicly visible rows.
 
@@ -76,13 +76,13 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 
 ### view_user_directory
 
-**Purpose:** Public user list for display name resolution.
+**Status:** Dead code — removal scheduled in Phase 15.5 (seed: `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`). Zero frontend subscribers; `useAuth.ts` subscribes directly to the raw `user` table, not this view.
 
-**Type:** `anonymousView` -- no authentication required.
+**Type (as currently declared):** `spacetimedb.view()` (Phase 15.2 D-06 flipped from `anonymousView`). Note: per the SpacetimeDB docs, `view` vs `anonymousView` differs only in whether `ctx.sender()` is exposed to the body — both are subscribable by any client. The runtime flip produces no anonymous-rejection behavior without an explicit `getAuthenticatedUser()` check in the body (not present here). Phase 15.5 resolves this by retiring the view and moving enforcement to the frontend subscription lifecycle.
 
-**Row type:** Full `User.rowType`.
+**Row type (while present):** `UserDirectoryRow` — safe D-16 subset: `id, username, displayName, role, avatarCharacterName, isOnline, isGuest, hasDiscordLinked, displayedAchievementId`.
 
-**Current behavior:** Returns all User rows (stepping stone). When frontend migrates to subscribe to this view instead of the raw User table, the User table can be made `public: false`.
+**Purpose (historical):** Was intended as the public user list for display name resolution. Never wired on the frontend — the post-15.5 model is: client subscribes to raw `user` only after auth; `resolveUserLabel` + `DeletedUser` archive handle deleted-user display on the server side.
 
 ### view_my_cost_sets
 
@@ -356,8 +356,10 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 ### Security: Unauthenticated caller sees anonymous views
 
 **Given:** An unauthenticated client connects.
-**When:** Client subscribes to `view_lobby_browser` and `view_user_directory`
-**Then:** Both views return data (anonymousView type requires no authentication).
+**When:** Client subscribes to `view_lobby_browser` or `view_public_accounts`
+**Then:** Both views return data (`anonymousView` type — no auth required).
+
+Note on `view_user_directory`: scheduled for removal in Phase 15.5. The Phase 15.2 D-06 flip from `anonymousView` to `view` does NOT produce anonymous rejection at runtime (`view` vs `anonymousView` is about whether `ctx.sender()` is exposed to the body, not who can subscribe — see SpacetimeDB docs and `.planning/phases/15.2-user-directory-view-performance/15.2-UAT.md` Test 4). Anonymous callers continue to receive rows from `view_user_directory` until the view is deleted in Phase 15.5.
 
 ### Security: Unauthenticated caller gets nothing from per-user views
 
@@ -555,6 +557,8 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 | view_user_directory as stepping stone: returns all User rows until frontend migration | Phase 9 execution | 2026-03-29 |
 | anonymousView type for unauthenticated access (lobby browser, user directory) | Phase 9 execution | 2026-03-29 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+| view_user_directory declaratively flipped from `anonymousView` to `view` (D-06) as a marker for Phase 16's frontend subscription lifecycle; `UserDirectoryRow` projection unchanged (D-07); `view_my_profile` dropped `isPrivate` field (D-08, aligned with User.isPrivate removal) | Phase 15.2 execution | 2026-04-15 |
+| UAT verify-work (Test 4) established that `spacetimedb.view()` vs `spacetimedb.anonymousView()` does NOT gate subscription at the wire — per official docs, the difference is only whether `ctx.sender()` is exposed to the body. D-06's "framework-level rejection" claim in the implementation comment was factually wrong. No client ever subscribed to `view_user_directory`, so the effective behavior change is zero. View scheduled for deletion in Phase 15.5 alongside frontend subscription gating on `useAuth.ts` | Phase 15.2 execution | 2026-04-16 |
 
 ---
 

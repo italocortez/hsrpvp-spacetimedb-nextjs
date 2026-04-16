@@ -26,9 +26,10 @@ Views are server-side read reducers that return filtered data to authenticated o
 - **Purpose:** Admin access to private user data (email, provider tokens)
 
 #### view_user_directory
-- **Auth:** Authenticated only (`spacetimedb.view()`) — anonymous callers receive a framework-level SenderError before the body executes. Phase 15.2 D-06: flipped from `spacetimedb.anonymousView()`.
+- **Status:** Dead code — scheduled for removal in Phase 15.5 (seed: `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`). Zero frontend subscribers; the declarative `spacetimedb.view()` flip (D-06) does NOT produce runtime rejection of anonymous callers — per SpacetimeDB docs, `view` vs `anonymousView` only differs in whether the body receives `ctx.sender()`. No host-level auth gate exists; an explicit `getAuthenticatedUser()` call in the body would be required. This is tracked in Phase 15.5, which retires the view and addresses bandwidth via frontend subscription gating on `useAuth.ts`.
+- **Auth (as declared):** `spacetimedb.view()` (Phase 15.2 D-06: flipped from `spacetimedb.anonymousView()`; cosmetic flip only, see Status above).
 - **Returns:** `UserDirectoryRow[]` — safe D-16 subset: `id, username, displayName, role, avatarCharacterName, isOnline, isGuest, hasDiscordLinked, displayedAchievementId` (excludes deletedAt, lastLoginAt, isPrivate, audit columns)
-- **Purpose:** User search for invites, team requests, etc.
+- **Purpose (historical):** User search for invites, team requests, etc. Never wired on the frontend.
 - **Phase 15.2 note:** Ghost users no longer accumulate in the backing `user` table — `performUserDeletion` evicts non-guest-with-history users to the `deleted_user` archive (private, D-05). The iter cost is bounded by live users only. The dead `.filter(u => !u.deletedAt)` filter was removed from the view body (D-09 eliminates ghosts at the write path).
 
 #### view_my_roster
@@ -185,6 +186,7 @@ Added to `matchHistoryViews.ts`, bindings at `src/module_bindings/view_my_*_hist
 | Views layer split from 2 files into 8 domain files (lobbyViews, identityViews, costSetViews, statsViews, socialViews, matchViews, matchHistoryViews, tournamentViews); move-only invariant (D-01..D-04) | Phase 15 execution | 2026-04-13 |
 | 5 new self-scoped history views added to matchHistoryViews.ts (D-13); binding count 32 -> 37; Pattern A vs Pattern B filter registry documented | Phase 15 execution | 2026-04-13 |
 | view_user_directory flipped from anonymousView to authenticated-only spacetimedb.view() (D-06); dead .filter(u => !u.deletedAt) removed (D-09 eliminates ghosts at write path); ghost accumulation bounded by DeletedUser archive (D-05/D-09) | Phase 15.2 execution | 2026-04-15 |
+| UAT (Test 4) revealed D-06's `spacetimedb.view()` flip does NOT reject anonymous subscribers at the framework level — per SpacetimeDB docs (https://spacetimedb.com/docs/functions/views/), `view` vs `anonymousView` differs only in whether `ctx.sender()` is exposed to the body, not in who can subscribe. The implementation comment at `identityViews.ts:47-49` overstated the behavior. `view_user_directory` has zero frontend subscribers; the actual pre-auth bandwidth leak is `useAuth.ts:38`'s unconditional `SELECT * FROM user` subscription. Phase 15.5 retires `view_user_directory` entirely and gates `useAuth.ts:38` behind auth state (seed: `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`) | Phase 15.2 execution | 2026-04-16 |
 
 ---
 
