@@ -185,7 +185,7 @@ export const NavBar = ({ className }: NavBarProps) => {
         )}
       </div>
 
-      {showLogin && (
+      {showLogin && !isAuthenticated && (
         <div className={styles.loginOverlay} onClick={() => setShowLogin(false)}>
           <div onClick={(e) => e.stopPropagation()}>
             <LoginForm
