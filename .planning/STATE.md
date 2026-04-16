@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 15.3
+current_phase: 15.5
 current_plan: Not started
-status: planning
-stopped_at: Phase 15.2 complete (UAT 9/9 passed, docs synced); Phase 15.5 seed planted at .planning/seeds/phase-15.5-auth-gated-user-subscription.md; ready to plan Phase 15.3
-last_updated: "2026-04-16T19:30:17.477Z"
+status: In discuss — gray areas only (CONTEXT.md bootstrapped with S-01..S-05 locked)
+stopped_at: Phase 15.5 context gathered (5 decisions locked)
+last_updated: "2026-04-16T20:47:25.190Z"
 last_activity: 2026-04-16
 progress:
-  total_phases: 31
+  total_phases: 32
   completed_phases: 4
   total_plans: 19
   completed_plans: 19
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 15.3 — audit-spread-type-helper (15.2 complete 2026-04-16)
+**Current focus:** Phase 15.5 — auth-gated-user-subscription (urgent insert from Phase 15.2 UAT Test 4)
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 15.3
+**Current phase:** 15.5
 **Current plan:** Not started
-**Status:** Ready to plan
+**Status:** In discuss — gray areas only (CONTEXT.md bootstrapped with S-01..S-05 locked)
 **Last activity:** 2026-04-16
 
 Progress: [██████████] 100% (Phase 15: 6/6 plans complete)
@@ -102,6 +102,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - Phase 15.2 inserted after Phase 15: User Directory View Performance (DEFERRED) — `view_user_directory` iter()+JS filter is acceptable at v0.9-v1.0 scale (~100 users baseline). Revisit at 1k+ users; consider `User.isActive: bool` btree (Option B) or materialized `ActiveUserDirectory` table (Option C). Reviewer's suggested `User.deletedAt` btree won't work — SpacetimeDB btrees can't filter on `IS NULL`.
 - Phase 15.3 inserted after Phase 15: Audit Spread Type Helper (REFACTOR) — extract `insertWithAudit<T>()` and `updateWithAudit<T>()` helpers in `spacetimedb/src/helpers/auditHelpers.ts`. Migrate 323 `auditInsert`/`auditUpdate` spread sites across 56 files. Eliminates ~50-100 `as any` suppressions. Pure refactor, zero behavior change. Single big-bang publish at end.
 - Phase 15.4 inserted after Phase 15 (2026-04-14): Cost-table draftMode restructure (FOUNDATION) — replace `classicCosts` + `auctionBaseBid` columns on `HsrCharacterCost`/`HsrLightconeCost` with single `costs` struct + `draftMode: DraftMode` column; add `draftMode` to `HsrSynergyCost` (introduces synergy auction support); extend PK tuples; rewrite `admin_bulk_upsert` 3 cases, 3 `edit_draft_*` reducers, 3 readers (`draftClassic.ts`, `draftAuction.ts`, `postDraft.ts`), 3 frontend hooks; regenerate module bindings; rewrite all cost-related tests (cost-set-lifecycle, cost-set-pk, seed-cost-extraction, partial-update). Blocks Phase 16 + Phase 17. **Elevated priority:** run BEFORE 15.2 and 15.3 — the bindings regen would invalidate any pre-restructure work in those phases.
+- Phase 15.5 inserted after Phase 15 (2026-04-16): Auth-Gated User Subscription (URGENT) — close the real bandwidth leak uncovered during Phase 15.2 UAT Test 4: frontend `useAuth.ts:38` fires `SELECT * FROM user` unconditionally on connection, pre-auth. Split into two-stage subscription (Stage 1 `view_my_profile` always; Stage 2 gated on `currentUser != null || hadTokenOnMount`). Retire the now-cosmetic `view_user_directory` (zero client subscribers, no server-side rejection possible — SpacetimeDB `view` vs `anonymousView` only toggles data access, not caller rejection). Promotes seed `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`; CONTEXT.md bootstrapped on insertion. Phase 16 FOUND-03 handoff must be re-scoped in Phase 16 discussion.
 
 - [Phase 15]: Move-only view reorg: all 32 existing views split into 8 domain files matching tables/ layout; binding surface unchanged.
 - [Phase 15]: Plan 02: Spine (skelUrl/atlasUrl/atlasImgUrls) + positioning (posX/posY/width) columns added to hsr_character; schema live on maincloud; bindings regenerated. Admin router + seed pipeline reworks handled by Plans 03 and 05.
@@ -130,7 +131,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-16
-Stopped at: Phase 15.2 complete — UAT 9/9 passed, 0 issues, docs (auth + views) synced with Phase 15.2 execution tags. Phase 15.5 seed planted for auth-gated user subscription work.
-Resume file: None
-Next action: `/gsd-discuss-phase 15.3` or `/gsd-plan-phase 15.3`
+Last session: 2026-04-16T20:47:25.186Z
+Stopped at: Phase 15.5 context gathered (5 decisions locked)
+Resume file: .planning/phases/15.5-auth-gated-user-subscription/15.5-CONTEXT.md
+Next action: `/gsd-discuss-phase 15.5` (in progress)
