@@ -14,38 +14,40 @@ export function useAuth() {
     // Track the user's profile from view_my_profile subscription
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [profileReady, setProfileReady] = useState(false);
-    const subscribedRef = useRef(false);
+    const [guestLoginPending, setGuestLoginPending] = useState(false);
+    const stage1Ref = useRef(false);
+    const stage2Ref = useRef(false);
 
-    // Set up view_my_profile subscription when connected — event-driven via onApplied
+    // D-01: Stage 2 gate signals. Refs initialized once at mount.
+    const hadSessionCookie = useRef(typeof document !== 'undefined' && document.cookie.includes('stdb_session'));
+    const hadTokenOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem(SPACETIMEDB_TOKEN_KEY));
+
+    // Stage 2 gate (D-01): opens when any of the three auth signals is present.
+    // Mirrors isWaitingForData's signal set, plus currentUser != null so Stage 2
+    // stays open after auth resolution.
+    const stage2Gate = currentUser != null || hadTokenOnMount.current || hadSessionCookie.current;
+
+    // Stage 1: always-on view_my_profile subscription
+    // Fires as soon as SpacetimeDB connection is active, regardless of auth state.
+    // Anonymous callers receive 0 rows (ctx.sender filter); authenticated callers receive their own profile.
     useEffect(() => {
-        if (!isActive || subscribedRef.current) return;
+        if (!isActive || stage1Ref.current) return;
         const conn = getConnection();
         if (!conn) return;
-        subscribedRef.current = true;
+        stage1Ref.current = true;
 
-        // Subscribe to auth views + user table
         conn.subscriptionBuilder()
             .onApplied(() => {
                 setProfileReady(true);
-                readProfileFromConnection(conn);
+                readProfileRef.current(conn);
             })
             .subscribe('SELECT * FROM view_my_profile');
 
-        conn.subscriptionBuilder()
-            .onApplied(() => {
-                readProfileFromConnection(conn);
-            })
-            .subscribe('SELECT * FROM user');
-
-        // Reactive listeners: re-read profile only for real-time changes (not initial subscription data).
-        // SDK event tags: 'Reducer' = this connection's reducer, 'Transaction' = other connection's reducer,
-        // 'SubscribeApplied' = initial subscription data (handled by onApplied above).
         const isLiveChange = (ctx: any) => {
             const tag = ctx?.event?.tag;
             return tag === 'Reducer' || tag === 'Transaction';
         };
 
-        // view_my_profile callbacks — primary data source for profile changes
         const onViewProfileInsert = (ctx: any, row: any) => {
             if (!isLiveChange(ctx)) return;
             console.log(`[useAuth] view_my_profile.onInsert: id=${row?.id}`);
@@ -59,7 +61,37 @@ export function useAuth() {
         conn.db.view_my_profile.onInsert(onViewProfileInsert);
         conn.db.view_my_profile.onUpdate(onViewProfileUpdate);
 
-        // User table callbacks — fallback for connection recovery paths
+        return () => {
+            conn.db.view_my_profile.removeOnInsert(onViewProfileInsert);
+            conn.db.view_my_profile.removeOnUpdate(onViewProfileUpdate);
+            stage1Ref.current = false;
+            setProfileReady(false);
+        };
+    }, [isActive, getConnection]);
+
+    // Stage 2: SELECT * FROM user subscription, gated on stage2Gate (D-01).
+    // Anonymous visitors never fire this effect — the gate is false until auth evidence exists.
+    useEffect(() => {
+        if (!isActive || !stage2Gate || stage2Ref.current) return;
+        const conn = getConnection();
+        if (!conn) return;
+        stage2Ref.current = true;
+
+        conn.subscriptionBuilder()
+            .onApplied(() => {
+                readProfileRef.current(conn);
+            })
+            .subscribe('SELECT * FROM user');
+
+        // MOVED from pre-refactor Stage 1 (was useAuth.ts:63-80).
+        // User callbacks must register AFTER the SELECT * FROM user subscription is active,
+        // not before — registering them in Stage 1 would make them dead code for anon visitors
+        // and architecturally wrong for authed visitors. See RESEARCH §Pitfall 2.
+        const isLiveChange = (ctx: any) => {
+            const tag = ctx?.event?.tag;
+            return tag === 'Reducer' || tag === 'Transaction';
+        };
+
         const onUserInsert = (ctx: any, row: any) => {
             if (!isLiveChange(ctx)) return;
             console.log(`[useAuth] User.onInsert: id=${row?.id} username=${row?.username}`);
@@ -74,14 +106,12 @@ export function useAuth() {
         conn.db.User.onUpdate(onUserUpdate);
 
         return () => {
-            conn.db.view_my_profile.removeOnInsert(onViewProfileInsert);
-            conn.db.view_my_profile.removeOnUpdate(onViewProfileUpdate);
             conn.db.User.removeOnInsert(onUserInsert);
             conn.db.User.removeOnUpdate(onUserUpdate);
-            subscribedRef.current = false;
-            setProfileReady(false);
+            stage2Ref.current = false;
+            // Do NOT reset setProfileReady — Stage 1 owns that.
         };
-    }, [isActive, getConnection]);
+    }, [isActive, stage2Gate, getConnection]);
 
     const USER_ID_KEY = 'spacetimedb_user_id';
 
@@ -286,11 +316,18 @@ export function useAuth() {
         return () => clearTimeout(timer);
     }, [currentUser?.deletedAt, router]);
 
+    // D-03: clear guestLoginPending once currentUser resolves (success path).
+    // Error path clears inside loginGuest's .catch above.
+    useEffect(() => {
+        if (currentUser) {
+            setGuestLoginPending(false);
+        }
+    }, [currentUser]);
+
     const isLinkingDiscord = hasDiscordIntent && nextAuthStatus === "authenticated" && (!currentUser || currentUser.isGuest);
 
     // If a session cookie exists, suppress LOGIN until auth resolves.
-    const hadSessionCookie = useRef(typeof document !== 'undefined' && document.cookie.includes('stdb_session'));
-    const hadTokenOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem(SPACETIMEDB_TOKEN_KEY));
+    // (hadSessionCookie / hadTokenOnMount refs are declared at mount, above the Stage 2 gate.)
     const isOrphanedIdentity = profileReady && !hasMapping;
     const isWaitingForData = !currentUser && (hadTokenOnMount.current || hadSessionCookie.current) && !isOrphanedIdentity;
     const isConnecting = !isActive && !connectionError;
@@ -310,10 +347,13 @@ export function useAuth() {
             console.error("SpacetimeDB connection not active.");
             return;
         }
+        setGuestLoginPending(true);
         conn.reducers.loginAsGuest({}).catch((err: any) => {
             console.error('[useAuth] loginGuest failed:', err);
+            setGuestLoginPending(false);
         });
-    }, [getConnection, readProfileFromConnection]);
+        // Success path: cleared reactively by the useEffect([currentUser]) below.
+    }, [getConnection]);
 
     const loginDiscord = useCallback(() => {
         sessionStorage.setItem(DISCORD_INTENT_KEY, '1');
@@ -343,6 +383,7 @@ export function useAuth() {
     return {
         ...authState,
         isDeleted,
+        guestLoginPending,
         loginGuest,
         loginDiscord,
         logout,

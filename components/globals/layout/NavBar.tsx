@@ -24,7 +24,7 @@ const NAV_ITEMS = [
 
 export const NavBar = ({ className }: NavBarProps) => {
   const pathname = usePathname();
-  const { isAuthenticated, isLoadingData, isConnecting, user, loginGuest, loginDiscord } = useAuthContext();
+  const { isAuthenticated, isLoadingData, isConnecting, user, loginGuest, loginDiscord, guestLoginPending } = useAuthContext();
   const [showLogin, setShowLogin] = useState(false);
   // Start null to match SSR, hydrate from cookie after mount
   const [cachedDisplayName, setCachedDisplayName] = useState<string | null>(null);
@@ -189,8 +189,9 @@ export const NavBar = ({ className }: NavBarProps) => {
         <div className={styles.loginOverlay} onClick={() => setShowLogin(false)}>
           <div onClick={(e) => e.stopPropagation()}>
             <LoginForm
-              loginGuest={() => { loginGuest(); setShowLogin(false); }}
+              loginGuest={() => { loginGuest(); }}
               loginDiscord={() => { loginDiscord(); setShowLogin(false); }}
+              guestLoginPending={guestLoginPending}
             />
           </div>
         </div>
