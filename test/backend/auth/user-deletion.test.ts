@@ -47,40 +47,28 @@ describe('D-17: performUserDeletion eviction', () => {
       const userId = target.userId;
       expect(userId).toBeGreaterThan(0);
 
-      // 2. Insert a synthetic mmr_history row referencing this user, so
-      //    hasHistoryReferences() returns true. This forces the non-guest
-      //    eviction branch (DeletedUser insert + hard-delete User).
+      // 2. Precondition: `hasHistoryReferences(userId)` must return true so
+      //    `performUserDeletion` routes through the eviction branch (DeletedUser
+      //    insert + hard-delete User) rather than the guest fast path.
       //
-      //    queryPrivateTable executes via `spacetime sql` CLI with server token,
-      //    which bypasses client-side RLS and operates at the admin SQL level.
-      //    We use INSERT SQL directly rather than a test reducer to avoid
-      //    adding production code for test convenience (per plan constraints).
+      //    Source of precondition: `server_link_provider` inserts history rows
+      //    during user registration. For a verified (non-guest) test harness,
+      //    those ambient rows are already present by the time we reach this
+      //    step, so no synthetic insert is needed.
       //
-      //    NOTE: MmrHistory uses a u32 autoInc PK (id). All 12 columns required
-      //    by `spacetime sql` INSERT (schema per spacetimedb/src/tables/mmrHistory.ts):
-      //    id, user_id, game_mode (GameMode tagged enum), match_history_id,
-      //    previous_rating, new_rating, delta, season_id (optional u32),
-      //    + four audit columns.
-      //
-      //    KNOWN CLI LIMITATION: `spacetime sql` does not currently accept tagged
-      //    enum literals ('MemoryOfChaos' as string fails; bare identifier fails
-      //    too — the CLI error shows `(memoryOfChaos: () | ...)` suggesting a
-      //    variant-construction syntax that isn't documented). Production code
-      //    (finalizationHelpers.ts:166) is unaffected — it uses the typed
-      //    `ctx.db.MmrHistory.insert({ gameMode, ... })` binding API, not SQL.
-      //
-      //    Test resilience: the `.catch` below swallows this — the real
-      //    hasHistoryReferences precondition is established by ambient history
-      //    rows that server_link_provider inserts during user registration.
-      await queryPrivateTable(
-        `INSERT INTO mmr_history (id, user_id, game_mode, match_history_id, previous_rating, new_rating, delta, season_id, created_by_id, created_date, last_modified_by_id, last_modified_date) ` +
-        `VALUES (0, ${userId}, 'MemoryOfChaos', 0, 1500, 1510, 10, 0, 0, '1970-01-01T00:00:00Z', 0, '1970-01-01T00:00:00Z')`
-      ).catch(() => {
-        // CLI enum-literal limitation — see NOTE above.
-        // server_link_provider's registration-time inserts provide the
-        // history-references precondition; the delete-path assertion is
-        // the source of truth.
-      });
+      //    Why we don't INSERT a synthetic mmr_history row here:
+      //    - `spacetime sql` CLI does not accept tagged enum literals for
+      //      `game_mode` (GameMode). Neither 'MemoryOfChaos' (String mismatch)
+      //      nor a bare identifier is accepted.
+      //    - The autoInc PK semantics via SQL INSERT are not documented —
+      //      passing `id=0` may be treated as auto-assign (same as the typed
+      //      binding API) or may collide on subsequent inserts.
+      //    - Production code (finalizationHelpers.ts:166) uses the typed
+      //      `ctx.db.MmrHistory.insert({ gameMode, ... })` binding API and is
+      //      unaffected by either issue.
+      //    If isGuest=false users ever stop accumulating ambient history at
+      //    registration time, re-introduce a synthetic precondition — likely
+      //    via a test-only reducer, not raw SQL.
 
       // Capture the displayName BEFORE deletion for assertion.
       const userRows = await queryPrivateTable(
