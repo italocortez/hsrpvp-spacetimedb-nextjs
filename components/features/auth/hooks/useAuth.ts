@@ -95,6 +95,14 @@ export function useAuth() {
         conn.subscriptionBuilder()
             .onApplied(() => {
                 console.log('[useAuth] Stage 2 onApplied: User subscription active');
+                // Dedupe: if currentUser already resolved (fresh-guest path, where Stage 1 delivered the
+                // profile row first and flipped the gate via currentUser), Stage 1's readProfile already
+                // ran — skip. Only re-read on the returning-user path where Stage 2 opened via userId/cookie
+                // BEFORE view_my_profile delivered, so currentUser is still null at this moment.
+                if (currentUser) {
+                    console.log('[useAuth] Stage 2 onApplied: skipping readProfile (already resolved by Stage 1)');
+                    return;
+                }
                 readProfileRef.current(conn);
             })
             .subscribe('SELECT * FROM user');
