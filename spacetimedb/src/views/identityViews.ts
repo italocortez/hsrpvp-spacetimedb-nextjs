@@ -1,11 +1,10 @@
 // ─── Identity Views ───────────────────────────────────────────────────────────
 // Views exposing user identity / profile data plus public roster account rows.
 //
-// 1. view_my_identity         — per-user, own UserIdentity mapping
-// 2. view_my_profile          — per-user, User + UserPrivate merge (D-04)
-// 3. view_user_directory      — anonymous, safe subset of all users
-// 4. view_public_accounts     — anonymous, HsrAccount rows where isRosterPublic=true (D-22)
-// 5. view_admin_user_private  — admin/mod view, full UserPrivate rows (D-05)
+// 1. view_my_identity          — per-user, own UserIdentity mapping
+// 2. view_my_profile           — per-user, User + UserPrivate merge (D-04)
+// 3. view_public_hsr_accounts  — anonymous, HsrAccount rows where isRosterPublic=true (D-22; renamed Phase 15.5 D-04)
+// 4. view_admin_user_private   — admin/mod view, full UserPrivate rows (D-05)
 
 import spacetimedb from '../schema';
 import { t } from 'spacetimedb/server';
@@ -28,49 +27,7 @@ export const view_my_identity = spacetimedb.view(
 );
 
 // ---------------------------------------------------------------------------
-// 2. Public User Directory (anonymous view) — safe subset for all clients.
-//    Returns ONLY the D-16 field list: no auth IDs, no audit columns, no
-//    sensitive timestamps. (D-16)
-// ---------------------------------------------------------------------------
-const UserDirectoryRow = t.object('UserDirectoryRow', {
-    id: t.u32(),
-    username: t.string(),
-    displayName: t.string(),
-    role: Role,
-    avatarCharacterName: t.string(),
-    isOnline: t.bool(),
-    isGuest: t.bool(),
-    hasDiscordLinked: t.bool(),
-    displayedAchievementId: t.u32().optional(),
-});
-
-// Phase 15.2 D-06: Flipped from anonymousView to view — rejects anonymous subscribers
-// at the framework level before the body executes. No explicit getAuthenticatedUser()
-// call needed (matches view_my_identity pattern at line 22).
-// Phase 15.2 D-09: Removed .filter(u => !u.deletedAt) — ghost users are now evicted to
-// DeletedUser archive instead of accumulating in the live User table, making this filter
-// a permanent no-op. Removing it prevents future-reader confusion.
-export const view_user_directory = spacetimedb.view(
-    { name: 'view_user_directory', public: true },
-    t.array(UserDirectoryRow),
-    (ctx) => {
-        return [...ctx.db.User.iter()]
-            .map(u => ({
-                id: u.id,
-                username: u.username,
-                displayName: u.displayName,
-                role: u.role,
-                avatarCharacterName: u.avatarCharacterName,
-                isOnline: u.isOnline,
-                isGuest: u.isGuest,
-                hasDiscordLinked: u.hasDiscordLinked,
-                displayedAchievementId: u.displayedAchievementId,
-            }));
-    }
-);
-
-// ---------------------------------------------------------------------------
-// 3. My Profile (per-user view) -- merged User + UserPrivate for the requesting
+// 2. My Profile (per-user view) -- merged User + UserPrivate for the requesting
 //    user. Returns full User fields plus private auth fields (discordId,
 //    discordUsername, email) so the caller sees their own data in a single
 //    subscription. (D-04)
@@ -136,13 +93,13 @@ export const view_my_profile = spacetimedb.view(
 );
 
 // ---------------------------------------------------------------------------
-// 4. view_public_accounts — Anonymous view returning all HsrAccount rows where
+// 3. view_public_hsr_accounts — Anonymous view returning all HsrAccount rows where
 //    isRosterPublic=true. For profile browsing. Characters included, rating
 //    included if isRatingPublic=true. Replaces raw HsrAccount subscription (D-20,
 //    D-22). Flat rows (one per character); accounts with no characters emit a
 //    single row with characterName/eidolonLevel = undefined.
 // ---------------------------------------------------------------------------
-const PublicAccountRow = t.object('PublicAccountRow', {
+const PublicHsrAccountRow = t.object('PublicHsrAccountRow', {
     accountId: t.u32(),
     userId: t.u32(),
     uid: t.string(),
@@ -154,9 +111,10 @@ const PublicAccountRow = t.object('PublicAccountRow', {
 });
 
 // Phase 15 D-01/D-02: moved from anonymousViews.ts
-export const view_public_accounts = spacetimedb.anonymousView(
-    { name: 'view_public_accounts', public: true },
-    t.array(PublicAccountRow),
+// Phase 15.5 D-04: renamed from view_public_accounts — underlying table is HsrAccount; name now names the source.
+export const view_public_hsr_accounts = spacetimedb.anonymousView(
+    { name: 'view_public_hsr_accounts', public: true },
+    t.array(PublicHsrAccountRow),
     (ctx) => {
         const results: any[] = [];
 
@@ -199,7 +157,7 @@ export const view_public_accounts = spacetimedb.anonymousView(
 );
 
 // ---------------------------------------------------------------------------
-// 5. Admin User Private (admin/mod view) -- returns all UserPrivate rows
+// 4. Admin User Private (admin/mod view) -- returns all UserPrivate rows
 //    when caller has role >= Moderator (level 75). Enables admins and
 //    moderators to look up discordUsername for moderation. (D-05)
 // ---------------------------------------------------------------------------

@@ -20,8 +20,7 @@ export {
 export {
     view_my_identity,
     view_my_profile,
-    view_user_directory,
-    view_public_accounts,
+    view_public_hsr_accounts,
     view_admin_user_private,
 } from './views/identityViews';
 export {
