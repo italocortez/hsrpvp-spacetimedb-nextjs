@@ -4,6 +4,7 @@
 
 import { SenderError } from 'spacetimedb/server';
 import { auditInsert, auditUpdate } from './auditColumns';
+import { insertWithAudit, updateWithAudit } from './auditHelpers';
 import { getKFactor, calculateExpectedScore, calculateRatingChange, calculateTeamEffective, calculateAccountModifier } from './eloCalculation';
 import type { EloConfigValues } from './eloCalculation';
 import { incrementPlayerStat, incrementPlayerRelationship } from './statsIncrement';
@@ -23,15 +24,14 @@ function getOrCreateRating(ctx: any, userId: number, gameMode: any, seasonId: nu
     const existing = [...ctx.db.MmrRating.by_user_mode_season.filter([userId, gameMode, seasonId])][0];
     if (existing) return existing;
 
-    const newRow = {
+    const newRow = insertWithAudit(ctx, {
         userId,
         gameMode,
         rating: initialRating,
         matchesPlayed: 0,
         globalCompositeRating: undefined,
         seasonId,
-        ...auditInsert(ctx, actingUserId),
-    };
+    }, actingUserId);
     ctx.db.MmrRating.insert(newRow as any);
     return { ...newRow };
 }
@@ -163,7 +163,7 @@ export function processMatchMmr(
         }
 
         // Insert MmrHistory row
-        ctx.db.MmrHistory.insert({
+        ctx.db.MmrHistory.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             userId: participant.userId,
             gameMode,
@@ -172,8 +172,7 @@ export function processMatchMmr(
             newRating,
             delta,
             seasonId,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }
 
@@ -277,11 +276,11 @@ export function runFinalization(
     // For concede: only create if archival is needed (T2/T3), skip for T1 casual non-tournament
     let historyRow: any = null;
     if (!isConcede || concedeFlags.doArchiveSteps || concedeFlags.doArchiveSession) {
-    historyRow = ctx.db.MatchSessionHistory.insert({
+    historyRow = ctx.db.MatchSessionHistory.insert(insertWithAudit(ctx, {
         id: 0, // autoInc
         lobbyCode: lobby ? lobby.joinCode : 'UNKNOWN',
         playedAt: matchResult.createdDate,
-        draftMode: lobby ? lobby.draftMode : { tag: 'Classic', value: {} },
+        draftMode: lobby ? lobby.draftMode : { tag: 'Classic', value: {} } as any,
         gameMode,
         teamBlueAlias: lobby ? lobby.teamBlueAlias : 'Blue',
         teamRedAlias: lobby ? lobby.teamRedAlias : 'Red',
@@ -300,8 +299,8 @@ export function runFinalization(
             deathPenalty: lobby.deathPenalty,
         } : {
             teamSize: 1,
-            draftMode: { tag: 'Classic', value: {} },
-            banMode: { tag: 'None', value: {} },
+            draftMode: { tag: 'Classic', value: {} } as any,
+            banMode: { tag: 'None', value: {} } as any,
             standardTurnSeconds: 60,
             reserveBankSeconds: 120,
             characterBudget: 0,
@@ -320,8 +319,7 @@ export function runFinalization(
         handicapApplied: 0,
         // D-84/D-91: Tournament matches hidden until tournament completes; standalone matches always visible
         isPubliclyVisible: lobby?.isTournamentControlled ? false : true,
-        ...auditInsert(ctx, actingUserId),
-    } as any);
+    }, actingUserId));
     } // end step 7 concede gate
 
     // Select participant list: use concedeParticipants for concede paths (D-75 fallback)
@@ -342,7 +340,7 @@ export function runFinalization(
                         targetName = step.payload.value?.lightconeName;
                     }
                 }
-                ctx.db.MatchSessionStepHistory.insert({
+                ctx.db.MatchSessionStepHistory.insert(insertWithAudit(ctx, {
                     matchHistoryId: historyRow.id,
                     // PK is [matchHistoryId, gameNumber, sequence] — gameNumber required (D-13)
                     // By finalization time only the last game's steps remain (advance_to_next_game deletes
@@ -355,8 +353,7 @@ export function runFinalization(
                     action: step.action,
                     targetName,
                     payload: step.payload ? JSON.stringify(step.payload) : undefined,
-                    ...auditInsert(ctx, actingUserId),
-                } as any);
+                }, actingUserId));
             }
         }
     }
@@ -365,7 +362,7 @@ export function runFinalization(
     if (!isConcede || concedeFlags.doArchiveGames) {
         if (historyRow) {
             for (const game of games) {
-                ctx.db.MatchResultGameHistory.insert({
+                ctx.db.MatchResultGameHistory.insert(insertWithAudit(ctx, {
                     matchHistoryId: historyRow.id,
                     gameNumber: game.gameNumber,
                     gameMode: game.gameMode,
@@ -380,8 +377,7 @@ export function runFinalization(
                     teamRedBoss1Score: game.teamRedBoss1Score,
                     teamRedBoss2Score: game.teamRedBoss2Score,
                     winnerTeamSide: game.winnerTeamSide,
-                    ...auditInsert(ctx, actingUserId),
-                } as any);
+                }, actingUserId));
             }
         }
     }
@@ -391,7 +387,7 @@ export function runFinalization(
         if (historyRow) {
             for (const p of effectiveParticipants) {
                 const memberRow = [...ctx.db.LobbyMember.by_lobby_and_user.filter([matchResult.lobbyId, p.userId])][0];
-                ctx.db.MatchParticipantHistory.insert({
+                ctx.db.MatchParticipantHistory.insert(insertWithAudit(ctx, {
                     userId: p.userId,
                     matchHistoryId: historyRow.id,
                     teamSide: p.teamSide,
@@ -399,8 +395,7 @@ export function runFinalization(
                     isReferee: memberRow ? memberRow.isReferee : false,
                     isCoach: memberRow ? slotIsCoach(memberRow.lobbySlot) : false,
                     isCaptain: p.isCaptain,
-                    ...auditInsert(ctx, actingUserId),
-                } as any);
+                }, actingUserId));
             }
         }
     }
@@ -633,7 +628,7 @@ function incrementSpectatedCount(
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
-        ctx.db.PlayerStat.insert({
+        ctx.db.PlayerStat.insert(insertWithAudit(ctx, {
             userId,
             gameMode,
             draftMode,
@@ -645,7 +640,6 @@ function incrementSpectatedCount(
             seasonId,
             matchType,
             teamSize,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }
