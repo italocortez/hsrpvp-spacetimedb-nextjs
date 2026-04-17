@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { ensureLobbyMember, ensureStageIs, slotTeam, slotIsCoach, slotToTeamSide } from '../helpers/lobbyHelpers';
 import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
@@ -177,7 +177,7 @@ export const nominate_character = spacetimedb.reducer(
         const nextSeq = getNextSequence(ctx, lobbyId);
 
         // Insert Nominate step (per D-47: nomination = automatic first bid at base cost)
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             gameNumber: session.currentGameNumber,
@@ -191,12 +191,10 @@ export const nominate_character = spacetimedb.reducer(
                 value: { characterName, eidolon },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Set auction state: nomination = first bid by nominating team at base cost
-        ctx.db.MatchSession.lobbyId.update({
-            ...session,
+        ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
             currentNomination: characterName,
             currentBidAmount: baseCost,
             currentBidTeam: slotToTeamSide(member.lobbySlot),
@@ -205,14 +203,11 @@ export const nominate_character = spacetimedb.reducer(
                 turnStartAt: ctx.timestamp,
                 accumulatedPauseMs: 0,
             },
-            ...auditUpdate(ctx, session, user.id),
-        } as any);
+        }, user.id));
 
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         console.log(
             `[AUCTION] nominate_character: User #${user.id} (${slotTeam(member.lobbySlot)}) nominated '${characterName}' (E${eidolon}) at base cost ${baseCost} in lobby #${lobbyId}`
@@ -305,7 +300,7 @@ export const place_bid = spacetimedb.reducer(
         const nextSeq = getNextSequence(ctx, lobbyId);
 
         // Insert Bid step
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             gameNumber: session.currentGameNumber,
@@ -319,12 +314,10 @@ export const place_bid = spacetimedb.reducer(
                 value: { amount: bidAmount, targetCharacter: session.currentNomination },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Update session: new bid amount + bidding team
-        ctx.db.MatchSession.lobbyId.update({
-            ...session,
+        ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
             currentBidAmount: bidAmount,
             currentBidTeam: slotToTeamSide(member.lobbySlot),
             timerState: {
@@ -332,14 +325,11 @@ export const place_bid = spacetimedb.reducer(
                 turnStartAt: ctx.timestamp,
                 accumulatedPauseMs: 0,
             },
-            ...auditUpdate(ctx, session, user.id),
-        } as any);
+        }, user.id));
 
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         console.log(
             `[AUCTION] place_bid: User #${user.id} (${slotTeam(member.lobbySlot)}) bid ${bidAmount} on '${session.currentNomination}' in lobby #${lobbyId}`
@@ -434,7 +424,7 @@ export const pass_bid = spacetimedb.reducer(
         const nextSeq = getNextSequence(ctx, lobbyId);
 
         // Insert AuctionSold step
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             gameNumber: session.currentGameNumber,
@@ -453,8 +443,7 @@ export const pass_bid = spacetimedb.reducer(
                 },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Deduct budget from winning team
         let newBlueCharBudget = session.teamBlueCharBudget;
@@ -500,8 +489,7 @@ export const pass_bid = spacetimedb.reducer(
             // D-50: Budget rollover — carry leftover charBudget into lcBudget
             const finalBlueCharBudget = newBlueCharBudget;
             const finalRedCharBudget = newRedCharBudget;
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 currentNomination: undefined,
                 currentBidAmount: undefined,
                 currentBidTeam: { tag: 'Spectator', value: {} } as any,
@@ -517,15 +505,12 @@ export const pass_bid = spacetimedb.reducer(
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 stage: { tag: 'Equipping', value: {} } as any,
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
 
             console.log(
                 `[AUCTION] Auction complete! Both teams reached target count. Lobby #${lobbyId} → Equipping.`
@@ -540,8 +525,7 @@ export const pass_bid = spacetimedb.reducer(
             // We do NOT auto-skip here; we just set the next nominator and let the timer handle it.
 
             // Clear auction state and set next nominator
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 currentNomination: undefined,
                 currentBidAmount: undefined,
                 currentBidTeam: { tag: 'Spectator', value: {} } as any,
@@ -555,14 +539,11 @@ export const pass_bid = spacetimedb.reducer(
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
         }
 
         console.log(
@@ -619,7 +600,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
             const baseCost = 0; // EMPTY CHARACTER always 0-cost
 
             // Insert Nominate step for EMPTY CHARACTER
-            ctx.db.MatchSessionStep.insert({
+            ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
                 id: 0,
                 lobbyId,
                 gameNumber: session.currentGameNumber,
@@ -633,13 +614,11 @@ export const timer_expiry_auction = spacetimedb.reducer(
                     value: { characterName: 'EMPTY', eidolon: 0 },
                 } as any,
                 timestamp: ctx.timestamp,
-                ...auditInsert(ctx),
-            } as any);
+            }));
 
             // Set auction state: EMPTY nomination, auto-bid by nominating team at 0
             // The other team must now bid or pass
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 currentNomination: 'EMPTY',
                 currentBidAmount: baseCost,
                 currentBidTeam: nominatingTeam,
@@ -648,14 +627,11 @@ export const timer_expiry_auction = spacetimedb.reducer(
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, 0),
-            } as any);
+            }, 0));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, 0),
-            } as any);
+            }, 0));
 
             console.log(
                 `[AUCTION] timer_expiry_auction: Auto-nominated EMPTY CHARACTER for ${nominatingTeam.tag} in lobby #${lobbyId}`
@@ -682,7 +658,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
             const nominatingTeam = nominateStep ? nominateStep.actorSlot : session.nextNominatorTeam;
 
             // Insert AuctionSold step (system resolves the auction)
-            ctx.db.MatchSessionStep.insert({
+            ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
                 id: 0,
                 lobbyId,
                 gameNumber: session.currentGameNumber,
@@ -701,8 +677,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
                     },
                 } as any,
                 timestamp: ctx.timestamp,
-                ...auditInsert(ctx),
-            } as any);
+            }));
 
             // Deduct budget and increment won count
             let newBlueCharBudget = session.teamBlueCharBudget;
@@ -741,8 +716,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
                 // D-50: Budget rollover — carry leftover charBudget into lcBudget
                 const finalBlueChar = newBlueCharBudget;
                 const finalRedChar = newRedCharBudget;
-                ctx.db.MatchSession.lobbyId.update({
-                    ...session,
+                ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                     currentNomination: undefined,
                     currentBidAmount: undefined,
                     currentBidTeam: { tag: 'Spectator', value: {} } as any,
@@ -758,22 +732,18 @@ export const timer_expiry_auction = spacetimedb.reducer(
                         turnStartAt: ctx.timestamp,
                         accumulatedPauseMs: 0,
                     },
-                    ...auditUpdate(ctx, session, 0),
-                } as any);
+                }, 0));
 
-                ctx.db.Lobby.id.update({
-                    ...lobby,
+                ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                     stage: { tag: 'Equipping', value: {} } as any,
                     lastActivityAt: ctx.timestamp,
-                    ...auditUpdate(ctx, lobby, 0),
-                } as any);
+                }, 0));
 
                 console.log(
                     `[AUCTION] timer_expiry_auction: Auction complete (timer expiry). Lobby #${lobbyId} → Equipping.`
                 );
             } else {
-                ctx.db.MatchSession.lobbyId.update({
-                    ...session,
+                ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                     currentNomination: undefined,
                     currentBidAmount: undefined,
                     currentBidTeam: { tag: 'Spectator', value: {} } as any,
@@ -787,14 +757,11 @@ export const timer_expiry_auction = spacetimedb.reducer(
                         turnStartAt: ctx.timestamp,
                         accumulatedPauseMs: 0,
                     },
-                    ...auditUpdate(ctx, session, 0),
-                } as any);
+                }, 0));
 
-                ctx.db.Lobby.id.update({
-                    ...lobby,
+                ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                     lastActivityAt: ctx.timestamp,
-                    ...auditUpdate(ctx, lobby, 0),
-                } as any);
+                }, 0));
             }
 
             console.log(

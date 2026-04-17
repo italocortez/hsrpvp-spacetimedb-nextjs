@@ -6,7 +6,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureLobbyMember, ensureStageIs, ensureHostOrAbove, slotTeam, slotIsCoach, slotIsSpectator, slotToTeamSide } from '../helpers/lobbyHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
 // ─── equip_lightcone ─────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ export const equip_lightcone = spacetimedb.reducer(
             : 1;
 
         // Insert MatchSessionStep
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             lobbyId,
             gameNumber: session.currentGameNumber,
@@ -101,30 +101,23 @@ export const equip_lightcone = spacetimedb.reducer(
                 value: { characterName, lightconeName, superimposition, costPaid: lcCost },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Deduct LC cost from budget
         if (isBlue) {
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 teamBlueLcBudget: session.teamBlueLcBudget - lcCost,
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
         } else {
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 teamRedLcBudget: session.teamRedLcBudget - lcCost,
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
         }
 
         // Update lobby lastActivityAt
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -178,7 +171,7 @@ export const arrange_lineup = spacetimedb.reducer(
             : 1;
 
         // Insert MatchSessionStep
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             lobbyId,
             gameNumber: session.currentGameNumber,
@@ -192,15 +185,12 @@ export const arrange_lineup = spacetimedb.reducer(
                 value: { positions },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Update lobby lastActivityAt
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -242,7 +232,7 @@ export const confirm_lineup = spacetimedb.reducer(
             : 1;
 
         // Insert MatchSessionStep
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             lobbyId,
             gameNumber: session.currentGameNumber,
@@ -256,15 +246,12 @@ export const confirm_lineup = spacetimedb.reducer(
                 value: { confirmed: true },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Update lobby lastActivityAt
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -296,21 +283,17 @@ export const advance_stage = spacetimedb.reducer(
             const newBlueLcBudget = session.teamBlueLcBudget + session.teamBlueCharBudget;
             const newRedLcBudget = session.teamRedLcBudget + session.teamRedCharBudget;
 
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 teamBlueLcBudget: newBlueLcBudget,
                 teamRedLcBudget: newRedLcBudget,
                 teamBlueCharBudget: 0,
                 teamRedCharBudget: 0,
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 stage: { tag: 'Equipping', value: {} } as any,
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
 
             // System chat message for stage change (D-11)
             const existingMessages = [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)];
@@ -324,7 +307,7 @@ export const advance_stage = spacetimedb.reducer(
                 ctx.db.ChatMessage.delete(sorted[0]);
             }
 
-            ctx.db.ChatMessage.insert({
+            ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
                 id: 0, // autoInc
                 lobbyId,
                 senderUserId: 0,
@@ -332,19 +315,16 @@ export const advance_stage = spacetimedb.reducer(
                 content: 'Draft complete. Stage: Equipping',
                 metadata: undefined,
                 anonymousLabel: undefined,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
 
         } else if (currentStage === 'Equipping') {
             // Transition: Equipping → Scoring
             // Host can force transition (D-58). Check if both teams have confirmed lineup (optional validation).
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 stage: { tag: 'Scoring', value: {} } as any,
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
 
             // System chat message for stage change (D-11)
             const existingMessages = [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)];
@@ -353,7 +333,7 @@ export const advance_stage = spacetimedb.reducer(
                 ctx.db.ChatMessage.delete(sorted[0]);
             }
 
-            ctx.db.ChatMessage.insert({
+            ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
                 id: 0, // autoInc
                 lobbyId,
                 senderUserId: 0,
@@ -361,8 +341,7 @@ export const advance_stage = spacetimedb.reducer(
                 content: 'Lineups set. Stage: Scoring',
                 metadata: undefined,
                 anonymousLabel: undefined,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
 
         } else if (currentStage === 'Scoring') {
             // D-14: Series-aware Scoring transition.
@@ -393,23 +372,19 @@ export const advance_stage = spacetimedb.reducer(
                     newGamesWonRed = redWins;
 
                     // Persist updated win counts to MatchSession
-                    ctx.db.MatchSession.lobbyId.update({
-                        ...session,
+                    ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                         gamesWonBlue: newGamesWonBlue,
                         gamesWonRed: newGamesWonRed,
-                        ...auditUpdate(ctx, session, user.id),
-                    } as any);
+                    }, user.id));
                 }
 
                 const winsNeeded = Math.ceil(session.seriesBestOf / 2);
                 if (newGamesWonBlue >= winsNeeded || newGamesWonRed >= winsNeeded) {
                     // Series won — go to AwaitingResult for finalization
-                    ctx.db.Lobby.id.update({
-                        ...lobby,
+                    ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                         stage: { tag: 'AwaitingResult', value: {} } as any,
                         lastActivityAt: ctx.timestamp,
-                        ...auditUpdate(ctx, lobby, user.id),
-                    } as any);
+                    }, user.id));
 
                     // System chat message
                     const msgs2 = [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)];
@@ -417,7 +392,7 @@ export const advance_stage = spacetimedb.reducer(
                         const sorted2 = [...msgs2].sort((a: any, b: any) => a.id - b.id);
                         ctx.db.ChatMessage.id.delete(sorted2[0].id);
                     }
-                    ctx.db.ChatMessage.insert({
+                    ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
                         id: 0,
                         lobbyId,
                         senderUserId: 0,
@@ -425,16 +400,13 @@ export const advance_stage = spacetimedb.reducer(
                         content: `Series complete (${newGamesWonBlue}-${newGamesWonRed}). Stage: AwaitingResult`,
                         metadata: undefined,
                         anonymousLabel: undefined,
-                        ...auditInsert(ctx, user.id),
-                    } as any);
+                    }, user.id));
                 } else {
                     // Series not won — go to BetweenGames
-                    ctx.db.Lobby.id.update({
-                        ...lobby,
+                    ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                         stage: { tag: 'BetweenGames', value: {} } as any,
                         lastActivityAt: ctx.timestamp,
-                        ...auditUpdate(ctx, lobby, user.id),
-                    } as any);
+                    }, user.id));
 
                     // System chat message
                     const msgs3 = [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)];
@@ -442,7 +414,7 @@ export const advance_stage = spacetimedb.reducer(
                         const sorted3 = [...msgs3].sort((a: any, b: any) => a.id - b.id);
                         ctx.db.ChatMessage.id.delete(sorted3[0].id);
                     }
-                    ctx.db.ChatMessage.insert({
+                    ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
                         id: 0,
                         lobbyId,
                         senderUserId: 0,
@@ -450,17 +422,14 @@ export const advance_stage = spacetimedb.reducer(
                         content: `Game ${session.currentGameNumber} complete (${newGamesWonBlue}-${newGamesWonRed}). Stage: BetweenGames`,
                         metadata: undefined,
                         anonymousLabel: undefined,
-                        ...auditInsert(ctx, user.id),
-                    } as any);
+                    }, user.id));
                 }
             } else {
                 // bestOf=1 — direct to AwaitingResult (original behavior)
-                ctx.db.Lobby.id.update({
-                    ...lobby,
+                ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                     stage: { tag: 'AwaitingResult', value: {} } as any,
                     lastActivityAt: ctx.timestamp,
-                    ...auditUpdate(ctx, lobby, user.id),
-                } as any);
+                }, user.id));
 
                 // System chat message
                 const msgs4 = [...ctx.db.ChatMessage.lobby_id.filter(lobbyId)];
@@ -468,7 +437,7 @@ export const advance_stage = spacetimedb.reducer(
                     const sorted4 = [...msgs4].sort((a: any, b: any) => a.id - b.id);
                     ctx.db.ChatMessage.id.delete(sorted4[0].id);
                 }
-                ctx.db.ChatMessage.insert({
+                ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
                     id: 0,
                     lobbyId,
                     senderUserId: 0,
@@ -476,8 +445,7 @@ export const advance_stage = spacetimedb.reducer(
                     content: 'Match complete. Stage: AwaitingResult',
                     metadata: undefined,
                     anonymousLabel: undefined,
-                    ...auditInsert(ctx, user.id),
-                } as any);
+                }, user.id));
             }
 
         } else {

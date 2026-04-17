@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { ensureLobbyMember, ensureStageIs, slotToTeamSide } from '../helpers/lobbyHelpers';
 import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
@@ -57,9 +57,10 @@ export const undo_last_step = spacetimedb.reducer(
         ctx.db.MatchSessionStep.id.delete(lastStep.id);
 
         // Insert an Undo audit record
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: session.turnIndex,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -70,8 +71,7 @@ export const undo_last_step = spacetimedb.reducer(
                 value: { originalSequenceId: session.turnIndex - 1 },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Decrement turnIndex
         const newTurnIndex = session.turnIndex - 1;
@@ -82,8 +82,7 @@ export const undo_last_step = spacetimedb.reducer(
         const isBackInBanPhase =
             wasAuctionPhase && newTurnIndex < session.draftSequence.length;
 
-        ctx.db.MatchSession.lobbyId.update({
-            ...session,
+        ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
             turnIndex: newTurnIndex,
             isAuctionPhase: isBackInBanPhase ? false : session.isAuctionPhase,
             timerState: {
@@ -91,14 +90,11 @@ export const undo_last_step = spacetimedb.reducer(
                 turnStartAt: ctx.timestamp,
                 accumulatedPauseMs: 0,
             },
-            ...auditUpdate(ctx, session, user.id),
-        } as any);
+        }, user.id));
 
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[DRAFT] undo_last_step: Referee #${user.id} undid step ${session.turnIndex - 1} in lobby #${lobbyId}`);
     }
@@ -177,9 +173,10 @@ export const pause_draft = spacetimedb.reducer(
         );
 
         // Insert Pause step
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
+            gameNumber: session.currentGameNumber,
             sequence: session.turnIndex,
             actorUserId: user.id,
             anonymousLabel: undefined,
@@ -190,8 +187,7 @@ export const pause_draft = spacetimedb.reducer(
                 value: { timeRemainingMs: Math.round(timeRemainingMs), isAutoPause: false },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Update session: set isPaused, increment pause counter for non-referees
         const newPausesBlue =
@@ -203,22 +199,18 @@ export const pause_draft = spacetimedb.reducer(
                 ? session.pausesUsedRed + 1
                 : session.pausesUsedRed;
 
-        ctx.db.MatchSession.lobbyId.update({
-            ...session,
+        ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
             timerState: {
                 ...session.timerState,
                 isPaused: true,
             },
             pausesUsedBlue: newPausesBlue,
             pausesUsedRed: newPausesRed,
-            ...auditUpdate(ctx, session, user.id),
-        } as any);
+        }, user.id));
 
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[DRAFT] pause_draft: User #${user.id} paused lobby #${lobbyId}. timeRemainingMs=${Math.round(timeRemainingMs)}`);
     }
@@ -279,22 +271,18 @@ export const resume_draft = spacetimedb.reducer(
                 ? lastPauseStep.payload.value.timeRemainingMs
                 : lobby.standardTurnSeconds * 1000;
 
-        ctx.db.MatchSession.lobbyId.update({
-            ...session,
+        ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
             timerState: {
                 ...session.timerState,
                 isPaused: false,
                 turnStartAt: ctx.timestamp,
                 accumulatedPauseMs: timeRemainingMs,
             },
-            ...auditUpdate(ctx, session, user.id),
-        } as any);
+        }, user.id));
 
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[DRAFT] resume_draft: User #${user.id} resumed lobby #${lobbyId}. timeRemainingMs=${timeRemainingMs}`);
     }
