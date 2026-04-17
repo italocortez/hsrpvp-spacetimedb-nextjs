@@ -2,7 +2,8 @@ import spacetimedb from '../schema';
 import { IdentityGcJob, setRunIdentityGcReducer } from '../tables/identityGcJob';
 import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
-import { auditInsert, SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { insertWithAudit } from '../helpers/auditHelpers';
 import { ensureModerator } from '../helpers/ensurePermissions';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ export const run_identity_gc = spacetimedb.reducer(
 
         // Write GcResult audit row only when something was deleted (D-10, GC-02)
         if (result.itemsDeleted > 0) {
-            ctx.db.GcResult.insert({
+            ctx.db.GcResult.insert(insertWithAudit(ctx, {
                 id: 0,  // autoInc
                 gcType: 'identity',
                 ranAt: ctx.timestamp,
@@ -101,8 +102,7 @@ export const run_identity_gc = spacetimedb.reducer(
                     orphaned: result.orphanedCount,
                     stale: result.staleCount,
                 }),
-                ...auditInsert(ctx, SYSTEM_USER_ID),
-            } as any);
+            }, SYSTEM_USER_ID));
         }
 
         console.log(`[IDENTITY_GC] Complete: scanned=${result.itemsScanned}, deleted=${result.itemsDeleted} (orphaned=${result.orphanedCount}, stale=${result.staleCount})`);
@@ -125,7 +125,7 @@ export const admin_gc_identities = spacetimedb.reducer((ctx) => {
 
     const result = performIdentityGc(ctx);
 
-    ctx.db.GcResult.insert({
+    ctx.db.GcResult.insert(insertWithAudit(ctx, {
         id: 0,
         gcType: 'identity',
         ranAt: ctx.timestamp,
@@ -137,8 +137,7 @@ export const admin_gc_identities = spacetimedb.reducer((ctx) => {
             stale: result.staleCount,
             triggeredBy: 'admin',
         }),
-        ...auditInsert(ctx, user.id),
-    } as any);
+    }, user.id));
 
     console.log(`[IDENTITY_GC] Admin run complete: scanned=${result.itemsScanned}, deleted=${result.itemsDeleted}`);
     // NOTE: No self-requeue -- admin trigger is one-shot (Pitfall 6)

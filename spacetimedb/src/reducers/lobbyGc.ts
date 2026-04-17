@@ -1,6 +1,7 @@
 import spacetimedb from '../schema';
 import { LobbyGcJob, setRunLobbyGcReducer } from '../tables/lobbyGcJob';
-import { auditInsert, SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { insertWithAudit } from '../helpers/auditHelpers';
 import { ensureModerator } from '../helpers/ensurePermissions';
 import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
@@ -163,15 +164,14 @@ export const run_lobby_gc = spacetimedb.reducer(
 
         // D-14: Write GcResult audit row only when something was deleted
         if (result.lobbiesDeleted > 0) {
-            ctx.db.GcResult.insert({
+            ctx.db.GcResult.insert(insertWithAudit(ctx, {
                 id: 0,
                 gcType: 'lobby',
                 ranAt: ctx.timestamp,
                 itemsScanned: result.lobbiesScanned,
                 itemsDeleted: result.lobbiesDeleted,
                 details: JSON.stringify({ deletedByStage: result.deletedByStage }),
-                ...auditInsert(ctx, SYSTEM_USER_ID),
-            } as any);
+            }, SYSTEM_USER_ID));
         }
 
         // Reschedule next GC run in 15 minutes
@@ -193,15 +193,14 @@ export const admin_gc_lobbies = spacetimedb.reducer((ctx) => {
 
     const result = performLobbyGc(ctx);
 
-    ctx.db.GcResult.insert({
+    ctx.db.GcResult.insert(insertWithAudit(ctx, {
         id: 0,
         gcType: 'lobby',
         ranAt: ctx.timestamp,
         itemsScanned: result.lobbiesScanned,
         itemsDeleted: result.lobbiesDeleted,
         details: JSON.stringify({ deletedByStage: result.deletedByStage, triggeredBy: 'admin' }),
-        ...auditInsert(ctx, user.id),
-    } as any);
+    }, user.id));
 
     console.log(`[LOBBY_GC] Admin run complete: scanned=${result.lobbiesScanned}, deleted=${result.lobbiesDeleted}`);
     // NOTE: No self-requeue -- admin trigger is one-shot (Pitfall 6)

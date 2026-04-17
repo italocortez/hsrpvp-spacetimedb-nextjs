@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { slotIsCoach, slotIsSpectator } from '../helpers/lobbyHelpers';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── select_match_account ─────────────────────────────────────────────────────
 // Sets the HSR account a lobby member will use for the current match.
@@ -108,11 +108,9 @@ export const select_match_account = spacetimedb.reducer(
                     const newSnapshot = Math.max(existingMrp.accountRatingSnapshot, freshAccount.accountRating);
                     if (newSnapshot !== existingMrp.accountRatingSnapshot) {
                         ctx.db.MatchResultParticipant.delete(existingMrp);
-                        ctx.db.MatchResultParticipant.insert({
-                            ...existingMrp,
-                            accountRatingSnapshot: newSnapshot,
-                            ...auditUpdate(ctx, existingMrp, user.id),
-                        } as any);
+                        ctx.db.MatchResultParticipant.insert(
+                            updateWithAudit(ctx, existingMrp, { accountRatingSnapshot: newSnapshot }, user.id),
+                        );
                     }
                 }
             }

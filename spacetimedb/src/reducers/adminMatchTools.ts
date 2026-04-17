@@ -4,7 +4,7 @@ import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermission
 import { runFinalization } from '../helpers/finalizationHelpers';
 import { hardDeleteLobby } from './lobbyGc';
 import { advanceBracketMatch } from '../helpers/bracketHelpers';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 import { slotTeam, slotIsCoach, slotIsSpectator } from '../helpers/lobbyHelpers';
 
 // ─── Permission helper ───────────────────────────────────────────────────────
@@ -88,13 +88,11 @@ export const admin_force_finalize = spacetimedb.reducer(
             : { tag: 'Draw', value: {} };
 
         // Update MatchResultRecord with winner and validated status
-        ctx.db.MatchResultRecord.id.update({
-            ...matchResult,
+        ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
             winnerTeamSide: winnerTeamSide ? { tag: winnerTeamSide, value: {} } as any : undefined,
             matchEndReason: matchResult.matchEndReason ?? matchEndReason, // Keep concede outcome if already set
-            status: { tag: 'Validated', value: {} },
-            ...auditUpdate(ctx, matchResult, user.id),
-        } as any);
+            status: { tag: 'Validated', value: {} } as any,
+        }, user.id));
 
         // Re-read for finalization
         const updatedResult = ctx.db.MatchResultRecord.id.find(matchResult.id)!;
