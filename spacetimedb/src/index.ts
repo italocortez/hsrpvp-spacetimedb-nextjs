@@ -1,6 +1,7 @@
 import spacetimedb from './schema';
 import { ScheduleAt } from 'spacetimedb';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from './helpers/auditHelpers';
 import { transferCaptain, transferReferee, transferHost } from './helpers/flagTransferHelpers';
 import { checkProviderBan, DISCORD_BAN_TYPE } from './helpers/banHelper';
 
@@ -116,40 +117,32 @@ spacetimedb.clientConnected((ctx) => {
   if (mapping) {
     const user = ctx.db.User.id.find(mapping.userId);
     if (user) {
-      ctx.db.User.id.update({
-        ...user,
-        isOnline: true,
-        ...auditUpdate(ctx, user, user.id),
-      });
+      ctx.db.User.id.update(updateWithAudit(ctx, user, { isOnline: true }, user.id));
 
       // D-01: Bump lastSeenAt for GC staleness tracking
-      ctx.db.UserIdentity.identity.update({
-        ...mapping,
+      // Note: `lastSeenAt: ctx.timestamp` paired with `updateWithAudit` is safe (NOT Pitfall 6) —
+      // there is no custom `ts` variable; both lastSeenAt and lastModifiedDate use ctx.timestamp.
+      ctx.db.UserIdentity.identity.update(updateWithAudit(ctx, mapping, {
         lastSeenAt: ctx.timestamp,
-        lastModifiedById: user.id,
-        lastModifiedDate: ctx.timestamp,
-      });
+      }, user.id));
 
       // D-08 enforcement point 2: Check if the user's provider is banned on reconnect
       const userPrivate = ctx.db.UserPrivate.userId.find(mapping.userId);
       if (userPrivate && userPrivate.discordId) {
         const isBanned = checkProviderBan(ctx, DISCORD_BAN_TYPE, userPrivate.discordId);
         if (isBanned && !user.deletedAt) {
-          ctx.db.User.id.update({
-            ...user,
+          ctx.db.User.id.update(updateWithAudit(ctx, user, {
             isOnline: false,
             deletedAt: ctx.timestamp,
-            ...auditUpdate(ctx, user, user.id),
-          });
+          }, user.id));
           // D-10 R1 fix: schedule deletion cascade 5s out (matches admin.ts:181-188 pattern)
           // Actor is user.id — no human admin present on reconnect; matches existing audit pattern
           const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
-          ctx.db.UserDeletionJob.insert({
+          ctx.db.UserDeletionJob.insert(insertWithAudit(ctx, {
             scheduledId: 0n,
             scheduledAt: ScheduleAt.time(deleteAt),
             userId: user.id,
-            ...auditInsert(ctx, user.id),
-          });
+          }, user.id));
           console.log(`[BAN-RECONNECT] User #${user.id} soft-deleted -- banned Discord ID detected on reconnect.`);
         }
       }
