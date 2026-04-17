@@ -2,6 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, ensureTournamentHost, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 // Valid GameMode tags
 const VALID_GAME_MODE_TAGS = ['MemoryOfChaos', 'ApocalypticShadow', 'AnomalyArbitration'];
@@ -43,7 +44,7 @@ export const create_cost_set = spacetimedb.reducer(
         }
 
         // Insert the CostSet metadata row (autoInc id — pass 0)
-        const costSet = ctx.db.CostSet.insert({
+        const costSet = ctx.db.CostSet.insert(insertWithAudit(ctx, {
             id: 0,
             name: trimmedName,
             creatorId: user.id,
@@ -51,22 +52,20 @@ export const create_cost_set = spacetimedb.reducer(
             isPublished: false,
             isDraft: true,
             isLocked: false,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // 15.4 D-20: Clone character costs (source row's draftMode passes through).
         // Both Classic and Auction rows match the gameMode filter and are cloned together.
         const sourceCharCosts = [...ctx.db.HsrCharacterCost.cost_set_id.filter(sourceSetId)];
         for (const row of sourceCharCosts) {
             if (row.gameMode.tag === gameModeTag) {
-                ctx.db.CostSetDraftCharacter.insert({
+                ctx.db.CostSetDraftCharacter.insert(insertWithAudit(ctx, {
                     costSetId: costSet.id,
                     characterName: row.characterName,
                     gameMode: row.gameMode,
                     draftMode: row.draftMode,
                     costs: row.costs,
-                    ...auditInsert(ctx, user.id),
-                } as any);
+                }, user.id));
             }
         }
 
@@ -74,14 +73,13 @@ export const create_cost_set = spacetimedb.reducer(
         const sourceLcCosts = [...ctx.db.HsrLightconeCost.cost_set_id.filter(sourceSetId)];
         for (const row of sourceLcCosts) {
             if (row.gameMode.tag === gameModeTag) {
-                ctx.db.CostSetDraftLightcone.insert({
+                ctx.db.CostSetDraftLightcone.insert(insertWithAudit(ctx, {
                     costSetId: costSet.id,
                     lightconeName: row.lightconeName,
                     gameMode: row.gameMode,
                     draftMode: row.draftMode,
                     costs: row.costs,
-                    ...auditInsert(ctx, user.id),
-                } as any);
+                }, user.id));
             }
         }
 
@@ -89,15 +87,14 @@ export const create_cost_set = spacetimedb.reducer(
         const sourceSynCosts = [...ctx.db.HsrSynergyCost.cost_set_id.filter(sourceSetId)];
         for (const row of sourceSynCosts) {
             if (row.gameMode.tag === gameModeTag) {
-                ctx.db.CostSetDraftSynergy.insert({
+                ctx.db.CostSetDraftSynergy.insert(insertWithAudit(ctx, {
                     costSetId: costSet.id,
                     sourceName: row.sourceName,
                     targetName: row.targetName,
                     gameMode: row.gameMode,
                     draftMode: row.draftMode,
                     costModifier: row.costModifier,
-                    ...auditInsert(ctx, user.id),
-                } as any);
+                }, user.id));
             }
         }
     }
