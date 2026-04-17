@@ -1,7 +1,8 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit } from '../helpers/auditHelpers';
 import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
 // ─── record_game_scores ─────────────────────────────────────────────────────
@@ -121,7 +122,7 @@ export const record_game_scores = spacetimedb.reducer(
             } as any);
         } else {
             // Insert new row
-            ctx.db.MatchResultGame.insert({
+            ctx.db.MatchResultGame.insert(insertWithAudit(ctx, {
                 matchResultId: args.matchResultId,
                 gameNumber: args.gameNumber,
                 gameMode: lobby.gameMode,
@@ -138,8 +139,7 @@ export const record_game_scores = spacetimedb.reducer(
                 winnerTeamSide: { tag: args.winnerTeamSide, value: {} } as any,
                 validationStatus: { tag: 'Pending', value: {} } as any,
                 validatedByUserId: undefined,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
         }
 
         console.log(`[MATCH] Game ${args.gameNumber} scores recorded for match result #${args.matchResultId} by user #${user.id}`);

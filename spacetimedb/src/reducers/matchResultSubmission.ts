@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 import { runFinalization } from '../helpers/finalizationHelpers';
 import { ensureMatchAlive } from '../helpers/disconnectHelpers';
 
@@ -45,11 +45,9 @@ export const confirm_match_scores = spacetimedb.reducer(
             }
 
             const sideFlag = participant.teamSide.tag === 'Blue' ? 'blueConfirmed' : 'redConfirmed';
-            ctx.db.MatchResultRecord.id.update({
-                ...matchResult,
+            ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
                 [sideFlag]: true,
-                ...auditUpdate(ctx, matchResult, user.id),
-            } as any);
+            } as any, user.id));
 
             console.log(`[MATCH] Captain #${user.id} confirmed ${participant.teamSide.tag} scores for match result #${matchResultId}`);
         } else {
@@ -64,12 +62,10 @@ export const confirm_match_scores = spacetimedb.reducer(
             }
 
             // Spectator referee confirms both sides
-            ctx.db.MatchResultRecord.id.update({
-                ...matchResult,
+            ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
                 blueConfirmed: true,
                 redConfirmed: true,
-                ...auditUpdate(ctx, matchResult, user.id),
-            } as any);
+            }, user.id));
 
             console.log(`[MATCH] Spectator referee #${user.id} confirmed both sides for match result #${matchResultId}`);
         }
@@ -173,24 +169,20 @@ export const submit_match_result = spacetimedb.reducer(
             ? { tag: 'Completed', value: {} }
             : { tag: 'Draw', value: {} };
 
-        ctx.db.MatchResultRecord.id.update({
-            ...matchResult,
+        ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
             status: newStatus as any,
             winnerTeamSide: winnerTeamSide ? { tag: winnerTeamSide, value: {} } as any : undefined,
             matchEndReason,
             refereeUserId: user.id,
-            ...auditUpdate(ctx, matchResult, user.id),
-        } as any);
+        }, user.id));
 
         // Transition lobby → AwaitingResult (frees players to join new lobbies)
         const lobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
         if (lobby && lobby.stage.tag !== 'AwaitingResult' && lobby.stage.tag !== 'Finished') {
-            ctx.db.Lobby.id.update({
-                ...lobby,
-                stage: { tag: 'AwaitingResult', value: {} },
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
+                stage: { tag: 'AwaitingResult', value: {} } as any,
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
         }
 
         const statusLabel = matchResult.matchType.tag === 'Casual' ? 'Validated (auto)' : 'Submitted';
@@ -260,13 +252,11 @@ export const dispute_match_result = spacetimedb.reducer(
         }
 
         // Update the MatchResultRecord
-        ctx.db.MatchResultRecord.id.update({
-            ...matchResult,
+        ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
             status: { tag: 'Disputed', value: {} } as any,
             disputedByUserId: user.id,
             disputeReason: trimmedReason,
-            ...auditUpdate(ctx, matchResult, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[MATCH] Match result #${matchResultId} disputed by player #${user.id}`);
     }

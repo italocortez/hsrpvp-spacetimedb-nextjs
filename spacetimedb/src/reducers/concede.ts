@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureLobbyMember, slotTeam, slotIsCoach, slotIsSpectator } from '../helpers/lobbyHelpers';
 import { buildConcedeSummary, isForfeitEligible, isThirdPartyReferee } from '../helpers/disconnectHelpers';
 import { runFinalization } from '../helpers/finalizationHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── Shared concede helper ──────────────────────────────────────────────────
 // Used by concede_match, claim_forfeit, and leave_lobby auto-concede.
@@ -26,12 +26,12 @@ export function performConcede(
         : `${losingTeam} team conceded. Trigger: ${concedeTrigger.tag} by userId:${triggerUserId}, stage: ${lobby.stage.tag}`;
 
     // 4. Create MatchResultRecord
-    const insertedResult = ctx.db.MatchResultRecord.insert({
+    const insertedResult = ctx.db.MatchResultRecord.insert(insertWithAudit(ctx, {
         id: 0, // autoInc
         bracketMatchId: lobby.bracketMatchId ?? undefined,
         lobbyId: lobby.id,
         isTournamentControlled: lobby.isTournamentControlled,
-        status: { tag: 'Validated', value: {} },
+        status: { tag: 'Validated', value: {} } as any,
         winnerTeamSide: { tag: winnerTeamSide, value: {} } as any,
         mmrProcessedAt: undefined,
         refereeUserId: undefined,
@@ -41,12 +41,11 @@ export function performConcede(
         redConfirmed: true,
         refereeFullControl: false,
         matchType: lobby.matchType,
-        matchEndReason: { tag: 'Concede', value: {} },
+        matchEndReason: { tag: 'Concede', value: {} } as any,
         concedeTrigger: concedeTrigger,
         concedeSummary: summary,
         concedeAtStage: lobby.stage.tag,
-        ...auditInsert(ctx, triggerUserId),
-    } as any);
+    }, triggerUserId));
 
     // 5. Set BracketMatch.winnerTeamId if tournament (D-27, D-80 — set but do NOT auto-advance)
     if (lobby.isTournamentControlled && lobby.bracketMatchId) {
@@ -55,35 +54,30 @@ export function performConcede(
             // Find the team ID on the winning side
             const winnerTeamId = winnerTeamSide === 'Blue' ? bracketMatch.team1Id : bracketMatch.team2Id;
             if (winnerTeamId) {
-                ctx.db.BracketMatch.id.update({
-                    ...bracketMatch,
+                ctx.db.BracketMatch.id.update(updateWithAudit(ctx, bracketMatch, {
                     winnerTeamId: winnerTeamId,
-                    resultStatus: { tag: 'Validated', value: {} },
-                    ...auditUpdate(ctx, bracketMatch, triggerUserId),
-                } as any);
+                    resultStatus: { tag: 'Validated', value: {} } as any,
+                }, triggerUserId));
             }
         }
     }
 
     // 6. Transition lobby to AwaitingResult (D-28)
-    ctx.db.Lobby.id.update({
-        ...lobby,
-        stage: { tag: 'AwaitingResult', value: {} },
+    ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
+        stage: { tag: 'AwaitingResult', value: {} } as any,
         lastActivityAt: ctx.timestamp,
-        ...auditUpdate(ctx, lobby, triggerUserId),
-    } as any);
+    }, triggerUserId));
 
     // 7. System chat message
-    ctx.db.ChatMessage.insert({
+    ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
         id: 0,
         lobbyId: lobby.id,
         senderUserId: 0,
-        senderType: { tag: 'System', value: {} },
+        senderType: { tag: 'System', value: {} } as any,
         content: `Match conceded. ${winnerTeamSide} team wins. Reason: ${concedeTrigger.tag}.`,
         metadata: undefined,
         anonymousLabel: undefined,
-        ...auditInsert(ctx, triggerUserId),
-    } as any);
+    }, triggerUserId));
 
     // 8. Auto-finalize for casual non-tournament concedes
     // Tournament concedes go to AwaitingResult for TO resolution (D-80: no auto-advance).
@@ -305,12 +299,12 @@ export const defer_match = spacetimedb.reducer(
         const summary = buildConcedeSummary(ctx, lobby, disconnectedMembers, user.id, 'DeferMatch');
 
         // Create MatchResultRecord with NO winner (deferred, D-22)
-        ctx.db.MatchResultRecord.insert({
+        ctx.db.MatchResultRecord.insert(insertWithAudit(ctx, {
             id: 0,
             bracketMatchId: lobby.bracketMatchId ?? undefined,
             lobbyId: lobby.id,
             isTournamentControlled: lobby.isTournamentControlled,
-            status: { tag: 'Pending', value: {} },
+            status: { tag: 'Pending', value: {} } as any,
             winnerTeamSide: undefined,
             mmrProcessedAt: undefined,
             refereeUserId: undefined,
@@ -324,28 +318,24 @@ export const defer_match = spacetimedb.reducer(
             concedeTrigger: undefined,
             concedeSummary: summary,
             concedeAtStage: lobby.stage.tag,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Transition lobby to AwaitingResult (D-22)
-        ctx.db.Lobby.id.update({
-            ...lobby,
-            stage: { tag: 'AwaitingResult', value: {} },
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
+            stage: { tag: 'AwaitingResult', value: {} } as any,
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         // System chat message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId: lobby.id,
             senderUserId: 0,
-            senderType: { tag: 'System', value: {} },
+            senderType: { tag: 'System', value: {} } as any,
             content: 'Match deferred to admin/TO resolution.',
             metadata: undefined,
             anonymousLabel: undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[DEFER] Lobby #${lobby.id} deferred to AwaitingResult by userId:${user.id}`);
     }

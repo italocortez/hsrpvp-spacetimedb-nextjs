@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit } from '../helpers/auditHelpers';
 import {
     type BracketMatchDescriptor,
     generateSingleElimBracket,
@@ -27,7 +27,7 @@ function insertBracketMatches(
     // Pass 1: Insert all matches with null FKs, build positionKey -> insertedId map
     const idMap = new Map<string, number>();
     for (const desc of descriptors) {
-        const row = ctx.db.BracketMatch.insert({
+        const row = ctx.db.BracketMatch.insert(insertWithAudit(ctx, {
             id: 0,
             tournamentId: tournament.id,
             roundNumber: desc.roundNumber,
@@ -48,8 +48,7 @@ function insertBracketMatches(
             resultStatus: desc.winnerTeamId
                 ? { tag: 'Validated', value: {} } as any
                 : { tag: 'Pending', value: {} } as any,
-            ...auditInsert(ctx, userId),
-        } as any);
+        }, userId));
         idMap.set(desc.positionKey, row.id);
     }
 
@@ -118,7 +117,7 @@ function insertGroupPhaseRecords(
 ): void {
     for (const [groupId, teamIds] of groupAssignments) {
         for (const teamId of teamIds) {
-            ctx.db.GroupPhaseRecord.insert({
+            ctx.db.GroupPhaseRecord.insert(insertWithAudit(ctx, {
                 tournamentId,
                 groupId,
                 teamId: teamId,
@@ -126,8 +125,7 @@ function insertGroupPhaseRecords(
                 losses: 0,
                 draws: 0,
                 points: 0,
-                ...auditInsert(ctx, userId),
-            } as any);
+            }, userId));
         }
     }
 }

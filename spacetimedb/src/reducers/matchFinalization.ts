@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 import { runFinalization, processMatchMmr } from '../helpers/finalizationHelpers';
 import { rebuildLeaderboard } from '../helpers/leaderboardRebuild';
 
@@ -156,11 +156,9 @@ export const process_tournament_mmr = spacetimedb.reducer(
             // Stamp mmrProcessedAt
             const freshMr = ctx.db.MatchResultRecord.id.find(mr.id);
             if (freshMr) {
-                ctx.db.MatchResultRecord.id.update({
-                    ...freshMr,
+                ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, freshMr, {
                     mmrProcessedAt: ctx.timestamp,
-                    ...auditUpdate(ctx, freshMr, user.id),
-                } as any);
+                }, user.id));
             }
         }
 
