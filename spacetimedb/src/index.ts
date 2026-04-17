@@ -1,9 +1,10 @@
 import spacetimedb from './schema';
 import { ScheduleAt } from 'spacetimedb';
-import { auditInsert, auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
+import { auditUpdate, SYSTEM_USER_ID } from './helpers/auditColumns';
 import { insertWithAudit, updateWithAudit } from './helpers/auditHelpers';
 import { transferCaptain, transferReferee, transferHost } from './helpers/flagTransferHelpers';
 import { checkProviderBan, DISCORD_BAN_TYPE } from './helpers/banHelper';
+import { slotToTeamSide } from './helpers/lobbyHelpers';
 
 // Private auth tables — imported for schema registration
 import './tables/userPrivate';
@@ -160,11 +161,7 @@ spacetimedb.clientDisconnected((ctx) => {
 
   const user = ctx.db.User.id.find(userId);
   if (user) {
-    ctx.db.User.id.update({
-      ...user,
-      isOnline: false,
-      ...auditUpdate(ctx, user, userId),
-    });
+    ctx.db.User.id.update(updateWithAudit(ctx, user, { isOnline: false }, userId));
   }
 
   // Handle lobby member disconnect tracking (D-01, D-08, D-72, D-73)
@@ -215,26 +212,24 @@ spacetimedb.clientDisconnected((ctx) => {
     if (stageTag === 'Drafting') {
       const session = ctx.db.MatchSession.lobbyId.find(member.lobbyId);
       if (session && !session.timerState.isPaused) {
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
           id: 0,
           lobbyId: member.lobbyId,
+          gameNumber: session.currentGameNumber,
           sequence: session.turnIndex,
           actorUserId: SYSTEM_USER_ID,
           anonymousLabel: undefined,
-          actorSlot: member.lobbySlot,
-          action: { tag: 'Pause', value: {} },
-          payload: { tag: 'Pause', value: { isAutoPause: true, accumulatedPauseMs: session.timerState.accumulatedPauseMs ?? 0 } },
+          actorSlot: slotToTeamSide(member.lobbySlot),
+          action: { tag: 'Pause', value: {} } as any,
+          payload: { tag: 'Pause', value: { isAutoPause: true, accumulatedPauseMs: session.timerState.accumulatedPauseMs ?? 0 } } as any,
           timestamp: ctx.timestamp,
-          ...auditInsert(ctx, SYSTEM_USER_ID),
-        } as any);
-        ctx.db.MatchSession.lobbyId.update({
-          ...session,
+        }, SYSTEM_USER_ID));
+        ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
           timerState: {
             ...session.timerState,
             isPaused: true,
           },
-          ...auditUpdate(ctx, session, SYSTEM_USER_ID),
-        } as any);
+        }, SYSTEM_USER_ID));
       }
     }
 
