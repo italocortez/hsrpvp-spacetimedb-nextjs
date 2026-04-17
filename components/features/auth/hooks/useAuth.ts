@@ -10,6 +10,10 @@ import { AuthState, User } from '../types';
 // MUST include every field copied into currentUser by setResolvedUser — otherwise a live update
 // affecting only a missing field would be silently dropped by the dedupe. If you add a new field
 // to User + setResolvedUser, add it here too.
+//
+// SpacetimeDB timestamp columns (lastLoginAt, deletedAt) are BigInt at the SDK layer; JSON.stringify
+// throws on BigInt. The replacer coerces any BigInt to string — safe for identity comparison since
+// two identical BigInts stringify to the same decimal.
 function extractProfileSignature(user: any): string {
     return JSON.stringify({
         id: user.id,
@@ -23,7 +27,7 @@ function extractProfileSignature(user: any): string {
         deletedAt: user.deletedAt,
         discordId: user.discordId,
         discordUsername: user.discordUsername,
-    });
+    }, (_k, v) => typeof v === 'bigint' ? v.toString() : v);
 }
 
 export function useAuth() {
