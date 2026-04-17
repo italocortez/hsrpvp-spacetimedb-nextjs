@@ -173,7 +173,7 @@ Plans:
 **Goal:** Extract typed `insertWithAudit<T>()` / `updateWithAudit<T>()` helpers into `spacetimedb/src/helpers/auditHelpers.ts` and migrate 385 audit-stamping call sites across 57 files from the bare-spread `{ ...row, ...auditInsert(ctx, userId) } as any` pattern to the new helpers. **Eliminates ~284 `as any` suppressions (~68% of all backend `as any`)** — 267 trailing audit-merge closures + 10 from `mergeForUpdate` typed signature (Wave 2b D-17) + 7 build-then-insert variable casts (Wave 2b D-18). Improves typing/readability for every backend write path. Keeps `auditUpdate` primitive for ~30 composite-PK delete+insert-with-audit-carry sites + 2 conditional sites (two-tier API). Wave B (folded): convert 8 `expect(true).toBe(true)` placeholder tests across 6 test files to `it.todo(...)`. Zero behavior change. Single big-bang maincloud publish at end. Out-of-scope: the ~133 remaining `as any` (tagged-enum `{tag,value} as any` literals + SDK inline payload casts) are separate SDK-level concerns for a follow-up phase.
 **Requirements**: D-01..D-18 (CONTEXT.md is authoritative — no ROADMAP requirement IDs; decisions are the requirement surface)
 **Depends on:** Phase 15, Phase 15.4
-**Plans:** 4/15 plans executed
+**Plans:** 5/15 plans executed
 
 Plans:
 - [x] Wave 0 pilot (commit `4f1dad6`) — auditHelpers.ts created + admin.ts (14 sites) + bracketHelpers.ts (9 sites) migrated, type-check clean, two-tier API validated
@@ -181,7 +181,7 @@ Plans:
 - [x] 15.3-02-PLAN.md — Wave 1 Cluster B: auth + banAdmin + identityGc + lobbyGc + adminMatchTools + accountSelection (6 files, 18 sites)
 - [x] 15.3-03-PLAN.md — Wave 1 Cluster C: 8 helper files with delete+insert-carry sites preserved (stats + achievement + flag transfer + roster + leaderboard)
 - [x] 15.3-04-PLAN.md — Wave 1 Cluster D: 5 lobby files + rosterMutations conditional preservation
-- [ ] 15.3-05-PLAN.md — Wave 1 Cluster E: 8 tournament subsystem files
+- [x] 15.3-05-PLAN.md — Wave 1 Cluster E: 8 tournament subsystem files
 - [ ] 15.3-06-PLAN.md — Wave 1 Cluster F: 6 bracket + match-result files (bracketAdvancement audit-only per Pitfall 5)
 - [ ] 15.3-07-PLAN.md — Wave 1 Cluster G: 10 draft + roster + admin files (highest density, 111 sites)
 - [ ] 15.3-08-PLAN.md — Wave 2 File 1: finalizationHelpers.ts (14 sites, L148 conditional + P4 carry preserved)
