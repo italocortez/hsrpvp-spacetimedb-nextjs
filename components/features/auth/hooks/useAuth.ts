@@ -6,6 +6,11 @@ import { SPACETIMEDB_TOKEN_KEY } from '@/lib/spacetimedb';
 import { setSessionCookie, clearSessionCookie } from '@/lib/session-cookie';
 import { AuthState, User } from '../types';
 
+// localStorage key for the resolved userId. Written by setResolvedUser after a User row
+// resolves; cleared by logout / deleteGuestAccount. Used as the "has authenticated" signal
+// for the Stage 2 subscription gate (see hadUserIdOnMount below).
+const USER_ID_KEY = 'spacetimedb_user_id';
+
 // Single source of truth for the profile dedupe signature.
 // MUST include every field copied into currentUser by setResolvedUser — otherwise a live update
 // affecting only a missing field would be silently dropped by the dedupe. If you add a new field
@@ -54,7 +59,7 @@ export function useAuth() {
     // The SDK auto-stores an identity token on first anonymous WS connect (see app/providers.tsx onConnect),
     // so a token alone does NOT indicate prior authentication. USER_ID_KEY is only written inside
     // setResolvedUser after a real User row resolves — the correct "has authenticated" signal.
-    const hadUserIdOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem('spacetimedb_user_id'));
+    const hadUserIdOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem(USER_ID_KEY));
 
     // Stage 2 gate (D-01): opens when any of the three auth signals is present.
     // Mirrors isWaitingForData's signal set, plus currentUser != null so Stage 2
@@ -121,9 +126,16 @@ export function useAuth() {
         if (!conn) return;
         stage2Ref.current = true;
 
+        // Fast-reconnect guard (WR-04): the subscription's onApplied may fire after this effect's
+        // cleanup has run (e.g. connection dropped + re-established quickly, leaving the stale
+        // subscription's onApplied queued). Without this flag, the callback would iterate a stale
+        // conn's cache and push outdated rows through setResolvedUser.
+        let cancelled = false;
+
         console.log(`[useAuth] Stage 2 subscribing: SELECT * FROM user (gate opened via ${currentUser ? 'currentUser' : hadUserIdOnMount.current ? 'userId' : 'cookie'})`);
         conn.subscriptionBuilder()
             .onApplied(() => {
+                if (cancelled) return;
                 console.log('[useAuth] Stage 2 onApplied: User subscription active');
                 // Dedupe: if currentUser already resolved (fresh-guest path, where Stage 1 delivered the
                 // profile row first and flipped the gate via currentUser), Stage 1's readProfile already
@@ -160,14 +172,13 @@ export function useAuth() {
         conn.db.User.onUpdate(onUserUpdate);
 
         return () => {
+            cancelled = true;
             conn.db.User.removeOnInsert(onUserInsert);
             conn.db.User.removeOnUpdate(onUserUpdate);
             stage2Ref.current = false;
             // Do NOT reset setProfileReady — Stage 1 owns that.
         };
     }, [isActive, stage2Gate, getConnection]);
-
-    const USER_ID_KEY = 'spacetimedb_user_id';
 
     // Persist userId + session cookie when resolved
     const setResolvedUser = useCallback((user: any) => {

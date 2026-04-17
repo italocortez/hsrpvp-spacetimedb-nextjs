@@ -73,12 +73,15 @@ describe('Auth Subscription Gate (Phase 15.5 S-05)', () => {
   it.skipIf(!hasServerToken())(
     'authenticated visitor (via createTestHarness) — Stage 2 delivers User rows',
     async () => {
-      // Models useAuth's authed path after Plan 02:
-      // The harness models the post-auth path — view_my_profile.onApplied resolves currentUser;
-      // stage2Gate flips true; Stage 2 effect subscribes to SELECT * FROM user;
-      // conn.db.User.iter() returns at least the caller's own user.
-      //
-      // Harness models the post-auth path; User table is subscribed and rows are delivered.
+      // SCOPE: this test is a server-side row-delivery regression guard — it asserts that when a
+      // client (1) calls `loginAsGuest` and (2) subscribes to `SELECT * FROM user`, the server
+      // returns rows including the caller's own User row. It does NOT exercise useAuth.ts's
+      // Stage 2 gate logic — that's client-side React code, not reachable from node-based integration
+      // tests. `createTestHarness()` internally calls `loginAsGuest` + `subscribeToAllTables()`,
+      // which bypasses the `stage2Gate` conditional entirely and subscribes unconditionally.
+      // So a green test here confirms: "post-auth, the raw User subscription delivers rows."
+      // It does NOT confirm: "useAuth.ts won't subscribe anon" — that's the domain of Test 1
+      // (frontend choice) and Plan 02 UAT Scenarios 1+2 (browser-level observation of the gate).
 
       const h = await createTestHarness();
       harnesses.push(h);
