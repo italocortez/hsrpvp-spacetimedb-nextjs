@@ -173,7 +173,7 @@ Plans:
 **Goal:** Extract typed `insertWithAudit<T>()` / `updateWithAudit<T>()` helpers into `spacetimedb/src/helpers/auditHelpers.ts` and migrate 385 audit-stamping call sites across 57 files from the bare-spread `{ ...row, ...auditInsert(ctx, userId) } as any` pattern to the new helpers. **Eliminates ~284 `as any` suppressions (~68% of all backend `as any`)** — 267 trailing audit-merge closures + 10 from `mergeForUpdate` typed signature (Wave 2b D-17) + 7 build-then-insert variable casts (Wave 2b D-18). Improves typing/readability for every backend write path. Keeps `auditUpdate` primitive for ~30 composite-PK delete+insert-with-audit-carry sites + 2 conditional sites (two-tier API). Wave B (folded): convert 8 `expect(true).toBe(true)` placeholder tests across 6 test files to `it.todo(...)`. Zero behavior change. Single big-bang maincloud publish at end. Out-of-scope: the ~133 remaining `as any` (tagged-enum `{tag,value} as any` literals + SDK inline payload casts) are separate SDK-level concerns for a follow-up phase.
 **Requirements**: D-01..D-18 (CONTEXT.md is authoritative — no ROADMAP requirement IDs; decisions are the requirement surface)
 **Depends on:** Phase 15, Phase 15.4
-**Plans:** 11/15 plans executed
+**Plans:** 12/15 plans executed
 
 Plans:
 - [x] Wave 0 pilot (commit `4f1dad6`) — auditHelpers.ts created + admin.ts (14 sites) + bracketHelpers.ts (9 sites) migrated, type-check clean, two-tier API validated
@@ -188,7 +188,7 @@ Plans:
 - [x] 15.3-09-PLAN.md — Wave 2 File 2: server.ts (12 sites migrated [3 insertWithAudit + 9 updateWithAudit] + 1 P4 carry preserved on server_set_mmr if-branch + 3 NO-TOUCH Pitfall 6 blocks preserved at L279-314 server_set_datetime + auditInsert import fully evicted [first Wave 2 file]; fresh-DB smoke test PASS on maincloud — SYSTEM id=1, created_by_id=0, last_modified_by_id=0)
 - [x] 15.3-10-PLAN.md — Wave 2 File 3: index.ts (10 sites, LobbyMember P4 carry preserved)
 - [x] 15.3-11-PLAN.md — Wave 2 File 4: costSetManagement.ts (18 sites, 5-6 conditional sites preserved — drives Wave 3 Option α)
-- [ ] 15.3-12-PLAN.md — Wave 2b: D-17 mergeForUpdate signature + D-18 build-then-insert typing (17 `as any` eliminated)
+- [x] 15.3-12-PLAN.md — Wave 2b: D-17 mergeForUpdate signature + D-18 build-then-insert typing (17 `as any` eliminated across 4 files; brackets 37/37 + match-results 100/100 green)
 - [ ] 15.3-13-PLAN.md — Wave 3: auditInsert disposition (Option α or β based on grep-verified conditional count)
 - [ ] 15.3-14-PLAN.md — Wave 4: 8 placeholder-test sites → it.todo across 6 test files
 - [ ] 15.3-15-PLAN.md — Wave 5: pre-publish gate + maincloud publish (non-destructive) + post-publish verify + STATE.md close

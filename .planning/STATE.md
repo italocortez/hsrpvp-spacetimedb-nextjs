@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 11
+current_plan: 12
 status: executing
-stopped_at: "Completed 15.3-11-PLAN.md (Wave 2 File 4 costSetManagement.ts -- 8 audit sites migrated [4 insertWithAudit create_cost_set plain inserts at L47/L62/L76/L90 + 4 updateWithAudit: HsrSynergyCost if-branch L410 + CostSet publish metadata L442 + lock L482 + unpublish L522] + 6 conditional/primitive sites PRESERVED [3 edit_draft_* if/else split-conditional blocks at L158-178/L236-255/L300-321 + 2 publish_cost_set inline ternary existingLive? auditUpdate:auditInsert at L369/L391 + 1 HsrSynergyCost upsert else-branch auditInsert primitive at L415-425 per plan Section B pre-resolution file-symmetry rationale]. auditInsert import RETAINED -- 1st Wave 2 file to retain (finalizationHelpers also retains due to L148 P5; contrast server.ts Plan 09 + index.ts Plan 10 both evicted). Zero Rule 2 auto-fixes. Integration: cost-sets 20/20 green (cost-set-lifecycle + synergy-auction-round-trip) in 52.59s fresh-DB run. WAVE 2 COMPLETE -- all 4 highest-complexity files done. Wave 3 Option alpha FINAL ACCOUNTING: 9 permanent auditInsert retention sites across 4 files [rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148 + 6 sites in costSetManagement].)"
-last_updated: "2026-04-17T18:26:47.629Z"
+stopped_at: "Completed 15.3-12-PLAN.md (Wave 2b type-hygiene: 17 as-any eliminated across 4 files [admin.ts 10 via D-17 mergeForUpdate tightened generic + 5 FIELDS arrays as const + dropped both existing-as-any and FIELDS-as-any at L375/L463/L512/L561/L609; bracketHelpers 2 via D-18 let:any->GroupPhaseRecord retyping; finalizationHelpers 1 via D-18 newRow annotation MmrRating drop; bracketAdvancement 4 via D-18 retyping of 4 preserved Wave 2b targets L23/L55-56/L480 -- Site L480 required writable mapped-type { -readonly [K in keyof BracketMatch]: BracketMatch[K] } for post-construction resultStatus assignment due to tagged-union getter pattern in module_bindings]. Zero Rule 2 auto-fixes. Integration: typecheck 0 errors in spacetimedb/src, brackets 37/37 green in 222s, match-results 100/100 green in 921s. 3 atomic refactor commits [2fbd714, 99bf6bc, 9f79f85]. Wave 2b COMPLETE.)"
+last_updated: "2026-04-17T19:47:53Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 34
-  percent: 89
+  completed_plans: 35
+  percent: 92
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 11
-**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A+B+C+D+E+F+G; Wave 2 COMPLETE — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts + Plan 11 costSetManagement DONE; then Wave 2b type-hygiene + Wave 3 auditInsert Option α docs-only + Wave 4 test placeholder cleanup + Wave 5 publish)
+**Current plan:** 12
+**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A+B+C+D+E+F+G; Wave 2 COMPLETE — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts + Plan 11 costSetManagement DONE; Wave 2b COMPLETE — Plan 12 type-hygiene [D-17 mergeForUpdate + D-18 build-then-insert typing, 17 as-any eliminated]; then Wave 3 auditInsert Option α docs-only + Wave 4 test placeholder cleanup + Wave 5 publish)
 **Last activity:** 2026-04-17
 
-Progress: [█████████████████████] 34/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-11 complete [Wave 1 DONE + Wave 2 COMPLETE]; Plans 12-15 remaining)
+Progress: [██████████████████████] 35/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-12 complete [Wave 1 DONE + Wave 2 COMPLETE + Wave 2b COMPLETE]; Plans 13-15 remaining)
 
 ## Previous Milestone
 
@@ -119,6 +119,10 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3]: Plan 15.3-10 (Wave 2 File 3 index.ts): 7 audit sites migrated + 3 LobbyMember P4 carry preserved on auditUpdate primitive (L181/L192/L203) + 2 Rule 2 auto-fixes on MatchSessionStep auto-pause (gameNumber field missing [3rd instance after Plan 07 caught it 2x in draftControl] + actorSlot LobbySlot->TeamSide via slotToTeamSide [only MatchSessionStep caller missing canonical conversion]). UserIdentity lastSeenAt hygiene migration (NOT Pitfall 6 -- no custom ts variable). auditInsert import fully evicted (2nd Wave 2 file after server.ts Plan 09). Integration: auth 34/34 + GC 8/8 + lobby 103/103 green (145 tests).
 - [Phase 15.3]: Plan 15.3-11 (Wave 2 File 4 costSetManagement.ts -- LAST Wave 2 file): 8 audit sites migrated [4 insertWithAudit in create_cost_set (CostSet metadata + 3 draft-table clone loops) + 4 updateWithAudit: HsrSynergyCost publish-upsert if-branch L410 (Section B pre-resolution honored -- P2 direct .id.update) + CostSet publish metadata L442 + lock L482 + unpublish L522] + 6 conditional/primitive sites PRESERVED [3 edit_draft_* if/else split-conditional blocks at L158-178 (character) / L236-255 (lightcone) / L300-321 (synergy) + 2 publish_cost_set inline ternary `existingLive? auditUpdate:auditInsert` at L369 (chars) / L391 (lightcones) + 1 HsrSynergyCost publish-upsert else-branch auditInsert primitive at L415-425 per plan Section B file-symmetry rationale]. auditInsert IMPORT RETAINED -- 1st Wave 2 file to retain (finalizationHelpers also retains due to L148 P5; contrast server.ts Plan 09 + index.ts Plan 10 both evicted). Zero Rule 2 auto-fixes. Integration: cost-sets 20/20 green (cost-set-lifecycle 15 + synergy-auction-round-trip 5) in 52.59s fresh-DB run.
 - [Phase 15.3]: WAVE 2 COMPLETE -- all 4 highest-complexity files migrated (finalizationHelpers + server.ts + index.ts + costSetManagement). Wave 3 Option α FINAL ACCOUNTING: 9 permanent auditInsert retention sites across 4 files [rosterMutations.ts L55 + rosterAdmin.ts L160 + finalizationHelpers.ts L148 + costSetManagement.ts 6 sites (3 split-conditional + 2 inline ternary + 1 synergy-upsert else-branch)]. Plan 13 (Wave 3) scope-shrinks to docs-only: update auditColumns.ts JSDoc to reflect 9-site permanent retention rationale; NO code deletion.
+- [Phase 15.3]: Plan 15.3-12 (Wave 2b type-hygiene, WAVE 2b COMPLETE): 17 as-any eliminated across 4 files = exact plan target. D-17 generic-tightening + `as const` FIELDS arrays in admin.ts — 10 as-any dropped at 5 mergeForUpdate call sites (L375/L463/L512/L561/L609). D-18 build-then-insert retyping across 3 files: bracketHelpers.ts let updated1/2 any → GroupPhaseRecord (2 dropped), finalizationHelpers.ts newRow: MmrRating annotation (1 dropped), bracketAdvancement.ts 4 sites retyped to BracketMatch/GroupPhaseRecord (4 dropped; L480 required writable mapped-type `{ -readonly [K in keyof BracketMatch]: BracketMatch[K] }` for post-construction resultStatus assignment due to tagged-union-getter pattern in module_bindings).
+- [Phase 15.3]: Plan 12 pattern NEW: writable mapped-type `{ -readonly [K in keyof Row]: Row[K] }` is the canonical fix for post-construction field mutations on tagged-union columns. Module_bindings renders tagged-union fields (resultStatus, bracketSide, gameMode) as `get` accessors inferred as readonly properties. Mapped-type `-readonly` transform preserves type-checking on all non-getter fields while permitting the runtime mutations. Narrower than `as any` on the whole declaration.
+- [Phase 15.3]: Plan 12: No fallback casts needed at mergeForUpdate call sites. TypeScript collapses T to `any` cleanly when `existing` is `any`-typed; `keyof any & string` resolves to `string`; `as const` FIELDS arrays (`readonly ['displayName', ...]`) are directly assignable to `readonly string[]`. Plan's fallback guidance (`existing as HsrCharacter`) not triggered -- strict improvement over pre-plan baseline at all 5 sites.
+- [Phase 15.3]: Plan 12: Zero Rule 2 auto-fixes. Type-hygiene-only migration; runtime row shapes and control flow unchanged. Files already structurally audited in Wave 0 (admin, bracketHelpers) / Plan 06 (bracketAdvancement) / Plan 08 (finalizationHelpers). Integration cross-cut: typecheck 0 errors in spacetimedb/src + brackets 37/37 green + match-results 100/100 green = 137 integration tests passing post-plan.
 
 ### Roadmap Evolution
 
@@ -155,7 +159,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T18:13:12Z
-Stopped at: Completed 15.3-11-PLAN.md (Wave 2 File 4 costSetManagement.ts -- 8 audit sites migrated [4 insertWithAudit create_cost_set plain inserts + 4 updateWithAudit: HsrSynergyCost if-branch L410 (Section B pre-resolution honored) + CostSet publish metadata L442 + lock L482 + unpublish L522] + 6 conditional/primitive sites PRESERVED [3 edit_draft_* if/else split-conditional blocks L158-178/L236-255/L300-321 + 2 publish_cost_set inline ternary at L369/L391 + 1 HsrSynergyCost upsert else-branch auditInsert primitive at L415-425 per file-symmetry rationale]. auditInsert IMPORT RETAINED -- 1st Wave 2 file to retain. Zero Rule 2 auto-fixes. Integration: cost-sets 20/20 green in 52.59s. WAVE 2 COMPLETE -- all 4 highest-complexity files done.)
+Last session: 2026-04-17T19:47:53Z
+Stopped at: Completed 15.3-12-PLAN.md (Wave 2b type-hygiene: 17 as-any eliminated across 4 files exact plan target. D-17 mergeForUpdate generic tightened `<T extends Record<string, any>, K extends keyof T & string>` + 5 FIELDS arrays declared `as const` at definition sites + 10 as-any removed at 5 call sites L375/L463/L512/L561/L609 in admin.ts. D-18 build-then-insert retyping: bracketHelpers.ts let updated1/2 any -> GroupPhaseRecord (2); finalizationHelpers.ts newRow: MmrRating annotation (1); bracketAdvancement.ts 4 Wave 2b preserved sites L23/L55-56/L480 retyped to BracketMatch/GroupPhaseRecord (4). Writable mapped-type `{ -readonly [K in keyof BracketMatch]: BracketMatch[K] }` introduced at L480 for tagged-union-getter field mutations. Zero Rule 2 auto-fixes. Typecheck 0 errors in spacetimedb/src; brackets 37/37 green in 222s; match-results 100/100 green in 921s. 3 atomic refactor commits [2fbd714, 99bf6bc, 9f79f85]. WAVE 2b COMPLETE.)
 Resume file: None
-Next action: `/gsd-execute-phase 15.3` (continue with Plan 12 -- Wave 2b D-17/D-18 type-hygiene [mergeForUpdate typed signature in admin.ts + 7 build-then-insert let:any declarations across 3 files], then Plan 13 Wave 3 auditInsert Option α docs-only [codify 9-site permanent retention rationale in auditColumns.ts JSDoc -- NO code deletion; Option α accounting: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148 + costSetManagement 6 sites], Plan 14 placeholder test conversion, Plan 15 maincloud publish)
+Next action: `/gsd-execute-phase 15.3` (continue with Plan 13 Wave 3 auditInsert Option α docs-only [codify 9-site permanent retention rationale in auditColumns.ts JSDoc -- NO code deletion; Option α accounting: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148 + costSetManagement 6 sites], then Plan 14 placeholder test conversion, Plan 15 maincloud publish)
