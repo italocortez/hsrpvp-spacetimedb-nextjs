@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { DraftMode, BanMode, GameMode, MatchType, RosterVisibility, DisconnectPolicy } from '../types/enums';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import {
     ensureNotInLobby,
     ensureGuestRestrictions,
@@ -105,7 +105,7 @@ export const create_lobby = spacetimedb.reducer(
             : undefined;
 
         // Insert Lobby row
-        const lobby = ctx.db.Lobby.insert({
+        const lobby = ctx.db.Lobby.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             joinCode,
             hostUserId: user.id,
@@ -152,31 +152,28 @@ export const create_lobby = spacetimedb.reducer(
             refereeControlsShelving: args.refereeControlsShelving,
             lastActivityAt: ctx.timestamp,
             stage: { tag: 'Waiting', value: {} },
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // D-24: host joins as referee, D-27: starts as Spectator
-        ctx.db.LobbyMember.insert({
+        ctx.db.LobbyMember.insert(insertWithAudit(ctx, {
             lobbyId: lobby.id,
             userId: user.id,
             isOnline: true,
-            lobbySlot: { tag: 'Spectator', value: {} },
+            lobbySlot: { tag: 'Spectator', value: {} } as any,
             isReferee: true,
             isConfirmed: false,
             isCaptain: false,
             voluntarilyLeft: false,
             disconnectedAt: undefined,
             disconnectPoolRemainingMs: 0,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // D-02: store password for private lobbies
         if (!args.isPublic && args.password.length > 0) {
-            ctx.db.LobbyPassword.insert({
+            ctx.db.LobbyPassword.insert(insertWithAudit(ctx, {
                 lobbyId: lobby.id,
                 passwordHash: args.password,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
         }
 
         console.log(`[LOBBY] Lobby #${lobby.id} created by user #${user.id} (${args.joinCode})`);
@@ -244,13 +241,11 @@ export const join_lobby = spacetimedb.reducer(
                 newPool = Math.max(0, existingMember.disconnectPoolRemainingMs - elapsed);
             }
             ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
-            ctx.db.LobbyMember.insert({
-                ...existingMember,
+            ctx.db.LobbyMember.insert(updateWithAudit(ctx, existingMember, {
                 isOnline: true,
                 disconnectedAt: undefined,
                 disconnectPoolRemainingMs: newPool,
-                ...auditUpdate(ctx, existingMember, user.id),
-            } as any);
+            }, user.id));
             // Auto-resume if draft was auto-paused (D-11, D-39)
             if (lobby.stage.tag === 'Drafting') {
                 const session = ctx.db.MatchSession.lobbyId.find(lobbyId);
@@ -260,24 +255,20 @@ export const join_lobby = spacetimedb.reducer(
                         .sort((a: any, b: any) => b.sequence - a.sequence)[0];
                     if (lastStep?.payload?.tag === 'Pause' && lastStep.payload.value?.isAutoPause) {
                         // Auto-resume
-                        ctx.db.MatchSession.lobbyId.update({
-                            ...session,
+                        ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                             timerState: {
                                 ...session.timerState,
                                 isPaused: false,
                                 turnStartAt: ctx.timestamp,
                             },
-                            ...auditUpdate(ctx, session, user.id),
-                        } as any);
+                        }, user.id));
                     }
                 }
             }
             // Update activity
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
             console.log(`[LOBBY] User #${user.id} reconnected to lobby #${lobbyId} (stage: ${lobby.stage.tag})`);
             return;
         }
@@ -305,19 +296,18 @@ export const join_lobby = spacetimedb.reducer(
         }
 
         // D-27: join as Spectator
-        ctx.db.LobbyMember.insert({
+        ctx.db.LobbyMember.insert(insertWithAudit(ctx, {
             lobbyId,
             userId: user.id,
             isOnline: true,
-            lobbySlot: { tag: 'Spectator', value: {} },
+            lobbySlot: { tag: 'Spectator', value: {} } as any,
             isReferee: false,
             isConfirmed: false,
             isCaptain: false,
             voluntarilyLeft: false,
             disconnectedAt: undefined,
             disconnectPoolRemainingMs: 0,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // D-04, D-09: Auto-create LobbyMemberAccount row with player's active account
         {
@@ -350,12 +340,11 @@ export const join_lobby = spacetimedb.reducer(
                         // Snapshot active accounts into TPA (same locking as registration)
                         const userAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
                         for (const acct of userAccounts) {
-                            ctx.db.TournamentPlayerAccount.insert({
+                            ctx.db.TournamentPlayerAccount.insert(insertWithAudit(ctx, {
                                 tournamentId: lobby.tournamentId,
                                 userId: user.id,
                                 hsrAccountId: acct.id,
-                                ...auditInsert(ctx, user.id),
-                            } as any);
+                            }, user.id));
                         }
                         // Now create LobbyMemberAccount for their active account (first locked)
                         if (activeAcct && userAccounts.length > 0) {
@@ -371,24 +360,21 @@ export const join_lobby = spacetimedb.reducer(
         }
 
         // Increment currentPlayerCount
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             currentPlayerCount: lobby.currentPlayerCount + 1,
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         // D-11: system message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             lobbyId,
             senderUserId: 0,
-            senderType: { tag: 'System', value: {} },
+            senderType: { tag: 'System', value: {} } as any,
             content: user.displayName + ' joined the lobby.',
             metadata: undefined,
             anonymousLabel: undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[LOBBY] User #${user.id} joined lobby #${lobbyId}`);
     }
@@ -425,12 +411,10 @@ export const leave_lobby = spacetimedb.reducer(
                     ctx.db.LobbyMemberAccount.delete(lma);
                 }
                 ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
-                ctx.db.Lobby.id.update({
-                    ...lobby,
+                ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                     currentPlayerCount: lobby.currentPlayerCount - 1,
                     lastActivityAt: ctx.timestamp,
-                    ...auditUpdate(ctx, lobby, user.id),
-                } as any);
+                }, user.id));
                 console.log(`[LOBBY] Spectator/Coach #${user.id} cleanly left active lobby #${lobbyId}`);
                 return;
             }
@@ -441,12 +425,10 @@ export const leave_lobby = spacetimedb.reducer(
                 ctx.db.LobbyMemberAccount.delete(lma);
             }
             ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
-            ctx.db.LobbyMember.insert({
-                ...member,
+            ctx.db.LobbyMember.insert(updateWithAudit(ctx, member, {
                 voluntarilyLeft: true,
                 isOnline: false,
-                ...auditUpdate(ctx, member, user.id),
-            } as any);
+            }, user.id));
 
             // Transfer flags (D-34, D-35, D-36)
             transferCaptain(ctx, lobbyId, user.id);
@@ -475,26 +457,23 @@ export const leave_lobby = spacetimedb.reducer(
             }
 
             // D-11: system message
-            ctx.db.ChatMessage.insert({
+            ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
                 id: 0,
                 lobbyId,
                 senderUserId: 0,
-                senderType: { tag: 'System', value: {} },
+                senderType: { tag: 'System', value: {} } as any,
                 content: user.displayName + ' left the match.',
                 metadata: undefined,
                 anonymousLabel: undefined,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
 
             // Update activity (do NOT decrement currentPlayerCount — row is kept)
             // Skip if auto-concede fired — performConcede already updated the lobby
             // (spreading the stale `lobby` object here would overwrite AwaitingResult back to Drafting)
             if (!autoConcedeFired) {
-                ctx.db.Lobby.id.update({
-                    ...lobby,
+                ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                     lastActivityAt: ctx.timestamp,
-                    ...auditUpdate(ctx, lobby, user.id),
-                } as any);
+                }, user.id));
             }
 
             console.log(`[LOBBY] User #${user.id} voluntarily left active match in lobby #${lobbyId}`);
@@ -522,35 +501,30 @@ export const leave_lobby = spacetimedb.reducer(
         // Players are expected to return. GC handles 72h TTL for casual Shelved lobbies.
         if (newCount === 0 && lobby.stage.tag === 'Shelved') {
             // Update count but do NOT delete
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 currentPlayerCount: 0,
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
             console.log(`[LOBBY] Shelved lobby #${lobbyId} now empty — preserved for player return`);
             return;
         }
 
         // Update player count and activity
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             currentPlayerCount: newCount,
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         // D-11: system message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             senderUserId: 0,
-            senderType: { tag: 'System', value: {} },
+            senderType: { tag: 'System', value: {} } as any,
             content: user.displayName + ' left the lobby.',
             metadata: undefined,
             anonymousLabel: undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[LOBBY] User #${user.id} left lobby #${lobbyId}`);
     }
@@ -642,25 +616,22 @@ export const kick_member = spacetimedb.reducer(
         const currentLobby = ctx.db.Lobby.id.find(lobbyId);
         if (currentLobby) {
             const newCount = currentLobby.currentPlayerCount > 0 ? currentLobby.currentPlayerCount - 1 : 0;
-            ctx.db.Lobby.id.update({
-                ...currentLobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, currentLobby, {
                 currentPlayerCount: newCount,
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, currentLobby, user.id),
-            } as any);
+            }, user.id));
         }
 
         // D-11: system message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             senderUserId: 0,
-            senderType: { tag: 'System', value: {} },
+            senderType: { tag: 'System', value: {} } as any,
             content: targetName + ' was kicked from the lobby.',
             metadata: undefined,
             anonymousLabel: undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[LOBBY] User #${targetUserId} was kicked from lobby #${lobbyId} by user #${user.id}`);
     }
@@ -707,12 +678,11 @@ export const ban_member = spacetimedb.reducer(
         const { displayName: targetName } = resolveUserLabel(ctx, targetUserId);
 
         // Insert ban record
-        ctx.db.LobbyBan.insert({
+        ctx.db.LobbyBan.insert(insertWithAudit(ctx, {
             lobbyId,
             bannedUserId: targetUserId,
             bannedByUserId: user.id,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Remove from lobby if currently a member
         const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
@@ -723,26 +693,23 @@ export const ban_member = spacetimedb.reducer(
             const currentLobby = ctx.db.Lobby.id.find(lobbyId);
             if (currentLobby) {
                 const newCount = currentLobby.currentPlayerCount > 0 ? currentLobby.currentPlayerCount - 1 : 0;
-                ctx.db.Lobby.id.update({
-                    ...currentLobby,
+                ctx.db.Lobby.id.update(updateWithAudit(ctx, currentLobby, {
                     currentPlayerCount: newCount,
                     lastActivityAt: ctx.timestamp,
-                    ...auditUpdate(ctx, currentLobby, user.id),
-                } as any);
+                }, user.id));
             }
         }
 
         // D-11: system message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             senderUserId: 0,
-            senderType: { tag: 'System', value: {} },
+            senderType: { tag: 'System', value: {} } as any,
             content: targetName + ' was banned from the lobby.',
             metadata: undefined,
             anonymousLabel: undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[LOBBY] User #${targetUserId} was banned from lobby #${lobbyId} by user #${user.id}`);
     }
