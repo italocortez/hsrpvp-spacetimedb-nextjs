@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 9
+current_plan: 10
 status: executing
-stopped_at: Completed 15.3-09-PLAN.md (Wave 2 File 2 server.ts -- 12 audit sites migrated [3 insertWithAudit + 9 updateWithAudit across register_server bootstrap + server_link_provider 6-step re-pointing cluster + server_set_role/online/mmr] + 1 P4 delete+insert-carry preserved on server_set_mmr if-branch + 3 NO-TOUCH Pitfall 6 blocks preserved at L279-314 server_set_datetime [PATTERNS.md C1 counter-example: custom-timestamp override paired with manual lastModifiedById/Date writes] + auditInsert import fully evicted [zero callers; first Wave 2 file]. Fresh-DB smoke test PASS on maincloud hsrpvp-spacetimedb-nextjs-test1: SYSTEM user id=1 + created_by_id=0 + last_modified_by_id=0; server_identity=1, user_identity=1.)
-last_updated: "2026-04-17T17:19:56.375Z"
+stopped_at: "Completed 15.3-10-PLAN.md (Wave 2 File 3 index.ts -- 7 audit sites migrated [4 updateWithAudit clientConnected + 2 updateWithAudit clientDisconnected + 3 insertWithAudit total] + 3 LobbyMember P4 composite-PK delete+insert-carry preserved on auditUpdate primitive at L181/L192/L203 + 2 Rule 2 auto-fixes on MatchSessionStep auto-pause: gameNumber=session.currentGameNumber [3rd instance of same latent bug after Plan 07 caught 2x in draftControl.ts] + actorSlot via slotToTeamSide helper [canonical conversion used by every other MatchSessionStep caller -- index.ts auto-pause was the only one missing it]. UserIdentity lastSeenAt plan-authored hygiene migration (NOT Pitfall 6). auditInsert import fully evicted -- 2nd Wave 2 file after server.ts Plan 09. Integration: auth 34/34 + garbage-collector 8/8 + lobby 103/103 green = 145 tests across 16 files.)"
+last_updated: "2026-04-17T17:53:29.468Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 32
-  percent: 84
+  completed_plans: 33
+  percent: 87
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 9
-**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A+B+C+D+E+F+G; Wave 2 IN PROGRESS — Plan 08 finalizationHelpers + Plan 09 server.ts DONE, Plans 10/11 remaining; then Wave 2b type-hygiene + Wave 3 auditInsert deletion + Wave 4 test placeholder cleanup + Wave 5 publish)
+**Current plan:** 10
+**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A+B+C+D+E+F+G; Wave 2 IN PROGRESS — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts DONE, Plan 11 costSetManagement remaining; then Wave 2b type-hygiene + Wave 3 auditInsert deletion + Wave 4 test placeholder cleanup + Wave 5 publish)
 **Last activity:** 2026-04-17
 
-Progress: [████████████████████] 32/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-09 complete [Wave 1 DONE + Wave 2 Files 1-2 DONE]; Plans 10-15 remaining)
+Progress: [█████████████████████] 33/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-10 complete [Wave 1 DONE + Wave 2 Files 1-3 DONE]; Plans 11-15 remaining)
 
 ## Previous Milestone
 
@@ -116,6 +116,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3-audit-spread-type-helper]: Plan 08 (Wave 2 File 1, finalizationHelpers.ts): 10 sites migrated [7 P1 + 3 P2] + 1 P5 conditional PRESERVED at L148 (MmrRating composite-PK upsert -- THIRD confirmed P5 in phase: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148) + 3 P4 carry preserved (L141-149 + L155-162 MmrRating globalComposite + L619-623 PlayerStat spectator) + 1 Wave 2b D-18 target preserved at L35 (`newRow as any`; newRow now captures insertWithAudit return, Plan 12 types it via module_bindings). as any count 15->9 (decrease of 6). Zero Rule 2 auto-fixes (contrast with Plan 07's 4 discoveries -- finalizationHelpers had no hidden structural gaps). Integration: match-results 62/62 actual tests PASS (first full run; 4 Test Files reported fail due to teardown SenderError harness race only); match-session 39/39 actual tests PASS per run (post-draft single-test flake surfaced twice but isolated 26/26 PASS, confirming non-regression); mmr-snapshot isolated 3/3 PASS.
 - [Phase 15.3-audit-spread-type-helper]: Plan 08 pattern — getOrCreateRating (L22-37) exercises 'build-then-insert with helper output captured' — `const newRow = insertWithAudit(ctx, rowLiteral, actingUserId); ctx.db.MmrRating.insert(newRow as any);` — first Wave 2 appearance of the two-line helper-result-capture pattern. Distinct from Wave 1 single-line `ctx.db.X.insert(insertWithAudit(ctx, row, uid))`. Useful for helpers that return newRow to callers.
 - [Phase 15.3-audit-spread-type-helper]: Plan 15.3-09 Wave 2 File 2 server.ts audit migration complete. 12 sites migrated [3 insertWithAudit + 9 updateWithAudit] covering register_server bootstrap (SYSTEM User+UserIdentity) + server_link_provider 6-step re-pointing cluster + server_set_role/online/mmr. 1 P4 delete+insert-carry preserved on server_set_mmr if-branch (explicit row build after delete, auditUpdate primitive retained). 3 NO-TOUCH Pitfall 6 blocks preserved at L279-314 server_set_datetime (PATTERNS.md C1 counter-example: custom-timestamp override on UserIdentity.lastSeenAt/createdDate + Lobby.createdDate paired with manual lastModifiedById/Date writes -- migrating would force ctx.timestamp and destroy test-utility time-override semantics). auditInsert import fully evicted (zero callers; first Wave 2 file to do so; Plan 08 still has 1 P5 at L148). Fresh-DB smoke test PASS on maincloud hsrpvp-spacetimedb-nextjs-test1: SYSTEM row id=1 + created_by_id=0 + last_modified_by_id=0 per feedback_system_user_id_sentinel.md; server_identity=1, user_identity=1. Zero Rule 2 auto-fixes -- bootstrap/auth-adjacent code consistent with Plan 02 Cluster B pattern.
+- [Phase 15.3]: Plan 15.3-10 (Wave 2 File 3 index.ts): 7 audit sites migrated + 3 LobbyMember P4 carry preserved on auditUpdate primitive (L181/L192/L203) + 2 Rule 2 auto-fixes on MatchSessionStep auto-pause (gameNumber field missing [3rd instance after Plan 07 caught it 2x in draftControl] + actorSlot LobbySlot->TeamSide via slotToTeamSide [only MatchSessionStep caller missing canonical conversion]). UserIdentity lastSeenAt hygiene migration (NOT Pitfall 6 -- no custom ts variable). auditInsert import fully evicted (2nd Wave 2 file after server.ts Plan 09). Integration: auth 34/34 + GC 8/8 + lobby 103/103 green (145 tests).
 
 ### Roadmap Evolution
 
@@ -152,7 +153,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T17:19:56.375Z
-Stopped at: Completed 15.3-09-PLAN.md (Wave 2 File 2 server.ts -- 12 audit sites migrated [3 insertWithAudit + 9 updateWithAudit across register_server bootstrap + server_link_provider 6-step re-pointing cluster + server_set_role/online/mmr] + 1 P4 delete+insert-carry preserved on server_set_mmr if-branch + 3 NO-TOUCH Pitfall 6 blocks preserved at L279-314 server_set_datetime [PATTERNS.md C1 counter-example: custom-timestamp override paired with manual lastModifiedById/Date writes] + auditInsert import fully evicted [zero callers; first Wave 2 file]. Fresh-DB smoke test PASS on maincloud hsrpvp-spacetimedb-nextjs-test1: SYSTEM user id=1 + created_by_id=0 + last_modified_by_id=0; server_identity=1, user_identity=1.)
+Last session: 2026-04-17T17:53:29.464Z
+Stopped at: Completed 15.3-10-PLAN.md (Wave 2 File 3 index.ts -- 7 audit sites migrated [4 updateWithAudit clientConnected + 2 updateWithAudit clientDisconnected + 3 insertWithAudit total] + 3 LobbyMember P4 composite-PK delete+insert-carry preserved on auditUpdate primitive at L181/L192/L203 + 2 Rule 2 auto-fixes on MatchSessionStep auto-pause: gameNumber=session.currentGameNumber [3rd instance of same latent bug after Plan 07 caught 2x in draftControl.ts] + actorSlot via slotToTeamSide helper [canonical conversion used by every other MatchSessionStep caller -- index.ts auto-pause was the only one missing it]. UserIdentity lastSeenAt plan-authored hygiene migration (NOT Pitfall 6). auditInsert import fully evicted -- 2nd Wave 2 file after server.ts Plan 09. Integration: auth 34/34 + garbage-collector 8/8 + lobby 103/103 green = 145 tests across 16 files.)
 Resume file: None
-Next action: `/gsd-execute-phase 15.3` (continue with Plan 10 -- Wave 2 File 3: `src/index.ts` 10 sites, client lifecycle hooks, LobbyMember P4 carry expected; then Plan 11 costSetManagement.ts 18 sites [may surface 2-3 more P5 conditional sites; drives Wave 3 Option α accounting], Plan 12 Wave 2b D-17/D-18 type-hygiene, Plan 13 Wave 3 auditInsert deletion [Option alpha; 3 confirmed P5 sites at rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148], Plan 14 placeholder test conversion, Plan 15 publish)
+Next action: `/gsd-execute-phase 15.3` (continue with Plan 11 -- Wave 2 File 4: `reducers/costSetManagement.ts` 18 sites [last Wave 2 file; may surface 2-3 more P5 conditional sites; drives Wave 3 Option α accounting final count], then Plan 12 Wave 2b D-17/D-18 type-hygiene, Plan 13 Wave 3 auditInsert deletion [Option alpha; 3 confirmed P5 sites at rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148], Plan 14 placeholder test conversion, Plan 15 publish)
