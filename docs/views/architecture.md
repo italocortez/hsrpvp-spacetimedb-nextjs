@@ -25,22 +25,16 @@ Views are server-side read reducers that return filtered data to authenticated o
 - **Returns:** `UserPrivate` row for a target userId
 - **Purpose:** Admin access to private user data (email, provider tokens)
 
-#### view_user_directory
-- **Status:** Dead code — scheduled for removal in Phase 15.5 (seed: `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`). Zero frontend subscribers; the declarative `spacetimedb.view()` flip (D-06) does NOT produce runtime rejection of anonymous callers — per SpacetimeDB docs, `view` vs `anonymousView` only differs in whether the body receives `ctx.sender()`. No host-level auth gate exists; an explicit `getAuthenticatedUser()` call in the body would be required. This is tracked in Phase 15.5, which retires the view and addresses bandwidth via frontend subscription gating on `useAuth.ts`.
-- **Auth (as declared):** `spacetimedb.view()` (Phase 15.2 D-06: flipped from `spacetimedb.anonymousView()`; cosmetic flip only, see Status above).
-- **Returns:** `UserDirectoryRow[]` — safe D-16 subset: `id, username, displayName, role, avatarCharacterName, isOnline, isGuest, hasDiscordLinked, displayedAchievementId` (excludes deletedAt, lastLoginAt, isPrivate, audit columns)
-- **Purpose (historical):** User search for invites, team requests, etc. Never wired on the frontend.
-- **Phase 15.2 note:** Ghost users no longer accumulate in the backing `user` table — `performUserDeletion` evicts non-guest-with-history users to the `deleted_user` archive (private, D-05). The iter cost is bounded by live users only. The dead `.filter(u => !u.deletedAt)` filter was removed from the view body (D-09 eliminates ghosts at the write path).
-
 #### view_my_roster
 - **Auth:** Authenticated
 - **Returns:** `{ accounts: HsrAccount[], characters: HsrAccountCharacter[] }` for the caller
 - **Purpose:** Caller manages their own private roster
 
-#### view_public_accounts
-- **Auth:** Anonymous (`anonymousView`)
-- **Returns:** `HsrAccount[]` where `isRosterPublic=true` for a target userId
-- **Purpose:** Public profile browsing
+#### view_public_hsr_accounts
+- **Auth:** Anonymous (`anonymousView`) — projection body is the privacy gate (isRosterPublic / isRatingPublic opt-ins); intentional anonymous exception per `docs/auth/architecture.md` Subscription Lifecycle section
+- **Returns:** Flat `PublicHsrAccountRow[]` — one row per account-character pair where `isRosterPublic=true`; rating field emitted only when `isRatingPublic=true`
+- **Purpose:** Pre-auth public profile browsing
+- **Renamed:** Phase 15.5 (D-04) from `view_public_accounts` — `hsr_` in the name identifies the underlying HsrAccount table
 
 #### view_tournament_registrant_accounts
 - **Auth:** Authenticated; TO/Assistant/Mod+ for the tournament
@@ -147,7 +141,7 @@ Views 10-20 apply anonymous enforcement (D-92): when `lobby.isAnonymousPlayers=t
 | File | Views | Count |
 |------|-------|-------|
 | `lobbyViews.ts` | view_lobby_browser, view_my_lobbies, view_my_lobby_chat, view_my_lobby_members | 4 |
-| `identityViews.ts` | view_my_identity, view_my_profile, view_user_directory, view_public_accounts, view_admin_user_private | 5 |
+| `identityViews.ts` | view_my_identity, view_my_profile, view_public_hsr_accounts, view_admin_user_private | 4 |
 | `costSetViews.ts` | view_my_cost_sets, view_my_draft_character_costs, view_my_draft_lightcone_costs, view_my_draft_synergy_costs | 4 |
 | `statsViews.ts` | view_my_player_stats, view_my_character_stats | 2 |
 | `socialViews.ts` | view_my_relationships, view_my_roster_visibility, view_my_roster | 3 |
@@ -187,10 +181,11 @@ Added to `matchHistoryViews.ts`, bindings at `src/module_bindings/view_my_*_hist
 | 5 new self-scoped history views added to matchHistoryViews.ts (D-13); binding count 32 -> 37; Pattern A vs Pattern B filter registry documented | Phase 15 execution | 2026-04-13 |
 | view_user_directory flipped from anonymousView to authenticated-only spacetimedb.view() (D-06); dead .filter(u => !u.deletedAt) removed (D-09 eliminates ghosts at write path); ghost accumulation bounded by DeletedUser archive (D-05/D-09) | Phase 15.2 execution | 2026-04-15 |
 | UAT (Test 4) revealed D-06's `spacetimedb.view()` flip does NOT reject anonymous subscribers at the framework level — per SpacetimeDB docs (https://spacetimedb.com/docs/functions/views/), `view` vs `anonymousView` differs only in whether `ctx.sender()` is exposed to the body, not in who can subscribe. The implementation comment at `identityViews.ts:47-49` overstated the behavior. `view_user_directory` has zero frontend subscribers; the actual pre-auth bandwidth leak is `useAuth.ts:38`'s unconditional `SELECT * FROM user` subscription. Phase 15.5 retires `view_user_directory` entirely and gates `useAuth.ts:38` behind auth state (seed: `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`) | Phase 15.2 execution | 2026-04-16 |
+| Phase 15.5: `view_user_directory` retired (dead code, zero client subscribers); `view_public_accounts` renamed to `view_public_hsr_accounts` (D-04) — `hsr_` names the source table. Both bindings dirs regenerated via single-shot `spacetime generate` after publish. Frontend subscription lifecycle codified in `docs/auth/architecture.md` Subscription Lifecycle section (D-05): Stage 1 `view_my_profile` always; Stage 2 raw User subscription gated on `currentUser != null \|\| hadTokenOnMount.current \|\| hadSessionCookie.current`. `view_lobby_browser` + `view_public_hsr_accounts` named as intentional anonymous exceptions (projection-based privacy) | Phase 15.5 execution | 2026-04-16 |
 
 ---
 
-*Last updated: 2026-04-15*
+*Last updated: 2026-04-16*
 *Feature owner: Phase 03 / Phase 06 / Phase 08 / Phase 09 / Phase 10.4 / Phase 15*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
