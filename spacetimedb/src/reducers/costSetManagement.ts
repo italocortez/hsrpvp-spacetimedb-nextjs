@@ -478,11 +478,9 @@ export const lock_cost_set = spacetimedb.reducer(
             throw new SenderError('Cost set is already locked.');
         }
 
-        ctx.db.CostSet.id.update({
-            ...costSet,
-            isLocked: true,
-            ...auditUpdate(ctx, costSet, user.id),
-        });
+        ctx.db.CostSet.id.update(
+            updateWithAudit(ctx, costSet, { isLocked: true }, user.id),
+        );
     }
 );
 
@@ -520,12 +518,9 @@ export const unpublish_cost_set = spacetimedb.reducer(
             throw new SenderError('Cost set must be locked before it can be unpublished. Call lock_cost_set first.');
         }
 
-        ctx.db.CostSet.id.update({
-            ...costSet,
-            isPublished: false,
-            isLocked: false,
-            ...auditUpdate(ctx, costSet, user.id),
-        });
+        ctx.db.CostSet.id.update(
+            updateWithAudit(ctx, costSet, { isPublished: false, isLocked: false }, user.id),
+        );
     }
 );
 
