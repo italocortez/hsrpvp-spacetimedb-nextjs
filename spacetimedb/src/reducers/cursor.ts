@@ -1,6 +1,6 @@
 import spacetimedb from '../schema';
 import { t } from 'spacetimedb/server';
-import { auditInsert } from '../helpers/auditColumns';
+import { insertWithAudit } from '../helpers/auditHelpers';
 import { computeAnonymousLabel } from '../helpers/anonymousLabels';
 
 export const broadcast_cursor = spacetimedb.reducer({
@@ -30,13 +30,12 @@ export const broadcast_cursor = spacetimedb.reducer({
     const isAnon = lobby?.isAnonymousPlayers;
 
     // Broadcast (event table — ephemeral, but audit columns still applied per policy)
-    ctx.db.LobbyCursorEvent.insert({
+    ctx.db.LobbyCursorEvent.insert(insertWithAudit(ctx, {
         lobbyId,
         senderUserId: isAnon ? 0 : mapping.userId,
         anonymousLabel: isAnon ? computeAnonymousLabel(ctx, lobbyId, mapping.userId) : undefined,
         x,
         y,
         timestamp: ctx.timestamp,
-        ...auditInsert(ctx, mapping.userId),
-    });
+    }, mapping.userId));
 });

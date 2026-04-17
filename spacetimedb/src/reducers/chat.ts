@@ -3,7 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { ensureLobbyMember } from '../helpers/lobbyHelpers';
 import { computeAnonymousLabel } from '../helpers/anonymousLabels';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 // ---------------------------------------------------------------------------
 // send_chat_message
@@ -60,7 +60,7 @@ export const send_chat_message = spacetimedb.reducer({
             : undefined;
 
     // Insert the message
-    ctx.db.ChatMessage.insert({
+    ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
         id: 0,
         lobbyId,
         senderUserId: user.id,
@@ -68,16 +68,13 @@ export const send_chat_message = spacetimedb.reducer({
         content,
         metadata: resolvedMetadata,
         anonymousLabel,
-        ...auditInsert(ctx, user.id),
-    });
+    }, user.id));
 
     // Update lobby lastActivityAt
     if (lobby) {
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        });
+        }, user.id));
     }
 });
 
