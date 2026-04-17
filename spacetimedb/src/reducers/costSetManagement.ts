@@ -406,12 +406,13 @@ export const publish_cost_set = spacetimedb.reducer(
             );
             if (existingLive) {
                 // Update via id.update() — preserves autoInc id and existing draftMode (via spread).
-                ctx.db.HsrSynergyCost.id.update({
-                    ...existingLive,
-                    costModifier: draft.costModifier,
-                    ...auditUpdate(ctx, existingLive, user.id),
-                });
+                ctx.db.HsrSynergyCost.id.update(
+                    updateWithAudit(ctx, existingLive, { costModifier: draft.costModifier }, user.id),
+                );
             } else {
+                // KEEP `auditInsert` primitive for file-symmetry with L369/L391 inline ternaries
+                // and 3 edit_draft_* else-branches — auditInsert stays callable in this file
+                // regardless, so migrating only this branch yields zero eviction win.
                 ctx.db.HsrSynergyCost.insert({
                     id: 0,
                     sourceName: draft.sourceName,
@@ -437,12 +438,9 @@ export const publish_cost_set = spacetimedb.reducer(
         }
 
         // Phase E: Update CostSet metadata — mark as published and no longer a draft
-        ctx.db.CostSet.id.update({
-            ...costSet,
-            isPublished: true,
-            isDraft: false,
-            ...auditUpdate(ctx, costSet, user.id),
-        });
+        ctx.db.CostSet.id.update(
+            updateWithAudit(ctx, costSet, { isPublished: true, isDraft: false }, user.id),
+        );
     }
 );
 
