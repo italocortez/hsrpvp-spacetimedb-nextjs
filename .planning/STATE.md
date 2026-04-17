@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 6
+current_plan: 7
 status: executing
-stopped_at: Completed 15.3-06-PLAN.md (Cluster F -- 6 bracket+match-result files, 29 sites migrated + 1 P4 preserved + 4 Wave 2b targets preserved, brackets 37/37 + match-results 100/100 integration tests green)
-last_updated: "2026-04-17T07:42:23.409Z"
+stopped_at: Completed 15.3-07-PLAN.md (Cluster G -- 10 highest-density files, 110 sites migrated + 1 P5 preserved, Wave 1 COMPLETE across 7 clusters / 50 files / 253 sites; 4 Rule 2 auto-fixes surfaced structural correctness gaps; lobby 103/103 + match-session 69/69 + roster 42/42 + achievements 25/25 + season 8/8 = 247/247 integration tests green)
+last_updated: "2026-04-17T10:00:00.000Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 29
-  percent: 76
+  completed_plans: 31
+  percent: 82
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 6
-**Status:** Executing Phase 15.3 (Wave 1 Clusters A + B + C + D + E + F complete; Cluster G and Wave 2 remaining)
+**Current plan:** 7
+**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A + B + C + D + E + F + G done; Wave 2 individual-audit files + Wave 2b type-hygiene + Wave 3 auditInsert deletion + Wave 4 test placeholder cleanup remaining)
 **Last activity:** 2026-04-17
 
-Progress: [████████████████████] 29/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-06 complete; Plans 07-15 remaining)
+Progress: [████████████████████] 31/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-07 complete [Wave 1 DONE]; Plans 08-15 remaining)
 
 ## Previous Milestone
 
@@ -108,6 +108,11 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3-audit-spread-type-helper]: Cluster F: scoreEntry.ts MatchResultGame upsert delete+re-insert branch confirmed P4 carry site -- explicit row build (no ...existing spread), composite-PK (matchResultId, gameNumber), auditUpdate primitive retained. Running total: 9 P4 sites preserved (2 Wave 0 + 6 Plan 03 + 1 Plan 06)
 - [Phase 15.3-audit-spread-type-helper]: Cluster F: setEliminatedStatus L126 TournamentEnrolled SAME-SHAPE migration used original `auditInsert` semantics (resets createdBy/Date) rather than `auditUpdate` (preserves) -- logged as observation for future review, preserved zero-behavior-change mandate via insertWithAudit
 - [Phase 15.3-audit-spread-type-helper]: Cluster F: bracketGeneration.ts insertBracketMatches Pass 2/3 + seed_bracket + swap_seeds inline `lastModifiedById/Date` manual writes left untouched per plan scope (not auditUpdate helper calls); same precedent as Plan 05 D-05-02 (seriesManagement ChatMessage) and Plan 01 D-02-ADJUNCT (profile.ts TournamentTeam)
+- [Phase 15.3-audit-spread-type-helper]: Cluster G (Wave 1 FINAL cluster): 110 sites migrated + 1 P5 preserved across 10 highest-density files (draftClassic 28 [LARGEST single file], postDraft 21, draftAuction 20, draftControl 9, achievementManagement 8, rosterAdmin 7+1P5, roster 6, ratingAdmin 4, eloAdmin 3, seasonAdmin 4); lobby 103/103 + match-session 69/69 + roster 42/42 + achievements 25/25 + season 8/8 = 247/247 integration tests green
+- [Phase 15.3-audit-spread-type-helper]: Cluster G: 4 Rule 2 auto-fixes -- structural correctness issues previously hidden by outer `as any)` closures (draftClassic MatchResultRecord missing concedeTrigger/Summary/AtStage, draftControl MatchSessionStep x2 missing gameNumber, roster+rosterAdmin HsrAccount x2 missing accountRating). Validates D-03 thesis that Phase 15.3 surfaces real latent bugs, not just cosmetic improvements.
+- [Phase 15.3-audit-spread-type-helper]: Cluster G: rosterAdmin.ts L160 is the SECOND confirmed P5 conditional Wave 1 site (admin_batch_upsert_characters HsrAccountCharacter upsert). Same structural pattern as Plan 04 rosterMutations.ts L55. Both are HsrAccountCharacter composite-PK upserts. Dual-import pattern retained (auditColumns primitives + auditHelpers new helpers).
+- [Phase 15.3-audit-spread-type-helper]: Cluster G: D-07-04 if/else clean-split migration pattern (admin_upsert_archetype + set_displayed_achievement) distinct from P5 inline-ternary. Criterion: row literal appears once (P5) vs twice (if/else). Adds to pattern vocabulary for Wave 2 planner reference.
+- [Phase 15.3-audit-spread-type-helper]: WAVE 1 COMPLETE -- 7 clusters, 50 files, 253 audit sites migrated across Plans 01-07. Pattern cookbook exhaustively exercised: P1 + P2 + SAME-SHAPE + P4 carry (9 sites preserved) + P5 conditional (2 sites preserved) + Pitfall 5 intermediate-variable (4+2 sites preserved) + if/else clean-split (NEW). Comm-diff confirms exactly 5 remaining files: 4 Wave 2 targets (finalizationHelpers, server.ts, index.ts, costSetManagement) + 1 P5-only file (rosterMutations).
 
 ### Roadmap Evolution
 
@@ -144,7 +149,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T07:42:23.406Z
-Stopped at: Completed 15.3-06-PLAN.md (Cluster F -- 6 bracket+match-result files, 29 sites migrated + 1 P4 preserved + 4 Wave 2b targets preserved, brackets 37/37 + match-results 100/100 integration tests green)
+Last session: 2026-04-17T10:00:00.000Z
+Stopped at: Completed 15.3-07-PLAN.md (Cluster G -- 10 highest-density files, 110 sites migrated + 1 P5 preserved; Wave 1 COMPLETE across 7 clusters / 50 files / 253 sites; 4 Rule 2 auto-fixes surfaced structural correctness gaps; 247/247 integration tests green)
 Resume file: None
-Next action: `/gsd-execute-phase 15.3` (continue Wave 1 — Clusters E/F/G remain in plans 15.3-05 through 15.3-08)
+Next action: `/gsd-execute-phase 15.3` (continue with Wave 2 individual-audit files — Plans 15.3-08 through 15.3-11 target finalizationHelpers.ts, server.ts, src/index.ts, costSetManagement.ts; then Wave 2b D-17/D-18 type-hygiene in Plan 12; Wave 3 auditInsert deletion in Plan 13; Wave 4 placeholder test conversion in Plan 14; Wave 5 publish in Plan 15)
