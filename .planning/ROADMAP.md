@@ -170,13 +170,18 @@ Plans:
 
 ### Phase 15.3: Audit Spread Type Helper (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Extract typed `insertWithAudit<T>()` / `updateWithAudit<T>()` helpers into `spacetimedb/src/helpers/auditHelpers.ts` and migrate 385 audit-stamping call sites across 57 files from the bare-spread `{ ...row, ...auditInsert(ctx, userId) } as any` pattern to the new helpers. Eliminates 6 explicit audit-merge `as any` suppressions and improves typing/readability for every backend write path. Keeps `auditUpdate` primitive for ~30 composite-PK delete+insert-with-audit-carry sites + 2 conditional sites (two-tier API). Wave B (folded): convert 8 `expect(true).toBe(true)` placeholder tests across 6 test files to `it.todo(...)`. Zero behavior change. Single big-bang maincloud publish at end.
+**Requirements**: D-01..D-16 (CONTEXT.md is authoritative — no ROADMAP requirement IDs; decisions are the requirement surface)
 **Depends on:** Phase 15, Phase 15.4
-**Plans:** 0 plans (note: prior "6/6" was stale — phase has never been planned)
+**Plans:** TBD (Wave 0 pilot complete and committed — admin.ts + bracketHelpers.ts migrated; remaining 55 files pending plan)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 15.3 to break down)
+- [x] Wave 0 pilot (commit `4f1dad6`) — auditHelpers.ts created + admin.ts (14 sites) + bracketHelpers.ts (9 sites) migrated, type-check clean, two-tier API validated
+- [ ] Wave 1 — batch-mechanical migration of 51 files grouped by domain
+- [ ] Wave 2 — individual-audit migration of 4 files (finalizationHelpers.ts, server.ts, index.ts, costSetManagement.ts)
+- [ ] Wave 3 — delete `auditInsert` from auditColumns.ts after callers migrated
+- [ ] Wave 4 — placeholder-test cleanup (6 test files, 8 sites)
+- [ ] Wave 5 — single maincloud publish + full integration test pass
 
 ### Phase 15.2: User Directory View Performance (INSERTED)
 
