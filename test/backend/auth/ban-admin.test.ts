@@ -221,28 +221,25 @@ describe('Ban Admin Reducers', () => {
       }
     );
 
-    it(
-      'D-19 clientConnected ban-on-reconnect: insert pattern matches admin_ban_user (structural coverage)',
-      () => {
-        // clientConnected ban-on-reconnect (index.ts) gains the same UserDeletionJob.insert
-        // call as admin_ban_user in Phase 15.2 D-10. The full integration path requires
-        // racing a fresh WebSocket connect against a BanRecord insert in a way that
-        // exercises the clientConnected handler — this is a timing-sensitive race that
-        // the current harness cannot reliably drive without a dedicated reconnect harness.
-        //
-        // Structural coverage rationale:
-        //   - The insert pattern at index.ts:clientConnected matches admin.ts:183-188 and
-        //     banAdmin.ts verbatim (same ScheduleAt.time(now+5s), same auditInsert shape).
-        //   - Plan 02 acceptance criteria verified the source diff (grep) that the insert
-        //     is present in clientConnected.
-        //   - The admin_ban_user D-19 integration test above exercises the identical
-        //     UserDeletionJob.insert code path end-to-end.
-        //
-        // Deferred: a dedicated reconnect-race test would require a test harness that can
-        // disconnect, insert a BanRecord, then reconnect within the 5s cascade window.
-        // Tracked in deferred-items for Phase 16+ test infrastructure improvements.
-        expect(true).toBe(true);
-      }
+    // clientConnected ban-on-reconnect (index.ts) gains the same UserDeletionJob.insert
+    // call as admin_ban_user in Phase 15.2 D-10. The full integration path requires
+    // racing a fresh WebSocket connect against a BanRecord insert in a way that
+    // exercises the clientConnected handler — this is a timing-sensitive race that
+    // the current harness cannot reliably drive without a dedicated reconnect harness.
+    //
+    // Structural coverage rationale:
+    //   - The insert pattern at index.ts:clientConnected matches admin.ts:183-188 and
+    //     banAdmin.ts verbatim (same ScheduleAt.time(now+5s), same auditInsert shape).
+    //   - Plan 02 acceptance criteria verified the source diff (grep) that the insert
+    //     is present in clientConnected.
+    //   - The admin_ban_user D-19 integration test above exercises the identical
+    //     UserDeletionJob.insert code path end-to-end.
+    //
+    // Deferred: a dedicated reconnect-race test would require a test harness that can
+    // disconnect, insert a BanRecord, then reconnect within the 5s cascade window.
+    // Tracked in deferred-items for Phase 16+ test infrastructure improvements.
+    it.todo(
+      'D-19 clientConnected ban-on-reconnect: insert pattern matches admin_ban_user (structural coverage)'
     );
   });
 

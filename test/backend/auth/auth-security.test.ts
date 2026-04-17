@@ -200,12 +200,7 @@ describe('Auth Security Hardening', () => {
     // is verified manually via the human checkpoint in Task 4.
     //
     // This describe block exists for documentation only — to make explicit
-    // that SEC-04 is manual-only coverage.
-    it('SEC-04 is verified manually via API route test in Task 4 checkpoint', () => {
-      // Placeholder: SEC-04 requires HTTP API route invocation which is
-      // outside the scope of SpacetimeDB integration tests.
-      // See Task 4 how-to-verify step 4 for the manual verification.
-      expect(true).toBe(true);
-    });
+    // that SEC-04 is manual-only coverage. See Task 4 how-to-verify step 4.
+    it.todo('SEC-04 is verified manually via API route test in Task 4 checkpoint');
   });
 });

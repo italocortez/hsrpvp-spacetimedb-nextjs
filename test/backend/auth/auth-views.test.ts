@@ -20,33 +20,27 @@ import { describe, it, expect } from 'vitest';
 describe('Auth Views (Security Views)', () => {
 
   describe('VIEW-02: view_my_profile', () => {
-    it('merges User + UserPrivate for caller identity (verified in UAT test 10)', () => {
-      // view_my_profile uses ctx.sender to resolve UserIdentity → User,
-      // then left-joins UserPrivate to return merged MyProfileRow.
-      // The spacetime sql CLI has no sender context, so this view
-      // always returns empty when queried via SQL.
-      //
-      // Functional coverage: UAT test 10, useAuth.ts frontend integration.
-      expect(true).toBe(true);
-    });
+    // view_my_profile uses ctx.sender to resolve UserIdentity → User,
+    // then left-joins UserPrivate to return merged MyProfileRow.
+    // The spacetime sql CLI has no sender context, so this view
+    // always returns empty when queried via SQL.
+    //
+    // Functional coverage: UAT test 10, useAuth.ts frontend integration.
+    it.todo('merges User + UserPrivate for caller identity (verified in UAT test 10)');
   });
 
   describe('VIEW-03: view_my_identity', () => {
-    it('returns only caller own identity mapping (verified in SEC-02)', () => {
-      // view_my_identity returns the single UserIdentity row for ctx.sender.
-      // SEC-02 in auth-security.test.ts verifies the mapping exists via SQL
-      // against the raw user_identity table (which IS a physical table).
-      expect(true).toBe(true);
-    });
+    // view_my_identity returns the single UserIdentity row for ctx.sender.
+    // SEC-02 in auth-security.test.ts verifies the mapping exists via SQL
+    // against the raw user_identity table (which IS a physical table).
+    it.todo('returns only caller own identity mapping (verified in SEC-02)');
   });
 
   describe('VIEW-04: view_admin_user_private', () => {
-    it('gated by Moderator+ role (not testable via SQL — no sender context)', () => {
-      // view_admin_user_private checks isRoleAtLeast(user.role, 'Moderator')
-      // before returning UserPrivate rows. Requires WebSocket subscription
-      // with a Moderator+ identity, which is not supported by the test
-      // harness (views don't generate typed bindings).
-      expect(true).toBe(true);
-    });
+    // view_admin_user_private checks isRoleAtLeast(user.role, 'Moderator')
+    // before returning UserPrivate rows. Requires WebSocket subscription
+    // with a Moderator+ identity, which is not supported by the test
+    // harness (views don't generate typed bindings).
+    it.todo('gated by Moderator+ role (not testable via SQL — no sender context)');
   });
 });

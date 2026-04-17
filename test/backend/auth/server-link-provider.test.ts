@@ -110,22 +110,20 @@ describe('server_link_provider', () => {
   // Case 1b: Identity merge (cross-device) — frontend-only
   // ---------------------------------------------------------------------------
   describe('Case 1b: Identity merge (cross-device)', () => {
-    it('placeholder — requires two browser sessions + Discord OAuth (verified in UAT Path 3 + 4)', () => {
-      // The identity merge flow requires:
-      //   1. Two separate browser sessions (two SpacetimeDB identities)
-      //   2. Discord OAuth through NextAuth (to get the session cookie)
-      //   3. The /api/auth/link-discord API route orchestrating ephemeral
-      //      verification + server_link_provider
-      //
-      // This cannot be reliably tested via integration harness because:
-      //   - It requires 3+ concurrent WebSocket connections (hits maincloud limits)
-      //   - The real flow goes through the API route, not direct reducer calls
-      //
-      // Coverage: UAT Path 3 (logout → re-login) and Path 4 (cross-browser)
-      // both verified the merge end-to-end with real Discord OAuth.
-      // DB state confirmed: orphan guest deleted, identity re-pointed.
-      expect(true).toBe(true);
-    });
+    // The identity merge flow requires:
+    //   1. Two separate browser sessions (two SpacetimeDB identities)
+    //   2. Discord OAuth through NextAuth (to get the session cookie)
+    //   3. The /api/auth/link-discord API route orchestrating ephemeral
+    //      verification + server_link_provider
+    //
+    // This cannot be reliably tested via integration harness because:
+    //   - It requires 3+ concurrent WebSocket connections (hits maincloud limits)
+    //   - The real flow goes through the API route, not direct reducer calls
+    //
+    // Coverage: UAT Path 3 (logout → re-login) and Path 4 (cross-browser)
+    // both verified the merge end-to-end with real Discord OAuth.
+    // DB state confirmed: orphan guest deleted, identity re-pointed.
+    it.todo('placeholder — requires two browser sessions + Discord OAuth (verified in UAT Path 3 + 4)');
   });
 
   // ---------------------------------------------------------------------------
