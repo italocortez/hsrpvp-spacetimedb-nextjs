@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 10
+current_plan: 11
 status: executing
-stopped_at: "Completed 15.3-10-PLAN.md (Wave 2 File 3 index.ts -- 7 audit sites migrated [4 updateWithAudit clientConnected + 2 updateWithAudit clientDisconnected + 3 insertWithAudit total] + 3 LobbyMember P4 composite-PK delete+insert-carry preserved on auditUpdate primitive at L181/L192/L203 + 2 Rule 2 auto-fixes on MatchSessionStep auto-pause: gameNumber=session.currentGameNumber [3rd instance of same latent bug after Plan 07 caught 2x in draftControl.ts] + actorSlot via slotToTeamSide helper [canonical conversion used by every other MatchSessionStep caller -- index.ts auto-pause was the only one missing it]. UserIdentity lastSeenAt plan-authored hygiene migration (NOT Pitfall 6). auditInsert import fully evicted -- 2nd Wave 2 file after server.ts Plan 09. Integration: auth 34/34 + garbage-collector 8/8 + lobby 103/103 green = 145 tests across 16 files.)"
-last_updated: "2026-04-17T17:53:29.468Z"
+stopped_at: "Completed 15.3-11-PLAN.md (Wave 2 File 4 costSetManagement.ts -- 8 audit sites migrated [4 insertWithAudit create_cost_set plain inserts at L47/L62/L76/L90 + 4 updateWithAudit: HsrSynergyCost if-branch L410 + CostSet publish metadata L442 + lock L482 + unpublish L522] + 6 conditional/primitive sites PRESERVED [3 edit_draft_* if/else split-conditional blocks at L158-178/L236-255/L300-321 + 2 publish_cost_set inline ternary existingLive? auditUpdate:auditInsert at L369/L391 + 1 HsrSynergyCost upsert else-branch auditInsert primitive at L415-425 per plan Section B pre-resolution file-symmetry rationale]. auditInsert import RETAINED -- 1st Wave 2 file to retain (finalizationHelpers also retains due to L148 P5; contrast server.ts Plan 09 + index.ts Plan 10 both evicted). Zero Rule 2 auto-fixes. Integration: cost-sets 20/20 green (cost-set-lifecycle + synergy-auction-round-trip) in 52.59s fresh-DB run. WAVE 2 COMPLETE -- all 4 highest-complexity files done. Wave 3 Option alpha FINAL ACCOUNTING: 9 permanent auditInsert retention sites across 4 files [rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148 + 6 sites in costSetManagement].)"
+last_updated: "2026-04-17T18:26:47.629Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 33
-  percent: 87
+  completed_plans: 34
+  percent: 89
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 10
-**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A+B+C+D+E+F+G; Wave 2 IN PROGRESS — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts DONE, Plan 11 costSetManagement remaining; then Wave 2b type-hygiene + Wave 3 auditInsert deletion + Wave 4 test placeholder cleanup + Wave 5 publish)
+**Current plan:** 11
+**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A+B+C+D+E+F+G; Wave 2 COMPLETE — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts + Plan 11 costSetManagement DONE; then Wave 2b type-hygiene + Wave 3 auditInsert Option α docs-only + Wave 4 test placeholder cleanup + Wave 5 publish)
 **Last activity:** 2026-04-17
 
-Progress: [█████████████████████] 33/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-10 complete [Wave 1 DONE + Wave 2 Files 1-3 DONE]; Plans 11-15 remaining)
+Progress: [█████████████████████] 34/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-11 complete [Wave 1 DONE + Wave 2 COMPLETE]; Plans 12-15 remaining)
 
 ## Previous Milestone
 
@@ -117,6 +117,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3-audit-spread-type-helper]: Plan 08 pattern — getOrCreateRating (L22-37) exercises 'build-then-insert with helper output captured' — `const newRow = insertWithAudit(ctx, rowLiteral, actingUserId); ctx.db.MmrRating.insert(newRow as any);` — first Wave 2 appearance of the two-line helper-result-capture pattern. Distinct from Wave 1 single-line `ctx.db.X.insert(insertWithAudit(ctx, row, uid))`. Useful for helpers that return newRow to callers.
 - [Phase 15.3-audit-spread-type-helper]: Plan 15.3-09 Wave 2 File 2 server.ts audit migration complete. 12 sites migrated [3 insertWithAudit + 9 updateWithAudit] covering register_server bootstrap (SYSTEM User+UserIdentity) + server_link_provider 6-step re-pointing cluster + server_set_role/online/mmr. 1 P4 delete+insert-carry preserved on server_set_mmr if-branch (explicit row build after delete, auditUpdate primitive retained). 3 NO-TOUCH Pitfall 6 blocks preserved at L279-314 server_set_datetime (PATTERNS.md C1 counter-example: custom-timestamp override on UserIdentity.lastSeenAt/createdDate + Lobby.createdDate paired with manual lastModifiedById/Date writes -- migrating would force ctx.timestamp and destroy test-utility time-override semantics). auditInsert import fully evicted (zero callers; first Wave 2 file to do so; Plan 08 still has 1 P5 at L148). Fresh-DB smoke test PASS on maincloud hsrpvp-spacetimedb-nextjs-test1: SYSTEM row id=1 + created_by_id=0 + last_modified_by_id=0 per feedback_system_user_id_sentinel.md; server_identity=1, user_identity=1. Zero Rule 2 auto-fixes -- bootstrap/auth-adjacent code consistent with Plan 02 Cluster B pattern.
 - [Phase 15.3]: Plan 15.3-10 (Wave 2 File 3 index.ts): 7 audit sites migrated + 3 LobbyMember P4 carry preserved on auditUpdate primitive (L181/L192/L203) + 2 Rule 2 auto-fixes on MatchSessionStep auto-pause (gameNumber field missing [3rd instance after Plan 07 caught it 2x in draftControl] + actorSlot LobbySlot->TeamSide via slotToTeamSide [only MatchSessionStep caller missing canonical conversion]). UserIdentity lastSeenAt hygiene migration (NOT Pitfall 6 -- no custom ts variable). auditInsert import fully evicted (2nd Wave 2 file after server.ts Plan 09). Integration: auth 34/34 + GC 8/8 + lobby 103/103 green (145 tests).
+- [Phase 15.3]: Plan 15.3-11 (Wave 2 File 4 costSetManagement.ts -- LAST Wave 2 file): 8 audit sites migrated [4 insertWithAudit in create_cost_set (CostSet metadata + 3 draft-table clone loops) + 4 updateWithAudit: HsrSynergyCost publish-upsert if-branch L410 (Section B pre-resolution honored -- P2 direct .id.update) + CostSet publish metadata L442 + lock L482 + unpublish L522] + 6 conditional/primitive sites PRESERVED [3 edit_draft_* if/else split-conditional blocks at L158-178 (character) / L236-255 (lightcone) / L300-321 (synergy) + 2 publish_cost_set inline ternary `existingLive? auditUpdate:auditInsert` at L369 (chars) / L391 (lightcones) + 1 HsrSynergyCost publish-upsert else-branch auditInsert primitive at L415-425 per plan Section B file-symmetry rationale]. auditInsert IMPORT RETAINED -- 1st Wave 2 file to retain (finalizationHelpers also retains due to L148 P5; contrast server.ts Plan 09 + index.ts Plan 10 both evicted). Zero Rule 2 auto-fixes. Integration: cost-sets 20/20 green (cost-set-lifecycle 15 + synergy-auction-round-trip 5) in 52.59s fresh-DB run.
+- [Phase 15.3]: WAVE 2 COMPLETE -- all 4 highest-complexity files migrated (finalizationHelpers + server.ts + index.ts + costSetManagement). Wave 3 Option α FINAL ACCOUNTING: 9 permanent auditInsert retention sites across 4 files [rosterMutations.ts L55 + rosterAdmin.ts L160 + finalizationHelpers.ts L148 + costSetManagement.ts 6 sites (3 split-conditional + 2 inline ternary + 1 synergy-upsert else-branch)]. Plan 13 (Wave 3) scope-shrinks to docs-only: update auditColumns.ts JSDoc to reflect 9-site permanent retention rationale; NO code deletion.
 
 ### Roadmap Evolution
 
@@ -153,7 +155,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T17:53:29.464Z
-Stopped at: Completed 15.3-10-PLAN.md (Wave 2 File 3 index.ts -- 7 audit sites migrated [4 updateWithAudit clientConnected + 2 updateWithAudit clientDisconnected + 3 insertWithAudit total] + 3 LobbyMember P4 composite-PK delete+insert-carry preserved on auditUpdate primitive at L181/L192/L203 + 2 Rule 2 auto-fixes on MatchSessionStep auto-pause: gameNumber=session.currentGameNumber [3rd instance of same latent bug after Plan 07 caught 2x in draftControl.ts] + actorSlot via slotToTeamSide helper [canonical conversion used by every other MatchSessionStep caller -- index.ts auto-pause was the only one missing it]. UserIdentity lastSeenAt plan-authored hygiene migration (NOT Pitfall 6). auditInsert import fully evicted -- 2nd Wave 2 file after server.ts Plan 09. Integration: auth 34/34 + garbage-collector 8/8 + lobby 103/103 green = 145 tests across 16 files.)
+Last session: 2026-04-17T18:13:12Z
+Stopped at: Completed 15.3-11-PLAN.md (Wave 2 File 4 costSetManagement.ts -- 8 audit sites migrated [4 insertWithAudit create_cost_set plain inserts + 4 updateWithAudit: HsrSynergyCost if-branch L410 (Section B pre-resolution honored) + CostSet publish metadata L442 + lock L482 + unpublish L522] + 6 conditional/primitive sites PRESERVED [3 edit_draft_* if/else split-conditional blocks L158-178/L236-255/L300-321 + 2 publish_cost_set inline ternary at L369/L391 + 1 HsrSynergyCost upsert else-branch auditInsert primitive at L415-425 per file-symmetry rationale]. auditInsert IMPORT RETAINED -- 1st Wave 2 file to retain. Zero Rule 2 auto-fixes. Integration: cost-sets 20/20 green in 52.59s. WAVE 2 COMPLETE -- all 4 highest-complexity files done.)
 Resume file: None
-Next action: `/gsd-execute-phase 15.3` (continue with Plan 11 -- Wave 2 File 4: `reducers/costSetManagement.ts` 18 sites [last Wave 2 file; may surface 2-3 more P5 conditional sites; drives Wave 3 Option α accounting final count], then Plan 12 Wave 2b D-17/D-18 type-hygiene, Plan 13 Wave 3 auditInsert deletion [Option alpha; 3 confirmed P5 sites at rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148], Plan 14 placeholder test conversion, Plan 15 publish)
+Next action: `/gsd-execute-phase 15.3` (continue with Plan 12 -- Wave 2b D-17/D-18 type-hygiene [mergeForUpdate typed signature in admin.ts + 7 build-then-insert let:any declarations across 3 files], then Plan 13 Wave 3 auditInsert Option α docs-only [codify 9-site permanent retention rationale in auditColumns.ts JSDoc -- NO code deletion; Option α accounting: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148 + costSetManagement 6 sites], Plan 14 placeholder test conversion, Plan 15 maincloud publish)
