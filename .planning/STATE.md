@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 15.3-02-PLAN.md
-last_updated: "2026-04-17T05:48:31.986Z"
+stopped_at: Completed 15.3-03-PLAN.md (Cluster C — 8 helpers, 10 P1/P2 migrated + 6 P4 carry preserved)
+last_updated: "2026-04-17T06:23:09.524Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 25
-  percent: 66
+  completed_plans: 26
+  percent: 68
 ---
 
 # Session State
@@ -98,6 +98,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3]: Plan 15.3-01: composite-PK SAME-SHAPE delete+re-insert migrates to updateWithAudit cleanly (distinct from admin.ts P4 explicit-row-carry which keeps primitive)
 - [Phase 15.3]: Plan 15.3-01: 35 pre-existing typecheck errors in test/backend/** logged to deferred-items.md — out-of-scope per SCOPE BOUNDARY
 - [Phase 15.3-audit-spread-type-helper]: Cluster B (auth-adjacent) migration clean: 10 audit call sites, 7 as-any closures eliminated, 34/34 auth + 8/8 GC integration tests passing
+- [Phase 15.3-audit-spread-type-helper]: Cluster C: 6 P4 delete+insert-carry sites preserved on auditUpdate primitive across 3 stats helpers (characterStatsIncrement, statsIncrement, globalCharacterStatsIncrement); 10 P1/P2 sites migrated to new helpers
 
 ### Roadmap Evolution
 
@@ -134,7 +135,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T05:48:31.983Z
-Stopped at: Completed 15.3-02-PLAN.md
+Last session: 2026-04-17T06:23:05.071Z
+Stopped at: Completed 15.3-03-PLAN.md (Cluster C — 8 helpers, 10 P1/P2 migrated + 6 P4 carry preserved)
 Resume file: None
 Next action: `/gsd-discuss-phase 16` (Phase 16 has no CONTEXT.md yet — discussion required before planning)
