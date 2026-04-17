@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 12
+current_plan: 13
 status: executing
-stopped_at: "Completed 15.3-12-PLAN.md (Wave 2b type-hygiene: 17 as-any eliminated across 4 files [admin.ts 10 via D-17 mergeForUpdate tightened generic + 5 FIELDS arrays as const + dropped both existing-as-any and FIELDS-as-any at L375/L463/L512/L561/L609; bracketHelpers 2 via D-18 let:any->GroupPhaseRecord retyping; finalizationHelpers 1 via D-18 newRow annotation MmrRating drop; bracketAdvancement 4 via D-18 retyping of 4 preserved Wave 2b targets L23/L55-56/L480 -- Site L480 required writable mapped-type { -readonly [K in keyof BracketMatch]: BracketMatch[K] } for post-construction resultStatus assignment due to tagged-union getter pattern in module_bindings]. Zero Rule 2 auto-fixes. Integration: typecheck 0 errors in spacetimedb/src, brackets 37/37 green in 222s, match-results 100/100 green in 921s. 3 atomic refactor commits [2fbd714, 99bf6bc, 9f79f85]. Wave 2b COMPLETE.)"
-last_updated: "2026-04-17T19:47:53Z"
+stopped_at: "Completed 15.3-13-PLAN.md (Wave 3 auditInsert Option α docs-only). Grep-verified 9 primitive auditInsert call sites across 4 files (rosterMutations L55 P5 + rosterAdmin L161 P5 + finalizationHelpers L149 P5 + costSetManagement 6 sites: L176/L253/L319 if/else split-conditionals + L369/L391 inline ternaries + L424 file-symmetry primitive). Option α selected (9 sites >> D-06 threshold of 3); Option β would require 9 site splits with zero import-eviction win. auditColumns.ts JSDoc expanded with RESTRICTED USE block + per-site enumeration (~40 lines added, zero code changes). auditInsert export signature/body + auditUpdate + SYSTEM_USER_ID all UNCHANGED. Typecheck: 0 errors in spacetimedb/src; 35 test/backend baseline unchanged per Plan 01 deferred-items.md. Stray dist/bundle.js rebuild reverted (Plan 15 scope). Commit a2a2e24 atomic to the JSDoc edit."
+last_updated: "2026-04-17T19:55:00Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 35
-  percent: 92
+  completed_plans: 36
+  percent: 95
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 12
-**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A+B+C+D+E+F+G; Wave 2 COMPLETE — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts + Plan 11 costSetManagement DONE; Wave 2b COMPLETE — Plan 12 type-hygiene [D-17 mergeForUpdate + D-18 build-then-insert typing, 17 as-any eliminated]; then Wave 3 auditInsert Option α docs-only + Wave 4 test placeholder cleanup + Wave 5 publish)
+**Current plan:** 13
+**Status:** Executing Phase 15.3 (Wave 1 COMPLETE; Wave 2 COMPLETE — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts + Plan 11 costSetManagement; Wave 2b COMPLETE — Plan 12 type-hygiene [17 as-any eliminated]; Wave 3 COMPLETE — Plan 13 Option α docs-only [9-site permanent retention JSDoc codified, zero code change]; Wave 4 placeholder test cleanup + Wave 5 publish remaining)
 **Last activity:** 2026-04-17
 
-Progress: [██████████████████████] 35/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-12 complete [Wave 1 DONE + Wave 2 COMPLETE + Wave 2b COMPLETE]; Plans 13-15 remaining)
+Progress: [██████████████████████] 36/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-13 complete [Wave 1 DONE + Wave 2 COMPLETE + Wave 2b COMPLETE + Wave 3 COMPLETE]; Plans 14-15 remaining)
 
 ## Previous Milestone
 
@@ -123,6 +123,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3]: Plan 12 pattern NEW: writable mapped-type `{ -readonly [K in keyof Row]: Row[K] }` is the canonical fix for post-construction field mutations on tagged-union columns. Module_bindings renders tagged-union fields (resultStatus, bracketSide, gameMode) as `get` accessors inferred as readonly properties. Mapped-type `-readonly` transform preserves type-checking on all non-getter fields while permitting the runtime mutations. Narrower than `as any` on the whole declaration.
 - [Phase 15.3]: Plan 12: No fallback casts needed at mergeForUpdate call sites. TypeScript collapses T to `any` cleanly when `existing` is `any`-typed; `keyof any & string` resolves to `string`; `as const` FIELDS arrays (`readonly ['displayName', ...]`) are directly assignable to `readonly string[]`. Plan's fallback guidance (`existing as HsrCharacter`) not triggered -- strict improvement over pre-plan baseline at all 5 sites.
 - [Phase 15.3]: Plan 12: Zero Rule 2 auto-fixes. Type-hygiene-only migration; runtime row shapes and control flow unchanged. Files already structurally audited in Wave 0 (admin, bracketHelpers) / Plan 06 (bracketAdvancement) / Plan 08 (finalizationHelpers). Integration cross-cut: typecheck 0 errors in spacetimedb/src + brackets 37/37 green + match-results 100/100 green = 137 integration tests passing post-plan.
+- [Phase 15.3]: Plan 15.3-13 (Wave 3 auditInsert Option α, docs-only). Grep-verified 9 primitive auditInsert call sites across 4 files (rosterMutations L55 + rosterAdmin L161 + finalizationHelpers L149 + costSetManagement 6 sites L176/L253/L319/L369/L391/L424). 9 sites >> D-06 threshold of 3 → Option α selected (keep export, add docs). auditColumns.ts JSDoc expanded with RESTRICTED USE block + per-site enumeration (~40 lines added, zero code changes). auditInsert export signature/body + auditUpdate + SYSTEM_USER_ID unchanged. Typecheck 0 errors in spacetimedb/src; 35 test/backend baseline errors unchanged per Plan 01 deferred-items.md. Stray dist/bundle.js rebuild reverted — Plan 15 owns the bundle commit. Commit a2a2e24 atomic to the JSDoc edit. WAVE 3 COMPLETE.
+- [Phase 15.3]: Plan 13 pattern — grep-verify before "keep vs delete" scope decisions. D-06 assumed 3 conditional sites; post-Wave-2 reality is 9 (3× over). Grep-first blocks re-litigating the original threshold mid-phase, and the per-site enumeration in the JSDoc keeps the rationale discoverable via the next call-site grep rather than buried in a SUMMARY that only planners read.
 
 ### Roadmap Evolution
 
@@ -159,7 +161,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T19:47:53Z
-Stopped at: Completed 15.3-12-PLAN.md (Wave 2b type-hygiene: 17 as-any eliminated across 4 files exact plan target. D-17 mergeForUpdate generic tightened `<T extends Record<string, any>, K extends keyof T & string>` + 5 FIELDS arrays declared `as const` at definition sites + 10 as-any removed at 5 call sites L375/L463/L512/L561/L609 in admin.ts. D-18 build-then-insert retyping: bracketHelpers.ts let updated1/2 any -> GroupPhaseRecord (2); finalizationHelpers.ts newRow: MmrRating annotation (1); bracketAdvancement.ts 4 Wave 2b preserved sites L23/L55-56/L480 retyped to BracketMatch/GroupPhaseRecord (4). Writable mapped-type `{ -readonly [K in keyof BracketMatch]: BracketMatch[K] }` introduced at L480 for tagged-union-getter field mutations. Zero Rule 2 auto-fixes. Typecheck 0 errors in spacetimedb/src; brackets 37/37 green in 222s; match-results 100/100 green in 921s. 3 atomic refactor commits [2fbd714, 99bf6bc, 9f79f85]. WAVE 2b COMPLETE.)
+Last session: 2026-04-17T19:55:00Z
+Stopped at: Completed 15.3-13-PLAN.md (Wave 3 auditInsert Option α, docs-only). Grep-verified 9 primitive auditInsert call sites across 4 files (rosterMutations L55 + rosterAdmin L161 + finalizationHelpers L149 + costSetManagement 6 sites: L176/L253/L319 if/else split-conditionals + L369/L391 inline ternaries + L424 file-symmetry primitive). 9 sites >> D-06 threshold of 3 → Option α. auditColumns.ts JSDoc expanded with RESTRICTED USE block + per-site enumeration (~40 lines added, zero code changes). auditInsert export signature/body + auditUpdate + SYSTEM_USER_ID unchanged. Typecheck 0 errors in spacetimedb/src; 35 test/backend baseline errors unchanged. Stray dist/bundle.js rebuild reverted — Plan 15 owns the bundle commit. Commit a2a2e24 atomic. WAVE 3 COMPLETE. Phase 15.3: 13/15 plans complete; 2 remaining (Plan 14 Wave 4 placeholder test conversion, Plan 15 Wave 5 maincloud publish — autonomous: false).
 Resume file: None
-Next action: `/gsd-execute-phase 15.3` (continue with Plan 13 Wave 3 auditInsert Option α docs-only [codify 9-site permanent retention rationale in auditColumns.ts JSDoc -- NO code deletion; Option α accounting: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148 + costSetManagement 6 sites], then Plan 14 placeholder test conversion, Plan 15 maincloud publish)
+Next action: `/gsd-execute-phase 15.3` (continue with Plan 14 Wave 4 placeholder test conversion — 8 expect(true).toBe(true) → it.todo across 6 test files, zero production code impact; then Plan 15 Wave 5 maincloud publish — autonomous: false, will present a CHECKPOINT before spacetime publish)
