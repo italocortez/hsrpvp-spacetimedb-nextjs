@@ -277,12 +277,9 @@ export const server_set_datetime = spacetimedb.reducer({
         if (!row) throw new SenderError(`UserIdentity not found for identity ${primaryKey.slice(0, 16)}...`);
 
         if (field === 'lastSeenAt') {
-            ctx.db.UserIdentity.identity.update({
-                ...row,
-                lastSeenAt: ts,
-                lastModifiedById: SYSTEM_USER_ID,
-                lastModifiedDate: ctx.timestamp,
-            });
+            ctx.db.UserIdentity.identity.update(
+                updateWithAudit(ctx, row, { lastSeenAt: ts }, SYSTEM_USER_ID)
+            );
         } else if (field === 'createdDate') {
             ctx.db.UserIdentity.identity.update({
                 ...row,
