@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 7
+current_plan: 8
 status: executing
-stopped_at: Completed 15.3-07-PLAN.md (Cluster G -- 10 highest-density files, 110 sites migrated + 1 P5 preserved, Wave 1 COMPLETE across 7 clusters / 50 files / 253 sites; 4 Rule 2 auto-fixes surfaced structural correctness gaps; lobby 103/103 + match-session 69/69 + roster 42/42 + achievements 25/25 + season 8/8 = 247/247 integration tests green)
-last_updated: "2026-04-17T10:00:00.000Z"
+stopped_at: Completed 15.3-08-PLAN.md (Wave 2 File 1 finalizationHelpers.ts -- 10 sites migrated [7 P1 + 3 P2] + 1 P5 conditional preserved [third confirmed in phase: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148] + 3 P4 carry preserved + 1 D-18 target preserved; as any 15->9; match-results 62/62 + match-session 39/39 actual tests PASS; post-draft 26/26 + mmr-snapshot 3/3 isolated reruns confirm harness-race flakes are not regressions)
+last_updated: "2026-04-17T12:00:00.000Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 31
-  percent: 82
+  completed_plans: 32
+  percent: 84
 ---
 
 # Session State
@@ -113,6 +113,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3-audit-spread-type-helper]: Cluster G: rosterAdmin.ts L160 is the SECOND confirmed P5 conditional Wave 1 site (admin_batch_upsert_characters HsrAccountCharacter upsert). Same structural pattern as Plan 04 rosterMutations.ts L55. Both are HsrAccountCharacter composite-PK upserts. Dual-import pattern retained (auditColumns primitives + auditHelpers new helpers).
 - [Phase 15.3-audit-spread-type-helper]: Cluster G: D-07-04 if/else clean-split migration pattern (admin_upsert_archetype + set_displayed_achievement) distinct from P5 inline-ternary. Criterion: row literal appears once (P5) vs twice (if/else). Adds to pattern vocabulary for Wave 2 planner reference.
 - [Phase 15.3-audit-spread-type-helper]: WAVE 1 COMPLETE -- 7 clusters, 50 files, 253 audit sites migrated across Plans 01-07. Pattern cookbook exhaustively exercised: P1 + P2 + SAME-SHAPE + P4 carry (9 sites preserved) + P5 conditional (2 sites preserved) + Pitfall 5 intermediate-variable (4+2 sites preserved) + if/else clean-split (NEW). Comm-diff confirms exactly 5 remaining files: 4 Wave 2 targets (finalizationHelpers, server.ts, index.ts, costSetManagement) + 1 P5-only file (rosterMutations).
+- [Phase 15.3-audit-spread-type-helper]: Plan 08 (Wave 2 File 1, finalizationHelpers.ts): 10 sites migrated [7 P1 + 3 P2] + 1 P5 conditional PRESERVED at L148 (MmrRating composite-PK upsert -- THIRD confirmed P5 in phase: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148) + 3 P4 carry preserved (L141-149 + L155-162 MmrRating globalComposite + L619-623 PlayerStat spectator) + 1 Wave 2b D-18 target preserved at L35 (`newRow as any`; newRow now captures insertWithAudit return, Plan 12 types it via module_bindings). as any count 15->9 (decrease of 6). Zero Rule 2 auto-fixes (contrast with Plan 07's 4 discoveries -- finalizationHelpers had no hidden structural gaps). Integration: match-results 62/62 actual tests PASS (first full run; 4 Test Files reported fail due to teardown SenderError harness race only); match-session 39/39 actual tests PASS per run (post-draft single-test flake surfaced twice but isolated 26/26 PASS, confirming non-regression); mmr-snapshot isolated 3/3 PASS.
+- [Phase 15.3-audit-spread-type-helper]: Plan 08 pattern — getOrCreateRating (L22-37) exercises 'build-then-insert with helper output captured' — `const newRow = insertWithAudit(ctx, rowLiteral, actingUserId); ctx.db.MmrRating.insert(newRow as any);` — first Wave 2 appearance of the two-line helper-result-capture pattern. Distinct from Wave 1 single-line `ctx.db.X.insert(insertWithAudit(ctx, row, uid))`. Useful for helpers that return newRow to callers.
 
 ### Roadmap Evolution
 
@@ -149,7 +151,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T10:00:00.000Z
-Stopped at: Completed 15.3-07-PLAN.md (Cluster G -- 10 highest-density files, 110 sites migrated + 1 P5 preserved; Wave 1 COMPLETE across 7 clusters / 50 files / 253 sites; 4 Rule 2 auto-fixes surfaced structural correctness gaps; 247/247 integration tests green)
+Last session: 2026-04-17T12:00:00.000Z
+Stopped at: Completed 15.3-08-PLAN.md (Wave 2 File 1 finalizationHelpers.ts -- 10 audit sites migrated [7 P1 plain-insert + 3 P2 direct-update] + 1 P5 conditional preserved at L148 [third confirmed P5 in phase] + 3 P4 delete+insert-carry preserved + 1 Wave 2b D-18 target preserved at L35; as any 15->9; match-results 62/62 + match-session 39/39 actual tests PASS; post-draft 26/26 + mmr-snapshot 3/3 isolated runs confirm harness flake non-regression)
 Resume file: None
-Next action: `/gsd-execute-phase 15.3` (continue with Wave 2 individual-audit files — Plans 15.3-08 through 15.3-11 target finalizationHelpers.ts, server.ts, src/index.ts, costSetManagement.ts; then Wave 2b D-17/D-18 type-hygiene in Plan 12; Wave 3 auditInsert deletion in Plan 13; Wave 4 placeholder test conversion in Plan 14; Wave 5 publish in Plan 15)
+Next action: `/gsd-execute-phase 15.3` (continue with Plan 09 -- Wave 2 File 2: `reducers/server.ts` 13 sites, bootstrap path, SYSTEM_USER_ID, 3 NO-TOUCH counter-example sites at L293-325 `server_set_datetime`; then Plan 10 index.ts 10 sites, Plan 11 costSetManagement.ts 18 sites, Plan 12 Wave 2b D-17/D-18 type-hygiene, Plan 13 Wave 3 auditInsert deletion [Option alpha; 3 confirmed P5 sites], Plan 14 placeholder test conversion, Plan 15 publish)
