@@ -6,6 +6,7 @@ import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { placeParticipantInNextMatch, updateGroupPhaseRecords, sortGroupPhaseRecords } from '../helpers/bracketHelpers';
 import { deleteCalendarEventForBracketMatch } from '../helpers/calendarCascade';
 import { foldSeeding } from '../helpers/bracketGeneration';
+import type { BracketMatch, GroupPhaseRecord } from '../module_bindings/types';
 
 // ─── Group standings points ────────────────────────────────────────────────────
 // Win=2, Draw=1, Loss=0 (per CONTEXT.md)
@@ -20,7 +21,7 @@ function removeParticipantFromMatch(ctx: any, matchId: number, teamId: number, u
     const match = ctx.db.BracketMatch.id.find(matchId);
     if (!match) return;
 
-    const updatedMatch: any = updateWithAudit(ctx, match, {}, userId);
+    const updatedMatch: BracketMatch = updateWithAudit(ctx, match, {}, userId);
 
     // Clear the slot containing this teamId
     if (match.team1Id === teamId) {
@@ -34,7 +35,7 @@ function removeParticipantFromMatch(ctx: any, matchId: number, teamId: number, u
         updatedMatch.winnerTeamId = undefined;
     }
 
-    ctx.db.BracketMatch.id.update(updatedMatch as any);
+    ctx.db.BracketMatch.id.update(updatedMatch);
 }
 
 // ─── Internal helper: reverseGroupPhaseRecords ───────────────────────────────────
@@ -52,8 +53,8 @@ function reverseGroupPhaseRecords(ctx: any, bracketMatch: any, userId: number): 
 
     if (!standing1 || !standing2) return;
 
-    let updated1: any;
-    let updated2: any;
+    let updated1: GroupPhaseRecord;
+    let updated2: GroupPhaseRecord;
 
     if (bracketMatch.winnerTeamId === undefined) {
         // Was a draw: reverse draws+1 and points+1 for both
@@ -87,10 +88,10 @@ function reverseGroupPhaseRecords(ctx: any, bracketMatch: any, userId: number): 
 
     // Delete + insert pattern for composite PK tables
     ctx.db.GroupPhaseRecord.delete(standing1);
-    ctx.db.GroupPhaseRecord.insert(updated1 as any);
+    ctx.db.GroupPhaseRecord.insert(updated1);
 
     ctx.db.GroupPhaseRecord.delete(standing2);
-    ctx.db.GroupPhaseRecord.insert(updated2 as any);
+    ctx.db.GroupPhaseRecord.insert(updated2);
 }
 
 // ─── Internal helper: setEliminatedStatus ─────────────────────────────────────
@@ -477,7 +478,11 @@ export const advance_group_to_elimination = spacetimedb.reducer(
             const t2 = seed2 <= advancingTeams.length ? advancingTeams[seed2 - 1] : undefined;
 
             const match = sortedElimR1[i];
-            const updates: any = updateWithAudit(ctx, match, {}, user.id);
+            // Writable BracketMatch shape -- tagged-enum getters in the inferred type
+            // (resultStatus, bracketSide, gameMode) are read-only, so strip readonly
+            // locally to allow post-construction field mutations.
+            const updates: { -readonly [K in keyof BracketMatch]: BracketMatch[K] } =
+                updateWithAudit(ctx, match, {}, user.id);
 
             if (t1 !== undefined) updates.team1Id = t1;
             if (t2 !== undefined) updates.team2Id = t2;
@@ -491,7 +496,7 @@ export const advance_group_to_elimination = spacetimedb.reducer(
                 updates.resultStatus = { tag: 'Validated', value: {} } as any;
             }
 
-            ctx.db.BracketMatch.id.update(updates as any);
+            ctx.db.BracketMatch.id.update(updates);
 
             // Auto-advance BYE winners to next round
             if (updates.winnerTeamId !== undefined && match.nextWinnerMatchId) {
