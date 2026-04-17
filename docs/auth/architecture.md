@@ -105,7 +105,7 @@ BanRecord (id: u32 autoInc PK)  [PRIVATE -- public: false]
 | `view_my_profile` | ctx.sender only | Merged User + UserPrivate fields (MyProfileRow) |
 | `view_my_identity` | ctx.sender only | Caller's UserIdentity row |
 | `view_admin_user_private` | Moderator+ only | All UserPrivate rows |
-| `view_user_directory` | Authenticated clients only | Projected UserDirectoryRow -- safe D-16 subset (excludes audit cols, deletedAt, lastLoginAt, auth IDs); Phase 15.2 D-06: authenticated-only via `spacetimedb.view()` |
+| `view_public_hsr_accounts` | Anonymous (projection-based privacy) | HsrAccount rows where `isRosterPublic=true`; rating included when `isRatingPublic=true`. Flat rows (one per character). Renamed from `view_public_accounts` in Phase 15.5 (D-04) — `hsr_` names the source table explicitly. Stays `anonymousView` per Phase 15.5 D-05 (projection body is the privacy gate, not subscription timing). |
 
 ### MyProfileRow fields (view_my_profile)
 ```
@@ -193,6 +193,41 @@ Reactive callbacks: `conn.db.User.onInsert` and `conn.db.User.onUpdate` trigger 
 
 `hasDiscordIntent` (sessionStorage flag, 5-minute TTL) gates Discord linking to prevent stale NextAuth sessions from auto-linking.
 
+## Subscription Lifecycle (Phase 15.5 D-05)
+
+SpacetimeDB offers two complementary privacy tools for client-facing data:
+
+| Privacy Gate | Where It Runs | What It Closes |
+|--------------|---------------|----------------|
+| **Projection-based** (anonymous views) | Server — inside the view body | What a caller *sees* (field masking, row filtering by opt-in flags) |
+| **Subscription-based** (client gating) | Client — inside `useAuth.ts` | When a subscription *fires* (anonymous visitors cause zero pre-auth egress on sensitive tables) |
+
+These are not substitutes. Projection-based privacy is authoritative for any data the user has opted to share anonymously; subscription-based gating is how the client decides when to incur the bandwidth cost of a raw table subscription.
+
+### The Two-Stage Rule (`useAuth.ts`)
+
+- **Stage 1 — always on:** `SELECT * FROM view_my_profile` subscribes as soon as the SpacetimeDB connection is active. The server applies the `ctx.sender` filter — anonymous callers receive 0 rows, authenticated callers receive their single merged User + UserPrivate row.
+- **Stage 2 — gated:** `SELECT * FROM user` subscribes ONLY when `currentUser != null || hadTokenOnMount.current || hadSessionCookie.current`. This gate composition matches `isWaitingForData`'s signal set (reuses existing refs; zero new infrastructure). Token / cookie presence is a UX hint — if either is stale/revoked, the WS handshake itself fails (`isActive` stays false) and Stage 2 never fires regardless.
+
+A truly anonymous visitor (no cached token, no session cookie, no resolved User) causes zero egress on the User table. The bandwidth leak that Phase 15.2 UAT Test 4 exposed — unconditional `SELECT * FROM user` pre-auth — is closed by this split.
+
+### Intentional Anonymous Exceptions
+
+Two views stay `anonymousView` by design. Their privacy gate is the projection body, not subscription timing:
+
+- **`view_lobby_browser`** — filters out config details (timers, budgets, penalties, audit columns, hostId) and filters to active stages only. Anonymous BY DESIGN so visitors can browse lobbies pre-auth.
+- **`view_public_hsr_accounts`** — filters to `isRosterPublic=true` rows; rating field only emitted when `isRatingPublic=true`. Anonymous BY DESIGN so pre-auth profile browsing works.
+
+These do NOT need Stage 2 gating — applying it would regress intentional pre-auth UX.
+
+### Rule for Future Subscriptions
+
+Any new frontend subscription to a raw table (no projection view body) OR a per-user view MUST go through the Stage 2 gate. If a new anonymous projection view is added whose body performs the privacy filtering, it may remain `anonymousView` — document that decision in this section alongside the two existing exceptions.
+
+### Accepted Tradeoff (from 15.2 D-01 / 15.5 CONTEXT)
+
+`User.public = true` means a malicious actor subscribing directly to `SELECT * FROM user` (not via our frontend) still receives rows. Closing that requires `User.public = false` + on-demand read reducers — explicitly deferred in Phase 15.5 CONTEXT deferred ideas. This phase's scope is "our frontend does not auto-subscribe anonymous," not "adversarial clients cannot query User."
+
 ## Phase History
 
 | Decision | Source | Date |
@@ -210,10 +245,11 @@ Reactive callbacks: `conn.db.User.onInsert` and `conn.db.User.onUpdate` trigger 
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 | User.isPrivate removed (D-02 dead code); DeletedUser private archive table added (D-05); view_user_directory flipped to authenticated-only spacetimedb.view() (D-06); performUserDeletion eviction rewrite (D-09); R1 fix — all three soft-delete writers now insert UserDeletionJob (D-10); resolveUserLabel helper added (D-12) | Phase 15.2 execution | 2026-04-15 |
 | UAT verify-work confirmed all 9 cascade + archive behaviors on live maincloud. Two issues surfaced for follow-up (scoped to Phase 15.5 via seed `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`): (1) D-06's `spacetimedb.view()` does NOT reject anonymous subscribers at the framework level — per SpacetimeDB docs, `view` vs `anonymousView` only differs in whether `ctx.sender()` is exposed, not in who can call; the runtime flip is a no-op without an explicit body-level auth check. (2) The actual bandwidth-leak surface is `useAuth.ts:38`'s unconditional `SELECT * FROM user` subscription pre-auth — no client ever subscribes to `view_user_directory`. Phase 15.5 will delete the dead view and gate the raw `user` subscription behind auth state | Phase 15.2 execution | 2026-04-16 |
+| Phase 15.5: `view_user_directory` deleted (dead code — zero client subscribers, cosmetic 15.2 D-06 flip retired); `view_public_accounts` renamed to `view_public_hsr_accounts` (D-04) — underlying table is HsrAccount, name now explicit; `useAuth.ts` subscription split into Stage 1 (`view_my_profile`, always) and Stage 2 (`SELECT * FROM user`, gated on `currentUser != null \|\| hadTokenOnMount.current \|\| hadSessionCookie.current`) — closes the UAT Test 4 bandwidth leak; new `guestLoginPending` state drives a narrow Login-button spinner scoped strictly to the `loginAsGuest` pending window (D-03); `docs/auth/architecture.md` Subscription Lifecycle section codifies the projection-vs-subscription privacy distinction (D-05) with `view_lobby_browser` and `view_public_hsr_accounts` named as intentional anonymous exceptions | Phase 15.5 execution | 2026-04-16 |
 
 ---
 
-*Last updated: 2026-04-15*
+*Last updated: 2026-04-16*
 *Feature owner: Phase 01 / Phase 12*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
