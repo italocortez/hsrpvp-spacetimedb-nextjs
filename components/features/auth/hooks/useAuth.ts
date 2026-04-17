@@ -386,11 +386,14 @@ export function useAuth() {
     // D-03: clear guestLoginPending once currentUser resolves (success path).
     // Error path clears inside loginGuest's .catch above.
     useEffect(() => {
-        if (currentUser) {
+        // Only act when guestLoginPending was actually true — otherwise the log fires spuriously
+        // on every currentUser reference change (Scenario 2 reconnect, Scenario 3 Discord relink)
+        // even though nothing is transitioning.
+        if (currentUser && guestLoginPending) {
             console.log(`[useAuth] guestLoginPending → false (currentUser resolved: id=${currentUser.id})`);
             setGuestLoginPending(false);
         }
-    }, [currentUser]);
+    }, [currentUser, guestLoginPending]);
 
     const isLinkingDiscord = hasDiscordIntent && nextAuthStatus === "authenticated" && (!currentUser || currentUser.isGuest);
 
