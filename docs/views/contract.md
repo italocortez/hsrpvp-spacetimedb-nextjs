@@ -12,7 +12,7 @@ Views are server-side computed projections that replace direct table subscriptio
 |--------|-------|---------|
 | `view_my_*` | Strictly scoped to the caller's own data or the caller's current lobbies | `view_my_lobbies`, `view_my_lobby_chat`, `view_my_match_steps` |
 | `view_*` (no "my") | Caller's data **plus** publicly visible data | `view_match_history`, `view_match_participant_history` |
-| `view_*` (anonymous) | No authentication required; accessible to all clients | `view_lobby_browser`, `view_public_accounts` (`view_user_directory` — dead code, removal scheduled Phase 15.5) |
+| `view_*` (anonymous) | No authentication required; accessible to all clients | `view_lobby_browser`, `view_public_hsr_accounts` (renamed from `view_public_accounts` in Phase 15.5 D-04) |
 
 The `view_my_*` prefix guarantees the caller never sees another user's private data. Views without "my" combine caller-participated rows with publicly visible rows.
 
@@ -73,16 +73,6 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 3. Return single row or undefined
 
 **Returns:** `option(User.rowType)`.
-
-### view_user_directory
-
-**Status:** Dead code — removal scheduled in Phase 15.5 (seed: `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`). Zero frontend subscribers; `useAuth.ts` subscribes directly to the raw `user` table, not this view.
-
-**Type (as currently declared):** `spacetimedb.view()` (Phase 15.2 D-06 flipped from `anonymousView`). Note: per the SpacetimeDB docs, `view` vs `anonymousView` differs only in whether `ctx.sender()` is exposed to the body — both are subscribable by any client. The runtime flip produces no anonymous-rejection behavior without an explicit `getAuthenticatedUser()` check in the body (not present here). Phase 15.5 resolves this by retiring the view and moving enforcement to the frontend subscription lifecycle.
-
-**Row type (while present):** `UserDirectoryRow` — safe D-16 subset: `id, username, displayName, role, avatarCharacterName, isOnline, isGuest, hasDiscordLinked, displayedAchievementId`.
-
-**Purpose (historical):** Was intended as the public user list for display name resolution. Never wired on the frontend — the post-15.5 model is: client subscribes to raw `user` only after auth; `resolveUserLabel` + `DeletedUser` archive handle deleted-user display on the server side.
 
 ### view_my_cost_sets
 
@@ -180,13 +170,13 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 
 **Returns:** Empty if caller has no UserIdentity mapping.
 
-### view_public_accounts (Phase 10.4)
+### view_public_hsr_accounts (Phase 10.4 / renamed Phase 15.5 D-04)
 
 **Purpose:** Public HSR accounts for profile browsing. Replaces raw `HsrAccount` subscription for public data (D-20, D-22).
 
-**Type:** `anonymousView` -- no authentication required.
+**Type:** `anonymousView` -- no authentication required. Stays anonymous per Phase 15.5 D-05 (projection body IS the privacy gate — `isRosterPublic` / `isRatingPublic` filters are applied server-side, not via subscription timing).
 
-**Row type:** `PublicAccountRow` (custom struct: accountId, userId, uid, region, displayLabel, accountRating?, characterName?, eidolonLevel?).
+**Row type:** `PublicHsrAccountRow` (custom struct: accountId, userId, uid, region, displayLabel, accountRating?, characterName?, eidolonLevel?). Renamed from `PublicAccountRow` in Phase 15.5 D-04 alongside the view rename.
 
 **Flow:**
 1. Iterate all `HsrAccount` rows via `iter()`
@@ -356,10 +346,10 @@ The `view_my_*` prefix guarantees the caller never sees another user's private d
 ### Security: Unauthenticated caller sees anonymous views
 
 **Given:** An unauthenticated client connects.
-**When:** Client subscribes to `view_lobby_browser` or `view_public_accounts`
-**Then:** Both views return data (`anonymousView` type — no auth required).
+**When:** Client subscribes to `view_lobby_browser` or `view_public_hsr_accounts`
+**Then:** Both views return data (`anonymousView` type — no auth required). Privacy is enforced inside the view body (lobby browser excludes config columns + Finished lobbies; `view_public_hsr_accounts` filters to `isRosterPublic=true` rows with rating projected only when `isRatingPublic=true`).
 
-Note on `view_user_directory`: scheduled for removal in Phase 15.5. The Phase 15.2 D-06 flip from `anonymousView` to `view` does NOT produce anonymous rejection at runtime (`view` vs `anonymousView` is about whether `ctx.sender()` is exposed to the body, not who can subscribe — see SpacetimeDB docs and `.planning/phases/15.2-user-directory-view-performance/15.2-UAT.md` Test 4). Anonymous callers continue to receive rows from `view_user_directory` until the view is deleted in Phase 15.5.
+Phase 15.5 retired `view_user_directory` (was dead code with zero client subscribers; the cosmetic Phase 15.2 D-06 `view` flip turned out to be a runtime no-op per SpacetimeDB docs). Post-15.5: User directory data comes from a `SELECT * FROM user` subscription gated behind the frontend Stage 2 condition in `useAuth.ts` — see `docs/auth/architecture.md` Subscription Lifecycle.
 
 ### Security: Unauthenticated caller gets nothing from per-user views
 
@@ -528,7 +518,7 @@ Note on `view_user_directory`: scheduled for removal in Phase 15.5. The Phase 15
 | `buildVisibleMatchIds()` | MatchParticipantHistory.by_user, MatchSessionHistory.game_mode | Shared visibility gate | Reads |
 | `revealTournamentHistory` | Sets `isPubliclyVisible=true` on MatchSessionHistory | Tournament completion | Writes (external) |
 | `view_my_roster` | HsrAccount.user_id + HsrAccountCharacter.hsr_account_id | Private table access | Reads |
-| `view_public_accounts` | HsrAccount.iter() + HsrAccountCharacter.hsr_account_id | Public roster access | Reads |
+| `view_public_hsr_accounts` | HsrAccount.iter() + HsrAccountCharacter.hsr_account_id | Public roster access | Reads |
 | `view_tournament_registrant_accounts` | TournamentEnrolled.user_id, TournamentPlayerAccount.by_tournament_and_user, getMyTournamentIds | Locked account access | Reads |
 | `view_my_roster_visibility` | LobbyMemberAccount.by_lobby_and_user (Phase 10.4) | Selected-account filtering | Reads |
 
@@ -559,8 +549,11 @@ Note on `view_user_directory`: scheduled for removal in Phase 15.5. The Phase 15
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 | view_user_directory declaratively flipped from `anonymousView` to `view` (D-06) as a marker for Phase 16's frontend subscription lifecycle; `UserDirectoryRow` projection unchanged (D-07); `view_my_profile` dropped `isPrivate` field (D-08, aligned with User.isPrivate removal) | Phase 15.2 execution | 2026-04-15 |
 | UAT verify-work (Test 4) established that `spacetimedb.view()` vs `spacetimedb.anonymousView()` does NOT gate subscription at the wire — per official docs, the difference is only whether `ctx.sender()` is exposed to the body. D-06's "framework-level rejection" claim in the implementation comment was factually wrong. No client ever subscribed to `view_user_directory`, so the effective behavior change is zero. View scheduled for deletion in Phase 15.5 alongside frontend subscription gating on `useAuth.ts` | Phase 15.2 execution | 2026-04-16 |
+| `view_user_directory` retired and `UserDirectoryRow` row type removed — fully delivers on Phase 15.2's deletion-scheduling note. Behavior contract change: any code referencing `view_user_directory` is now incorrect — User directory data comes from a `SELECT * FROM user` subscription gated behind the frontend Stage 2 condition in `useAuth.ts` (see `docs/auth/architecture.md` Subscription Lifecycle) | Phase 15.5 execution | 2026-04-16 |
+| `view_public_accounts` renamed to `view_public_hsr_accounts` (D-04) — keeps the `public` prefix marking anonymous intent, adds `hsr_` to make the projected source table (`HsrAccount`) explicit. `PublicAccountRow` row type renamed to `PublicHsrAccountRow`. Anonymous registration + projection body unchanged from Phase 10.4 — pure identifier rename. Stays anonymous per Phase 15.5 D-05: the projection body is the privacy gate (filters by `isRosterPublic` / `isRatingPublic` flags), not subscription timing. Naming-Convention table, Integration Surface table, and the "Unauthenticated caller sees anonymous views" security scenario all updated | Phase 15.5 execution | 2026-04-16 |
+| Phase 15.5 verify-work sweep: `### view_user_directory` subsection removed from Views section; `view_public_accounts` references swept to `view_public_hsr_accounts` in the Naming-Convention table, the security scenario, and the Integration Surface table. Historical Phase 9, 10.4, 15.2 Phase History rows left untouched (CLAUDE.md rule — no rewriting historical entries) | Phase 15.5 verify-work | 2026-04-17 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 9*
+*Last updated: 2026-04-17*
+*Feature owner: Phase 9 / Phase 15.5*
