@@ -1,6 +1,6 @@
 import { SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from './ensurePermissions';
-import { auditUpdate } from './auditColumns';
+import { updateWithAudit } from './auditHelpers';
 import { deleteCalendarEventsForTournament } from './calendarCascade';
 import { hardDeleteLobby } from '../reducers/lobbyGc';
 
@@ -96,11 +96,9 @@ export function transferTournamentCaptain(ctx: any, teamId: number, leavingUserI
         .sort((a: any, b: any) => a.userId - b.userId); // deterministic: lowest userId
 
     if (otherMembers.length > 0) {
-        ctx.db.TournamentTeam.id.update({
-            ...team,
+        ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team, {
             captainUserId: otherMembers[0].userId,
-            ...auditUpdate(ctx, team, actingUserId),
-        } as any);
+        }, actingUserId));
         return true; // captain transferred
     }
     return false; // no one to transfer to

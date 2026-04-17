@@ -4,7 +4,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── check_in_tournament ─────────────────────────────────────────────────────
 // Marks the calling player as checked in for a tournament.
@@ -44,11 +44,9 @@ export const check_in_tournament = spacetimedb.reducer(
 
         // Update status to CheckedIn (delete + re-insert for composite PK)
         ctx.db.TournamentEnrolled.by_tournament_and_user.delete([tournamentId, user.id]);
-        ctx.db.TournamentEnrolled.insert({
-            ...enrolled,
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, enrolled, {
             status: { tag: 'CheckedIn', value: {} } as any,
-            ...auditUpdate(ctx, enrolled, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[CHECK_IN] User #${user.id} checked into tournament #${tournamentId}`);
     }

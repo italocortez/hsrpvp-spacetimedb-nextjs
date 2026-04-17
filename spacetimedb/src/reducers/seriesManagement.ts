@@ -6,7 +6,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { ensureLobbyMember, slotTeam, slotIsCoach, slotIsSpectator } from '../helpers/lobbyHelpers';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── D-07 authority check ─────────────────────────────────────────────────────
 // Returns true if caller has authority to control series state.
@@ -94,8 +94,7 @@ export const advance_to_next_game = spacetimedb.reducer(
             turnStartAt: ctx.timestamp,
         };
 
-        ctx.db.MatchSession.lobbyId.update({
-            ...session,
+        ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
             turnIndex: 0,
             draftSequence: [],
             teamBlueCharBudget: lobby.characterBudget,
@@ -111,16 +110,13 @@ export const advance_to_next_game = spacetimedb.reducer(
             blueCharactersWon: 0,
             redCharactersWon: 0,
             currentGameNumber: session.currentGameNumber + 1,
-            ...auditUpdate(ctx, session, user.id),
-        } as any);
+        }, user.id));
 
         // Step 3: Transition lobby stage: BetweenGames -> Drafting
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             stage: { tag: 'Drafting', value: {} } as any,
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         // System chat message
         ctx.db.ChatMessage.insert({
@@ -166,12 +162,10 @@ export const shelve_series = spacetimedb.reducer(
         }
 
         // Transition: BetweenGames -> Shelved
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             stage: { tag: 'Shelved', value: {} } as any,
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         // System chat message
         ctx.db.ChatMessage.insert({
@@ -237,12 +231,10 @@ export const resume_series = spacetimedb.reducer(
         }
 
         // Transition: Shelved -> BetweenGames
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             stage: { tag: 'BetweenGames', value: {} } as any,
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         // System chat message
         ctx.db.ChatMessage.insert({

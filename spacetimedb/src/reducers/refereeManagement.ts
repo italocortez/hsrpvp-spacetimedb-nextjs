@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── transfer_referee ─────────────────────────────────────────────────────────
 // Transfers the referee flag from the caller to another lobby member.
@@ -39,19 +39,11 @@ export const transfer_referee = spacetimedb.reducer(
 
         // Remove referee flag from caller
         ctx.db.LobbyMember.delete(senderMember);
-        ctx.db.LobbyMember.insert({
-            ...senderMember,
-            isReferee: false,
-            ...auditUpdate(ctx, senderMember, user.id),
-        } as any);
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, senderMember, { isReferee: false }, user.id));
 
         // Add referee flag to target
         ctx.db.LobbyMember.delete(targetMember);
-        ctx.db.LobbyMember.insert({
-            ...targetMember,
-            isReferee: true,
-            ...auditUpdate(ctx, targetMember, user.id),
-        } as any);
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, targetMember, { isReferee: true }, user.id));
 
         console.log(`[LOBBY] Referee transferred from user #${user.id} to user #${targetUserId} in lobby #${lobbyId}`);
     }
@@ -96,19 +88,11 @@ export const reclaim_referee = spacetimedb.reducer(
 
         // Remove referee flag from current holder
         ctx.db.LobbyMember.delete(currentReferee);
-        ctx.db.LobbyMember.insert({
-            ...currentReferee,
-            isReferee: false,
-            ...auditUpdate(ctx, currentReferee, user.id),
-        } as any);
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, currentReferee, { isReferee: false }, user.id));
 
         // Add referee flag to host
         ctx.db.LobbyMember.delete(hostMember);
-        ctx.db.LobbyMember.insert({
-            ...hostMember,
-            isReferee: true,
-            ...auditUpdate(ctx, hostMember, user.id),
-        } as any);
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, hostMember, { isReferee: true }, user.id));
 
         console.log(`[LOBBY] Referee reclaimed by host #${user.id} from user #${currentReferee.userId} in lobby #${lobbyId}`);
     }

@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { transferTournamentCaptain } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit } from '../helpers/auditHelpers';
 
 // ─── create_tournament_team ───────────────────────────────────────────────────
 // Creates a tournament-scoped team for the calling user (captain).
@@ -46,24 +46,22 @@ export const create_tournament_team = spacetimedb.reducer(
         }
 
         // Insert the team row
-        const newTeam = ctx.db.TournamentTeam.insert({
+        const newTeam = ctx.db.TournamentTeam.insert(insertWithAudit(ctx, {
             id: 0,
             tournamentId,
             name: trimmedName,
             captainUserId: user.id,
             seedNumber: undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         const teamId = newTeam.id;
 
         // Insert TournamentTeamMember row for the captain (D-20)
-        ctx.db.TournamentTeamMember.insert({
+        ctx.db.TournamentTeamMember.insert(insertWithAudit(ctx, {
             teamId,
             userId: user.id,
             tournamentId,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -104,11 +102,10 @@ export const request_join_team = spacetimedb.reducer(
             throw new SenderError('You already have a pending request to join this team.');
         }
 
-        ctx.db.TournamentTeamRequest.insert({
+        ctx.db.TournamentTeamRequest.insert(insertWithAudit(ctx, {
             teamId,
             userId: user.id,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -153,12 +150,11 @@ export const accept_team_request = spacetimedb.reducer(
         }
 
         // Insert TournamentTeamMember row for the accepted user (D-20)
-        ctx.db.TournamentTeamMember.insert({
+        ctx.db.TournamentTeamMember.insert(insertWithAudit(ctx, {
             teamId,
             userId,
             tournamentId: team.tournamentId,
-            ...auditInsert(ctx, caller.id),
-        } as any);
+        }, caller.id));
     }
 );
 
