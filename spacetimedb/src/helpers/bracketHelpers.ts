@@ -3,7 +3,7 @@
 // bracketAdvancement.ts reducers and matchFinalization.ts.
 
 import { SenderError } from 'spacetimedb/server';
-import { auditUpdate } from './auditColumns';
+import { updateWithAudit } from './auditHelpers';
 
 // ─── Group standings points ────────────────────────────────────────────────────
 const WIN_POINTS = 2;
@@ -21,17 +21,13 @@ export function placeParticipantInNextMatch(ctx: any, nextMatchId: number, teamI
     }
 
     if (!nextMatch.team1Id) {
-        ctx.db.BracketMatch.id.update({
-            ...nextMatch,
-            team1Id: teamId,
-            ...auditUpdate(ctx, nextMatch, userId),
-        } as any);
+        ctx.db.BracketMatch.id.update(
+            updateWithAudit(ctx, nextMatch, { team1Id: teamId }, userId),
+        );
     } else if (!nextMatch.team2Id) {
-        ctx.db.BracketMatch.id.update({
-            ...nextMatch,
-            team2Id: teamId,
-            ...auditUpdate(ctx, nextMatch, userId),
-        } as any);
+        ctx.db.BracketMatch.id.update(
+            updateWithAudit(ctx, nextMatch, { team2Id: teamId }, userId),
+        );
     } else {
         throw new SenderError('Next match already has both participants assigned.');
     }
@@ -58,44 +54,32 @@ export function updateGroupPhaseRecords(ctx: any, bracketMatch: any, userId: num
 
     if (bracketMatch.winnerTeamId === undefined) {
         // Draw: both get draws+1, points+1
-        updated1 = {
-            ...standing1,
+        updated1 = updateWithAudit(ctx, standing1, {
             draws: standing1.draws + 1,
             points: standing1.points + DRAW_POINTS,
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
+        }, userId);
+        updated2 = updateWithAudit(ctx, standing2, {
             draws: standing2.draws + 1,
             points: standing2.points + DRAW_POINTS,
-            ...auditUpdate(ctx, standing2, userId),
-        };
+        }, userId);
     } else if (bracketMatch.winnerTeamId === bracketMatch.team1Id) {
         // Team1 wins
-        updated1 = {
-            ...standing1,
+        updated1 = updateWithAudit(ctx, standing1, {
             wins: standing1.wins + 1,
             points: standing1.points + WIN_POINTS,
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
+        }, userId);
+        updated2 = updateWithAudit(ctx, standing2, {
             losses: standing2.losses + 1,
-            ...auditUpdate(ctx, standing2, userId),
-        };
+        }, userId);
     } else {
         // Team2 wins
-        updated1 = {
-            ...standing1,
+        updated1 = updateWithAudit(ctx, standing1, {
             losses: standing1.losses + 1,
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
+        }, userId);
+        updated2 = updateWithAudit(ctx, standing2, {
             wins: standing2.wins + 1,
             points: standing2.points + WIN_POINTS,
-            ...auditUpdate(ctx, standing2, userId),
-        };
+        }, userId);
     }
 
     // Delete + insert pattern for composite PK tables
@@ -183,12 +167,12 @@ export function advanceBracketMatch(ctx: any, bracketMatchId: number, winnerTeam
     }
 
     // Set winnerTeamId and resultStatus
-    ctx.db.BracketMatch.id.update({
-        ...bracketMatch,
-        winnerTeamId,
-        resultStatus: { tag: 'Validated', value: {} } as any,
-        ...auditUpdate(ctx, bracketMatch, userId),
-    } as any);
+    ctx.db.BracketMatch.id.update(
+        updateWithAudit(ctx, bracketMatch, {
+            winnerTeamId,
+            resultStatus: { tag: 'Validated', value: {} } as any,
+        }, userId),
+    );
 
     // Re-read for downstream logic
     const updatedBracketMatch = ctx.db.BracketMatch.id.find(bracketMatchId);

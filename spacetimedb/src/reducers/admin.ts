@@ -2,7 +2,8 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ScheduleAt } from 'spacetimedb';
 import { ensureAdmin } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { Path, Element, CharRole, GameMode, DraftMode, Role } from '../types/enums';
 import { computeMaxPossible, updateAccountRating } from '../helpers/accountRating';
 import { hsrCharacterColumns } from '../tables/hsrCharacter';
@@ -172,20 +173,17 @@ export const admin_delete_row = spacetimedb.reducer(
                 }
 
                 // Soft-delete: set deletedAt so the client can show a notification
-                ctx.db.User.id.update({
-                    ...user,
-                    deletedAt: ctx.timestamp,
-                    ...auditUpdate(ctx, user, admin.id),
-                });
+                ctx.db.User.id.update(
+                    updateWithAudit(ctx, user, { deletedAt: ctx.timestamp }, admin.id),
+                );
 
                 // Schedule deletion cascade in 5 seconds (5_000_000 microseconds)
                 const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
-                ctx.db.UserDeletionJob.insert({
+                ctx.db.UserDeletionJob.insert(insertWithAudit(ctx, {
                     scheduledId: 0n,
                     scheduledAt: ScheduleAt.time(deleteAt),
                     userId: id,
-                    ...auditInsert(ctx, admin.id),
-                });
+                }, admin.id));
 
                 console.log(`[ADMIN] User #${id} marked for deletion. Cascade scheduled in 5s.`);
                 break;
@@ -375,7 +373,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             width: r.width,
                         };
                         const merged = mergeForUpdate(existing as any, incoming, HSR_CHARACTER_FIELDS as any);
-                        ctx.db.HsrCharacter.name.update({ ...merged, ...auditUpdate(ctx, existing, admin.id) } as any);
+                        ctx.db.HsrCharacter.name.update(updateWithAudit(ctx, existing, merged, admin.id));
                     } else {
                         // Insert branch: apply schema defaults for required columns; optional stays null.
                         // Required enums must have a value on insert (validateEnum runs here unconditionally).
@@ -401,7 +399,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             posY: r.posY ?? 0,
                             width: r.width ?? 0,
                         };
-                        ctx.db.HsrCharacter.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
+                        ctx.db.HsrCharacter.insert(insertWithAudit(ctx, row, admin.id));
                     }
                 }
 
@@ -428,11 +426,9 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         }
                         const newMaxPossible = computeMaxPossible(ctx, ratingConfig, ageWeightMap, allChars);
                         if (Math.abs(newMaxPossible - ratingConfig.maxPossible) > 0.0001) {
-                            ctx.db.AccountRatingConfig.id.update({
-                                ...ratingConfig,
-                                maxPossible: newMaxPossible,
-                                ...auditUpdate(ctx, ratingConfig, admin.id),
-                            } as any);
+                            ctx.db.AccountRatingConfig.id.update(
+                                updateWithAudit(ctx, ratingConfig, { maxPossible: newMaxPossible }, admin.id),
+                            );
                             // Recalculate all account ratings with new maxPossible
                             const accounts = [...ctx.db.HsrAccount.iter()];
                             for (const account of accounts) {
@@ -465,7 +461,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             width: r.width,
                         };
                         const merged = mergeForUpdate(existing as any, incoming, HSR_LIGHTCONE_FIELDS as any);
-                        ctx.db.HsrLightcone.name.update({ ...merged, ...auditUpdate(ctx, existing, admin.id) } as any);
+                        ctx.db.HsrLightcone.name.update(updateWithAudit(ctx, existing, merged, admin.id));
                     } else {
                         // Insert branch: required enum MUST be present on insert.
                         validateEnum('path', r.path, ctx, tableName);
@@ -480,7 +476,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             posY: r.posY ?? 0,
                             width: r.width ?? 0,
                         };
-                        ctx.db.HsrLightcone.insert({ ...row, ...auditInsert(ctx, admin.id) } as any);
+                        ctx.db.HsrLightcone.insert(insertWithAudit(ctx, row, admin.id));
                     }
                 }
                 break;
@@ -528,14 +524,13 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         // Insert branch: required enums must be present.
                         validateEnum('gameMode', r.gameMode, ctx, tableName);
                         validateEnum('draftMode', r.draftMode, ctx, tableName);
-                        ctx.db.HsrCharacterCost.insert({
+                        ctx.db.HsrCharacterCost.insert(insertWithAudit(ctx, {
                             characterName: r.characterName,
-                            gameMode: { tag: r.gameMode, value: {} },
-                            draftMode: { tag: r.draftMode, value: {} },
+                            gameMode: { tag: r.gameMode, value: {} } as any,
+                            draftMode: { tag: r.draftMode, value: {} } as any,
                             costs: r.costs,
                             costSetId: csId,
-                            ...auditInsert(ctx, admin.id),
-                        } as any);
+                        }, admin.id));
                     }
                 }
                 break;
@@ -576,14 +571,13 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                     } else {
                         validateEnum('gameMode', r.gameMode, ctx, tableName);
                         validateEnum('draftMode', r.draftMode, ctx, tableName);
-                        ctx.db.HsrLightconeCost.insert({
+                        ctx.db.HsrLightconeCost.insert(insertWithAudit(ctx, {
                             lightconeName: r.lightconeName,
-                            gameMode: { tag: r.gameMode, value: {} },
-                            draftMode: { tag: r.draftMode, value: {} },
+                            gameMode: { tag: r.gameMode, value: {} } as any,
+                            draftMode: { tag: r.draftMode, value: {} } as any,
                             costs: r.costs,
                             costSetId: csId,
-                            ...auditInsert(ctx, admin.id),
-                        } as any);
+                        }, admin.id));
                     }
                 }
                 break;
@@ -613,11 +607,9 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             costModifier: r.costModifier,
                         };
                         const merged = mergeForUpdate(existing as any, incoming, HSR_SYNERGY_COST_FIELDS as any);
-                        ctx.db.HsrSynergyCost.id.update({
-                            ...existing,
-                            costModifier: merged.costModifier,
-                            ...auditUpdate(ctx, existing, admin.id),
-                        });
+                        ctx.db.HsrSynergyCost.id.update(
+                            updateWithAudit(ctx, existing, { costModifier: merged.costModifier }, admin.id),
+                        );
                     } else {
                         validateEnum('gameMode', r.gameMode, ctx, tableName);
                         validateEnum('draftMode', r.draftMode, ctx, tableName);
@@ -630,10 +622,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             costModifier: r.costModifier,
                             costSetId: csId,
                         };
-                        ctx.db.HsrSynergyCost.insert({
-                            ...row,
-                            ...auditInsert(ctx, admin.id),
-                        } as any);
+                        ctx.db.HsrSynergyCost.insert(insertWithAudit(ctx, row, admin.id));
                     }
                 }
                 break;
@@ -642,9 +631,15 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                 for (const r of rows) {
                     const existing = ctx.db.Archetype.name.find(r.name);
                     if (existing) {
-                        ctx.db.Archetype.id.update({ ...existing, name: r.name, description: r.description, ...auditUpdate(ctx, existing, admin.id) } as any);
+                        ctx.db.Archetype.id.update(
+                            updateWithAudit(ctx, existing, { name: r.name, description: r.description }, admin.id),
+                        );
                     } else {
-                        ctx.db.Archetype.insert({ id: 0, name: r.name, description: r.description, ...auditInsert(ctx, admin.id) } as any);
+                        ctx.db.Archetype.insert(insertWithAudit(ctx, {
+                            id: 0,
+                            name: r.name,
+                            description: r.description,
+                        }, admin.id));
                     }
                 }
                 break;
@@ -674,12 +669,12 @@ export const admin_update_user = spacetimedb.reducer(
             if (existing) throw new SenderError(`Username "${username}" is already taken`);
         }
 
-        ctx.db.User.id.update({
-            ...user,
-            displayName,
-            username,
-            role: { tag: roleTag, value: {} } as any,
-            ...auditUpdate(ctx, user, admin.id),
-        });
+        ctx.db.User.id.update(
+            updateWithAudit(ctx, user, {
+                displayName,
+                username,
+                role: { tag: roleTag, value: {} } as any,
+            }, admin.id),
+        );
     }
 );
