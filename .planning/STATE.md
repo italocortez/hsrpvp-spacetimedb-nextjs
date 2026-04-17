@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 16
-current_plan: Not started
+current_phase: 15.3
+current_plan: 2
 status: executing
-stopped_at: Phase 15.3 context gathered + Wave 0 pilot complete (admin.ts + bracketHelpers.ts)
-last_updated: "2026-04-17T04:54:44.438Z"
+stopped_at: Completed Plan 15.3-01 (Cluster A, 23 sites)
+last_updated: "2026-04-17T05:37:57.488Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 23
-  percent: 61
+  completed_plans: 24
+  percent: 63
 ---
 
 # Session State
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 16 — route-+-global-foundation
+**Current focus:** Phase 15.3 — audit-spread-type-helper
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 16
-**Current plan:** Not started
-**Status:** Ready to execute
+**Current phase:** 15.3
+**Current plan:** 2
+**Status:** Executing Phase 15.3 (Wave 1 Cluster A complete; Cluster B next)
 **Last activity:** 2026-04-17
 
 Progress: [████████████████████] 23/23 plans (100% of plans authored to date — Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 16+ not yet planned)
@@ -95,6 +95,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.2]: D-17 eviction: verified user isGuest=false always hits eviction branch; mmr_history SQL INSERT not needed to exercise the path
 - [Phase 15.2]: D-16/D-19 clientConnected: Pitfall-8 structural pattern applied; reconnect-race test deferred to Phase 16+ harness infrastructure
 - [Phase 15.2]: contract.md deferred to gsd-verify-work per CLAUDE.md; all Phase 15.2 contract entries must be tagged 'Phase 15.2 execution'
+- [Phase 15.3]: Plan 15.3-01: composite-PK SAME-SHAPE delete+re-insert migrates to updateWithAudit cleanly (distinct from admin.ts P4 explicit-row-carry which keeps primitive)
+- [Phase 15.3]: Plan 15.3-01: 35 pre-existing typecheck errors in test/backend/** logged to deferred-items.md — out-of-scope per SCOPE BOUNDARY
 
 ### Roadmap Evolution
 
@@ -131,7 +133,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T03:39:18.700Z
-Stopped at: Phase 15.3 context gathered + Wave 0 pilot complete (admin.ts + bracketHelpers.ts)
-Resume file: .planning/phases/15.3-audit-spread-type-helper/15.3-CONTEXT.md
+Last session: 2026-04-17T05:37:57.485Z
+Stopped at: Completed Plan 15.3-01 (Cluster A, 23 sites)
+Resume file: None
 Next action: `/gsd-discuss-phase 16` (Phase 16 has no CONTEXT.md yet — discussion required before planning)
