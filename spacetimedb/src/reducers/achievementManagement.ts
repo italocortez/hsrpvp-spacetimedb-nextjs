@@ -16,7 +16,7 @@ import {
     getAuthenticatedUser,
     isRoleAtLeast,
 } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { AchievementRarity, ComparisonOperator } from '../types/enums';
 
 // ─── create_achievement ──────────────────────────────────────────────────────
@@ -49,15 +49,14 @@ export const create_achievement = spacetimedb.reducer(
             throw new SenderError('Achievement with this name already exists.');
         }
 
-        ctx.db.Achievement.insert({
+        ctx.db.Achievement.insert(insertWithAudit(ctx, {
             id: 0,
             name,
             description,
             rarity,
             isManualOnly,
             maxAwards,
-            ...auditInsert(ctx, admin.id),
-        } as any);
+        }, admin.id));
 
         console.log(`[ACHIEVEMENT] Created "${name}" by admin #${admin.id}`);
     }
@@ -96,13 +95,11 @@ export const update_achievement = spacetimedb.reducer(
             }
         }
 
-        ctx.db.Achievement.id.update({
-            ...existing,
+        ctx.db.Achievement.id.update(updateWithAudit(ctx, existing, {
             name: name ?? existing.name,
             description: description ?? existing.description,
             rarity: rarity ?? existing.rarity,
-            ...auditUpdate(ctx, existing, admin.id),
-        });
+        }, admin.id));
 
         console.log(`[ACHIEVEMENT] Updated achievement #${achievementId} by admin #${admin.id}`);
     }
@@ -140,11 +137,9 @@ export const delete_achievement = spacetimedb.reducer(
         // User table is small (<1000 rows in prod); iter() is acceptable here.
         for (const user of [...ctx.db.User.iter()]) {
             if (user.displayedAchievementId === achievementId) {
-                ctx.db.User.id.update({
-                    ...user,
+                ctx.db.User.id.update(updateWithAudit(ctx, user, {
                     displayedAchievementId: undefined,
-                    ...auditUpdate(ctx, user, admin.id),
-                });
+                }, admin.id));
             }
         }
 
@@ -199,7 +194,7 @@ export const add_achievement_criteria = spacetimedb.reducer(
             throw new SenderError(`Invalid statTable "${statTable}". Must be one of: ${validStatTables.join(', ')}.`);
         }
 
-        ctx.db.AchievementCriteria.insert({
+        ctx.db.AchievementCriteria.insert(insertWithAudit(ctx, {
             id: 0,
             achievementId,
             statTable,
@@ -209,8 +204,7 @@ export const add_achievement_criteria = spacetimedb.reducer(
             filterGameMode,
             filterCharacterName,
             filterMatchType,
-            ...auditInsert(ctx, admin.id),
-        } as any);
+        }, admin.id));
 
         console.log(`[ACHIEVEMENT] Added criteria to achievement #${achievementId}: ${statTable}.${statField} by admin #${admin.id}`);
     }
@@ -297,13 +291,12 @@ export const manual_award_achievement = spacetimedb.reducer(
             throw new SenderError(`User #${targetUserId} not found.`);
         }
 
-        ctx.db.UserAchievement.insert({
+        ctx.db.UserAchievement.insert(insertWithAudit(ctx, {
             id: 0,
             userId: targetUserId,
             achievementId,
             awardedById: caller.id,
-            ...auditInsert(ctx, caller.id),
-        } as any);
+        }, caller.id));
 
         console.log(`[ACHIEVEMENT] Manually awarded "${achievement.name}" to user #${targetUserId} by user #${caller.id}`);
     }
@@ -359,20 +352,16 @@ export const set_displayed_achievement = spacetimedb.reducer(
                 throw new SenderError('User has not earned this achievement.');
             }
 
-            ctx.db.User.id.update({
-                ...targetUser,
+            ctx.db.User.id.update(updateWithAudit(ctx, targetUser, {
                 displayedAchievementId: achievementId,
-                ...auditUpdate(ctx, targetUser, caller.id),
-            });
+            }, caller.id));
 
             console.log(`[ACHIEVEMENT] User #${effectiveUserId} set displayed achievement #${achievementId} by user #${caller.id}`);
         } else {
             // Clearing title
-            ctx.db.User.id.update({
-                ...targetUser,
+            ctx.db.User.id.update(updateWithAudit(ctx, targetUser, {
                 displayedAchievementId: undefined,
-                ...auditUpdate(ctx, targetUser, caller.id),
-            });
+            }, caller.id));
 
             console.log(`[ACHIEVEMENT] User #${effectiveUserId} cleared displayed achievement by user #${caller.id}`);
         }

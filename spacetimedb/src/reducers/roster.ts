@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureVerifiedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { validateUid, deriveRegion, recalcDuplicateUid } from '../helpers/rosterHelpers';
 import { applyBatchUpsert, applyBatchRemove } from '../helpers/rosterMutations';
 
@@ -40,7 +40,7 @@ export const create_hsr_account = spacetimedb.reducer(
         const label = displayLabel.trim() || 'Account ' + (existing.length + 1);
         const isFirst = existing.length === 0;
 
-        ctx.db.HsrAccount.insert({
+        ctx.db.HsrAccount.insert(insertWithAudit(ctx, {
             id: 0,
             userId: user.id,
             uid,
@@ -50,8 +50,8 @@ export const create_hsr_account = spacetimedb.reducer(
             isRosterPublic: false,
             isRatingPublic: false,
             isDuplicateUid: false,
-            ...auditInsert(ctx, user.id),
-        } as any);
+            accountRating: 0,
+        }, user.id));
 
         recalcDuplicateUid(ctx, uid, user.id);
     }
@@ -73,13 +73,11 @@ export const update_hsr_account = spacetimedb.reducer(
         const trimmed = displayLabel.trim();
         if (!trimmed) throw new SenderError('Display label cannot be empty');
 
-        ctx.db.HsrAccount.id.update({
-            ...account,
+        ctx.db.HsrAccount.id.update(updateWithAudit(ctx, account, {
             displayLabel: trimmed,
             isRosterPublic,
             isRatingPublic,
-            ...auditUpdate(ctx, account, user.id),
-        });
+        }, user.id));
     }
 );
 
@@ -120,11 +118,11 @@ export const set_active_hsr_account = spacetimedb.reducer(
         const allAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
         for (const acc of allAccounts) {
             if (acc.isActive && acc.id !== hsrAccountId) {
-                ctx.db.HsrAccount.id.update({ ...acc, isActive: false, ...auditUpdate(ctx, acc, user.id) });
+                ctx.db.HsrAccount.id.update(updateWithAudit(ctx, acc, { isActive: false }, user.id));
             }
         }
 
-        ctx.db.HsrAccount.id.update({ ...account, isActive: true, ...auditUpdate(ctx, account, user.id) });
+        ctx.db.HsrAccount.id.update(updateWithAudit(ctx, account, { isActive: true }, user.id));
     }
 );
 
@@ -174,11 +172,9 @@ export const delete_hsr_account = spacetimedb.reducer(
                 remaining.sort((a: any, b: any) =>
                     Number(a.createdDate.microsSinceUnixEpoch - b.createdDate.microsSinceUnixEpoch)
                 );
-                ctx.db.HsrAccount.id.update({
-                    ...remaining[0],
+                ctx.db.HsrAccount.id.update(updateWithAudit(ctx, remaining[0], {
                     isActive: true,
-                    ...auditUpdate(ctx, remaining[0], user.id),
-                });
+                }, user.id));
             }
         }
 

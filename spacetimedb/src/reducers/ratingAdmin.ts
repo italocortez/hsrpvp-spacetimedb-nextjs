@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureAdmin } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { computeMaxPossible, updateAccountRating } from '../helpers/accountRating';
 
 // ─── Private helper: build the age-weight map from char pool ─────────────────
@@ -63,7 +63,7 @@ export const admin_seed_rating_config = spacetimedb.reducer(
             maxPossible = computeMaxPossible(ctx, defaultConfig, ageWeightMap, allChars);
         }
 
-        ctx.db.AccountRatingConfig.insert({
+        ctx.db.AccountRatingConfig.insert(insertWithAudit(ctx, {
             id: 1,
             verticalWeight: 0.4,
             horizontalWeight: 0.6,
@@ -74,8 +74,7 @@ export const admin_seed_rating_config = spacetimedb.reducer(
             archetypeThreshold: 3.0,
             scale: 1000.0,
             maxPossible,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[RATING] AccountRatingConfig seeded with defaults by admin #${user.id}, maxPossible=${maxPossible.toFixed(4)}`);
     }
@@ -146,12 +145,10 @@ export const admin_update_rating_config = spacetimedb.reducer(
             maxPossible = computeMaxPossible(ctx, updatedConfig, ageWeightMap, allChars);
         }
 
-        ctx.db.AccountRatingConfig.id.update({
-            ...existing,
+        ctx.db.AccountRatingConfig.id.update(updateWithAudit(ctx, existing, {
             ...changes,
             maxPossible,
-            ...auditUpdate(ctx, existing, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[RATING] AccountRatingConfig updated by admin #${user.id}: ${changedFields.join(', ')}, maxPossible recomputed=${maxPossible.toFixed(4)}`);
     }
@@ -179,11 +176,9 @@ export const admin_recalculate_all_ratings = spacetimedb.reducer(
             const ageWeightMap = buildAgeWeightMap(allChars, config);
             const newMaxPossible = computeMaxPossible(ctx, config, ageWeightMap, allChars);
             if (Math.abs(newMaxPossible - config.maxPossible) > 0.0001) {
-                ctx.db.AccountRatingConfig.id.update({
-                    ...config,
+                ctx.db.AccountRatingConfig.id.update(updateWithAudit(ctx, config, {
                     maxPossible: newMaxPossible,
-                    ...auditUpdate(ctx, config, user.id),
-                } as any);
+                }, user.id));
                 console.log(`[RATING] maxPossible updated: ${config.maxPossible.toFixed(4)} -> ${newMaxPossible.toFixed(4)}`);
             }
         }
