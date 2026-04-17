@@ -146,12 +146,12 @@ Per R4, mobile UX refinements are deferred to opportunistic XX.1 insertions. The
 **Goal:** Close the bandwidth leak in `useAuth.ts` where `SELECT * FROM user` fires pre-auth by splitting into a two-stage subscription lifecycle (Stage 1 `view_my_profile` always; Stage 2 raw User gated on `currentUser != null || hadTokenOnMount.current || hadSessionCookie.current`). Retire `view_user_directory` (dead code — zero client subscribers, 15.2 D-06 cosmetic flip). Rename `view_public_accounts` → `view_public_hsr_accounts` (source table explicit). Document projection-vs-subscription privacy distinction in `docs/auth/architecture.md` Subscription Lifecycle section, naming `view_lobby_browser` + `view_public_hsr_accounts` as intentional anonymous exceptions. Add narrow `guestLoginPending` state for scoped Login-button spinner (strictly isolated from isLoadingData / isWaitingForData / isConnecting / isLinkingDiscord per D-03).
 **Requirements**: S-01..S-05 (seed-locked) + D-01..D-05 (discuss-phase); CONTEXT.md authoritative, no ROADMAP requirement IDs for this phase
 **Depends on:** Phase 15, Phase 15.2
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 15.5-01-backend-cleanup-PLAN.md — Wave 1: delete view_user_directory, rename view_public_accounts → view_public_hsr_accounts, single-shot publish + two-dir spacetime generate, build gate (S-01, S-02, D-02, D-04)
 - [x] 15.5-02-frontend-stage-split-PLAN.md — Wave 2: Split useAuth.ts into Stage 1 / Stage 2 effects + move onUserInsert/onUpdate into Stage 2 + guestLoginPending state + LoginForm spinner (human-verify checkpoint for UX isolation) (S-03, S-04, D-01, D-03)
-- [ ] 15.5-03-tests-PLAN.md — Wave 2: Delete VIEW-01 placeholder block from auth-views.test.ts + new auth-subscriptions.test.ts modeling anonymous + authenticated paths (S-05, D-01, D-02)
+- [x] 15.5-03-tests-PLAN.md — Wave 2: Delete VIEW-01 placeholder block from auth-views.test.ts + new auth-subscriptions.test.ts modeling anonymous + authenticated paths (S-05, D-01, D-02)
 - [ ] 15.5-04-doc-updates-PLAN.md — Wave 3: docs/auth/architecture.md new Subscription Lifecycle section + view retirement; docs/views/architecture.md retirement + rename; docs/FRONTEND-HANDOFF.md rename; docs/roster/contract.md identifier-only rename (D-02, D-04, D-05)
 
 ### Phase 15.4: Cost-table draftMode restructure (INSERTED)
