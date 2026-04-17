@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { Identity, Timestamp } from 'spacetimedb';
-import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
 import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { performUserDeletion } from '../helpers/userDeletionHelper';
 import { rejectIfBanned, DISCORD_BAN_TYPE } from '../helpers/banHelper';
@@ -129,18 +129,14 @@ export const server_link_provider = spacetimedb.reducer({
             const oldGuestId = currentUser.id;
             const wasGuest = currentUser.isGuest;
 
-            ctx.db.UserIdentity.identity.update({
-                ...userMapping,
+            ctx.db.UserIdentity.identity.update(updateWithAudit(ctx, userMapping, {
                 userId: providerOwner.id,
                 lastSeenAt: ctx.timestamp,
-                ...auditUpdate(ctx, userMapping, systemUserId),
-            });
+            }, systemUserId));
 
-            ctx.db.User.id.update({
-                ...providerOwner,
+            ctx.db.User.id.update(updateWithAudit(ctx, providerOwner, {
                 lastLoginAt: ctx.timestamp,
-                ...auditUpdate(ctx, providerOwner, systemUserId),
-            });
+            }, systemUserId));
 
             if (wasGuest) {
                 const remainingLinks = [...ctx.db.UserIdentity.user_id.filter(oldGuestId)];
@@ -153,38 +149,31 @@ export const server_link_provider = spacetimedb.reducer({
 
         // Case 1a / 1c: Upgrade guest or refresh provider info
         // Update User table
-        ctx.db.User.id.update({
-            ...currentUser,
+        ctx.db.User.id.update(updateWithAudit(ctx, currentUser, {
             username: currentUser.isGuest ? providerName : currentUser.username,
             displayName: currentUser.isGuest ? providerName : currentUser.displayName,
             isGuest: false,
             hasDiscordLinked: true,
             lastLoginAt: ctx.timestamp,
-            ...auditUpdate(ctx, currentUser, systemUserId),
-        });
-        ctx.db.UserIdentity.identity.update({
-            ...userMapping,
+        }, systemUserId));
+        ctx.db.UserIdentity.identity.update(updateWithAudit(ctx, userMapping, {
             lastSeenAt: ctx.timestamp,
-            ...auditUpdate(ctx, userMapping, systemUserId),
-        });
+        }, systemUserId));
 
         // Upsert UserPrivate row
         const existingPrivate = ctx.db.UserPrivate.userId.find(currentUser.id);
         if (existingPrivate) {
-            ctx.db.UserPrivate.userId.update({
-                ...existingPrivate,
+            ctx.db.UserPrivate.userId.update(updateWithAudit(ctx, existingPrivate, {
                 discordId: providerId,
                 discordUsername: providerName,
-                ...auditUpdate(ctx, existingPrivate, systemUserId),
-            });
+            }, systemUserId));
         } else {
-            ctx.db.UserPrivate.insert({
+            ctx.db.UserPrivate.insert(insertWithAudit(ctx, {
                 userId: currentUser.id,
                 discordId: providerId,
                 discordUsername: providerName,
                 email: undefined,
-                ...auditInsert(ctx, systemUserId),
-            });
+            }, systemUserId));
         }
         return;
     }
@@ -225,11 +214,9 @@ export const server_set_role = spacetimedb.reducer({
         throw new SenderError(`User "${username}" not found`);
     }
 
-    ctx.db.User.id.update({
-        ...targetUser,
+    ctx.db.User.id.update(updateWithAudit(ctx, targetUser, {
         role: { tag: roleTag, value: {} } as any,
-        ...auditUpdate(ctx, targetUser, systemUserId),
-    });
+    }, systemUserId));
 });
 
 /**
@@ -342,11 +329,9 @@ export const server_set_online = spacetimedb.reducer({
     const user = ctx.db.User.id.find(userId);
     if (!user) throw new SenderError(`User #${userId} not found`);
 
-    ctx.db.User.id.update({
-        ...user,
+    ctx.db.User.id.update(updateWithAudit(ctx, user, {
         isOnline,
-        ...auditUpdate(ctx, user, SYSTEM_USER_ID),
-    });
+    }, SYSTEM_USER_ID));
 });
 
 export const server_set_mmr = spacetimedb.reducer({
@@ -372,7 +357,8 @@ export const server_set_mmr = spacetimedb.reducer({
         .find((r: any) => r.gameMode.tag === gameMode);
 
     if (existing) {
-        // Delete + re-insert (composite PK)
+        // Delete + re-insert (composite PK) — P4 delete+insert-carry:
+        // keep auditUpdate primitive because caller builds the full row here.
         ctx.db.MmrRating.delete(existing);
         ctx.db.MmrRating.insert({
             ...existing,
@@ -380,15 +366,14 @@ export const server_set_mmr = spacetimedb.reducer({
             ...auditUpdate(ctx, existing, systemUserId),
         } as any);
     } else {
-        ctx.db.MmrRating.insert({
+        ctx.db.MmrRating.insert(insertWithAudit(ctx, {
             userId,
             gameMode: { tag: gameMode, value: {} } as any,
             rating,
             matchesPlayed: 0,
             globalCompositeRating: undefined,
             seasonId: undefined,
-            ...auditInsert(ctx, systemUserId),
-        } as any);
+        }, systemUserId) as any);
     }
 });
 
