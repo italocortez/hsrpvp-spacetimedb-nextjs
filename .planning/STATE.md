@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 13
+current_plan: 14
 status: executing
-stopped_at: "Completed 15.3-13-PLAN.md (Wave 3 auditInsert Option α docs-only). Grep-verified 9 primitive auditInsert call sites across 4 files (rosterMutations L55 P5 + rosterAdmin L161 P5 + finalizationHelpers L149 P5 + costSetManagement 6 sites: L176/L253/L319 if/else split-conditionals + L369/L391 inline ternaries + L424 file-symmetry primitive). Option α selected (9 sites >> D-06 threshold of 3); Option β would require 9 site splits with zero import-eviction win. auditColumns.ts JSDoc expanded with RESTRICTED USE block + per-site enumeration (~40 lines added, zero code changes). auditInsert export signature/body + auditUpdate + SYSTEM_USER_ID all UNCHANGED. Typecheck: 0 errors in spacetimedb/src; 35 test/backend baseline unchanged per Plan 01 deferred-items.md. Stray dist/bundle.js rebuild reverted (Plan 15 scope). Commit a2a2e24 atomic to the JSDoc edit."
-last_updated: "2026-04-17T19:55:00Z"
+stopped_at: "Completed 15.3-14-PLAN.md (Wave 4 placeholder-test cleanup). 8 expect(true).toBe(true) false-greens eliminated across 6 test files: 7 converted to it.todo (auth-security L204 + auth-views L23/L32/L39 + ban-admin L224 + server-link-provider L113 + bracket-advancement L851) preserving descriptions verbatim with rationale comments retained adjacent; 1 dead else-branch in rating-admin.test.ts L337 removed via Strategy A (no loop/continue context, zero control-flow impact). Vitest reporter now surfaces 7 pending-coverage reminders (auth 28 passed + 6 todo / brackets 36 passed + 1 todo / match-results 100 passed across 7 files). Zero production code touched. Stray dist/bundle.js rebuild from vitest bootstrap left unstaged (Plan 15 scope per Plan 13 precedent). Task 1 commit 59e150e (4 auth files), Task 2 commit 07f6a2b (brackets + rating-admin)."
+last_updated: "2026-04-17T20:48:36Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 36
-  percent: 95
+  completed_plans: 37
+  percent: 97
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 13
-**Status:** Executing Phase 15.3 (Wave 1 COMPLETE; Wave 2 COMPLETE — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts + Plan 11 costSetManagement; Wave 2b COMPLETE — Plan 12 type-hygiene [17 as-any eliminated]; Wave 3 COMPLETE — Plan 13 Option α docs-only [9-site permanent retention JSDoc codified, zero code change]; Wave 4 placeholder test cleanup + Wave 5 publish remaining)
+**Current plan:** 14
+**Status:** Executing Phase 15.3 (Wave 1 COMPLETE; Wave 2 COMPLETE — Plan 08 finalizationHelpers + Plan 09 server.ts + Plan 10 index.ts + Plan 11 costSetManagement; Wave 2b COMPLETE — Plan 12 type-hygiene [17 as-any eliminated]; Wave 3 COMPLETE — Plan 13 Option α docs-only [9-site permanent retention JSDoc codified, zero code change]; Wave 4 COMPLETE — Plan 14 placeholder-test cleanup [8 false-greens eliminated, 7 → it.todo + 1 dead else-branch removed]; only Wave 5 publish remaining)
 **Last activity:** 2026-04-17
 
-Progress: [██████████████████████] 36/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-13 complete [Wave 1 DONE + Wave 2 COMPLETE + Wave 2b COMPLETE + Wave 3 COMPLETE]; Plans 14-15 remaining)
+Progress: [██████████████████████] 37/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-14 complete [Wave 1 DONE + Wave 2 COMPLETE + Wave 2b COMPLETE + Wave 3 COMPLETE + Wave 4 COMPLETE]; Plan 15 remaining)
 
 ## Previous Milestone
 
@@ -125,6 +125,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3]: Plan 12: Zero Rule 2 auto-fixes. Type-hygiene-only migration; runtime row shapes and control flow unchanged. Files already structurally audited in Wave 0 (admin, bracketHelpers) / Plan 06 (bracketAdvancement) / Plan 08 (finalizationHelpers). Integration cross-cut: typecheck 0 errors in spacetimedb/src + brackets 37/37 green + match-results 100/100 green = 137 integration tests passing post-plan.
 - [Phase 15.3]: Plan 15.3-13 (Wave 3 auditInsert Option α, docs-only). Grep-verified 9 primitive auditInsert call sites across 4 files (rosterMutations L55 + rosterAdmin L161 + finalizationHelpers L149 + costSetManagement 6 sites L176/L253/L319/L369/L391/L424). 9 sites >> D-06 threshold of 3 → Option α selected (keep export, add docs). auditColumns.ts JSDoc expanded with RESTRICTED USE block + per-site enumeration (~40 lines added, zero code changes). auditInsert export signature/body + auditUpdate + SYSTEM_USER_ID unchanged. Typecheck 0 errors in spacetimedb/src; 35 test/backend baseline errors unchanged per Plan 01 deferred-items.md. Stray dist/bundle.js rebuild reverted — Plan 15 owns the bundle commit. Commit a2a2e24 atomic to the JSDoc edit. WAVE 3 COMPLETE.
 - [Phase 15.3]: Plan 13 pattern — grep-verify before "keep vs delete" scope decisions. D-06 assumed 3 conditional sites; post-Wave-2 reality is 9 (3× over). Grep-first blocks re-litigating the original threshold mid-phase, and the per-site enumeration in the JSDoc keeps the rationale discoverable via the next call-site grep rather than buried in a SUMMARY that only planners read.
+- [Phase 15.3]: Plan 15.3-14 (Wave 4 placeholder-test cleanup). 8 expect(true).toBe(true) false-greens eliminated across 6 test files: 7 → it.todo (auth-security L204 SEC-04 + auth-views L23/L32/L39 VIEW-02/03/04 + ban-admin L224 D-19 reconnect-race + server-link-provider L113 Case 1b cross-device + bracket-advancement L851 elimination-draw rejection) preserving descriptions verbatim; 1 dead else-branch removed (rating-admin L337 Strategy A — no loop/continue context, zero control-flow impact). Vitest reporter shift: auth 28 passed + 6 todo / brackets 36 passed + 1 todo / match-results 100 passed (was 0 todos pre-plan; the 7 deferred sites were silently green). Zero production code touched per Wave 4 mandate. Stray dist/bundle.js rebuild from vitest bootstrap left unstaged for Plan 15 (same handling as Plan 13). Task 1 commit 59e150e (4 auth files, 6 sites), Task 2 commit 07f6a2b (brackets + rating-admin, 2 sites). WAVE 4 COMPLETE.
+- [Phase 15.3]: Plan 14 pattern — Strategy A vs B for non-it placeholders. The plan's <action> for Task 2 listed both choices: (A) remove the dead branch, (B) leave commented no-op. Strategy A wins when there is no loop/continue/subsequent-statement context — the placeholder's only structural role was to satisfy "every code path has an assertion" thinking that does not actually apply when the if-side already gates the meaningful assertion. Strategy A keeps code shorter and turns "deferred coverage" back into an inline comment that future readers can grep directly to the test name.
 
 ### Roadmap Evolution
 
@@ -161,7 +163,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T19:55:00Z
-Stopped at: Completed 15.3-13-PLAN.md (Wave 3 auditInsert Option α, docs-only). Grep-verified 9 primitive auditInsert call sites across 4 files (rosterMutations L55 + rosterAdmin L161 + finalizationHelpers L149 + costSetManagement 6 sites: L176/L253/L319 if/else split-conditionals + L369/L391 inline ternaries + L424 file-symmetry primitive). 9 sites >> D-06 threshold of 3 → Option α. auditColumns.ts JSDoc expanded with RESTRICTED USE block + per-site enumeration (~40 lines added, zero code changes). auditInsert export signature/body + auditUpdate + SYSTEM_USER_ID unchanged. Typecheck 0 errors in spacetimedb/src; 35 test/backend baseline errors unchanged. Stray dist/bundle.js rebuild reverted — Plan 15 owns the bundle commit. Commit a2a2e24 atomic. WAVE 3 COMPLETE. Phase 15.3: 13/15 plans complete; 2 remaining (Plan 14 Wave 4 placeholder test conversion, Plan 15 Wave 5 maincloud publish — autonomous: false).
+Last session: 2026-04-17T20:48:36Z
+Stopped at: Completed 15.3-14-PLAN.md (Wave 4 placeholder-test cleanup). 8 expect(true).toBe(true) false-greens eliminated across 6 test files: 7 → it.todo (auth-security L204 SEC-04 + auth-views L23/L32/L39 VIEW-02/03/04 + ban-admin L224 D-19 reconnect-race + server-link-provider L113 Case 1b cross-device + bracket-advancement L851 elimination-draw rejection) preserving descriptions verbatim with rationale comments preserved adjacent above the it.todo call; 1 dead else-branch removed (rating-admin L337 Strategy A — no loop/continue context, zero control-flow impact). Vitest reporter shift: auth 28 passed + 6 todo / brackets 36 passed + 1 todo / match-results 100 passed (was 0 todos pre-plan; the 7 deferred sites were silently green). Zero production code touched per Wave 4 mandate (`spacetimedb/src/**` and `app/**` clean in this plan's diff). Stray dist/bundle.js rebuild from vitest bootstrap left unstaged for Plan 15 to own (same handling as Plan 13). Task 1 commit 59e150e (4 auth files, 6 sites), Task 2 commit 07f6a2b (brackets + rating-admin, 2 sites). WAVE 4 COMPLETE. Phase 15.3: 14/15 plans complete; only Plan 15 remains (Wave 5 maincloud publish, autonomous: false — will present a CHECKPOINT before spacetime publish).
 Resume file: None
-Next action: `/gsd-execute-phase 15.3` (continue with Plan 14 Wave 4 placeholder test conversion — 8 expect(true).toBe(true) → it.todo across 6 test files, zero production code impact; then Plan 15 Wave 5 maincloud publish — autonomous: false, will present a CHECKPOINT before spacetime publish)
+Next action: `/gsd-execute-phase 15.3` (continue with Plan 15 Wave 5 maincloud publish — non-destructive deploy of all Wave 1-4 backend changes, full integration suite as pre-publish gate, post-publish smoke test, autonomous: false will pause for the human go/no-go on `spacetime publish`)
