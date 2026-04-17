@@ -3,7 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { Timestamp } from 'spacetimedb';
 import { ensureTournamentHost } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress, cleanupTeamRequests, cascadeCleanupTournament, removeUncheckedInParticipants } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { revealTournamentHistory } from '../helpers/finalizationHelpers';
 
 // Valid enum tag lists for runtime validation
@@ -148,7 +148,7 @@ export const create_tournament = spacetimedb.reducer(
             throw new SenderError('registrationDeadline must be before scheduledStartAt.');
         }
 
-        ctx.db.Tournament.insert({
+        ctx.db.Tournament.insert(insertWithAudit(ctx, {
             id: 0,
             name: trimmedName,
             description,
@@ -186,8 +186,7 @@ export const create_tournament = spacetimedb.reducer(
             maxAccountsPerPlayer: maxAccountsPerPlayer > 0 ? maxAccountsPerPlayer : 1,
             scheduledStartAt: parsedScheduledStartAt !== undefined ? new Timestamp(parsedScheduledStartAt) : undefined,
             registrationDeadline: parsedRegistrationDeadline !== undefined ? new Timestamp(parsedRegistrationDeadline) : undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -311,8 +310,7 @@ export const update_tournament = spacetimedb.reducer(
             throw new SenderError('registrationDeadline must be before scheduledStartAt.');
         }
 
-        ctx.db.Tournament.id.update({
-            ...tournament,
+        ctx.db.Tournament.id.update(updateWithAudit(ctx, tournament, {
             name: trimmedName,
             description,
             rosterVisibility: { tag: rosterVisibility, value: {} } as any,
@@ -334,8 +332,7 @@ export const update_tournament = spacetimedb.reducer(
             maxAccountsPerPlayer: maxAccountsPerPlayer > 0 ? maxAccountsPerPlayer : 1,
             scheduledStartAt: parsedScheduledStartAt !== undefined ? new Timestamp(parsedScheduledStartAt) : undefined,
             registrationDeadline: parsedRegistrationDeadline !== undefined ? new Timestamp(parsedRegistrationDeadline) : undefined,
-            ...auditUpdate(ctx, tournament, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -382,20 +379,16 @@ export const advance_tournament_stage = spacetimedb.reducer(
                     !e.isWaitlisted
                 ) {
                     ctx.db.TournamentEnrolled.by_tournament_and_user.delete([tournamentId, e.userId]);
-                    ctx.db.TournamentEnrolled.insert({
-                        ...e,
+                    ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, e, {
                         status: { tag: 'Active', value: {} } as any,
-                        ...auditUpdate(ctx, e, user.id),
-                    } as any);
+                    }, user.id));
                 }
             }
         }
 
-        ctx.db.Tournament.id.update({
-            ...tournament,
+        ctx.db.Tournament.id.update(updateWithAudit(ctx, tournament, {
             stage: { tag: nextStage, value: {} } as any,
-            ...auditUpdate(ctx, tournament, user.id),
-        } as any);
+        }, user.id));
 
         // D-91: Reveal all associated match history when tournament reaches Completed
         if (nextStage === 'Completed') {
@@ -418,11 +411,9 @@ export const cancel_tournament = spacetimedb.reducer(
         validateStageTransition(tournament.stage.tag, 'Cancelled');
         cascadeCleanupTournament(ctx, tournamentId);
 
-        ctx.db.Tournament.id.update({
-            ...tournament,
+        ctx.db.Tournament.id.update(updateWithAudit(ctx, tournament, {
             stage: { tag: 'Cancelled', value: {} } as any,
-            ...auditUpdate(ctx, tournament, user.id),
-        } as any);
+        }, user.id));
 
         // D-91: Reveal all associated match history when tournament is Cancelled
         revealTournamentHistory(ctx, tournamentId);

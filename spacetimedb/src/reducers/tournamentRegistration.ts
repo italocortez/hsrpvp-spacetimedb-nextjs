@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess, transferTournamentCaptain } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { deleteUserInvitesForTournament } from '../helpers/calendarCascade';
 
 // ─── register_for_tournament ──────────────────────────────────────────────────
@@ -65,7 +65,7 @@ export const register_for_tournament = spacetimedb.reducer(
 
         // Insert TournamentEnrolled row (enrollment only, per D-20)
         // hsrAccountId removed (D-23): TournamentPlayerAccount is the source of truth for locked accounts
-        ctx.db.TournamentEnrolled.insert({
+        ctx.db.TournamentEnrolled.insert(insertWithAudit(ctx, {
             tournamentId,
             userId: user.id,
             status: { tag: 'Registered', value: {} } as any,
@@ -73,28 +73,25 @@ export const register_for_tournament = spacetimedb.reducer(
             isWaitlisted,
             allowRandomTeamAssignment: false,
             approvedByToAt,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Auto-create TournamentTeam for solo tournaments (teamSize === 1)
         // Solo players are also "teams" for bracket purposes — the team is invisible to the user
         if (tournament.teamSize === 1) {
-            const newTeam = ctx.db.TournamentTeam.insert({
+            const newTeam = ctx.db.TournamentTeam.insert(insertWithAudit(ctx, {
                 id: 0,
                 tournamentId,
                 name: user.displayName,
                 captainUserId: user.id,
                 seedNumber: undefined,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
 
             // Insert TournamentTeamMember row for the auto-created team (D-20)
-            ctx.db.TournamentTeamMember.insert({
+            ctx.db.TournamentTeamMember.insert(insertWithAudit(ctx, {
                 teamId: newTeam.id,
                 userId: user.id,
                 tournamentId,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
         }
 
         // Lock in player's HSR accounts for this tournament (per D-21)
@@ -102,12 +99,11 @@ export const register_for_tournament = spacetimedb.reducer(
         // checks against these locked accounts, not whatever account is active at match time.
         const allAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
         for (const account of allAccounts) {
-            ctx.db.TournamentPlayerAccount.insert({
+            ctx.db.TournamentPlayerAccount.insert(insertWithAudit(ctx, {
                 tournamentId,
                 userId: user.id,
                 hsrAccountId: account.id,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
         }
     }
 );
@@ -182,11 +178,9 @@ export const withdraw_from_tournament = spacetimedb.reducer(
 
         // Delete + re-insert pattern for composite PK table — update status to Withdrawn
         ctx.db.TournamentEnrolled.delete(current);
-        ctx.db.TournamentEnrolled.insert({
-            ...current,
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, current, {
             status: { tag: 'Withdrawn', value: {} } as any,
-            ...auditUpdate(ctx, current, user.id),
-        } as any);
+        }, user.id));
 
         // Clean up locked accounts on withdrawal
         const lockedAccounts = [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, user.id])];
@@ -216,11 +210,9 @@ export const approve_participant = spacetimedb.reducer(
 
         // Delete + re-insert pattern for composite PK table
         ctx.db.TournamentEnrolled.delete(enrolled);
-        ctx.db.TournamentEnrolled.insert({
-            ...enrolled,
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, enrolled, {
             approvedByToAt: ctx.timestamp,
-            ...auditUpdate(ctx, enrolled, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -245,11 +237,9 @@ export const waitlist_promote = spacetimedb.reducer(
         // Delete + re-insert pattern for composite PK table
         // Promoting from waitlist implies approval — TO explicitly chose this person
         ctx.db.TournamentEnrolled.delete(enrolled);
-        ctx.db.TournamentEnrolled.insert({
-            ...enrolled,
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, enrolled, {
             isWaitlisted: false,
             approvedByToAt: enrolled.approvedByToAt ?? ctx.timestamp,
-            ...auditUpdate(ctx, enrolled, user.id),
-        } as any);
+        }, user.id));
     }
 );

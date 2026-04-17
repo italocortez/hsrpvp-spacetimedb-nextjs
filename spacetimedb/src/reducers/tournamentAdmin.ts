@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, ensureModerator, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess, transferTournamentCaptain } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { deleteCalendarEventForBracketMatch } from '../helpers/calendarCascade';
 import { performConcede } from './concede';
 import { hardDeleteLobby } from './lobbyGc';
@@ -49,11 +49,9 @@ export const dq_participant = spacetimedb.reducer(
 
         // Update status to Disqualified (delete + insert for composite PK)
         ctx.db.TournamentEnrolled.delete(enrolled);
-        ctx.db.TournamentEnrolled.insert({
-            ...enrolled,
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, enrolled, {
             status: { tag: 'Disqualified', value: {} } as any,
-            ...auditUpdate(ctx, enrolled, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[TOURNAMENT] Participant #${userId} disqualified from tournament #${tournamentId}: ${reason}`);
 
@@ -142,29 +140,23 @@ export const dq_participant = spacetimedb.reducer(
 
                         if (opponentTeamId) {
                             // Set opponent as winner
-                            ctx.db.BracketMatch.id.update({
-                                ...activeMatch,
+                            ctx.db.BracketMatch.id.update(updateWithAudit(ctx, activeMatch, {
                                 winnerTeamId: opponentTeamId,
                                 resultStatus: { tag: 'Validated', value: {} } as any,
-                                ...auditUpdate(ctx, activeMatch, user.id),
-                            } as any);
+                            }, user.id));
 
                             // Place opponent in next match
                             if (activeMatch.nextWinnerMatchId) {
                                 const nextMatch = ctx.db.BracketMatch.id.find(activeMatch.nextWinnerMatchId);
                                 if (nextMatch) {
                                     if (!nextMatch.team1Id) {
-                                        ctx.db.BracketMatch.id.update({
-                                            ...nextMatch,
-                                            team1Id: opponentTeamId,
-                                            ...auditUpdate(ctx, nextMatch, user.id),
-                                        } as any);
+                                        ctx.db.BracketMatch.id.update(
+                                            updateWithAudit(ctx, nextMatch, { team1Id: opponentTeamId }, user.id),
+                                        );
                                     } else if (!nextMatch.team2Id) {
-                                        ctx.db.BracketMatch.id.update({
-                                            ...nextMatch,
-                                            team2Id: opponentTeamId,
-                                            ...auditUpdate(ctx, nextMatch, user.id),
-                                        } as any);
+                                        ctx.db.BracketMatch.id.update(
+                                            updateWithAudit(ctx, nextMatch, { team2Id: opponentTeamId }, user.id),
+                                        );
                                     }
                                 }
                             }
@@ -262,18 +254,16 @@ export const override_match_result = spacetimedb.reducer(
         }
 
         // Update the MatchResultRecord using winnerTeamSide + matchEndReason (D-30, D-31)
-        ctx.db.MatchResultRecord.id.update({
-            ...matchResult,
+        ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
             status: { tag: newStatusTag, value: {} } as any,
             winnerTeamSide: newStatusTag === 'Validated' ? winnerTeamSide : undefined,
             matchEndReason: newStatusTag === 'Validated'
                 ? (winnerTeamSide !== undefined
-                    ? { tag: 'Completed', value: {} }
-                    : { tag: 'Draw', value: {} })
+                    ? { tag: 'Completed', value: {} } as any
+                    : { tag: 'Draw', value: {} } as any)
                 : matchResult.matchEndReason,
             disputeReason: reason, // Reuse disputeReason field to store override reason
-            ...auditUpdate(ctx, matchResult, actingUserId),
-        } as any);
+        }, actingUserId));
 
         console.log(`[MATCH] Match result #${matchResultId} overridden to "${newStatusTag}" by user #${actingUserId}: ${reason}`);
     }
@@ -326,19 +316,17 @@ export const assign_tournament_assistant = spacetimedb.reducer(
         if (existing) {
             // Delete + re-insert with updated permissions
             ctx.db.TournamentAssistant.delete(existing);
-            ctx.db.TournamentAssistant.insert({
-                ...existing,
+            ctx.db.TournamentAssistant.insert(updateWithAudit(ctx, existing, {
                 canValidateResults,
                 canOverrideResults,
                 canDqParticipants,
                 canManageBracket,
                 canAssignSeeds,
-                ...auditUpdate(ctx, existing, callerUser.id),
-            } as any);
+            }, callerUser.id));
             console.log(`[TOURNAMENT] Updated assistant #${userId} permissions for tournament #${tournamentId}`);
         } else {
             // Insert new assistant row
-            ctx.db.TournamentAssistant.insert({
+            ctx.db.TournamentAssistant.insert(insertWithAudit(ctx, {
                 tournamentId,
                 userId,
                 canValidateResults,
@@ -346,8 +334,7 @@ export const assign_tournament_assistant = spacetimedb.reducer(
                 canDqParticipants,
                 canManageBracket,
                 canAssignSeeds,
-                ...auditInsert(ctx, callerUser.id),
-            } as any);
+            }, callerUser.id));
             console.log(`[TOURNAMENT] Assigned user #${userId} as assistant for tournament #${tournamentId}`);
         }
     }
@@ -422,11 +409,9 @@ export const mod_promote_to_host = spacetimedb.reducer(
         }
 
         // Update user role to TournamentHost
-        ctx.db.User.id.update({
-            ...targetUser,
+        ctx.db.User.id.update(updateWithAudit(ctx, targetUser, {
             role: { tag: 'TournamentHost', value: {} } as any,
-            ...auditUpdate(ctx, targetUser, moderator.id),
-        } as any);
+        }, moderator.id));
 
         console.log(`[ADMIN] User #${userId} promoted to TournamentHost by moderator #${moderator.id}`);
     }
@@ -463,11 +448,9 @@ export const mod_demote_from_host = spacetimedb.reducer(
         }
 
         // Update user role to User
-        ctx.db.User.id.update({
-            ...targetUser,
+        ctx.db.User.id.update(updateWithAudit(ctx, targetUser, {
             role: { tag: 'User', value: {} } as any,
-            ...auditUpdate(ctx, targetUser, moderator.id),
-        } as any);
+        }, moderator.id));
 
         console.log(`[ADMIN] User #${userId} demoted from TournamentHost to User by moderator #${moderator.id}`);
     }
