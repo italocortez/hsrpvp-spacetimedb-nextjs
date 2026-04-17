@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 15.5
-current_plan: 1
-status: executing
-stopped_at: Phase 15.5 context gathered (5 decisions locked)
-last_updated: "2026-04-16T21:53:42.741Z"
-last_activity: 2026-04-16
+current_phase: 16
+current_plan: Not started
+status: planning
+stopped_at: Phase 15.5 complete (UAT 8/8 pass, security 0 open, docs synced) — ready to plan Phase 16
+last_updated: "2026-04-17T02:09:35.330Z"
+last_activity: 2026-04-17
 progress:
   total_phases: 32
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 23
-  completed_plans: 19
-  percent: 83
+  completed_plans: 23
+  percent: 100
 ---
 
 # Session State
@@ -23,17 +23,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 15.5 — auth-gated-user-subscription
+**Current focus:** Phase 16 — route-+-global-foundation
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 15.5
-**Current plan:** 1
-**Status:** Executing Phase 15.5
-**Last activity:** 2026-04-16
+**Current phase:** 16
+**Current plan:** Not started
+**Status:** Ready to plan
+**Last activity:** 2026-04-17
 
-Progress: [██████████] 100% (Phase 15: 6/6 plans complete)
+Progress: [████████████████████] 23/23 plans (100% of plans authored to date — Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 16+ not yet planned)
 
 ## Previous Milestone
 
@@ -87,7 +87,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.2]: D-05: DeletedUser private archive table created with public: false, 4 columns, no audit columns
 - [Phase 15.2]: D-13/D-14: deletedAt: undefined retained in insert payloads — SpacetimeDB insert type requires option() keys present even as undefined
 - [Phase 15.2]: Binding files manually trimmed of isPrivate for TSC compliance; full spacetime generate deferred to Plan 04
-- [Phase 15.2]: D-06: view_user_directory uses spacetimedb.view() — anonymous rejection is framework-level, no explicit auth check in view body needed
+- [Phase 15.2]: D-06 (CORRECTED by 15.2 UAT Test 4 + 15.5): SpacetimeDB `view` vs `anonymousView` does NOT gate caller rejection — only differs in whether `ctx.sender()` is exposed to the body. Phase 15.5 retired `view_user_directory` entirely and moved enforcement to the frontend Stage 2 subscription gate
 - [Phase 15.2]: D-10: admin_ban_user actor is admin.id; clientConnected actor is user.id — both R1 bug sites now insert UserDeletionJob scheduled 5s out
 - [Phase 15.2]: D-09: non-guest deletion is evict-and-hard-delete; ghost accumulation in User table eliminated
 - [Phase 15.2]: D-12: resolveUserLabel returns struct for future badge use; 5 call sites migrated
@@ -102,7 +102,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - Phase 15.2 inserted after Phase 15: User Directory View Performance (DEFERRED) — `view_user_directory` iter()+JS filter is acceptable at v0.9-v1.0 scale (~100 users baseline). Revisit at 1k+ users; consider `User.isActive: bool` btree (Option B) or materialized `ActiveUserDirectory` table (Option C). Reviewer's suggested `User.deletedAt` btree won't work — SpacetimeDB btrees can't filter on `IS NULL`.
 - Phase 15.3 inserted after Phase 15: Audit Spread Type Helper (REFACTOR) — extract `insertWithAudit<T>()` and `updateWithAudit<T>()` helpers in `spacetimedb/src/helpers/auditHelpers.ts`. Migrate 323 `auditInsert`/`auditUpdate` spread sites across 56 files. Eliminates ~50-100 `as any` suppressions. Pure refactor, zero behavior change. Single big-bang publish at end.
 - Phase 15.4 inserted after Phase 15 (2026-04-14): Cost-table draftMode restructure (FOUNDATION) — replace `classicCosts` + `auctionBaseBid` columns on `HsrCharacterCost`/`HsrLightconeCost` with single `costs` struct + `draftMode: DraftMode` column; add `draftMode` to `HsrSynergyCost` (introduces synergy auction support); extend PK tuples; rewrite `admin_bulk_upsert` 3 cases, 3 `edit_draft_*` reducers, 3 readers (`draftClassic.ts`, `draftAuction.ts`, `postDraft.ts`), 3 frontend hooks; regenerate module bindings; rewrite all cost-related tests (cost-set-lifecycle, cost-set-pk, seed-cost-extraction, partial-update). Blocks Phase 16 + Phase 17. **Elevated priority:** run BEFORE 15.2 and 15.3 — the bindings regen would invalidate any pre-restructure work in those phases.
-- Phase 15.5 inserted after Phase 15 (2026-04-16): Auth-Gated User Subscription (URGENT) — close the real bandwidth leak uncovered during Phase 15.2 UAT Test 4: frontend `useAuth.ts:38` fires `SELECT * FROM user` unconditionally on connection, pre-auth. Split into two-stage subscription (Stage 1 `view_my_profile` always; Stage 2 gated on `currentUser != null || hadTokenOnMount`). Retire the now-cosmetic `view_user_directory` (zero client subscribers, no server-side rejection possible — SpacetimeDB `view` vs `anonymousView` only toggles data access, not caller rejection). Promotes seed `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`; CONTEXT.md bootstrapped on insertion. Phase 16 FOUND-03 handoff must be re-scoped in Phase 16 discussion.
+- Phase 15.5 COMPLETE (2026-04-17): Auth-Gated User Subscription — closed the bandwidth leak uncovered during Phase 15.2 UAT Test 4. `useAuth.ts` split into Stage 1 (always-on `view_my_profile`) + Stage 2 (gated `SELECT * FROM user`, gate signal `currentUser != null || hadUserIdOnMount.current || hadSessionCookie.current` — gate identifier swapped from `hadTokenOnMount` mid-execution because the SDK auto-persists anonymous identity tokens; `spacetimedb_user_id` is the correct post-auth signal). `view_user_directory` retired; `view_public_accounts` renamed to `view_public_hsr_accounts`. New `guestLoginPending` UX state drives an inline Login spinner. UAT 8/8 pass, security 0 open, docs synced. **Phase 16 FOUND-03 handoff still open** — re-scope in Phase 16 discussion (subscription ownership refactor in providers.tsx).
 
 - [Phase 15]: Move-only view reorg: all 32 existing views split into 8 domain files matching tables/ layout; binding surface unchanged.
 - [Phase 15]: Plan 02: Spine (skelUrl/atlasUrl/atlasImgUrls) + positioning (posX/posY/width) columns added to hsr_character; schema live on maincloud; bindings regenerated. Admin router + seed pipeline reworks handled by Plans 03 and 05.
@@ -131,7 +131,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-16T20:47:25.186Z
-Stopped at: Phase 15.5 context gathered (5 decisions locked)
-Resume file: .planning/phases/15.5-auth-gated-user-subscription/15.5-CONTEXT.md
-Next action: `/gsd-discuss-phase 15.5` (in progress)
+Last session: 2026-04-17T02:09:35.330Z
+Stopped at: Phase 15.5 complete (UAT 8/8 pass, security 0 open, docs synced) — ready to plan Phase 16
+Resume file: None
+Next action: `/gsd-discuss-phase 16` (Phase 16 has no CONTEXT.md yet — discussion required before planning)
