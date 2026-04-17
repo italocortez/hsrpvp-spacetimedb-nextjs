@@ -406,11 +406,9 @@ export function runFinalization(
             processMatchMmr(ctx, matchResult, effectiveParticipants, gameMode, seasonId, historyRow ? historyRow.id : 0, actingUserId);
             // Stamp mmrProcessedAt
             const freshResult = ctx.db.MatchResultRecord.id.find(matchResult.id)!;
-            ctx.db.MatchResultRecord.id.update({
-                ...freshResult,
-                mmrProcessedAt: ctx.timestamp,
-                ...auditUpdate(ctx, freshResult, actingUserId),
-            } as any);
+            ctx.db.MatchResultRecord.id.update(
+                updateWithAudit(ctx, freshResult, { mmrProcessedAt: ctx.timestamp }, actingUserId),
+            );
         }
     }
 
@@ -423,11 +421,9 @@ export function runFinalization(
                     .filter((h: any) => h.matchHistoryId === 0);
                 if (mmrRows.length > 0) {
                     const latest = mmrRows.sort((a: any, b: any) => b.id - a.id)[0];
-                    ctx.db.MmrHistory.id.update({
-                        ...latest,
-                        matchHistoryId: historyRow.id,
-                        ...auditUpdate(ctx, latest, actingUserId),
-                    } as any);
+                    ctx.db.MmrHistory.id.update(
+                        updateWithAudit(ctx, latest, { matchHistoryId: historyRow.id }, actingUserId),
+                    );
                 }
             }
         }
@@ -586,11 +582,9 @@ export function revealTournamentHistory(ctx: any, tournamentId: number): void {
     // (infrequent batch operation, not a hot path).
     for (const history of ctx.db.MatchSessionHistory.iter()) {
         if (!history.isPubliclyVisible && lobbyCodes.has(history.lobbyCode)) {
-            ctx.db.MatchSessionHistory.id.update({
-                ...history,
-                isPubliclyVisible: true,
-                ...auditUpdate(ctx, history, 0),
-            } as any);
+            ctx.db.MatchSessionHistory.id.update(
+                updateWithAudit(ctx, history, { isPubliclyVisible: true }, 0),
+            );
         }
     }
 }
