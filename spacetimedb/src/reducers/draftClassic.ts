@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { ensureLobbyMember, ensureHostOrAbove, ensureStageIs, slotTeam, slotIsCoach, slotToTeamSide } from '../helpers/lobbyHelpers';
 import { validateCharacterOwnership } from '../helpers/ownershipValidation';
 import { buildClassicSequence, buildAuctionBanSequence } from '../helpers/draftSequences';
@@ -110,22 +110,14 @@ export const start_draft = spacetimedb.reducer(
         if (!blueHasCaptain && bluePlayers.length > 0) {
             const first = bluePlayers[0];
             ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, first.userId]);
-            ctx.db.LobbyMember.insert({
-                ...first,
-                isCaptain: true,
-                ...auditUpdate(ctx, first, user.id),
-            } as any);
+            ctx.db.LobbyMember.insert(updateWithAudit(ctx, first, { isCaptain: true }, user.id));
         }
 
         const redHasCaptain = redPlayers.some((m: any) => m.isCaptain);
         if (!redHasCaptain && redPlayers.length > 0) {
             const first = redPlayers[0];
             ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, first.userId]);
-            ctx.db.LobbyMember.insert({
-                ...first,
-                isCaptain: true,
-                ...auditUpdate(ctx, first, user.id),
-            } as any);
+            ctx.db.LobbyMember.insert(updateWithAudit(ctx, first, { isCaptain: true }, user.id));
         }
 
         // Create MatchSession
@@ -137,7 +129,7 @@ export const start_draft = spacetimedb.reducer(
             accumulatedPauseMs: 0,
         };
 
-        ctx.db.MatchSession.insert({
+        ctx.db.MatchSession.insert(insertWithAudit(ctx, {
             lobbyId,
             turnIndex: 0,
             draftSequence: sequence,
@@ -159,8 +151,7 @@ export const start_draft = spacetimedb.reducer(
             gamesWonBlue: 0,
             gamesWonRed: 0,
             seriesBestOf: lobby.bestOf || 1,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Determine refereeFullControl from referee's team slot (D-44):
         // spectator referee = full control; player-side referee = false
@@ -175,7 +166,7 @@ export const start_draft = spacetimedb.reducer(
         const refereeUserId = refereeRow ? refereeRow.userId : undefined;
 
         // Create MatchResultRecord
-        const matchResultRow = ctx.db.MatchResultRecord.insert({
+        const matchResultRow = ctx.db.MatchResultRecord.insert(insertWithAudit(ctx, {
             id: 0,
             bracketMatchId: lobby.bracketMatchId ?? undefined,
             lobbyId,
@@ -191,8 +182,10 @@ export const start_draft = spacetimedb.reducer(
             refereeFullControl,
             matchType: lobby.matchType,
             matchEndReason: undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+            concedeTrigger: undefined,
+            concedeSummary: undefined,
+            concedeAtStage: undefined,
+        }, user.id));
 
         // Create MatchResultParticipant rows for each Blue+Red non-coach member
         // Re-read members to get updated isCaptain values
@@ -217,39 +210,34 @@ export const start_draft = spacetimedb.reducer(
                     accountRatingSnapshot = acct.accountRating;
                 }
             }
-            ctx.db.MatchResultParticipant.insert({
+            ctx.db.MatchResultParticipant.insert(insertWithAudit(ctx, {
                 matchResultId: matchResultRow.id,
                 userId: member.userId,
                 teamSide: slotToTeamSide(member.lobbySlot),
                 isCaptain: member.isCaptain,
                 accountRatingSnapshot,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
         }
 
         // D-10: Initialize disconnect pool for all members at match start
         const allMembersForPool = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)];
         for (const m of allMembersForPool) {
             ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, m.userId]);
-            ctx.db.LobbyMember.insert({
-                ...m,
+            ctx.db.LobbyMember.insert(updateWithAudit(ctx, m, {
                 disconnectPoolRemainingMs: 300000,
                 voluntarilyLeft: false,
                 disconnectedAt: undefined,
-                ...auditUpdate(ctx, m, user.id),
-            } as any);
+            }, user.id));
         }
 
         // Transition lobby stage to Drafting
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             stage: { tag: 'Drafting', value: {} } as any,
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         // System chat message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             senderUserId: 0,
@@ -257,8 +245,7 @@ export const start_draft = spacetimedb.reducer(
             content: 'Draft has started!',
             metadata: undefined,
             anonymousLabel: undefined,
-            ...auditInsert(ctx),
-        });
+        }));
 
         console.log(`[DRAFT] start_draft: Lobby #${lobbyId} entered Drafting. Sequence length=${sequence.length}`);
     }
@@ -373,7 +360,7 @@ export const pick_character = spacetimedb.reducer(
         }
 
         // Record the step
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             gameNumber: session.currentGameNumber,
@@ -387,8 +374,7 @@ export const pick_character = spacetimedb.reducer(
                 value: { characterName, eidolon, costPaid: cost },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Advance turn and update MatchSession
         const newTurnIndex = session.turnIndex + 1;
@@ -402,8 +388,7 @@ export const pick_character = spacetimedb.reducer(
         if (isClassicComplete) {
             // Classic draft complete — transition to Equipping
             // D-50: Budget rollover — carry leftover charBudget into lcBudget
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 turnIndex: newTurnIndex,
                 teamBlueLcBudget: session.teamBlueLcBudget + session.teamBlueCharBudget,
                 teamRedLcBudget: session.teamRedLcBudget + session.teamRedCharBudget,
@@ -414,19 +399,15 @@ export const pick_character = spacetimedb.reducer(
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 stage: { tag: 'Equipping', value: {} } as any,
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
         } else if (isAuctionBansComplete) {
             // Auction ban phase complete — transition to auction phase
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 turnIndex: newTurnIndex,
                 isAuctionPhase: true,
                 timerState: {
@@ -434,31 +415,24 @@ export const pick_character = spacetimedb.reducer(
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
         } else {
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 turnIndex: newTurnIndex,
                 timerState: {
                     ...session.timerState,
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, user.id),
-            } as any);
+            }, user.id));
         }
 
         console.log(`[DRAFT] pick_character: User #${user.id} picked '${characterName}' (E${eidolon}) in lobby #${lobbyId}, turn ${session.turnIndex}`);
@@ -543,7 +517,7 @@ export const ban_character = spacetimedb.reducer(
         }
 
         // Record the step
-        ctx.db.MatchSessionStep.insert({
+        ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             gameNumber: session.currentGameNumber,
@@ -557,8 +531,7 @@ export const ban_character = spacetimedb.reducer(
                 value: { characterName },
             } as any,
             timestamp: ctx.timestamp,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Advance turn and update MatchSession
         const newTurnIndex = session.turnIndex + 1;
@@ -567,8 +540,7 @@ export const ban_character = spacetimedb.reducer(
             newTurnIndex >= session.draftSequence.length;
 
         if (isAuctionBansComplete) {
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 turnIndex: newTurnIndex,
                 isAuctionPhase: true,
                 timerState: {
@@ -576,26 +548,21 @@ export const ban_character = spacetimedb.reducer(
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
         } else {
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 turnIndex: newTurnIndex,
                 timerState: {
                     ...session.timerState,
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, user.id),
-            } as any);
+            }, user.id));
         }
 
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[DRAFT] ban_character: User #${user.id} banned '${characterName}' in lobby #${lobbyId}, turn ${session.turnIndex}`);
     }
@@ -717,7 +684,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
             }
 
             // Record the auto-pick step
-            ctx.db.MatchSessionStep.insert({
+            ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
                 id: 0,
                 lobbyId,
                 gameNumber: session.currentGameNumber,
@@ -731,8 +698,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
                     value: { characterName, eidolon, costPaid: 0 },
                 } as any,
                 timestamp: ctx.timestamp,
-                ...auditInsert(ctx),
-            });
+            }));
 
         } else if (currentStep.actionRequired.tag === 'Ban') {
             let characterName = 'SKIP';
@@ -773,7 +739,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
             }
 
             // Record the auto-ban step
-            ctx.db.MatchSessionStep.insert({
+            ctx.db.MatchSessionStep.insert(insertWithAudit(ctx, {
                 id: 0,
                 lobbyId,
                 gameNumber: session.currentGameNumber,
@@ -787,8 +753,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
                     value: { characterName },
                 } as any,
                 timestamp: ctx.timestamp,
-                ...auditInsert(ctx),
-            });
+            }));
         }
 
         // Advance turn
@@ -802,8 +767,7 @@ export const timer_expiry_classic = spacetimedb.reducer(
 
         if (isClassicComplete) {
             // D-50: Budget rollover — carry leftover charBudget into lcBudget
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 turnIndex: newTurnIndex,
                 teamBlueLcBudget: session.teamBlueLcBudget + session.teamBlueCharBudget,
                 teamRedLcBudget: session.teamRedLcBudget + session.teamRedCharBudget,
@@ -814,18 +778,14 @@ export const timer_expiry_classic = spacetimedb.reducer(
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, 0),
-            } as any);
+            }, 0));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 stage: { tag: 'Equipping', value: {} } as any,
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, 0),
-            } as any);
+            }, 0));
         } else if (isAuctionBansComplete) {
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 turnIndex: newTurnIndex,
                 isAuctionPhase: true,
                 timerState: {
@@ -833,31 +793,24 @@ export const timer_expiry_classic = spacetimedb.reducer(
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, 0),
-            } as any);
+            }, 0));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, 0),
-            } as any);
+            }, 0));
         } else {
-            ctx.db.MatchSession.lobbyId.update({
-                ...session,
+            ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
                 turnIndex: newTurnIndex,
                 timerState: {
                     ...session.timerState,
                     turnStartAt: ctx.timestamp,
                     accumulatedPauseMs: 0,
                 },
-                ...auditUpdate(ctx, session, 0),
-            } as any);
+            }, 0));
 
-            ctx.db.Lobby.id.update({
-                ...lobby,
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
                 lastActivityAt: ctx.timestamp,
-                ...auditUpdate(ctx, lobby, 0),
-            } as any);
+            }, 0));
         }
 
         console.log(`[DRAFT] timer_expiry_classic: Auto-action at turn ${session.turnIndex} in lobby #${lobbyId}`);
