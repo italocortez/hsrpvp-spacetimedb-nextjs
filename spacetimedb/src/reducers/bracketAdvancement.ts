@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { auditUpdate, auditInsert } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { placeParticipantInNextMatch, updateGroupPhaseRecords, sortGroupPhaseRecords } from '../helpers/bracketHelpers';
 import { deleteCalendarEventForBracketMatch } from '../helpers/calendarCascade';
 import { foldSeeding } from '../helpers/bracketGeneration';
@@ -20,10 +20,7 @@ function removeParticipantFromMatch(ctx: any, matchId: number, teamId: number, u
     const match = ctx.db.BracketMatch.id.find(matchId);
     if (!match) return;
 
-    const updatedMatch: any = {
-        ...match,
-        ...auditUpdate(ctx, match, userId),
-    };
+    const updatedMatch: any = updateWithAudit(ctx, match, {}, userId);
 
     // Clear the slot containing this teamId
     if (match.team1Id === teamId) {
@@ -60,44 +57,32 @@ function reverseGroupPhaseRecords(ctx: any, bracketMatch: any, userId: number): 
 
     if (bracketMatch.winnerTeamId === undefined) {
         // Was a draw: reverse draws+1 and points+1 for both
-        updated1 = {
-            ...standing1,
+        updated1 = updateWithAudit(ctx, standing1, {
             draws: Math.max(0, standing1.draws - 1),
             points: Math.max(0, standing1.points - DRAW_POINTS),
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
+        }, userId);
+        updated2 = updateWithAudit(ctx, standing2, {
             draws: Math.max(0, standing2.draws - 1),
             points: Math.max(0, standing2.points - DRAW_POINTS),
-            ...auditUpdate(ctx, standing2, userId),
-        };
+        }, userId);
     } else if (bracketMatch.winnerTeamId === bracketMatch.team1Id) {
         // Was team1 win: reverse
-        updated1 = {
-            ...standing1,
+        updated1 = updateWithAudit(ctx, standing1, {
             wins: Math.max(0, standing1.wins - 1),
             points: Math.max(0, standing1.points - WIN_POINTS),
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
+        }, userId);
+        updated2 = updateWithAudit(ctx, standing2, {
             losses: Math.max(0, standing2.losses - 1),
-            ...auditUpdate(ctx, standing2, userId),
-        };
+        }, userId);
     } else {
         // Was team2 win: reverse
-        updated1 = {
-            ...standing1,
+        updated1 = updateWithAudit(ctx, standing1, {
             losses: Math.max(0, standing1.losses - 1),
-            ...auditUpdate(ctx, standing1, userId),
-        };
-        updated2 = {
-            ...standing2,
+        }, userId);
+        updated2 = updateWithAudit(ctx, standing2, {
             wins: Math.max(0, standing2.wins - 1),
             points: Math.max(0, standing2.points - WIN_POINTS),
-            ...auditUpdate(ctx, standing2, userId),
-        };
+        }, userId);
     }
 
     // Delete + insert pattern for composite PK tables
@@ -138,11 +123,10 @@ function setEliminatedStatus(ctx: any, loserTeamId: number, bracketMatch: any, u
 
         // Delete + re-insert pattern for composite PK
         ctx.db.TournamentEnrolled.delete(enrolled);
-        ctx.db.TournamentEnrolled.insert({
+        ctx.db.TournamentEnrolled.insert(insertWithAudit(ctx, {
             ...enrolled,
             status: { tag: 'Eliminated', value: {} } as any,
-            ...auditInsert(ctx, userId),
-        } as any);
+        }, userId));
     }
 }
 
@@ -207,11 +191,9 @@ export const advance_bracket_match = spacetimedb.reducer(
 
             // Mark group draw as resolved (resultStatus → Validated) so TO knows it's processed
             if (bracketMatch.winnerTeamId === undefined && bracketMatch.resultStatus.tag !== 'Validated') {
-                ctx.db.BracketMatch.id.update({
-                    ...bracketMatch,
+                ctx.db.BracketMatch.id.update(updateWithAudit(ctx, bracketMatch, {
                     resultStatus: { tag: 'Validated', value: {} } as any,
-                    ...auditUpdate(ctx, bracketMatch, user.id),
-                } as any);
+                }, user.id));
             }
         }
 
@@ -273,12 +255,10 @@ export const submit_and_advance_bracket = spacetimedb.reducer(
         }
 
         // Set winnerTeamId on BracketMatch
-        ctx.db.BracketMatch.id.update({
-            ...bracketMatch,
+        ctx.db.BracketMatch.id.update(updateWithAudit(ctx, bracketMatch, {
             winnerTeamId: winnerTeamId,
             resultStatus: { tag: 'Validated', value: {} } as any,
-            ...auditUpdate(ctx, bracketMatch, user.id),
-        } as any);
+        }, user.id));
 
         // Re-read the updated bracketMatch for downstream logic
         const updatedBracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
@@ -390,12 +370,10 @@ export const rollback_bracket_match = spacetimedb.reducer(
         if (!currentBracketMatch) throw new SenderError('Bracket match not found after reversal.');
 
         // Clear winnerTeamId and reset resultStatus to Pending
-        ctx.db.BracketMatch.id.update({
-            ...currentBracketMatch,
+        ctx.db.BracketMatch.id.update(updateWithAudit(ctx, currentBracketMatch, {
             winnerTeamId: undefined,
             resultStatus: { tag: 'Pending', value: {} } as any,
-            ...auditUpdate(ctx, currentBracketMatch, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[BRACKET] rollback_bracket_match: bracket match #${bracketMatchId} rolled back by user #${user.id}`);
     }
@@ -499,10 +477,7 @@ export const advance_group_to_elimination = spacetimedb.reducer(
             const t2 = seed2 <= advancingTeams.length ? advancingTeams[seed2 - 1] : undefined;
 
             const match = sortedElimR1[i];
-            const updates: any = {
-                ...match,
-                ...auditUpdate(ctx, match, user.id),
-            };
+            const updates: any = updateWithAudit(ctx, match, {}, user.id);
 
             if (t1 !== undefined) updates.team1Id = t1;
             if (t2 !== undefined) updates.team2Id = t2;
