@@ -88,23 +88,23 @@ function validateKeys(rows: any[], tableName: string, ctx: any): void {
  * This helper returns the merged row for UPDATE only. The insert branch stays on its
  * current default-injection path per D-12.
  */
-function mergeForUpdate<T extends Record<string, any>>(
+function mergeForUpdate<T extends Record<string, any>, K extends keyof T & string>(
     existing: T,
-    incoming: Record<string, any>,
-    fields: (keyof T)[]
+    incoming: Partial<Record<K, unknown>>,
+    fields: readonly K[]
 ): T {
     const merged: T = { ...existing };
     for (const f of fields) {
-        const key = f as string;
         // validateKeys guarantees key presence; assert defensively so a future
         // caller that bypasses validateKeys fails loudly instead of silently
         // writing `undefined` or dropping fields.
-        if (!(key in incoming)) {
-            throw new Error(`mergeForUpdate: missing key '${key}' — validateKeys contract broken`);
+        if (!(f in incoming)) {
+            throw new Error(`mergeForUpdate: missing key '${f}' — validateKeys contract broken`);
         }
         // null | undefined → preserve existing value (merged already copied from existing)
-        if (incoming[key] != null) {
-            (merged as any)[key] = incoming[key];
+        if (incoming[f] != null) {
+            // Internal cast at the write site (D-03b: internal-helper as-any excluded from phase scope).
+            (merged as any)[f] = incoming[f];
         }
     }
     return merged;
@@ -344,7 +344,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                     'displayName', 'aliases', 'rarity', 'path', 'element', 'role',
                     'imageUrl', 'versionReleased', 'treatAsVersion',
                     'skelUrl', 'atlasUrl', 'atlasImgUrls', 'posX', 'posY', 'width',
-                ];
+                ] as const;
                 for (const r of rows) {
                     // Enum validation: skip on null (preserve-existing path on update).
                     validateEnumIfPresent('path', r.path, ctx, tableName);
@@ -372,7 +372,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             posY: r.posY,
                             width: r.width,
                         };
-                        const merged = mergeForUpdate(existing as any, incoming, HSR_CHARACTER_FIELDS as any);
+                        const merged = mergeForUpdate(existing, incoming, HSR_CHARACTER_FIELDS);
                         ctx.db.HsrCharacter.name.update(updateWithAudit(ctx, existing, merged, admin.id));
                     } else {
                         // Insert branch: apply schema defaults for required columns; optional stays null.
@@ -444,7 +444,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                 const HSR_LIGHTCONE_FIELDS = [
                     'displayName', 'aliases', 'path', 'rarity', 'imageUrl',
                     'posX', 'posY', 'width',
-                ];
+                ] as const;
                 for (const r of rows) {
                     validateEnumIfPresent('path', r.path, ctx, tableName);
                     const existing = ctx.db.HsrLightcone.name.find(r.name);
@@ -460,7 +460,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                             posY: r.posY,
                             width: r.width,
                         };
-                        const merged = mergeForUpdate(existing as any, incoming, HSR_LIGHTCONE_FIELDS as any);
+                        const merged = mergeForUpdate(existing, incoming, HSR_LIGHTCONE_FIELDS);
                         ctx.db.HsrLightcone.name.update(updateWithAudit(ctx, existing, merged, admin.id));
                     } else {
                         // Insert branch: required enum MUST be present on insert.
@@ -485,7 +485,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                 // 15.4 D-19: Match existing rows on the FULL composite tuple
                 // (characterName, gameMode, draftMode, costSetId). Row absence = "not configured
                 // for that draft mode" (15.4 D-10). One row per (name, gameMode, draftMode, costSetId).
-                const HSR_CHARACTER_COST_FIELDS = ['costs'];
+                const HSR_CHARACTER_COST_FIELDS = ['costs'] as const;
                 for (const r of rows) {
                     validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
                     validateEnumIfPresent('draftMode', r.draftMode, ctx, tableName);
@@ -509,7 +509,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         const incoming: Record<string, any> = {
                             costs: r.costs,
                         };
-                        const merged = mergeForUpdate(existing as any, incoming, HSR_CHARACTER_COST_FIELDS as any);
+                        const merged = mergeForUpdate(existing, incoming, HSR_CHARACTER_COST_FIELDS);
                         // Re-insert pattern (no direct PK accessor for composite delete+insert is fine here).
                         ctx.db.HsrCharacterCost.delete(existing);
                         ctx.db.HsrCharacterCost.insert({
@@ -537,7 +537,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
             }
             case 'HsrLightconeCost': {
                 // 15.4 D-19: Full composite tuple match (lightconeName, gameMode, draftMode, costSetId).
-                const HSR_LIGHTCONE_COST_FIELDS = ['costs'];
+                const HSR_LIGHTCONE_COST_FIELDS = ['costs'] as const;
                 for (const r of rows) {
                     validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
                     validateEnumIfPresent('draftMode', r.draftMode, ctx, tableName);
@@ -558,7 +558,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         const incoming: Record<string, any> = {
                             costs: r.costs,
                         };
-                        const merged = mergeForUpdate(existing as any, incoming, HSR_LIGHTCONE_COST_FIELDS as any);
+                        const merged = mergeForUpdate(existing, incoming, HSR_LIGHTCONE_COST_FIELDS);
                         ctx.db.HsrLightconeCost.delete(existing);
                         ctx.db.HsrLightconeCost.insert({
                             lightconeName: existing.lightconeName,
@@ -585,7 +585,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
             case 'HsrSynergyCost': {
                 // 15.4 D-19: Existence match uses (sourceName, targetName, gameMode, draftMode, costSetId).
                 // PK is auto-inc id; the tuple above is the logical unique key.
-                const HSR_SYNERGY_COST_FIELDS = ['costModifier'];
+                const HSR_SYNERGY_COST_FIELDS = ['costModifier'] as const;
                 for (const r of rows) {
                     validateEnumIfPresent('gameMode', r.gameMode, ctx, tableName);
                     validateEnumIfPresent('draftMode', r.draftMode, ctx, tableName);
@@ -606,7 +606,7 @@ export const admin_bulk_upsert = spacetimedb.reducer(
                         const incoming: Record<string, any> = {
                             costModifier: r.costModifier,
                         };
-                        const merged = mergeForUpdate(existing as any, incoming, HSR_SYNERGY_COST_FIELDS as any);
+                        const merged = mergeForUpdate(existing, incoming, HSR_SYNERGY_COST_FIELDS);
                         ctx.db.HsrSynergyCost.id.update(
                             updateWithAudit(ctx, existing, { costModifier: merged.costModifier }, admin.id),
                         );
