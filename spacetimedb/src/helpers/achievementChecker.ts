@@ -3,7 +3,7 @@
 // Evaluates all non-manual achievements for each participant and auto-awards
 // any that are newly satisfied.
 
-import { auditInsert } from './auditColumns';
+import { insertWithAudit } from './auditHelpers';
 
 // ─── getField ────────────────────────────────────────────────────────────────
 // Explicit switch/case field resolution — NOT string indexing on row objects.
@@ -141,13 +141,12 @@ export function checkAndAwardAchievements(ctx: any, userId: number, actingUserId
         if (!allPassed) continue;
 
         // Award the achievement
-        ctx.db.UserAchievement.insert({
+        ctx.db.UserAchievement.insert(insertWithAudit(ctx, {
             id: 0,
             userId,
             achievementId: achievement.id,
             awardedById: actingUserId,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
 
         console.log(`[ACHIEVEMENT] Auto-awarded "${achievement.name}" to user #${userId}`);
     }

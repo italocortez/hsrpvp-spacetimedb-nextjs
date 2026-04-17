@@ -1,5 +1,6 @@
 import { slotTeam, slotIsCoach, slotIsSpectator } from './lobbyHelpers';
-import { auditUpdate, SYSTEM_USER_ID } from './auditColumns';
+import { SYSTEM_USER_ID } from './auditColumns';
+import { updateWithAudit } from './auditHelpers';
 
 /**
  * Transfers captain flag from the leaving user to the next eligible teammate (D-34).
@@ -26,20 +27,16 @@ export function transferCaptain(ctx: any, lobbyId: number, leavingUserId: number
     if (candidates.length > 0) {
         const newCaptain = candidates[0];
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, newCaptain.userId]);
-        ctx.db.LobbyMember.insert({
-            ...newCaptain,
-            isCaptain: true,
-            ...auditUpdate(ctx, newCaptain, SYSTEM_USER_ID),
-        } as any);
+        ctx.db.LobbyMember.insert(
+            updateWithAudit(ctx, newCaptain, { isCaptain: true }, SYSTEM_USER_ID),
+        );
     }
 
     // Demote leaving member
     ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, leavingUserId]);
-    ctx.db.LobbyMember.insert({
-        ...leavingMember,
-        isCaptain: false,
-        ...auditUpdate(ctx, leavingMember, SYSTEM_USER_ID),
-    } as any);
+    ctx.db.LobbyMember.insert(
+        updateWithAudit(ctx, leavingMember, { isCaptain: false }, SYSTEM_USER_ID),
+    );
 }
 
 /**
@@ -73,18 +70,14 @@ export function transferReferee(ctx: any, lobbyId: number, leavingUserId: number
 
     if (newReferee) {
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, newReferee.userId]);
-        ctx.db.LobbyMember.insert({
-            ...newReferee,
-            isReferee: true,
-            ...auditUpdate(ctx, newReferee, SYSTEM_USER_ID),
-        } as any);
+        ctx.db.LobbyMember.insert(
+            updateWithAudit(ctx, newReferee, { isReferee: true }, SYSTEM_USER_ID),
+        );
 
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, leavingUserId]);
-        ctx.db.LobbyMember.insert({
-            ...leavingMember,
-            isReferee: false,
-            ...auditUpdate(ctx, leavingMember, SYSTEM_USER_ID),
-        } as any);
+        ctx.db.LobbyMember.insert(
+            updateWithAudit(ctx, leavingMember, { isReferee: false }, SYSTEM_USER_ID),
+        );
     }
     // If no eligible member: leaving member keeps referee flag (GC handles orphan)
 }
@@ -115,11 +108,9 @@ export function transferHost(ctx: any, lobbyId: number, lobby: any, leavingUserI
     }
 
     if (newHost) {
-        ctx.db.Lobby.id.update({
-            ...lobby,
-            hostUserId: newHost.userId,
-            ...auditUpdate(ctx, lobby, SYSTEM_USER_ID),
-        } as any);
+        ctx.db.Lobby.id.update(
+            updateWithAudit(ctx, lobby, { hostUserId: newHost.userId }, SYSTEM_USER_ID),
+        );
     }
     // If no eligible member: host stays (GC handles abandoned lobby)
 }

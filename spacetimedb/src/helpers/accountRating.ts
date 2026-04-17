@@ -1,4 +1,4 @@
-import { auditUpdate } from './auditColumns';
+import { updateWithAudit } from './auditHelpers';
 
 /**
  * Matrix-based account rating formula (Phase 11).
@@ -150,10 +150,8 @@ export function updateAccountRating(ctx: any, hsrAccountId: number, actingUserId
     if (!account) return;
 
     if (account.accountRating !== newRating) {
-        ctx.db.HsrAccount.id.update({
-            ...account,
-            accountRating: newRating,
-            ...auditUpdate(ctx, account, actingUserId),
-        });
+        ctx.db.HsrAccount.id.update(
+            updateWithAudit(ctx, account, { accountRating: newRating }, actingUserId),
+        );
     }
 }
