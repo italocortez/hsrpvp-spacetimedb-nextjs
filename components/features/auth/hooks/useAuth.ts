@@ -6,6 +6,26 @@ import { SPACETIMEDB_TOKEN_KEY } from '@/lib/spacetimedb';
 import { setSessionCookie, clearSessionCookie } from '@/lib/session-cookie';
 import { AuthState, User } from '../types';
 
+// Single source of truth for the profile dedupe signature.
+// MUST include every field copied into currentUser by setResolvedUser — otherwise a live update
+// affecting only a missing field would be silently dropped by the dedupe. If you add a new field
+// to User + setResolvedUser, add it here too.
+function extractProfileSignature(user: any): string {
+    return JSON.stringify({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        isGuest: user.isGuest,
+        lastLoginAt: user.lastLoginAt,
+        role: user.role?.tag,
+        hasDiscordLinked: user.hasDiscordLinked,
+        avatarCharacterName: user.avatarCharacterName,
+        deletedAt: user.deletedAt,
+        discordId: user.discordId,
+        discordUsername: user.discordUsername,
+    });
+}
+
 export function useAuth() {
     const router = useRouter();
     const { data: session, status: nextAuthStatus } = useSession();
@@ -17,6 +37,12 @@ export function useAuth() {
     const [guestLoginPending, setGuestLoginPending] = useState(false);
     const stage1Ref = useRef(false);
     const stage2Ref = useRef(false);
+
+    // Dedupe: stores the last-resolved profile signature. Prevents redundant setResolvedUser
+    // calls when Stage 1 (view_my_profile) and Stage 2 (User table) both resolve the same profile
+    // (returning-user flow, StrictMode remount). Reset in the "no user found" path so a future
+    // resolve is treated as new. Live updates pass through because any changed field flips the signature.
+    const resolvedSignatureRef = useRef<string | null>(null);
 
     // D-01: Stage 2 gate signals. Refs initialized once at mount.
     const hadSessionCookie = useRef(typeof document !== 'undefined' && document.cookie.includes('stdb_session'));
@@ -171,6 +197,9 @@ export function useAuth() {
         const profileRows = [...conn.db.view_my_profile.iter()];
         const profile = profileRows[0]; // At most 1 row (filtered by ctx.sender server-side)
         if (profile) {
+            const sig = extractProfileSignature(profile);
+            if (resolvedSignatureRef.current === sig) return;
+            resolvedSignatureRef.current = sig;
             console.log(`[useAuth] View hit: view_my_profile → id=${profile.id} username=${profile.username}`);
             setResolvedUser(profile);
             return;
@@ -184,6 +213,9 @@ export function useAuth() {
         if (cachedId) {
             const user = conn.db.User.id.find(Number(cachedId));
             if (user) {
+                const sig = extractProfileSignature(user);
+                if (resolvedSignatureRef.current === sig) return;
+                resolvedSignatureRef.current = sig;
                 console.log(`[useAuth] Strategy 1 hit: cached id=${cachedId} → ${user.username}`);
                 setResolvedUser(user); return;
             }
@@ -198,6 +230,9 @@ export function useAuth() {
         const guestUsername = `Guest_${shortId}`;
         const guestUser = conn.db.User.username.find(guestUsername);
         if (guestUser) {
+            const sig = extractProfileSignature(guestUser);
+            if (resolvedSignatureRef.current === sig) return;
+            resolvedSignatureRef.current = sig;
             console.log(`[useAuth] Strategy 2 hit: ${guestUsername} → id=${guestUser.id}`);
             setResolvedUser(guestUser); return;
         }
@@ -210,6 +245,9 @@ export function useAuth() {
         if (sessionName) {
             const sessionUser = conn.db.User.username.find(sessionName);
             if (sessionUser && !sessionUser.isGuest) {
+                const sig = extractProfileSignature(sessionUser);
+                if (resolvedSignatureRef.current === sig) return;
+                resolvedSignatureRef.current = sig;
                 console.log(`[useAuth] Strategy 3 hit: session name "${sessionName}" → id=${sessionUser.id}`);
                 setResolvedUser(sessionUser); return;
             }
@@ -219,6 +257,7 @@ export function useAuth() {
         // so isOrphanedIdentity triggers and LOGIN shows
         console.log(`[useAuth] No user found (view + strategies 1-3 failed). identity=${shortId}, sessionName=${sessionName ?? 'none'}`);
         clearSessionCookie();
+        resolvedSignatureRef.current = null;
         setProfileReady(true);
         setCurrentUser(null);
     }, [identity, session, setResolvedUser]);
