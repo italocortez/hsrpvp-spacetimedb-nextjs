@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 15.3-05-PLAN.md (Cluster E -- 8 tournament files, 31 sites migrated, 58/58 integration tests green)
-last_updated: "2026-04-17T07:10:48.284Z"
+stopped_at: Completed 15.3-06-PLAN.md (Cluster F -- 6 bracket+match-result files, 29 sites migrated + 1 P4 preserved + 4 Wave 2b targets preserved, brackets 37/37 + match-results 100/100 integration tests green)
+last_updated: "2026-04-17T07:42:23.409Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 28
-  percent: 74
+  completed_plans: 29
+  percent: 76
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 5
-**Status:** Executing Phase 15.3 (Wave 1 Clusters A + B + C + D + E complete; Clusters F/G and Wave 2 remaining)
+**Current plan:** 6
+**Status:** Executing Phase 15.3 (Wave 1 Clusters A + B + C + D + E + F complete; Cluster G and Wave 2 remaining)
 **Last activity:** 2026-04-17
 
-Progress: [████████████████████] 23/23 plans (100% of plans authored to date — Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 16+ not yet planned)
+Progress: [████████████████████] 29/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-06 complete; Plans 07-15 remaining)
 
 ## Previous Milestone
 
@@ -103,6 +103,11 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3-audit-spread-type-helper]: Cluster D confirms Wave 3 Option α path — rosterMutations L55 is the second of 5-6 conditional sites that keep auditInsert exported indefinitely (first: finalizationHelpers L148, still pending migration)
 - [Phase 15.3-audit-spread-type-helper]: Cluster E: 31 tournament audit sites migrated across 8 files (tournamentAdmin 9, tournamentRegistration 7, tournamentManagement 5, tournamentTeams 4, seriesManagement 4, refereeManagement 4, tournamentCheckIn 1, tournamentHelpers 1); pure P1/P2/SAME-SHAPE cluster -- zero P4 carry and zero P5 conditional sites in tournament subsystem; tournament integration suite 58/58 green in 390s; 33 as-any closures eliminated (62->29)
 - [Phase 15.3-audit-spread-type-helper]: Cluster E confirms seriesManagement ChatMessage system-message inserts use inline manual audit writes (not auditInsert helper) -- left untouched per plan scope; same precedent as Plan 01 D-02-ADJUNCT (profile.ts TournamentTeam) and Plan 04 (lobbySettings password-change block)
+- [Phase 15.3-audit-spread-type-helper]: Cluster F: 29 audit sites migrated + 1 P4 preserved across 6 bracket/match-result files (bracketAdvancement 12, bracketGeneration 2, matchFinalization 1, matchResultSubmission 5, scoreEntry 1+1P4, concede 7); brackets suite 37/37 green in 220s, match-results suite 100/100 green in 918s
+- [Phase 15.3-audit-spread-type-helper]: Cluster F: Pitfall 5 honored rigorously -- 4 Wave 2b D-18 variable-type targets preserved at bracketAdvancement.ts L23/L55/L56/L480 via `const x: any = updateWithAudit(ctx, existing, {}, userId)` + conditional field mutations pattern; Wave 2b (Plan 12) can now retype declarations and drop trailing `as any` casts together
+- [Phase 15.3-audit-spread-type-helper]: Cluster F: scoreEntry.ts MatchResultGame upsert delete+re-insert branch confirmed P4 carry site -- explicit row build (no ...existing spread), composite-PK (matchResultId, gameNumber), auditUpdate primitive retained. Running total: 9 P4 sites preserved (2 Wave 0 + 6 Plan 03 + 1 Plan 06)
+- [Phase 15.3-audit-spread-type-helper]: Cluster F: setEliminatedStatus L126 TournamentEnrolled SAME-SHAPE migration used original `auditInsert` semantics (resets createdBy/Date) rather than `auditUpdate` (preserves) -- logged as observation for future review, preserved zero-behavior-change mandate via insertWithAudit
+- [Phase 15.3-audit-spread-type-helper]: Cluster F: bracketGeneration.ts insertBracketMatches Pass 2/3 + seed_bracket + swap_seeds inline `lastModifiedById/Date` manual writes left untouched per plan scope (not auditUpdate helper calls); same precedent as Plan 05 D-05-02 (seriesManagement ChatMessage) and Plan 01 D-02-ADJUNCT (profile.ts TournamentTeam)
 
 ### Roadmap Evolution
 
@@ -139,7 +144,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T07:10:48.281Z
-Stopped at: Completed 15.3-05-PLAN.md (Cluster E -- 8 tournament files, 31 sites migrated, 58/58 integration tests green)
+Last session: 2026-04-17T07:42:23.406Z
+Stopped at: Completed 15.3-06-PLAN.md (Cluster F -- 6 bracket+match-result files, 29 sites migrated + 1 P4 preserved + 4 Wave 2b targets preserved, brackets 37/37 + match-results 100/100 integration tests green)
 Resume file: None
 Next action: `/gsd-execute-phase 15.3` (continue Wave 1 — Clusters E/F/G remain in plans 15.3-05 through 15.3-08)
