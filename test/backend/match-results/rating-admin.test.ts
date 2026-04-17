@@ -325,16 +325,17 @@ describe('admin_recalculate_all_ratings', () => {
             const charRows = await queryPrivateTable(
                 `SELECT * FROM hsr_account_character WHERE hsr_account_id = ${accountId}`
             );
-            // Only test if account has no characters (don't delete to avoid side effects)
+            // Only test if account has no characters (don't delete to avoid side effects).
+            // If the account already has characters from other tests, skip gracefully —
+            // the rating-0 assertion only applies to the empty-roster shape we care about
+            // here. No else branch needed: leaking characters from prior tests is a
+            // fixture-order issue, not a regression this test gates.
             if (charRows.length === 0) {
                 await admin.call.adminRecalculateAllRatings({});
                 await admin.sync(1500);
 
                 const rating = await getAccountRating(regularUser.userId);
                 expect(rating).toBe(0);
-            } else {
-                // Account already has characters from other tests — skip gracefully
-                expect(true).toBe(true);
             }
         }
     });

@@ -848,13 +848,10 @@ describe('Bracket Advancement', () => {
             expect(drawMatch).toBeDefined();
         });
 
-        it('elimination bracket rejects draw (no winner) → error', async () => {
-            // This should fail because elimination matches require a winner
-            // Use a bracket match from Tournament A (SingleElim) — but we can't access it here.
-            // Instead, verify the guard still works: non-group match with no winner throws.
-            // We test this indirectly: the validation errors in Tournament A already cover this.
-            // Here, just confirm group draws don't throw (tested above).
-            expect(true).toBe(true); // Placeholder — guard covered by Tournament A tests
-        });
+        // Elimination bracket draw rejection: this should fail because elimination
+        // matches require a winner. Accessing a SingleElim bracket match from inside
+        // this describe block isn't possible with the current fixture scoping —
+        // Tournament A tests cover the guard indirectly via validation errors.
+        it.todo('elimination bracket rejects draw (no winner) → error');
     });
 });
