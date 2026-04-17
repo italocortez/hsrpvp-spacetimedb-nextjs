@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ScheduleAt } from 'spacetimedb';
 import { ensureAdmin } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 /**
  * Admin-only: Ban a provider ID (e.g., a Discord ID).
@@ -44,14 +44,13 @@ export const admin_ban_user = spacetimedb.reducer({
     }
 
     // Create the ban record
-    ctx.db.BanRecord.insert({
+    ctx.db.BanRecord.insert(insertWithAudit(ctx, {
         id: 0,  // autoInc
         banType: { tag: banTypeTag, value: {} } as any,
         providerId,
         reason,
         bannedByUserId: admin.id,
-        ...auditInsert(ctx, admin.id),
-    });
+    }, admin.id));
 
     // D-08 enforcement point 3: Soft-delete the user to trigger auto-logout.
     // Find the user via UserPrivate.user_private_discord_id index.
@@ -59,19 +58,16 @@ export const admin_ban_user = spacetimedb.reducer({
     for (const priv of privateRows) {
         const user = ctx.db.User.id.find(priv.userId);
         if (user && !user.deletedAt) {
-            ctx.db.User.id.update({
-                ...user,
-                deletedAt: ctx.timestamp,
-                ...auditUpdate(ctx, user, admin.id),
-            });
+            ctx.db.User.id.update(
+                updateWithAudit(ctx, user, { deletedAt: ctx.timestamp }, admin.id),
+            );
             // D-10 R1 fix: schedule deletion cascade 5s out (matches admin.ts:181-188 pattern)
             const deleteAt = ctx.timestamp.microsSinceUnixEpoch + 5_000_000n;
-            ctx.db.UserDeletionJob.insert({
+            ctx.db.UserDeletionJob.insert(insertWithAudit(ctx, {
                 scheduledId: 0n,
                 scheduledAt: ScheduleAt.time(deleteAt),
                 userId: priv.userId,
-                ...auditInsert(ctx, admin.id),
-            });
+            }, admin.id));
             console.log(`[BAN] User #${user.id} soft-deleted due to ban on ${banTypeTag}:${providerId}`);
         }
     }

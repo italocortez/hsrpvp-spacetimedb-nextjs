@@ -1,5 +1,6 @@
 import spacetimedb from '../schema';
-import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 /**
  * Login as a guest user.
@@ -12,17 +13,12 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
         const user = ctx.db.User.id.find(mapping.userId);
         if (user) {
             // Already registered — update lastLoginAt and lastSeenAt
-            ctx.db.User.id.update({
-                ...user,
-                lastLoginAt: ctx.timestamp,
-                isOnline: true,
-                ...auditUpdate(ctx, user, user.id),
-            });
-            ctx.db.UserIdentity.identity.update({
-                ...mapping,
-                lastSeenAt: ctx.timestamp,
-                ...auditUpdate(ctx, mapping, user.id),
-            });
+            ctx.db.User.id.update(
+                updateWithAudit(ctx, user, { lastLoginAt: ctx.timestamp, isOnline: true }, user.id),
+            );
+            ctx.db.UserIdentity.identity.update(
+                updateWithAudit(ctx, mapping, { lastSeenAt: ctx.timestamp }, user.id),
+            );
             return;
         }
     }
@@ -32,7 +28,7 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
     const guestUsername = `Guest_${shortId}`;
 
     // Create the User row (id is autoInc, pass 0)
-    const newUser = ctx.db.User.insert({
+    const newUser = ctx.db.User.insert(insertWithAudit(ctx, {
         id: 0,
         username: guestUsername,
         displayName: guestUsername,
@@ -44,14 +40,12 @@ export const login_as_guest = spacetimedb.reducer((ctx) => {
         avatarCharacterName: 'march7th',
         displayedAchievementId: undefined,
         deletedAt: undefined,
-        ...auditInsert(ctx, SYSTEM_USER_ID),
-    });
+    }, SYSTEM_USER_ID));
 
     // Link this identity to the new user
-    ctx.db.UserIdentity.insert({
+    ctx.db.UserIdentity.insert(insertWithAudit(ctx, {
         identity: ctx.sender,
         userId: newUser.id,
         lastSeenAt: ctx.timestamp,
-        ...auditInsert(ctx, newUser.id),
-    });
+    }, newUser.id));
 });
