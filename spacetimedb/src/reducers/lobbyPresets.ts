@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { DraftMode, BanMode, GameMode, MatchType, RosterVisibility, DisconnectPolicy } from '../types/enums';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── Shared permission check for preset edit/delete ──────────────────────────
 // Per D-31b permission hierarchy:
@@ -106,7 +106,7 @@ export const create_lobby_preset = spacetimedb.reducer(
             ? args.disconnectForfeitSeconds
             : undefined;
 
-        ctx.db.LobbyPreset.insert({
+        ctx.db.LobbyPreset.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             name: args.name,
             isSystemPreset: false,
@@ -142,8 +142,7 @@ export const create_lobby_preset = spacetimedb.reducer(
             refereeCanKick: args.refereeCanKick,
             allowPlayerPause: args.allowPlayerPause,
             refereeExclusiveConcede: args.refereeExclusiveConcede,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[PRESET] Lobby preset "${args.name}" created by user #${user.id}`);
     }
@@ -210,8 +209,7 @@ export const update_lobby_preset = spacetimedb.reducer(
             ? args.disconnectForfeitSeconds
             : undefined;
 
-        ctx.db.LobbyPreset.id.update({
-            ...preset,
+        ctx.db.LobbyPreset.id.update(updateWithAudit(ctx, preset, {
             name: args.name,
             teamSize: args.teamSize,
             draftMode: args.draftMode,
@@ -244,8 +242,7 @@ export const update_lobby_preset = spacetimedb.reducer(
             refereeCanKick: args.refereeCanKick,
             allowPlayerPause: args.allowPlayerPause,
             refereeExclusiveConcede: args.refereeExclusiveConcede,
-            ...auditUpdate(ctx, preset, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[PRESET] Lobby preset #${args.presetId} updated by user #${user.id}`);
     }

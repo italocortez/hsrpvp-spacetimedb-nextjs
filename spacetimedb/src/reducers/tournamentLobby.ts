@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
-import { auditInsert } from '../helpers/auditColumns';
+import { insertWithAudit } from '../helpers/auditHelpers';
 import { ensureNotInLobby, generateJoinCode } from '../helpers/lobbyHelpers';
 
 // ─── create_tournament_lobby ─────────────────────────────────────────────────
@@ -95,7 +95,7 @@ export const create_tournament_lobby = spacetimedb.reducer(
         // For fields not present on Tournament (draftMode, banMode, timers, budgets),
         // use sensible tournament defaults.
         const joinCode = generateJoinCode(ctx, user.id);
-        const lobby = ctx.db.Lobby.insert({
+        const lobby = ctx.db.Lobby.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             joinCode,
             hostUserId: user.id,
@@ -184,13 +184,10 @@ export const create_tournament_lobby = spacetimedb.reducer(
             // Lifecycle
             lastActivityAt: ctx.timestamp,
             stage: { tag: 'Waiting', value: {} } as any,
-
-            // Audit
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // D-24: host joins as referee, D-27: starts as Spectator
-        ctx.db.LobbyMember.insert({
+        ctx.db.LobbyMember.insert(insertWithAudit(ctx, {
             lobbyId: lobby.id,
             userId: user.id,
             isOnline: true,
@@ -201,8 +198,7 @@ export const create_tournament_lobby = spacetimedb.reducer(
             voluntarilyLeft: false,
             disconnectedAt: undefined,
             disconnectPoolRemainingMs: 0,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[TOURNAMENT_LOBBY] Lobby #${lobby.id} created for bracket match #${args.bracketMatchId} by user #${user.id}`);
     }
@@ -263,12 +259,11 @@ export const approve_stand_in = spacetimedb.reducer(
         }
 
         // Insert TournamentStandIn row
-        ctx.db.TournamentStandIn.insert({
+        ctx.db.TournamentStandIn.insert(insertWithAudit(ctx, {
             bracketMatchId: args.bracketMatchId,
             userId: args.userId,
             approvedByUserId: user.id,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[TOURNAMENT_LOBBY] Stand-in user #${args.userId} approved for bracket match #${args.bracketMatchId} by user #${user.id}`);
     }

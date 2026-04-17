@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { DraftMode, BanMode, GameMode, MatchType, RosterVisibility, DisconnectPolicy, LobbySlot } from '../types/enums';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 import { ensureLobbyMember, ensureHostOrAbove, ensureStageIs, slotTeam, slotIsCoach, slotIsSpectator, slotToTeamSide } from '../helpers/lobbyHelpers';
 
 // ─── update_lobby_settings ────────────────────────────────────────────────────
@@ -95,8 +95,7 @@ export const update_lobby_settings = spacetimedb.reducer(
         // Update Lobby row
         // Tournament-locked fields use existing lobby values (from tournament)
         // Free fields accept caller input
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             // ── Locked fields (tournament integrity) ──
             teamSize: isTournamentLocked ? lobby.teamSize : args.teamSize,
             gameMode: isTournamentLocked ? lobby.gameMode : args.gameMode,
@@ -133,8 +132,7 @@ export const update_lobby_settings = spacetimedb.reducer(
             teamRedAlias: args.teamRedAlias,
             isPublic: args.isPublic,
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         // Handle password change
         if (!args.isPublic && args.password.length > 0) {
@@ -164,11 +162,9 @@ export const update_lobby_settings = spacetimedb.reducer(
         for (const member of members) {
             if (member.isConfirmed) {
                 ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, member.userId]);
-                ctx.db.LobbyMember.insert({
-                    ...member,
+                ctx.db.LobbyMember.insert(updateWithAudit(ctx, member, {
                     isConfirmed: false,
-                    ...auditUpdate(ctx, member, user.id),
-                } as any);
+                }, user.id));
             }
         }
 
@@ -254,19 +250,15 @@ export const set_team_slot = spacetimedb.reducer(
 
         // Delete + reinsert with new lobbySlot and isConfirmed reset
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
-        ctx.db.LobbyMember.insert({
-            ...targetMember,
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, targetMember, {
             lobbySlot: args.lobbySlot,
             isConfirmed: false,
-            ...auditUpdate(ctx, targetMember, user.id),
-        } as any);
+        }, user.id));
 
         // Update lobby activity timestamp
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[LOBBY] User #${targetUserId} moved to ${args.lobbySlot.tag} in lobby #${lobbyId} by user #${user.id}`);
     }
@@ -295,17 +287,13 @@ export const confirm_ready = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
-        ctx.db.LobbyMember.insert({
-            ...member,
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, member, {
             isConfirmed: true,
-            ...auditUpdate(ctx, member, user.id),
-        } as any);
+        }, user.id));
 
-        ctx.db.Lobby.id.update({
-            ...lobby,
+        ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
             lastActivityAt: ctx.timestamp,
-            ...auditUpdate(ctx, lobby, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[LOBBY] User #${user.id} confirmed ready in lobby #${lobbyId}`);
     }
@@ -335,11 +323,9 @@ export const unconfirm_ready = spacetimedb.reducer(
         const member = ensureLobbyMember(ctx, lobbyId, user.id);
 
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, user.id]);
-        ctx.db.LobbyMember.insert({
-            ...member,
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, member, {
             isConfirmed: false,
-            ...auditUpdate(ctx, member, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[LOBBY] User #${user.id} unconfirmed ready in lobby #${lobbyId}`);
     }
@@ -393,21 +379,17 @@ export const set_captain = spacetimedb.reducer(
         for (const m of allMembers) {
             if (m.isCaptain && slotTeam(m.lobbySlot) === targetTeam && m.userId !== targetUserId) {
                 ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, m.userId]);
-                ctx.db.LobbyMember.insert({
-                    ...m,
+                ctx.db.LobbyMember.insert(updateWithAudit(ctx, m, {
                     isCaptain: false,
-                    ...auditUpdate(ctx, m, user.id),
-                } as any);
+                }, user.id));
             }
         }
 
         // Promote target to captain
         ctx.db.LobbyMember.by_lobby_and_user.delete([lobbyId, targetUserId]);
-        ctx.db.LobbyMember.insert({
-            ...targetMember,
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, targetMember, {
             isCaptain: true,
-            ...auditUpdate(ctx, targetMember, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[LOBBY] User #${targetUserId} set as ${targetTeam} captain in lobby #${lobbyId} by user #${user.id}`);
     }
