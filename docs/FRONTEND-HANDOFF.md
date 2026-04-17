@@ -106,7 +106,7 @@ const lobbyBrowser = useTable(conn.db.view_lobby_browser);
 | `view_my_lobby_members` | Lobby members with anonymous labels applied |
 | `view_my_match_steps` | Draft steps with anonymous character names applied |
 | `view_my_tournaments` | Tournaments the caller is enrolled in |
-| `view_public_accounts` | HSR accounts with public visibility flag applied |
+| `view_public_hsr_accounts` | HSR accounts with public visibility flag applied |
 | `view_match_history` | Archived match sessions for replay |
 | `view_match_participant_history` | Participants from archived matches |
 
@@ -184,7 +184,7 @@ Labels for anonymous players are computed server-side in `anonymousLabels.ts`. T
 
 ### Roster Visibility
 
-Roster visibility (public/private) is server-enforced at the view layer. `view_public_accounts` and `view_my_roster` handle the filtering. The frontend never needs to manually check `isRosterPublic`.
+Roster visibility (public/private) is server-enforced at the view layer. `view_public_hsr_accounts` and `view_my_roster` handle the filtering. The frontend never needs to manually check `isRosterPublic`.
 
 ### Roster Mutation Guards (Phase 12.3)
 

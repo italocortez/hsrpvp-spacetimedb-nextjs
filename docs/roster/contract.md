@@ -430,7 +430,7 @@ admin_upsert_archetype, admin_delete_archetype, admin_assign_character_archetype
 | HsrCharacterCost.costSetId | CostSet.id | Phase 3 default=0 | Read by cost system |
 | run_user_deletion | HsrAccount + HsrAccountCharacter | Cascade delete | Writes |
 | view_my_roster | HsrAccount.user_id + HsrAccountCharacter.hsr_account_id | Private table view | Reads |
-| view_public_accounts | HsrAccount.iter() + HsrAccountCharacter.hsr_account_id | Public roster view | Reads |
+| view_public_hsr_accounts | HsrAccount.iter() + HsrAccountCharacter.hsr_account_id | Public roster view | Reads |
 
 ## Phase History
 
