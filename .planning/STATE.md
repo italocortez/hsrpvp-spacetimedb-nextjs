@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 15.3-03-PLAN.md (Cluster C — 8 helpers, 10 P1/P2 migrated + 6 P4 carry preserved)
-last_updated: "2026-04-17T06:23:09.524Z"
+stopped_at: Completed 15.3-04-PLAN.md (Cluster D — 4 lobby reducers, 40 sites migrated + 1 P5 conditional preserved in rosterMutations)
+last_updated: "2026-04-17T06:54:20.569Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 26
-  percent: 68
+  completed_plans: 27
+  percent: 71
 ---
 
 # Session State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 3
-**Status:** Executing Phase 15.3 (Wave 1 Clusters A + B complete; Cluster C and remaining clusters next)
+**Current plan:** 4
+**Status:** Executing Phase 15.3 (Wave 1 Clusters A + B + C + D complete; Clusters E–G and Wave 2 remaining)
 **Last activity:** 2026-04-17
 
 Progress: [████████████████████] 23/23 plans (100% of plans authored to date — Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 16+ not yet planned)
@@ -99,6 +99,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3]: Plan 15.3-01: 35 pre-existing typecheck errors in test/backend/** logged to deferred-items.md — out-of-scope per SCOPE BOUNDARY
 - [Phase 15.3-audit-spread-type-helper]: Cluster B (auth-adjacent) migration clean: 10 audit call sites, 7 as-any closures eliminated, 34/34 auth + 8/8 GC integration tests passing
 - [Phase 15.3-audit-spread-type-helper]: Cluster C: 6 P4 delete+insert-carry sites preserved on auditUpdate primitive across 3 stats helpers (characterStatsIncrement, statsIncrement, globalCharacterStatsIncrement); 10 P1/P2 sites migrated to new helpers
+- [Phase 15.3-audit-spread-type-helper]: Cluster D: 40 audit sites migrated across 4 lobby reducers (lobbyLifecycle 23, lobbySettings 10, lobbyPresets 2, tournamentLobby 3); 1 P5 conditional site PRESERVED in rosterMutations.ts L55 — both auditInsert + auditUpdate primitives remain callable inside the ternary per D-06; lobby integration suite 103/103 green
+- [Phase 15.3-audit-spread-type-helper]: Cluster D confirms Wave 3 Option α path — rosterMutations L55 is the second of 5-6 conditional sites that keep auditInsert exported indefinitely (first: finalizationHelpers L148, still pending migration)
 
 ### Roadmap Evolution
 
@@ -135,7 +137,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T06:23:05.071Z
-Stopped at: Completed 15.3-03-PLAN.md (Cluster C — 8 helpers, 10 P1/P2 migrated + 6 P4 carry preserved)
+Last session: 2026-04-17T06:52:09Z
+Stopped at: Completed 15.3-04-PLAN.md (Cluster D — 4 lobby reducers, 40 sites migrated + 1 P5 conditional preserved in rosterMutations L55)
 Resume file: None
-Next action: `/gsd-discuss-phase 16` (Phase 16 has no CONTEXT.md yet — discussion required before planning)
+Next action: `/gsd-execute-phase 15.3` (continue Wave 1 — Clusters E/F/G remain in plans 15.3-05 through 15.3-08)
