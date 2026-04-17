@@ -2,6 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { Identity, Timestamp } from 'spacetimedb';
 import { auditInsert, auditUpdate, SYSTEM_USER_ID } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { performUserDeletion } from '../helpers/userDeletionHelper';
 import { rejectIfBanned, DISCORD_BAN_TYPE } from '../helpers/banHelper';
 
@@ -37,7 +38,7 @@ export const register_server = spacetimedb.reducer((ctx) => {
     });
 
     // Create the SYSTEM user — the first user in the database.
-    const systemUser = ctx.db.User.insert({
+    const systemUser = ctx.db.User.insert(insertWithAudit(ctx, {
         id: 0,
         username: 'SYSTEM',
         displayName: 'SYSTEM',
@@ -49,17 +50,15 @@ export const register_server = spacetimedb.reducer((ctx) => {
         avatarCharacterName: 'march7th',
         displayedAchievementId: undefined,
         deletedAt: undefined,
-        ...auditInsert(ctx, SYSTEM_USER_ID),
-    });
+    }, SYSTEM_USER_ID));
 
     // Link server identity to SYSTEM user so server-token connections
     // pass getAuthenticatedUser/ensureAdmin checks (e.g. seed-data.ts)
-    ctx.db.UserIdentity.insert({
+    ctx.db.UserIdentity.insert(insertWithAudit(ctx, {
         identity: ctx.sender,
         userId: systemUser.id,
         lastSeenAt: ctx.timestamp,
-        ...auditInsert(ctx, SYSTEM_USER_ID),
-    });
+    }, SYSTEM_USER_ID));
 });
 
 /**
