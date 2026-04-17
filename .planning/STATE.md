@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 15.3
-current_plan: 8
+current_plan: 9
 status: executing
-stopped_at: Completed 15.3-08-PLAN.md (Wave 2 File 1 finalizationHelpers.ts -- 10 sites migrated [7 P1 + 3 P2] + 1 P5 conditional preserved [third confirmed in phase: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148] + 3 P4 carry preserved + 1 D-18 target preserved; as any 15->9; match-results 62/62 + match-session 39/39 actual tests PASS; post-draft 26/26 + mmr-snapshot 3/3 isolated reruns confirm harness-race flakes are not regressions)
-last_updated: "2026-04-17T12:00:00.000Z"
+stopped_at: Completed 15.3-09-PLAN.md (Wave 2 File 2 server.ts -- 12 audit sites migrated [3 insertWithAudit + 9 updateWithAudit across register_server bootstrap + server_link_provider 6-step re-pointing cluster + server_set_role/online/mmr] + 1 P4 delete+insert-carry preserved on server_set_mmr if-branch + 3 NO-TOUCH Pitfall 6 blocks preserved at L279-314 server_set_datetime [PATTERNS.md C1 counter-example: custom-timestamp override paired with manual lastModifiedById/Date writes] + auditInsert import fully evicted [zero callers; first Wave 2 file]. Fresh-DB smoke test PASS on maincloud hsrpvp-spacetimedb-nextjs-test1: SYSTEM user id=1 + created_by_id=0 + last_modified_by_id=0; server_identity=1, user_identity=1.)
+last_updated: "2026-04-17T17:19:56.375Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 7
-**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A + B + C + D + E + F + G done; Wave 2 individual-audit files + Wave 2b type-hygiene + Wave 3 auditInsert deletion + Wave 4 test placeholder cleanup remaining)
+**Current plan:** 9
+**Status:** Executing Phase 15.3 (Wave 1 COMPLETE — Clusters A+B+C+D+E+F+G; Wave 2 IN PROGRESS — Plan 08 finalizationHelpers + Plan 09 server.ts DONE, Plans 10/11 remaining; then Wave 2b type-hygiene + Wave 3 auditInsert deletion + Wave 4 test placeholder cleanup + Wave 5 publish)
 **Last activity:** 2026-04-17
 
-Progress: [████████████████████] 31/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-07 complete [Wave 1 DONE]; Plans 08-15 remaining)
+Progress: [████████████████████] 32/38 plans (Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 15.3 Plans 01-09 complete [Wave 1 DONE + Wave 2 Files 1-2 DONE]; Plans 10-15 remaining)
 
 ## Previous Milestone
 
@@ -115,6 +115,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3-audit-spread-type-helper]: WAVE 1 COMPLETE -- 7 clusters, 50 files, 253 audit sites migrated across Plans 01-07. Pattern cookbook exhaustively exercised: P1 + P2 + SAME-SHAPE + P4 carry (9 sites preserved) + P5 conditional (2 sites preserved) + Pitfall 5 intermediate-variable (4+2 sites preserved) + if/else clean-split (NEW). Comm-diff confirms exactly 5 remaining files: 4 Wave 2 targets (finalizationHelpers, server.ts, index.ts, costSetManagement) + 1 P5-only file (rosterMutations).
 - [Phase 15.3-audit-spread-type-helper]: Plan 08 (Wave 2 File 1, finalizationHelpers.ts): 10 sites migrated [7 P1 + 3 P2] + 1 P5 conditional PRESERVED at L148 (MmrRating composite-PK upsert -- THIRD confirmed P5 in phase: rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148) + 3 P4 carry preserved (L141-149 + L155-162 MmrRating globalComposite + L619-623 PlayerStat spectator) + 1 Wave 2b D-18 target preserved at L35 (`newRow as any`; newRow now captures insertWithAudit return, Plan 12 types it via module_bindings). as any count 15->9 (decrease of 6). Zero Rule 2 auto-fixes (contrast with Plan 07's 4 discoveries -- finalizationHelpers had no hidden structural gaps). Integration: match-results 62/62 actual tests PASS (first full run; 4 Test Files reported fail due to teardown SenderError harness race only); match-session 39/39 actual tests PASS per run (post-draft single-test flake surfaced twice but isolated 26/26 PASS, confirming non-regression); mmr-snapshot isolated 3/3 PASS.
 - [Phase 15.3-audit-spread-type-helper]: Plan 08 pattern — getOrCreateRating (L22-37) exercises 'build-then-insert with helper output captured' — `const newRow = insertWithAudit(ctx, rowLiteral, actingUserId); ctx.db.MmrRating.insert(newRow as any);` — first Wave 2 appearance of the two-line helper-result-capture pattern. Distinct from Wave 1 single-line `ctx.db.X.insert(insertWithAudit(ctx, row, uid))`. Useful for helpers that return newRow to callers.
+- [Phase 15.3-audit-spread-type-helper]: Plan 15.3-09 Wave 2 File 2 server.ts audit migration complete. 12 sites migrated [3 insertWithAudit + 9 updateWithAudit] covering register_server bootstrap (SYSTEM User+UserIdentity) + server_link_provider 6-step re-pointing cluster + server_set_role/online/mmr. 1 P4 delete+insert-carry preserved on server_set_mmr if-branch (explicit row build after delete, auditUpdate primitive retained). 3 NO-TOUCH Pitfall 6 blocks preserved at L279-314 server_set_datetime (PATTERNS.md C1 counter-example: custom-timestamp override on UserIdentity.lastSeenAt/createdDate + Lobby.createdDate paired with manual lastModifiedById/Date writes -- migrating would force ctx.timestamp and destroy test-utility time-override semantics). auditInsert import fully evicted (zero callers; first Wave 2 file to do so; Plan 08 still has 1 P5 at L148). Fresh-DB smoke test PASS on maincloud hsrpvp-spacetimedb-nextjs-test1: SYSTEM row id=1 + created_by_id=0 + last_modified_by_id=0 per feedback_system_user_id_sentinel.md; server_identity=1, user_identity=1. Zero Rule 2 auto-fixes -- bootstrap/auth-adjacent code consistent with Plan 02 Cluster B pattern.
 
 ### Roadmap Evolution
 
@@ -151,7 +152,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T12:00:00.000Z
-Stopped at: Completed 15.3-08-PLAN.md (Wave 2 File 1 finalizationHelpers.ts -- 10 audit sites migrated [7 P1 plain-insert + 3 P2 direct-update] + 1 P5 conditional preserved at L148 [third confirmed P5 in phase] + 3 P4 delete+insert-carry preserved + 1 Wave 2b D-18 target preserved at L35; as any 15->9; match-results 62/62 + match-session 39/39 actual tests PASS; post-draft 26/26 + mmr-snapshot 3/3 isolated runs confirm harness flake non-regression)
+Last session: 2026-04-17T17:19:56.375Z
+Stopped at: Completed 15.3-09-PLAN.md (Wave 2 File 2 server.ts -- 12 audit sites migrated [3 insertWithAudit + 9 updateWithAudit across register_server bootstrap + server_link_provider 6-step re-pointing cluster + server_set_role/online/mmr] + 1 P4 delete+insert-carry preserved on server_set_mmr if-branch + 3 NO-TOUCH Pitfall 6 blocks preserved at L279-314 server_set_datetime [PATTERNS.md C1 counter-example: custom-timestamp override paired with manual lastModifiedById/Date writes] + auditInsert import fully evicted [zero callers; first Wave 2 file]. Fresh-DB smoke test PASS on maincloud hsrpvp-spacetimedb-nextjs-test1: SYSTEM user id=1 + created_by_id=0 + last_modified_by_id=0; server_identity=1, user_identity=1.)
 Resume file: None
-Next action: `/gsd-execute-phase 15.3` (continue with Plan 09 -- Wave 2 File 2: `reducers/server.ts` 13 sites, bootstrap path, SYSTEM_USER_ID, 3 NO-TOUCH counter-example sites at L293-325 `server_set_datetime`; then Plan 10 index.ts 10 sites, Plan 11 costSetManagement.ts 18 sites, Plan 12 Wave 2b D-17/D-18 type-hygiene, Plan 13 Wave 3 auditInsert deletion [Option alpha; 3 confirmed P5 sites], Plan 14 placeholder test conversion, Plan 15 publish)
+Next action: `/gsd-execute-phase 15.3` (continue with Plan 10 -- Wave 2 File 3: `src/index.ts` 10 sites, client lifecycle hooks, LobbyMember P4 carry expected; then Plan 11 costSetManagement.ts 18 sites [may surface 2-3 more P5 conditional sites; drives Wave 3 Option α accounting], Plan 12 Wave 2b D-17/D-18 type-hygiene, Plan 13 Wave 3 auditInsert deletion [Option alpha; 3 confirmed P5 sites at rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148], Plan 14 placeholder test conversion, Plan 15 publish)
