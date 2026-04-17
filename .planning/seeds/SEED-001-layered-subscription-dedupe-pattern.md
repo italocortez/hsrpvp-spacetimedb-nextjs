@@ -51,6 +51,7 @@ Each subscription stage writes to its own slice of derived state. Example for Ph
 If a future stage pair has the same shape:
 - Define a module-level `extractSignature(row)` helper as single source of truth
 - The helper MUST include every field copied into derived state (miss one → live updates silently dropped)
+- **Use a BigInt-safe JSON replacer.** SpacetimeDB timestamp columns (lastLoginAt, deletedAt, etc.) are `bigint` at the SDK layer, and `JSON.stringify` throws on BigInt with no replacer. Use `JSON.stringify(obj, (_k, v) => typeof v === 'bigint' ? v.toString() : v)`. This bit us mid-UAT in Phase 15.5 (commit `aad6b06`).
 - Store the last-resolved signature in a `useRef<string | null>(null)`
 - At every resolver call site: `if (sigRef.current === newSig) return; sigRef.current = newSig; /* ...log + setState */`
 - Reset the ref in cleanup paths (logout, delete, "no user found" / null-user transitions)
