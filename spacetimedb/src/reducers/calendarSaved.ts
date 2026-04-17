@@ -8,7 +8,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 const MAX_SAVED_CALENDARS = 5;
 
@@ -38,12 +38,11 @@ export const save_calendar = spacetimedb.reducer(
             throw new SenderError(`Maximum ${MAX_SAVED_CALENDARS} saved calendars per user.`);
         }
 
-        ctx.db.SavedCalendar.insert({
+        ctx.db.SavedCalendar.insert(insertWithAudit(ctx, {
             userId: user.id,
             targetUserId,
             isVisible: true,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -78,10 +77,8 @@ export const toggle_calendar_visibility = spacetimedb.reducer(
 
         // Composite PK update: delete + re-insert
         ctx.db.SavedCalendar.delete(existing);
-        ctx.db.SavedCalendar.insert({
-            ...existing,
+        ctx.db.SavedCalendar.insert(updateWithAudit(ctx, existing, {
             isVisible,
-            ...auditUpdate(ctx, existing, user.id),
-        } as any);
+        }, user.id));
     }
 );

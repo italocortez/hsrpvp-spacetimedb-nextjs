@@ -12,7 +12,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { Timestamp } from 'spacetimedb';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { cleanupExpiredSlots } from '../helpers/calendarCleanup';
 
 const SIX_MONTHS_MICROS = BigInt(180 * 24 * 60 * 60) * BigInt(1_000_000);
@@ -106,7 +106,7 @@ export const create_availability_slot = spacetimedb.reducer(
             };
         }
 
-        ctx.db.AvailabilitySlot.insert({
+        ctx.db.AvailabilitySlot.insert(insertWithAudit(ctx, {
             id: 0,
             userId: user.id,
             startAt: new Timestamp(startMicros),
@@ -114,8 +114,7 @@ export const create_availability_slot = spacetimedb.reducer(
             isRecurring,
             recurrenceRule,
             expiresAt: new Timestamp(expiresAtMicros),
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -199,15 +198,13 @@ export const update_availability_slot = spacetimedb.reducer(
             };
         }
 
-        ctx.db.AvailabilitySlot.id.update({
-            ...slot,
+        ctx.db.AvailabilitySlot.id.update(updateWithAudit(ctx, slot, {
             startAt: new Timestamp(startMicros),
             endAt: new Timestamp(endMicros),
             isRecurring,
             recurrenceRule,
             expiresAt: new Timestamp(expiresAtMicros),
-            ...auditUpdate(ctx, slot, user.id),
-        } as any);
+        }, user.id));
     }
 );
 

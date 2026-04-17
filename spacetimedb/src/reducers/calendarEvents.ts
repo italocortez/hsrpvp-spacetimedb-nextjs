@@ -18,7 +18,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { Timestamp } from 'spacetimedb';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { cleanupOldEvents } from '../helpers/calendarCleanup';
 import { deleteCalendarEventWithInvites } from '../helpers/calendarCascade';
 
@@ -139,16 +139,15 @@ export const create_calendar_event = spacetimedb.reducer(
         }
 
         // Insert event
-        ctx.db.CalendarEvent.insert({
+        ctx.db.CalendarEvent.insert(insertWithAudit(ctx, {
             id: 0,
             organizerId: user.id,
             title: title.trim(),
             startAt: new Timestamp(startMicros),
             endAt: new Timestamp(endMicros),
             bracketMatchId: linkedBracketMatchId,
-            description: description && description.trim() !== '' ? description.trim() : null,
-            ...auditInsert(ctx, user.id),
-        } as any);
+            description: description && description.trim() !== '' ? description.trim() : undefined,
+        }, user.id));
 
         // Retrieve the newly inserted event by finding the most recent one for this user
         // (within the same transaction, no race condition)
@@ -160,24 +159,22 @@ export const create_calendar_event = spacetimedb.reducer(
 
         // Insert auto-invites for tournament-linked events
         for (const inviteeId of autoInviteeIds) {
-            ctx.db.CalendarEventInvite.insert({
+            ctx.db.CalendarEventInvite.insert(insertWithAudit(ctx, {
                 eventId: newEvent.id,
                 inviteeUserId: inviteeId,
                 inviteStatus: { tag: 'Pending', value: {} } as any,
-                respondedAt: null,
-                ...auditInsert(ctx, user.id),
-            } as any);
+                respondedAt: undefined,
+            }, user.id));
         }
 
         // Insert manual invites
         for (const inviteeId of uniqueManual) {
-            ctx.db.CalendarEventInvite.insert({
+            ctx.db.CalendarEventInvite.insert(insertWithAudit(ctx, {
                 eventId: newEvent.id,
                 inviteeUserId: inviteeId,
                 inviteStatus: { tag: 'Pending', value: {} } as any,
-                respondedAt: null,
-                ...auditInsert(ctx, user.id),
-            } as any);
+                respondedAt: undefined,
+            }, user.id));
         }
     }
 );
@@ -215,14 +212,12 @@ export const update_calendar_event = spacetimedb.reducer(
         const endMicros = BigInt(endAt);
         if (startMicros >= endMicros) throw new SenderError('Start time must be before end time.');
 
-        ctx.db.CalendarEvent.id.update({
-            ...event,
+        ctx.db.CalendarEvent.id.update(updateWithAudit(ctx, event, {
             title: title.trim(),
-            description: description && description.trim() !== '' ? description.trim() : null,
+            description: description && description.trim() !== '' ? description.trim() : undefined,
             startAt: new Timestamp(startMicros),
             endAt: new Timestamp(endMicros),
-            ...auditUpdate(ctx, event, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -271,13 +266,12 @@ export const invite_to_event = spacetimedb.reducer(
             throw new SenderError(`Maximum ${MAX_INVITEES_PER_EVENT} invitees per event.`);
         }
 
-        ctx.db.CalendarEventInvite.insert({
+        ctx.db.CalendarEventInvite.insert(insertWithAudit(ctx, {
             eventId,
             inviteeUserId,
             inviteStatus: { tag: 'Pending', value: {} } as any,
-            respondedAt: null,
-            ...auditInsert(ctx, user.id),
-        } as any);
+            respondedAt: undefined,
+        }, user.id));
     }
 );
 

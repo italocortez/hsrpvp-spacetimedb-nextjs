@@ -8,7 +8,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── respond_to_invite ───────────────────────────────────────────────────────
 // Sets the invitee's response status on a calendar event invite.
@@ -37,11 +37,9 @@ export const respond_to_invite = spacetimedb.reducer(
 
         // Composite PK update: delete + re-insert
         ctx.db.CalendarEventInvite.delete(invite);
-        ctx.db.CalendarEventInvite.insert({
-            ...invite,
+        ctx.db.CalendarEventInvite.insert(updateWithAudit(ctx, invite, {
             inviteStatus: { tag: status, value: {} } as any,
             respondedAt: ctx.timestamp,
-            ...auditUpdate(ctx, invite, user.id),
-        } as any);
+        }, user.id));
     }
 );
