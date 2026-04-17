@@ -5,6 +5,7 @@
 import { SenderError } from 'spacetimedb/server';
 import { auditInsert, auditUpdate } from './auditColumns';
 import { insertWithAudit, updateWithAudit } from './auditHelpers';
+import type { MmrRating } from '../module_bindings/types';
 import { getKFactor, calculateExpectedScore, calculateRatingChange, calculateTeamEffective, calculateAccountModifier } from './eloCalculation';
 import type { EloConfigValues } from './eloCalculation';
 import { incrementPlayerStat, incrementPlayerRelationship } from './statsIncrement';
@@ -24,7 +25,7 @@ function getOrCreateRating(ctx: any, userId: number, gameMode: any, seasonId: nu
     const existing = [...ctx.db.MmrRating.by_user_mode_season.filter([userId, gameMode, seasonId])][0];
     if (existing) return existing;
 
-    const newRow = insertWithAudit(ctx, {
+    const newRow: MmrRating = insertWithAudit(ctx, {
         userId,
         gameMode,
         rating: initialRating,
@@ -32,7 +33,7 @@ function getOrCreateRating(ctx: any, userId: number, gameMode: any, seasonId: nu
         globalCompositeRating: undefined,
         seasonId,
     }, actingUserId);
-    ctx.db.MmrRating.insert(newRow as any);
+    ctx.db.MmrRating.insert(newRow);
     return { ...newRow };
 }
 

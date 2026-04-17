@@ -4,6 +4,7 @@
 
 import { SenderError } from 'spacetimedb/server';
 import { updateWithAudit } from './auditHelpers';
+import type { GroupPhaseRecord } from '../module_bindings/types';
 
 // ─── Group standings points ────────────────────────────────────────────────────
 const WIN_POINTS = 2;
@@ -49,8 +50,8 @@ export function updateGroupPhaseRecords(ctx: any, bracketMatch: any, userId: num
 
     if (!standing1 || !standing2) return;
 
-    let updated1: any;
-    let updated2: any;
+    let updated1: GroupPhaseRecord;
+    let updated2: GroupPhaseRecord;
 
     if (bracketMatch.winnerTeamId === undefined) {
         // Draw: both get draws+1, points+1
@@ -84,10 +85,10 @@ export function updateGroupPhaseRecords(ctx: any, bracketMatch: any, userId: num
 
     // Delete + insert pattern for composite PK tables
     ctx.db.GroupPhaseRecord.delete(standing1);
-    ctx.db.GroupPhaseRecord.insert(updated1 as any);
+    ctx.db.GroupPhaseRecord.insert(updated1);
 
     ctx.db.GroupPhaseRecord.delete(standing2);
-    ctx.db.GroupPhaseRecord.insert(updated2 as any);
+    ctx.db.GroupPhaseRecord.insert(updated2);
 }
 
 /**
