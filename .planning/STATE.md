@@ -5,15 +5,15 @@ milestone_name: Frontend — Phase Summary
 current_phase: 15.3
 current_plan: 2
 status: executing
-stopped_at: Completed Plan 15.3-01 (Cluster A, 23 sites)
-last_updated: "2026-04-17T05:37:57.488Z"
+stopped_at: Completed 15.3-02-PLAN.md
+last_updated: "2026-04-17T05:48:31.986Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 32
   completed_phases: 5
   total_plans: 38
-  completed_plans: 24
-  percent: 63
+  completed_plans: 25
+  percent: 66
 ---
 
 # Session State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 15.3
-**Current plan:** 2
-**Status:** Executing Phase 15.3 (Wave 1 Cluster A complete; Cluster B next)
+**Current plan:** 3
+**Status:** Executing Phase 15.3 (Wave 1 Clusters A + B complete; Cluster C and remaining clusters next)
 **Last activity:** 2026-04-17
 
 Progress: [████████████████████] 23/23 plans (100% of plans authored to date — Phase 15 + 15.2 + 15.4 + 15.5 complete; Phase 16+ not yet planned)
@@ -97,6 +97,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.2]: contract.md deferred to gsd-verify-work per CLAUDE.md; all Phase 15.2 contract entries must be tagged 'Phase 15.2 execution'
 - [Phase 15.3]: Plan 15.3-01: composite-PK SAME-SHAPE delete+re-insert migrates to updateWithAudit cleanly (distinct from admin.ts P4 explicit-row-carry which keeps primitive)
 - [Phase 15.3]: Plan 15.3-01: 35 pre-existing typecheck errors in test/backend/** logged to deferred-items.md — out-of-scope per SCOPE BOUNDARY
+- [Phase 15.3-audit-spread-type-helper]: Cluster B (auth-adjacent) migration clean: 10 audit call sites, 7 as-any closures eliminated, 34/34 auth + 8/8 GC integration tests passing
 
 ### Roadmap Evolution
 
@@ -133,7 +134,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-17T05:37:57.485Z
-Stopped at: Completed Plan 15.3-01 (Cluster A, 23 sites)
+Last session: 2026-04-17T05:48:31.983Z
+Stopped at: Completed 15.3-02-PLAN.md
 Resume file: None
 Next action: `/gsd-discuss-phase 16` (Phase 16 has no CONTEXT.md yet — discussion required before planning)
