@@ -67,7 +67,7 @@ export const equip_lightcone = spacetimedb.reducer(
         void CLASSIC_DRAFT_MODE;
         if (costRow && costRow.costs) {
             const sField = `s${superimposition}` as keyof typeof costRow.costs;
-            const rawCost = (costRow.costs as any)[sField];
+            const rawCost = (costRow.costs as Record<string, number>)[sField];
             if (typeof rawCost === 'number') {
                 lcCost = rawCost;
             }

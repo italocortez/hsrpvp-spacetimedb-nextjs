@@ -73,12 +73,9 @@ export const update_display_name = spacetimedb.reducer({
         const isSolo = tournament.teamSize === 1;
         const isNotAnonymous = !tournament.isAnonymousDefault;
         if (isActive && isSolo && isNotAnonymous) {
-            ctx.db.TournamentTeam.id.update({
-                ...team,
+            ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team, {
                 name: trimmed,
-                lastModifiedById: resolved.user.id,
-                lastModifiedDate: ctx.timestamp,
-            } as any);
+            }, resolved.user.id));
         }
     }
 });

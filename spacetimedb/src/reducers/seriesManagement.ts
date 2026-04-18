@@ -6,7 +6,8 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { ensureLobbyMember, slotTeam, slotIsCoach, slotIsSpectator } from '../helpers/lobbyHelpers';
-import { updateWithAudit } from '../helpers/auditHelpers';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
+import type { TimerState } from '../module_bindings/types';
 
 // ─── D-07 authority check ─────────────────────────────────────────────────────
 // Returns true if caller has authority to control series state.
@@ -87,11 +88,12 @@ export const advance_to_next_game = spacetimedb.reducer(
         // - Reset budgets from lobby config
         // - Reset pause state
         // - Increment currentGameNumber
-        const initialTimerState = {
-            isPaused: false,
-            pausedAt: undefined,
-            pauseRemainingMs: 0,
+        const initialTimerState: TimerState = {
             turnStartAt: ctx.timestamp,
+            teamBlueReserveMs: lobby.reserveBankSeconds * 1000,
+            teamRedReserveMs: lobby.reserveBankSeconds * 1000,
+            isPaused: false,
+            accumulatedPauseMs: 0,
         };
 
         ctx.db.MatchSession.lobbyId.update(updateWithAudit(ctx, session, {
@@ -101,7 +103,7 @@ export const advance_to_next_game = spacetimedb.reducer(
             teamRedCharBudget: lobby.characterBudget,
             teamBlueLcBudget: lobby.lightconeBudget,
             teamRedLcBudget: lobby.lightconeBudget,
-            timerState: initialTimerState as any,
+            timerState: initialTimerState,
             pausesUsedBlue: 0,
             pausesUsedRed: 0,
             isAuctionPhase: false,
@@ -119,19 +121,15 @@ export const advance_to_next_game = spacetimedb.reducer(
         }, user.id));
 
         // System chat message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             senderUserId: 0,
-            senderType: { tag: 'System', value: {} },
+            senderType: { tag: 'System', value: {} } as any,
             content: `Game ${session.currentGameNumber + 1} starting. Stage: Drafting`,
             metadata: undefined,
             anonymousLabel: undefined,
-            createdById: user.id,
-            createdDate: ctx.timestamp,
-            lastModifiedById: user.id,
-            lastModifiedDate: ctx.timestamp,
-        } as any);
+        }, user.id));
 
         console.log(`[SERIES] Lobby #${lobbyId} advanced to game ${session.currentGameNumber + 1} by user #${user.id}`);
     }
@@ -168,19 +166,15 @@ export const shelve_series = spacetimedb.reducer(
         }, user.id));
 
         // System chat message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             senderUserId: 0,
-            senderType: { tag: 'System', value: {} },
+            senderType: { tag: 'System', value: {} } as any,
             content: 'Series shelved. Players may leave and return later.',
             metadata: undefined,
             anonymousLabel: undefined,
-            createdById: user.id,
-            createdDate: ctx.timestamp,
-            lastModifiedById: user.id,
-            lastModifiedDate: ctx.timestamp,
-        } as any);
+        }, user.id));
 
         console.log(`[SERIES] Lobby #${lobbyId} shelved by user #${user.id}`);
     }
@@ -237,19 +231,15 @@ export const resume_series = spacetimedb.reducer(
         }, user.id));
 
         // System chat message
-        ctx.db.ChatMessage.insert({
+        ctx.db.ChatMessage.insert(insertWithAudit(ctx, {
             id: 0,
             lobbyId,
             senderUserId: 0,
-            senderType: { tag: 'System', value: {} },
+            senderType: { tag: 'System', value: {} } as any,
             content: 'Series resumed.',
             metadata: undefined,
             anonymousLabel: undefined,
-            createdById: user.id,
-            createdDate: ctx.timestamp,
-            lastModifiedById: user.id,
-            lastModifiedDate: ctx.timestamp,
-        } as any);
+        }, user.id));
 
         console.log(`[SERIES] Lobby #${lobbyId} resumed by user #${user.id}`);
     }
