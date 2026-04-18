@@ -52,6 +52,7 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 - ✓ SDK upgrade audit (2.0.3 → 2.1.0, view exports, .catch() error handling, confirmed reads) — Validated in Phase 12.2
 - ✓ MMR rating snapshot (account rating captured at match start via `MRP.accountRatingSnapshot`, monotonic-upward hook in `select_match_account`, tournament-stage ordering guard, roster mutation guards) — Validated in Phase 12.3
 - ✓ Documentation normalization (standardized architecture/contract templates, full hydration, codebase docs regen, FRONTEND-HANDOFF rewrite, ERD update) — Validated in Phase 13
+- ✓ Audit spread type helper refactor (insertWithAudit/updateWithAudit typed helpers across 57 files; ~228 `as any` eliminated = 55% of backend baseline; two-tier API with 9 preserved auditInsert primitives + ~30 P4 composite-PK carry sites; 1 Rule 1 latent bug fix in seriesManagement TimerState; zero behavior change) — Validated in Phase 15.3 (shipped to maincloud 2026-04-18)
 
 ### Active
 
@@ -148,4 +149,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-12 after v0.9 milestone kickoff. Backend shipped; frontend milestone now defining requirements.*
+*Last updated: 2026-04-18 after Phase 15.3 maincloud publish. Backend refactor complete (audit spread type helper, ~228 `as any` eliminated); Phase 16 Route + global foundation is next.*

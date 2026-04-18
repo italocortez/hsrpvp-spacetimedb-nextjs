@@ -170,10 +170,10 @@ Plans:
 
 ### Phase 15.3: Audit Spread Type Helper (INSERTED)
 
-**Goal:** Extract typed `insertWithAudit<T>()` / `updateWithAudit<T>()` helpers into `spacetimedb/src/helpers/auditHelpers.ts` and migrate 385 audit-stamping call sites across 57 files from the bare-spread `{ ...row, ...auditInsert(ctx, userId) } as any` pattern to the new helpers. **Eliminates ~284 `as any` suppressions (~68% of all backend `as any`)** — 267 trailing audit-merge closures + 10 from `mergeForUpdate` typed signature (Wave 2b D-17) + 7 build-then-insert variable casts (Wave 2b D-18). Improves typing/readability for every backend write path. Keeps `auditUpdate` primitive for ~30 composite-PK delete+insert-with-audit-carry sites + 2 conditional sites (two-tier API). Wave B (folded): convert 8 `expect(true).toBe(true)` placeholder tests across 6 test files to `it.todo(...)`. Zero behavior change. Single big-bang maincloud publish at end. Out-of-scope: the ~133 remaining `as any` (tagged-enum `{tag,value} as any` literals + SDK inline payload casts) are separate SDK-level concerns for a follow-up phase.
+**Goal:** Extract typed `insertWithAudit<T>()` / `updateWithAudit<T>()` helpers into `spacetimedb/src/helpers/auditHelpers.ts` and migrate 385 audit-stamping call sites across 57 files from the bare-spread `{ ...row, ...auditInsert(ctx, userId) } as any` pattern to the new helpers. **Eliminates ~228 `as any` suppressions (~55% of all backend `as any`; 417 baseline → 189 residual)** — shipped to maincloud 2026-04-18. Two-tier API: new typed helpers + auditUpdate/auditInsert primitives retained for 9 P5 conditional sites (Plan 13 Option α canon) + ~30 P4 composite-PK delete+insert-carry sites. Wave 4 (folded) converted 8 `expect(true).toBe(true)` placeholder tests to `it.todo`. Wave 4b closed 21 real-miss sites + 1 Rule 1 latent bug (seriesManagement TimerState schema drift). Zero behavior change. Single big-bang maincloud publish 2026-04-18. Out-of-scope: residual 189 `as any` (138 tagged-enum literals D-16 + 28 architectural P4/P5/Pitfall-6 preserved + 4 LobbyMemberAccount by-design + ~19 SDK non-audit patterns) are separate SDK-level concerns for a follow-up phase.
 **Requirements**: D-01..D-18 (CONTEXT.md is authoritative — no ROADMAP requirement IDs; decisions are the requirement surface)
 **Depends on:** Phase 15, Phase 15.4
-**Plans:** 15/16 plans executed
+**Plans:** 16/16 plans complete — COMPLETED 2026-04-18
 
 Plans:
 - [x] Wave 0 pilot (commit `4f1dad6`) — auditHelpers.ts created + admin.ts (14 sites) + bracketHelpers.ts (9 sites) migrated, type-check clean, two-tier API validated
@@ -192,7 +192,7 @@ Plans:
 - [x] 15.3-13-PLAN.md — Wave 3: Option α selected (docs-only) — grep-verified 9 auditInsert call sites across 4 files (rosterMutations L55 + rosterAdmin L161 + finalizationHelpers L149 + costSetManagement 6 sites); JSDoc codifies permanent retention, export preserved
 - [x] 15.3-14-PLAN.md — Wave 4: 8 placeholder sites eliminated across 6 test files (7 → it.todo, 1 dead else-branch removed via Strategy A in rating-admin.test.ts L337); auth 28+6todo / brackets 36+1todo / match-results 100 green
 - [x] 15.3-16-PLAN.md — Wave 4b: 21 `as any` eliminated (210→189) across 11 files (plan's 38 target was stale per D-16-01; actual fixable was 24). Includes 1 Rule 1 TimerState schema-drift fix in seriesManagement + P5 lobbySettings upsert split (Plan 13 Option-α canon preserved at 9 auditInsert callers). Typecheck clean + full integration 59/60 files green + 7 todo unchanged.
-- [ ] 15.3-15-PLAN.md — Wave 5: pre-publish gate + maincloud publish (non-destructive) + post-publish verify + STATE.md close
+- [x] 15.3-15-PLAN.md — Wave 5: non-destructive maincloud publish to `hsrpvp-spacetimedb-nextjs-test1` (identity c2005439f743…d115d6). Empty migration plan (zero schema change). Pre-publish gate rolled into Plan 16 integration run (59 passed + 1 skipped-by-design, 616 tests + 7 todo, exit 0). Post-publish SQL: SYSTEM row intact (id=1, created_by_id=0, last_modified_by_id=0), 359 users, 358 user_identities. Bundle commit fe29995. `.env.local` unmodified. Dashboard https://spacetimedb.com/hsrpvp-spacetimedb-nextjs-test1. PHASE 15.3 COMPLETE 2026-04-18.
 
 ### Phase 15.2: User Directory View Performance (INSERTED)
 
@@ -542,6 +542,11 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 15. Backend pre-work | 6/6 | Complete   | 2026-04-15 |
+| 15.1. Auction Cost Template Extension | 4/4 | Complete | 2026-04-14 |
+| 15.2. User Directory View Performance | 5/5 | Complete | 2026-04-15 |
+| 15.3. Audit Spread Type Helper | 16/16 | Complete | 2026-04-18 |
+| 15.4. Cost-table draftMode restructure | 6/6 | Complete | 2026-04-14 |
+| 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
 | 16. Route + global foundation | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
