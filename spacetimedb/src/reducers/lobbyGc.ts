@@ -179,7 +179,7 @@ export const run_lobby_gc = spacetimedb.reducer(
         ctx.db.LobbyGcJob.insert({
             scheduledId: 0n,
             scheduledAt: ScheduleAt.time(FIFTEEN_MINUTES_MICROS),
-        } as any);
+        });
     }
 );
 
@@ -227,7 +227,7 @@ export const seed_lobby_gc_job = spacetimedb.reducer((ctx) => {
     ctx.db.LobbyGcJob.insert({
         scheduledId: 0n,
         scheduledAt: ScheduleAt.time(FIFTEEN_MINUTES_MICROS),
-    } as any);
+    });
     console.log('[LOBBY_GC] Seed complete -- first run scheduled in 15 minutes.');
 });
 

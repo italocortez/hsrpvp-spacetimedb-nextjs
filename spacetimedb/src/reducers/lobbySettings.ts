@@ -2,7 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { DraftMode, BanMode, GameMode, MatchType, RosterVisibility, DisconnectPolicy, LobbySlot } from '../types/enums';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
-import { updateWithAudit } from '../helpers/auditHelpers';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { ensureLobbyMember, ensureHostOrAbove, ensureStageIs, slotTeam, slotIsCoach, slotIsSpectator, slotToTeamSide } from '../helpers/lobbyHelpers';
 
 // ─── update_lobby_settings ────────────────────────────────────────────────────
@@ -140,15 +140,15 @@ export const update_lobby_settings = spacetimedb.reducer(
             const existing = ctx.db.LobbyPassword.lobbyId.find(lobbyId);
             if (existing) {
                 ctx.db.LobbyPassword.lobbyId.delete(lobbyId);
+                ctx.db.LobbyPassword.insert(updateWithAudit(ctx, existing, {
+                    passwordHash: args.password,
+                }, user.id));
+            } else {
+                ctx.db.LobbyPassword.insert(insertWithAudit(ctx, {
+                    lobbyId,
+                    passwordHash: args.password,
+                }, user.id));
             }
-            ctx.db.LobbyPassword.insert({
-                lobbyId,
-                passwordHash: args.password,
-                createdById: existing ? existing.createdById : user.id,
-                createdDate: existing ? existing.createdDate : ctx.timestamp,
-                lastModifiedById: user.id,
-                lastModifiedDate: ctx.timestamp,
-            } as any);
         } else if (args.isPublic) {
             // Changed to public — remove password if exists
             const existing = ctx.db.LobbyPassword.lobbyId.find(lobbyId);

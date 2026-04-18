@@ -111,7 +111,7 @@ export const run_identity_gc = spacetimedb.reducer(
         ctx.db.IdentityGcJob.insert({
             scheduledId: 0n,
             scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + SEVEN_DAYS_MICROS),
-        } as any);
+        });
     }
 );
 
@@ -167,7 +167,7 @@ export const seed_identity_gc_job = spacetimedb.reducer((ctx) => {
     ctx.db.IdentityGcJob.insert({
         scheduledId: 0n,
         scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + SEVEN_DAYS_MICROS),
-    } as any);
+    });
     console.log('[IDENTITY_GC] Seed complete -- first run scheduled in 7 days.');
 });
 
