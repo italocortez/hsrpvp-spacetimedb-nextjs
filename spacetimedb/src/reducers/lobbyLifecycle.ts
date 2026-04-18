@@ -318,15 +318,15 @@ export const join_lobby = spacetimedb.reducer(
                     const tpaEntries = [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([lobby.tournamentId, user.id])];
                     const lockedEntry = tpaEntries.find((e: any) => e.hsrAccountId === activeAcct.id);
                     if (lockedEntry) {
-                        ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id } as any);
+                        ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id });
                     } else if (tpaEntries.length > 0) {
                         // D-04: Fallback to first locked account
-                        ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: tpaEntries[0].hsrAccountId } as any);
+                        ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: tpaEntries[0].hsrAccountId });
                     }
                     // If no TPA entries at all (stand-in not yet approved), skip — they'll select later
                 } else {
                     // Non-tournament: use active account directly
-                    ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id } as any);
+                    ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id });
                 }
             }
 
@@ -351,7 +351,7 @@ export const join_lobby = spacetimedb.reducer(
                             // Active account was just locked, create/update LMA row
                             const existingLma = [...ctx.db.LobbyMemberAccount.by_lobby_and_user.filter([lobbyId, user.id])];
                             if (existingLma.length === 0) {
-                                ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id } as any);
+                                ctx.db.LobbyMemberAccount.insert({ lobbyId, userId: user.id, hsrAccountId: activeAcct.id });
                             }
                         }
                     }
