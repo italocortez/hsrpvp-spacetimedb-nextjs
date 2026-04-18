@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '../helpers/ensurePermissions';
 import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { ensureLobbyMember, ensureStageIs, slotTeam, slotIsCoach, slotToTeamSide } from '../helpers/lobbyHelpers';
 import { ensureMatchAlive } from '../helpers/disconnectHelpers';
+import type { NominatePayload } from '../module_bindings/types';
 
 // ─── Helper: Get set of characters already won via AuctionSold ──────────────
 // Auction characters are ALWAYS exclusive (D-42).
@@ -416,7 +417,7 @@ export const pass_bid = spacetimedb.reducer(
             )
             .sort((a: any, b: any) => b.sequence - a.sequence)[0];
 
-        const eidolon: number = nominateStep ? (nominateStep.payload.value as any).eidolon : 0;
+        const eidolon: number = nominateStep ? (nominateStep.payload.value as NominatePayload).eidolon : 0;
 
         // Find the nominating team from the Nominate step
         const nominatingTeam = nominateStep ? nominateStep.actorSlot : session.nextNominatorTeam;
@@ -654,7 +655,7 @@ export const timer_expiry_auction = spacetimedb.reducer(
                 )
                 .sort((a: any, b: any) => b.sequence - a.sequence)[0];
 
-            const eidolon: number = nominateStep ? (nominateStep.payload.value as any).eidolon : 0;
+            const eidolon: number = nominateStep ? (nominateStep.payload.value as NominatePayload).eidolon : 0;
             const nominatingTeam = nominateStep ? nominateStep.actorSlot : session.nextNominatorTeam;
 
             // Insert AuctionSold step (system resolves the auction)
