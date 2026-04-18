@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { insertWithAudit } from '../helpers/auditHelpers';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import {
     type BracketMatchDescriptor,
     generateSingleElimBracket,
@@ -64,13 +64,10 @@ function insertBracketMatches(
             const nextLoserId = desc.nextLoserRef ? idMap.get(desc.nextLoserRef) : undefined;
 
             if (nextWinnerId !== undefined || nextLoserId !== undefined) {
-                ctx.db.BracketMatch.id.update({
-                    ...row,
+                ctx.db.BracketMatch.id.update(updateWithAudit(ctx, row, {
                     nextWinnerMatchId: nextWinnerId ?? row.nextWinnerMatchId,
                     nextLoserMatchId: nextLoserId ?? row.nextLoserMatchId,
-                    lastModifiedById: userId,
-                    lastModifiedDate: ctx.timestamp,
-                } as any);
+                }, userId));
             }
         }
     }
@@ -88,19 +85,13 @@ function insertBracketMatches(
 
             // Place BYE winner in the appropriate slot of the next match
             if (!nextMatch.team1Id) {
-                ctx.db.BracketMatch.id.update({
-                    ...nextMatch,
+                ctx.db.BracketMatch.id.update(updateWithAudit(ctx, nextMatch, {
                     team1Id: desc.winnerTeamId,
-                    lastModifiedById: userId,
-                    lastModifiedDate: ctx.timestamp,
-                } as any);
+                }, userId));
             } else if (!nextMatch.team2Id) {
-                ctx.db.BracketMatch.id.update({
-                    ...nextMatch,
+                ctx.db.BracketMatch.id.update(updateWithAudit(ctx, nextMatch, {
                     team2Id: desc.winnerTeamId,
-                    lastModifiedById: userId,
-                    lastModifiedDate: ctx.timestamp,
-                } as any);
+                }, userId));
             }
         }
     }
@@ -149,11 +140,7 @@ export const generate_bracket = spacetimedb.reducer(
 
         // Delete all existing GroupPhaseRecord rows for this tournament
         for (const gpr of [...ctx.db.GroupPhaseRecord.tournament_id.filter(tournamentId)]) {
-            (ctx.db.GroupPhaseRecord as any).primaryKey.delete({
-                tournamentId: gpr.tournamentId,
-                groupId: gpr.groupId,
-                teamId: gpr.teamId,
-            });
+            ctx.db.GroupPhaseRecord.delete(gpr);
         }
 
         // Get all active teams for this tournament (teams with at least one TournamentTeamMember)
@@ -309,12 +296,9 @@ export const seed_bracket = spacetimedb.reducer(
 
         // Assign seedNumber 1..N
         for (const [index, team] of sortedTeams.entries()) {
-            ctx.db.TournamentTeam.id.update({
-                ...team,
+            ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team, {
                 seedNumber: index + 1,
-                lastModifiedById: user.id,
-                lastModifiedDate: ctx.timestamp,
-            } as any);
+            }, user.id));
         }
 
         console.log(`[BRACKET] Seeded ${teams.length} teams for tournament #${tournamentId} (mode: ${mode})`);
@@ -350,19 +334,13 @@ export const swap_seeds = spacetimedb.reducer(
         const seed1 = team1.seedNumber;
         const seed2 = team2.seedNumber;
 
-        ctx.db.TournamentTeam.id.update({
-            ...team1,
+        ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team1, {
             seedNumber: seed2,
-            lastModifiedById: user.id,
-            lastModifiedDate: ctx.timestamp,
-        } as any);
+        }, user.id));
 
-        ctx.db.TournamentTeam.id.update({
-            ...team2,
+        ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team2, {
             seedNumber: seed1,
-            lastModifiedById: user.id,
-            lastModifiedDate: ctx.timestamp,
-        } as any);
+        }, user.id));
 
         console.log(`[BRACKET] Swapped seeds for teams #${teamId1} (was ${seed1}) and #${teamId2} (was ${seed2}) in tournament #${tournamentId}`);
     }
