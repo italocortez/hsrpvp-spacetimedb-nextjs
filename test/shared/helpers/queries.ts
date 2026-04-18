@@ -12,7 +12,9 @@ export function myLobbies(h: TestHarness) {
 
 /** The most recently created Lobby row hosted by this harness's user */
 export function latestLobby(h: TestHarness) {
-    return [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId).pop();
+    const lobby = [...h.conn.db.Lobby.iter()].filter(l => l.hostUserId === h.userId).pop();
+    if (!lobby) throw new Error(`latestLobby: no Lobby row for userId=${h.userId}`);
+    return lobby;
 }
 
 /** All LobbyMember rows for a lobby */

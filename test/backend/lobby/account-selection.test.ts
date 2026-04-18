@@ -375,6 +375,7 @@ describe.skipIf(!hasServerToken())('Account Selection', () => {
                 autoAdvanceBracket: false,
                 countTowardsMmr: false,
                 winnerAdvantage: 0,
+                requireOwnership: false,
                 requireVerified: false,
                 requireRoster: false,
                 minimumMmr: 0,

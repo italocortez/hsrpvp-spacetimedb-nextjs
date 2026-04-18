@@ -59,6 +59,7 @@ describe.skipIf(!hasServerToken())('Tournament Teams', () => {
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,

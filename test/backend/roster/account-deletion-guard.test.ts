@@ -306,6 +306,7 @@ describe.skipIf(!hasServerToken())('HSR Account Deletion Guards', () => {
             autoAdvanceBracket: false,
             countTowardsMmr: false,
             winnerAdvantage: 0,
+            requireOwnership: false,
             requireVerified: false,
             requireRoster: false,
             minimumMmr: 0,

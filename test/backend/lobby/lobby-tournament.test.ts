@@ -98,6 +98,7 @@ describe('Tournament Lobby & Stand-In', () => {
             autoAdvanceBracket: false,
             countTowardsMmr: true,
             winnerAdvantage: 0,
+            requireOwnership: false,
             requireVerified: false,
             requireRoster: false,
             minimumMmr: 0,
