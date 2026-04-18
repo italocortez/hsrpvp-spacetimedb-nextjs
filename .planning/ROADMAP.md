@@ -173,7 +173,7 @@ Plans:
 **Goal:** Extract typed `insertWithAudit<T>()` / `updateWithAudit<T>()` helpers into `spacetimedb/src/helpers/auditHelpers.ts` and migrate 385 audit-stamping call sites across 57 files from the bare-spread `{ ...row, ...auditInsert(ctx, userId) } as any` pattern to the new helpers. **Eliminates ~284 `as any` suppressions (~68% of all backend `as any`)** — 267 trailing audit-merge closures + 10 from `mergeForUpdate` typed signature (Wave 2b D-17) + 7 build-then-insert variable casts (Wave 2b D-18). Improves typing/readability for every backend write path. Keeps `auditUpdate` primitive for ~30 composite-PK delete+insert-with-audit-carry sites + 2 conditional sites (two-tier API). Wave B (folded): convert 8 `expect(true).toBe(true)` placeholder tests across 6 test files to `it.todo(...)`. Zero behavior change. Single big-bang maincloud publish at end. Out-of-scope: the ~133 remaining `as any` (tagged-enum `{tag,value} as any` literals + SDK inline payload casts) are separate SDK-level concerns for a follow-up phase.
 **Requirements**: D-01..D-18 (CONTEXT.md is authoritative — no ROADMAP requirement IDs; decisions are the requirement surface)
 **Depends on:** Phase 15, Phase 15.4
-**Plans:** 14/15 plans executed
+**Plans:** 14/16 plans executed
 
 Plans:
 - [x] Wave 0 pilot (commit `4f1dad6`) — auditHelpers.ts created + admin.ts (14 sites) + bracketHelpers.ts (9 sites) migrated, type-check clean, two-tier API validated
@@ -191,6 +191,7 @@ Plans:
 - [x] 15.3-12-PLAN.md — Wave 2b: D-17 mergeForUpdate signature + D-18 build-then-insert typing (17 `as any` eliminated across 4 files; brackets 37/37 + match-results 100/100 green)
 - [x] 15.3-13-PLAN.md — Wave 3: Option α selected (docs-only) — grep-verified 9 auditInsert call sites across 4 files (rosterMutations L55 + rosterAdmin L161 + finalizationHelpers L149 + costSetManagement 6 sites); JSDoc codifies permanent retention, export preserved
 - [x] 15.3-14-PLAN.md — Wave 4: 8 placeholder sites eliminated across 6 test files (7 → it.todo, 1 dead else-branch removed via Strategy A in rating-admin.test.ts L337); auth 28+6todo / brackets 36+1todo / match-results 100 green
+- [ ] 15.3-16-PLAN.md — Wave 4b: 38 real-miss `as any` eliminations across 13 files (pre-publish cleanup — Plan 15 Task 1 gate surfaced residual 210 vs ~133 target; per-site classification found 38 genuinely fixable non-tagged-enum sites)
 - [ ] 15.3-15-PLAN.md — Wave 5: pre-publish gate + maincloud publish (non-destructive) + post-publish verify + STATE.md close
 
 ### Phase 15.2: User Directory View Performance (INSERTED)
