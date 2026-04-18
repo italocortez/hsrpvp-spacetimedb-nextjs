@@ -304,15 +304,16 @@ See `15.3-15-SUMMARY.md` for the full execution log.
 | Publish | 2026-04-18 (non-destructive, maincloud) |
 | Duration | 3 days (2026-04-15 → 2026-04-18) |
 
-## Residual accounting (189 `as any`)
+## Residual accounting (185 `as any`, updated post-Plan-17)
 
 | Bucket | Count | Disposition |
 |--------|-------|-------------|
-| Tagged-enum literals (`{tag, value} as any`) | 138 | D-16 out-of-scope — user-scoped SDK-level pattern; deferred to follow-up phase |
+| Tagged-enum literals (`{tag, value} as any`) | 138 | User-scoped OOS — intentionally NOT in phase scope (not deferred, simply out of 15.3's stated boundary) |
 | Architectural preserved | 28 | P4 composite-PK carry + P5 conditional + Pitfall 5 intermediate-variable + Pitfall 6 NO-TOUCH — preserved by design |
-| LobbyMemberAccount CORRECT | 4 | By-design casts documented in file comments |
 | SDK-level non-audit patterns | ~19 | SDK inline payload casts + scheduled-job table edge cases + test-harness internal patterns |
-| **Total** | **189** | |
+| **Total** | **185** | |
+
+**Plan 17 (2026-04-18):** 4 additional `as any` eliminated from lobbyLifecycle.ts LobbyMemberAccount inserts (L321/L324/L329/L354) — misclassified CORRECT during Plan 16 triage on rationale "no audit columns → cast required." Actually just legacy copy-paste noise: `accountSelection.ts:81/87` writes the identical 3-field `{ lobbyId, userId, hsrAccountId }` shape on the same table with zero casts, and the generated binding at `module_bindings/types.ts:917` fully types the accessor. Post-publish trailing fix; pure TS annotation removal; no bundle change; no re-publish needed. Residual drops 189 → 185 (**232 total eliminated from 417 baseline = 55.6% reduction**). Classification-rule correction captured in STATE decisions: "table has no audit columns" does NOT imply "insert requires `as any`."
 
 ## Anomalies (Rule 1/Rule 2 auto-fixes)
 
