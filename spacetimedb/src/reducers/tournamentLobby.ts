@@ -3,6 +3,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
 import { insertWithAudit } from '../helpers/auditHelpers';
 import { ensureNotInLobby, generateJoinCode } from '../helpers/lobbyHelpers';
+import type { Lobby } from '../module_bindings/types';
 
 // ─── create_tournament_lobby ─────────────────────────────────────────────────
 // Creates a lobby linked to a bracket match.
@@ -121,7 +122,7 @@ export const create_tournament_lobby = spacetimedb.reducer(
             deathPenalty: 0,
 
             // Match type derived from tournament
-            matchType: matchType as any,
+            matchType: matchType as Lobby['matchType'],
 
             // Player count (just the creator for now)
             currentPlayerCount: 1,

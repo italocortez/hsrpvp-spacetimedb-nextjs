@@ -103,8 +103,10 @@ function mergeForUpdate<T extends Record<string, any>, K extends keyof T & strin
         }
         // null | undefined → preserve existing value (merged already copied from existing)
         if (incoming[f] != null) {
-            // Internal cast at the write site (D-03b: internal-helper as-any excluded from phase scope).
-            (merged as any)[f] = incoming[f];
+            // Narrow cast: incoming[f] is typed as `unknown` (via the Partial<Record<K, unknown>>
+            // signature) to accept arbitrary validated input; write-through to the generic
+            // row T uses T[K] here since K extends keyof T.
+            merged[f] = incoming[f] as T[K];
         }
     }
     return merged;

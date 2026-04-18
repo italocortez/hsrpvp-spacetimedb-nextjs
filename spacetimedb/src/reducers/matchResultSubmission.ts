@@ -4,6 +4,7 @@ import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermission
 import { updateWithAudit } from '../helpers/auditHelpers';
 import { runFinalization } from '../helpers/finalizationHelpers';
 import { ensureMatchAlive } from '../helpers/disconnectHelpers';
+import type { MatchResultRecord } from '../module_bindings/types';
 
 // ─── confirm_match_scores ─────────────────────────────────────────────────────
 // Confirms scores for a team side. Two paths:
@@ -47,7 +48,7 @@ export const confirm_match_scores = spacetimedb.reducer(
             const sideFlag = participant.teamSide.tag === 'Blue' ? 'blueConfirmed' : 'redConfirmed';
             ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
                 [sideFlag]: true,
-            } as any, user.id));
+            } as Partial<MatchResultRecord>, user.id));
 
             console.log(`[MATCH] Captain #${user.id} confirmed ${participant.teamSide.tag} scores for match result #${matchResultId}`);
         } else {
@@ -170,7 +171,7 @@ export const submit_match_result = spacetimedb.reducer(
             : { tag: 'Draw', value: {} };
 
         ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
-            status: newStatus as any,
+            status: newStatus as MatchResultRecord['status'],
             winnerTeamSide: winnerTeamSide ? { tag: winnerTeamSide, value: {} } as any : undefined,
             matchEndReason,
             refereeUserId: user.id,
