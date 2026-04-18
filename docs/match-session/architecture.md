@@ -193,11 +193,14 @@ Pattern matches the `draftMode` filter already present in the normal
 **WR-04 — postDraft step inserts stamp `gameNumber`**
 (`postDraft.ts` — `equip_lightcone`, `arrange_lineup`, `confirm_lineup`)
 
-Every draft-phase `MatchSessionStep.insert` in `draftClassic.ts` and
-`draftAuction.ts` writes `gameNumber: session.currentGameNumber`. The three
-Equipping-stage inserts in `postDraft.ts` previously omitted this field; the
-`as any` cast silenced the TypeScript error and SpacetimeDB defaulted the u8
-to 0. No in-game reducer re-reads postDraft steps by `gameNumber`, so this was
+Every `MatchSessionStep.insert` across `draftClassic.ts`, `draftAuction.ts`,
+`draftControl.ts` (Undo + Pause steps), `postDraft.ts` (equip / arrange /
+confirm), and `index.ts` (clientConnected reconnect audit) writes
+`gameNumber: session.currentGameNumber`. Prior to Phase 15.3 Cluster G and
+Plan 10, three draft-family sites (draftControl L60 + L176, index.ts L215)
+and the three postDraft sites omitted this field; the `as any` cast silenced
+the TypeScript error and SpacetimeDB defaulted the u8 to 0. No in-game
+reducer re-reads postDraft steps by `gameNumber`, so this was
 not a runtime correctness bug. The impact surfaces at **archival**: when the
 series finalizes and steps flow into `MatchSessionStepHistory` (whose PK is
 `[matchHistoryId, gameNumber, sequence]`), draft steps carried their correct
@@ -226,10 +229,11 @@ pattern already present in `equip_lightcone`.
 | Phase 12.3 execution | timer_expiry_classic auto-pick pool migrated from HsrAccount.isActive to LobbyMemberAccount per-match selection (D-I-01/02); closes last in-gameplay isActive read from Phase 10.4 migration gap | 2026-04-12 |
 | Phase 15.4 execution | timer_expiry_classic autoRandomPick pool builders now filter `draftMode='Classic'` — prevents 0-cost auto-picks of Auction-only characters (WR-02, matches pick_character cost lookup pattern) | 2026-04-15 |
 | Phase 15.4 execution | postDraft step inserts (equip_lightcone, arrange_lineup, confirm_lineup) stamp `gameNumber: session.currentGameNumber` — matches draft-phase invariant; preserves step-to-game attribution in MatchSessionStepHistory for bestOf>1 archives (WR-04); arrange_lineup + confirm_lineup gained session-lookup guard matching equip_lightcone | 2026-04-15 |
+| Phase 15.3 execution | Typed audit helpers (`insertWithAudit` / `updateWithAudit`) migration surfaced latent schema drift hidden by bare-spread `as any` closures: Rule 2 — `draftControl.ts` Undo (L60) + Pause (L176) steps and `index.ts` clientConnected audit step (L215) now stamp `gameNumber: session.currentGameNumber` (broadens WR-04 invariant from 2 files to 4). Rule 2 — `draftClassic.ts` MatchResultRecord now populates `concedeTrigger` / `concedeSummary` / `concedeAtStage`. Rule 1 — `seriesManagement.ts::advance_to_next_game` `initialTimerState` now writes the canonical 5-field TimerState shape (`turnStartAt`, `teamBlueReserveMs`, `teamRedReserveMs`, `isPaused`, `accumulatedPauseMs`); pre-fix code wrote non-existent `pausedAt` + `pauseRemainingMs`, silently dropped at serialization | 2026-04-18 |
 
 ---
 
-*Last updated: 2026-04-15*
-*Feature owner: Phase 07 / Phase 09 / Phase 12.3 / Phase 15.4*
+*Last updated: 2026-04-18*
+*Feature owner: Phase 07 / Phase 09 / Phase 12.3 / Phase 15.4 / Phase 15.3*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
