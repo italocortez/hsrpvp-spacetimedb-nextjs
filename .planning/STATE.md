@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16
-current_plan: 3 (Plans 16-01 + 16-05 + 16-02 complete; Wave B remaining — Plans 03/04 parallel, then Plan 06 Wave 3 docs)
+current_plan: 4 (Plans 16-01 + 16-05 + 16-02 + 16-03 complete; Wave B remaining — Plan 04 service-worker; then Wave 3 Plan 06 docs)
 status: executing
-stopped_at: "Completed 16-02-subscription-reshuffle-PLAN.md (Wave B Plan 02 of 4) — useAuth.ts Stage 1 (view_my_profile) + Stage 2 (User) subscribe effects relocated to AuthProvider + (authed)/layout.tsx; GameDataProvider expanded from 5 to 7 useTable calls (added Archetype + HsrCharacterArchetype); 15.5 stage2Gate ref check retired — route-group mount IS the structural gate. FOUND-05/06 satisfied. 3 atomic commits: 87e2ea5, d87e480, b2147e0. Build + typecheck exit 0 at every commit; D-12 harness (auth-subscriptions.test.ts) 2/2 green unmodified; zero deletions; zero deviations (no Rule 1/2/3 auto-fixes). setProfileReady + triggerReadProfile exposed on useAuth return shape as @internal exports for provider/layout coordination. Option B (subscriptionBuilder) chosen for Stage 2 User sub — cleanest diff vs 15.5 pattern. 43/46 plans (93%)."
-last_updated: "2026-04-19T05:05:25.552Z"
+stopped_at: "Completed 16-03-middleware-PLAN.md (Wave B Plan 03 of 4) — root-level middleware.ts (32 LOC Edge Runtime, 34.1 kB bundle per next build) with D-15 positive-list matcher (/profile/:path*, /admin-view/:path*, /lobby/:path*, /draft/:path*) + stdb_session cookie-less redirect to / + [middleware] D-33 bracketed logs on both branches. FOUND-13 satisfied. Zero new deps; zero deviations; zero SDK imports; zero JWT/async/negative-regex. CVE-2025-29927 mitigated transparently via Plan 01 Next 15.5.15 bump. Commit 8ad6333. Build+typecheck exit 0. Wave B remaining: Plan 04 service-worker; then Wave 3 Plan 06 docs. 44/46 plans (96%)."
+last_updated: "2026-04-19T05:10:36.597Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 32
   completed_phases: 6
   total_plans: 46
-  completed_plans: 43
-  percent: 93
+  completed_plans: 44
+  percent: 96
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16
-**Current plan:** 3 (Plans 16-01 + 16-05 + 16-02 complete; Wave B remaining — Plans 03/04 parallel, then Plan 06 Wave 3 docs)
-**Status:** Executing Phase 16. Plans 16-01 (config + route-group rename), 16-05 (viewport primitives), and 16-02 (subscription reshuffle) COMPLETE. Plan 16-02 relocated useAuth Stage 1 (view_my_profile) subscribe → AuthProvider and Stage 2 (User) subscribe → (authed)/layout.tsx; GameDataProvider expanded to 7 useTable calls; 15.5 stage2Gate ref check retired — route-group mount IS the structural gate (D-07). 3 atomic commits: 87e2ea5, d87e480, b2147e0. Build + typecheck exit 0 at every commit; D-12 harness (auth-subscriptions.test.ts) 2/2 green unmodified; zero deletions; zero deviations. setProfileReady + triggerReadProfile exposed on useAuth return shape as @internal exports for provider/layout coordination. Option B (subscriptionBuilder) chosen for Stage 2. FOUND-05/06 satisfied. Next: Plans 16-03 (middleware), 16-04 (service worker) — Wave B parallel; Plan 16-06 docs after.
+**Current plan:** 4 (Plans 16-01 + 16-05 + 16-02 + 16-03 complete; Wave B remaining — Plan 04 service-worker; then Wave 3 Plan 06 docs)
+**Status:** Executing Phase 16. Plans 16-01 (config + route-group rename), 16-05 (viewport primitives), 16-02 (subscription reshuffle), and 16-03 (middleware) COMPLETE. Plan 16-03 shipped the first middleware in the repo — root-level `middleware.ts` (32 LOC, 34.1 kB Next-reported Edge bundle) with D-15 positive-list matcher (/profile, /admin-view, /lobby, /draft :path*), `stdb_session` cookie-less redirect to `/`, and `[middleware]` D-33 bracketed logs on both branches. Zero new deps; zero deviations; zero SDK imports; zero JWT/async/negative-regex. CVE-2025-29927 mitigated transparently by Plan 01's Next 15.5.15 bump. Commit 8ad6333. Build + typecheck exit 0. FOUND-13 satisfied. Next: Plan 16-04 (service worker) — last of Wave B; then Wave 3 Plan 06 docs.
 **Last activity:** 2026-04-19
 
-Progress: [█████████░] 43/46 plans (Phase 16 Plans 01 + 02 + 05 COMPLETE; Plans 03/04/06 remaining)
+Progress: [██████████] 44/46 plans (Phase 16 Plans 01 + 02 + 03 + 05 COMPLETE; Plans 04/06 remaining)
 
 ## Previous Milestone
 
@@ -144,6 +144,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase ?]: [Phase 16-02]: Subscription reshuffle — useAuth Stage 1 (view_my_profile) → AuthProvider; Stage 2 (User) → (authed)/layout.tsx; GameDataProvider 5→7 useTable calls (add Archetype + HsrCharacterArchetype). Route-group mount replaces 15.5 stage2Gate ref check as the structural gate (D-07). setProfileReady + triggerReadProfile exposed on useAuth context (internal-use JSDoc). Option B (subscriptionBuilder) chosen for Stage 2. Zero deviations. D-12 harness 2/2 green. 3 atomic commits: 87e2ea5, d87e480, b2147e0. FOUND-05/06 satisfied.
 - [Phase ?]: [Phase 16-02]: Pattern — triggerReadProfile + setProfileReady internal-use exports. When a subscription lifecycle moves OUT of a hook that owns the state machine, expose narrow callback + setter pairs on the hook's return shape tagged @internal in JSDoc. Keeps the reader authoritative in one place (useAuth) while letting the provider/layout fire lifecycle events. Consumers elsewhere must NOT call these; misuse only flips local UI state (T-16-02-06 low severity).
 - [Phase ?]: [Phase 16-02]: Pattern — staging of multi-effect removals. When Task 2 and Task 3 both remove effects from the same file, do the full removal in the earlier commit (rather than carrying dead intermediate refs). Task 3 can land the relocated owner in its own commit. Plan's D-12 harness uses createTestHarness().subscribeToAllTables() not useAuth's Stage 2 effect, so the interval between commits is harness-safe. Browser traffic exposure is seconds in the same plan execution — acceptable.
+- [Phase ?]: [Phase 16-03]: Middleware — root-level middleware.ts (32 LOC) with D-15 positive-list matcher (/profile, /admin-view, /lobby, /draft :path*); cookie-less redirect to / using NextResponse.redirect; [middleware] D-33 bracketed logs on both branches; zero SDK/JWT/async/negative-regex; CVE-2025-29927 mitigated transparently via Plan 01 Next 15.5.15 bump. FOUND-13 complete. Build+typecheck exit 0; middleware bundle 34.1 kB. Commit 8ad6333. Zero deviations.
 
 ### Roadmap Evolution
 
@@ -180,7 +181,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-19T05:04:56.092Z
+Last session: 2026-04-19T05:10:31.685Z
 Stopped at: Completed 16-05-viewport-primitives-PLAN.md (Wave 1 parallel-with-A) — 4 viewport primitives (lib/render-tier.ts + SafariWarning + ViewportWriter + ViewportGate) + app/layout.tsx root-shell mount. FOUND-08/09/10/11/12 complete. 3 atomic commits: b9c93b6, b245eb4, 0edf944. Build + typecheck exit 0 at every commit; auth-subscriptions 2/2 green; zero deletions; Rule 3 auto-fix on ViewportGate generic constraint for tsc strict-mode. 42/46 plans (91%).
 Resume file: None
 Next action: `/gsd-execute-phase 16` continues Wave B (Plans 16-02 subscription-reshuffle, 16-03 middleware, 16-04 service-worker — parallel) then Wave 3 Plan 16-06 docs after 02. Optionally run `/gsd-verify-work 16.1` or `/gsd-verify-work 16.5` first if per-plan verification is desired before continuing the phase.

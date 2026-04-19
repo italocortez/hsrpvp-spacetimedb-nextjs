@@ -27,7 +27,7 @@ Infrastructure delivery. Enables every feature phase.
 - [x] **FOUND-10**: `<ViewportWriter />` component writes `vp=desktop|mobile` cookie (1-year, `SameSite=Lax`) on every page mount based on `matchMedia('(pointer: coarse) and (hover: none)')` + `innerWidth`
 - [x] **FOUND-11**: Server Components resolve viewport via cookie → `userAgent()` from `next/server` → desktop default
 - [x] **FOUND-12**: `<ViewportGate />` primitive renders exactly one of sibling `.desktop.tsx` / `.mobile.tsx` files via `next/dynamic`, falls back to desktop sibling if mobile sibling absent; shows `<Skeleton />` during dynamic import
-- [ ] **FOUND-13**: Middleware redirects cookie-less unauthenticated users from authed paths to login using positive-list matcher; excludes `/sw.js`, `_next/*`, API routes
+- [x] **FOUND-13**: Middleware redirects cookie-less unauthenticated users from authed paths to login using positive-list matcher; excludes `/sw.js`, `_next/*`, API routes
 - [ ] **FOUND-14**: `(authed)/layout.tsx` subscribes only to `user` and `hsr_account` (minimal base); each authed feature page owns its own additional subscriptions
 - [ ] **FOUND-15**: `<AuthRequired>` gate handles tri-state (unknown, anon, authed) and integrates with middleware; cross-tab auth sync via `BroadcastChannel('hsr-auth')`
 
@@ -269,7 +269,7 @@ Each requirement maps to exactly one phase. Coverage validated by roadmapper.
 | FOUND-10 | 16 | Complete |
 | FOUND-11 | 16 | Complete |
 | FOUND-12 | 16 | Complete |
-| FOUND-13 | 16 | Pending |
+| FOUND-13 | 16 | Complete |
 | FOUND-14 | 21 | Pending |
 | FOUND-15 | 21 | Pending |
 | REQ-154-01 | 15.4 | Pending |
