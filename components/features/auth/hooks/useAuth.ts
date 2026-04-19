@@ -179,7 +179,7 @@ export function useAuth() {
     // Discord linking logic (same intent pattern, updated body)
     const DISCORD_INTENT_KEY = 'discord_login_intent';
     const DISCORD_INTENT_TIMEOUT_KEY = 'discord_login_intent_ts';
-    const DISCORD_INTENT_TTL_MS = 5 * 60 * 1000;
+    const DISCORD_INTENT_TTL_MS = 5 * 60 * 1000; // 5 min — Discord OAuth round-trip including slow networks
     const linkingRef = useRef(false);
     const autoRegisteredRef = useRef(false);
 
@@ -198,6 +198,9 @@ export function useAuth() {
 
     const hasMapping = !!currentUser;
 
+    // Effect retriggers on any dep change; getConnection is assumed referentially stable
+    // (SDK contract, see spacetimedb/react). autoRegisteredRef + linkingRef guard against
+    // re-entrancy if that assumption ever breaks.
     useEffect(() => {
         if (nextAuthStatus !== "authenticated" || !session?.user) return;
         if (!isActive || !identity) return;

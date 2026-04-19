@@ -1,7 +1,7 @@
 # Component Hygiene — v0.9 Frontend Guidelines
 
 **Last updated:** 2026-04-18
-**Status:** Active — enforced starting Phase 16 onwards.
+**Status:** Active — enforced for Phase 17+ (Phase 16 is the foundation that R8 commits to).
 **Source of truth:** `.planning/research/DECISIONS.md` R8 (cross-phase commitment) + `.planning/phases/16-route-global-foundation/16-CONTEXT.md` D-23.
 
 ## Overview

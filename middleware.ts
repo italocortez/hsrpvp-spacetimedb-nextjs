@@ -23,6 +23,9 @@ export const config = {
   // D-15 positive-list matcher. :path* covers the base path AND any sub-paths.
   // Future authed sub-pages (Phase 22 admin, Phase 24 /profile/[userId], Phase 28 /lobby/[id],
   // Phase 30/31 /draft/[matchId]) fit the wildcard without re-editing this file.
+  //
+  // Intentionally excludes '/api/…', '/_next/*', '/sw.js' — API routes self-validate via
+  // NextAuth JWT; a middleware redirect would break API callers expecting 401/403, not 307.
   matcher: [
     '/profile/:path*',
     '/admin-view/:path*',
