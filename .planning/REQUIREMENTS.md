@@ -22,11 +22,11 @@ Infrastructure delivery. Enables every feature phase.
 - [ ] **FOUND-05**: `user` subscription moved from `useAuth.ts` to `(authed)/layout.tsx`; `useAuth.ts` retains only `view_my_profile` bootstrap
 - [ ] **FOUND-06**: `providers.tsx` subscribes globally to 6 public reference tables + `view_my_profile` for all sessions (anon and authed)
 - [ ] **FOUND-07**: Service Worker at `/public/sw.js` caches UploadThing asset CDN requests, gated to `NODE_ENV === 'production'` or `NEXT_PUBLIC_ENABLE_SW === 'true'`
-- [ ] **FOUND-08**: Safari users see dismissible warning banner above NavBar; `getRenderTier()` returns `image-only` for Safari
-- [ ] **FOUND-09**: `getRenderTier()` correctly classifies device capability (full vs image-only) using WebGL + software-rasterizer + core-count + user preferences; cached 7-day TTL with VERSION bump invalidation; user override honored
-- [ ] **FOUND-10**: `<ViewportWriter />` component writes `vp=desktop|mobile` cookie (1-year, `SameSite=Lax`) on every page mount based on `matchMedia('(pointer: coarse) and (hover: none)')` + `innerWidth`
-- [ ] **FOUND-11**: Server Components resolve viewport via cookie → `userAgent()` from `next/server` → desktop default
-- [ ] **FOUND-12**: `<ViewportGate />` primitive renders exactly one of sibling `.desktop.tsx` / `.mobile.tsx` files via `next/dynamic`, falls back to desktop sibling if mobile sibling absent; shows `<Skeleton />` during dynamic import
+- [x] **FOUND-08**: Safari users see dismissible warning banner above NavBar; `getRenderTier()` returns `image-only` for Safari
+- [x] **FOUND-09**: `getRenderTier()` correctly classifies device capability (full vs image-only) using WebGL + software-rasterizer + core-count + user preferences; cached 7-day TTL with VERSION bump invalidation; user override honored
+- [x] **FOUND-10**: `<ViewportWriter />` component writes `vp=desktop|mobile` cookie (1-year, `SameSite=Lax`) on every page mount based on `matchMedia('(pointer: coarse) and (hover: none)')` + `innerWidth`
+- [x] **FOUND-11**: Server Components resolve viewport via cookie → `userAgent()` from `next/server` → desktop default
+- [x] **FOUND-12**: `<ViewportGate />` primitive renders exactly one of sibling `.desktop.tsx` / `.mobile.tsx` files via `next/dynamic`, falls back to desktop sibling if mobile sibling absent; shows `<Skeleton />` during dynamic import
 - [ ] **FOUND-13**: Middleware redirects cookie-less unauthenticated users from authed paths to login using positive-list matcher; excludes `/sw.js`, `_next/*`, API routes
 - [ ] **FOUND-14**: `(authed)/layout.tsx` subscribes only to `user` and `hsr_account` (minimal base); each authed feature page owns its own additional subscriptions
 - [ ] **FOUND-15**: `<AuthRequired>` gate handles tri-state (unknown, anon, authed) and integrates with middleware; cross-tab auth sync via `BroadcastChannel('hsr-auth')`
@@ -264,11 +264,11 @@ Each requirement maps to exactly one phase. Coverage validated by roadmapper.
 | FOUND-05 | 16 | Pending |
 | FOUND-06 | 16 | Pending |
 | FOUND-07 | 16 | Pending |
-| FOUND-08 | 16 | Pending |
-| FOUND-09 | 16 | Pending |
-| FOUND-10 | 16 | Pending |
-| FOUND-11 | 16 | Pending |
-| FOUND-12 | 16 | Pending |
+| FOUND-08 | 16 | Complete |
+| FOUND-09 | 16 | Complete |
+| FOUND-10 | 16 | Complete |
+| FOUND-11 | 16 | Complete |
+| FOUND-12 | 16 | Complete |
 | FOUND-13 | 16 | Pending |
 | FOUND-14 | 21 | Pending |
 | FOUND-15 | 21 | Pending |

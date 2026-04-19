@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16
-current_plan: 2
+current_plan: 2 (Plans 16-01 + 16-05 complete; Wave B next — Plans 02/03/04 parallel, then Plan 06 Wave 3 docs)
 status: executing
-stopped_at: "Completed 16-01-config-route-group-rename-PLAN.md (Wave A) — Next 15.5.15 pinned, top-level typedRoutes active, 3 route groups renamed ((landing-page)->( public), (authenticated)->(authed), (game)/draft->(authed)/(match)/draft), MatchLayout Server Component passthrough created for Phase 28 slot. 4 atomic commits (1558a54 chore(next): bump; e02c81f refactor(app): (landing-page)->(public); e6c56c9 refactor(app): (authenticated)->(authed); f9d9da6 refactor(app): (game)/draft->(authed)/(match)). Commit 5 absorbed per plan step 6 (zero residual refs). Build + typecheck green at every commit. Regression harness test/backend/auth/auth-subscriptions.test.ts 2/2 green. FOUND-03 + FOUND-04 satisfied. Wave B (Plans 16-02/03/04) unblocked."
-last_updated: "2026-04-19T04:38:21.999Z"
+stopped_at: "Completed 16-05-viewport-primitives-PLAN.md (Wave 1 parallel-with-A) — 4 viewport primitives (lib/render-tier.ts + SafariWarning + ViewportWriter + ViewportGate) + app/layout.tsx root-shell mount. FOUND-08/09/10/11/12 complete. 3 atomic commits: b9c93b6, b245eb4, 0edf944. Build + typecheck exit 0 at every commit; auth-subscriptions 2/2 green; zero deletions; Rule 3 auto-fix on ViewportGate generic constraint for tsc strict-mode. 42/46 plans (91%)."
+last_updated: "2026-04-19T04:51:40.700Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 32
   completed_phases: 6
   total_plans: 46
-  completed_plans: 41
-  percent: 89
+  completed_plans: 42
+  percent: 91
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16
-**Current plan:** 2 (Plan 16-01 complete; Wave B next — Plans 02/03/04 parallel after 01, then Plan 05 Wave-1 parallel with 01, then Plan 06 Wave 3 docs after 02)
-**Status:** Executing Phase 16. Plan 16-01 (config + route-group rename) COMPLETE. Next 15.5.15 pinned, top-level typedRoutes active, 3 route groups renamed, MatchLayout passthrough reserved for Phase 28. 4 atomic commits: 1558a54, e02c81f, e6c56c9, f9d9da6. Commit 5 absorbed. Build + typecheck green at every commit. FOUND-03 + FOUND-04 satisfied. Next: Plan 16-02 (or 16-05 Wave 1 parallel) — Wave B unblocked.
+**Current plan:** 2 (Plans 16-01 Wave A + 16-05 Wave 1 complete; Wave B next — Plans 02/03/04 parallel, then Plan 06 Wave 3 docs)
+**Status:** Executing Phase 16. Plans 16-01 (config + route-group rename) and 16-05 (viewport primitives) COMPLETE. Plan 16-05 landed 4 primitives (lib/render-tier.ts pure util + SafariWarning dismissible amber banner + ViewportWriter vp-cookie side-effect + ViewportGate Skeleton-first sibling selector) and mounted SafariWarning + ViewportWriter in app/layout.tsx. 3 atomic commits: b9c93b6, b245eb4, 0edf944. Build + typecheck exit 0 at every commit; auth-subscriptions harness 2/2 green; zero deletions. FOUND-08/09/10/11/12 satisfied. One Rule 3 auto-fix: ViewportGate generic tightened to `<P extends object>` for tsc strict-mode JSX-spread compatibility. Next: Plans 16-02 (subscriptions), 16-03 (middleware), 16-04 (service worker) — Wave B parallel; Plan 16-06 docs after 02.
 **Last activity:** 2026-04-19
 
-Progress: [█████████░] 41/46 plans (Phase 16 Plan 01 COMPLETE — Wave A landed; Plans 02/03/04/05/06 remaining across Waves 1-3)
+Progress: [█████████░] 42/46 plans (Phase 16 Plans 01 + 05 COMPLETE; Plans 02/03/04/06 remaining across Waves 2-3)
 
 ## Previous Milestone
 
@@ -139,6 +139,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16-01]: Pinned next to ^15.5.0 (resolved 15.5.15); top-level typedRoutes active; 3 route groups renamed ((landing-page)->(public), (authenticated)->(authed), (game)/draft->(authed)/(match)/draft); MatchLayout Server Component passthrough created (slot reserved for Phase 28 match-tier subscription wiring); 5 team-builder CSS imports migrated atomically with Commit 2; Commit 5 absorbed per plan step 6 (zero residual @/app/(landing-page|authenticated|game) matches); 4 atomic commits (1558a54, e02c81f, e6c56c9, f9d9da6) each independently green on npm run build + npm run test:typecheck; FOUND-03 + FOUND-04 satisfied; Wave B (Plans 16-02/03/04) unblocked.
 - [Phase 16-01]: Pattern — "`experimental` token must be zero-sum in next.config.ts" acceptance criterion requires dropping the word from both code and comments (initial draft kept an explanatory mention of `experimental.typedRoutes`; final draft rewrote the comment to preserve rationale without the banned token).
 - [Phase 16-01]: Pattern — Commit 5 absorption is the correct outcome when Commits 2-4 handle all dependent-import rewrites atomically. Writing an empty commit just to honor a 5-commit sequence literal violates CLAUDE.md "don't create an empty commit".
+- [Phase ?]: [Phase 16-05]: Viewport primitives shipped: lib/render-tier.ts (pure util, zero imports, D-21 verified) + SafariWarning (amber banner, localStorage-forever dismissal, 2-pass render) + ViewportWriter (null-render, vp cookie, 1-year max-age arithmetic form) + ViewportGate (Skeleton-first D-27 supersedes FOUND-11, FOUND-12 single-DOM fallback, next/dynamic ssr:false). FOUND-08/09/10/11/12 complete. D-25 (no HeroUI/Tailwind) + D-33 (bracketed logs) honored across all 4 primitives. app/layout.tsx mounts SafariWarning above Providers + ViewportWriter inside Providers; existing shell untouched. 3 atomic commits: b9c93b6, b245eb4, 0edf944. Build + typecheck exit 0; auth-subscriptions harness 2/2 green. D-26 compliance: no in-phase ViewportGate consumers (Phases 27/31/35 own dual-DOM). One Rule 3 auto-fix: ViewportGate generic tightened to <P extends object> for tsc strict-mode JSX spread.
+- [Phase ?]: [Phase 16-05]: Pattern — tsc strict-mode requires P extends object on any generic React component that spreads Component with props. Unconstrained P can resolve to non-object types not assignable to IntrinsicAttributes and P. One-token fix preserves behavior (all React props types are object-assignable); narrower than P extends Record of string to unknown and broader than P extends empty-object. Canonical plan bodies lifted from RESEARCH should be treated as structural baseline, not compiler-contract baseline — tsc strictness is an orthogonal gate.
 
 ### Roadmap Evolution
 
@@ -175,7 +177,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-19T04:38:18.189Z
-Stopped at: Completed 16-01-config-route-group-rename-PLAN.md (Wave A) — Next 15.5.15 pinned on ^15.5.0 spec (CVE-2025-29927 middleware-bypass patched), top-level `typedRoutes: true` active in next.config.ts (no `experimental` key anywhere), 3 route groups renamed ((landing-page)->(public), (authenticated)->(authed), (game)/draft->(authed)/(match)/draft), new app/(authed)/(match)/layout.tsx is a 5-line Server Component empty passthrough reserving the match-tier slot for Phase 28. 5 team-builder absolute-path CSS imports migrated atomically with Commit 2 (LoadoutControls + LoadoutDropdown + SynergyDisplay + TeamRoster + Teamslot). 4 atomic commits: 1558a54 chore(next): bump to 15.5.x + enable top-level typedRoutes; e02c81f refactor(app): rename (landing-page) -> (public); e6c56c9 refactor(app): rename (authenticated) -> (authed); f9d9da6 refactor(app): collapse (game)/draft -> (authed)/(match)/draft. Commit 5 absorbed per plan step 6 (grep returned zero residual refs). Build + typecheck exit 0 at every commit. Regression harness test/backend/auth/auth-subscriptions.test.ts 2/2 green on fresh-DB run (install state healthy, no subscription spillover). FOUND-03 + FOUND-04 satisfied. Wave B (Plans 16-02 subscriptions / 16-03 middleware / 16-04 service-worker) unblocked; Plan 16-05 viewport primitives can run parallel with Wave A (already done); Plan 16-06 docs after 02. 41/46 plans complete (89%).
+Last session: 2026-04-19T04:51:40.697Z
+Stopped at: Completed 16-05-viewport-primitives-PLAN.md (Wave 1 parallel-with-A) — 4 viewport primitives (lib/render-tier.ts + SafariWarning + ViewportWriter + ViewportGate) + app/layout.tsx root-shell mount. FOUND-08/09/10/11/12 complete. 3 atomic commits: b9c93b6, b245eb4, 0edf944. Build + typecheck exit 0 at every commit; auth-subscriptions 2/2 green; zero deletions; Rule 3 auto-fix on ViewportGate generic constraint for tsc strict-mode. 42/46 plans (91%).
 Resume file: None
-Next action: `/gsd-execute-phase 16` continues Wave 1 Plan 05 (viewport primitives — parallel with the just-finished Plan 01) and Wave 2 (Plans 02/03/04 parallel after 01). Optionally run `/gsd-verify-work 16.1` first if per-plan verification is desired before continuing the phase.
+Next action: `/gsd-execute-phase 16` continues Wave B (Plans 16-02 subscription-reshuffle, 16-03 middleware, 16-04 service-worker — parallel) then Wave 3 Plan 16-06 docs after 02. Optionally run `/gsd-verify-work 16.1` or `/gsd-verify-work 16.5` first if per-plan verification is desired before continuing the phase.
