@@ -6,6 +6,7 @@ import { Loadout, TEAM_SIZE, TeamMember } from "./LoadoutManager";
 import { Character } from "../types/enums";
 import { DropdownIcon } from "@/components/globals/icons";
 import { iconMaps } from "../hooks/useIconMaps";
+import { NOT_FOUND_IMAGE, handleImageError } from "@/lib/image-fallback";
 
 interface LoadoutDropdownProps {
 	loadouts: Loadout[];
@@ -107,14 +108,16 @@ export function LoadoutDropdown({
 											style={{ background: `var(--gradient-${char.rarity}star)` }}
 										>
 											<img
-												src={iconMaps.elements[char.element]}
+												src={iconMaps.elements[char.element] || NOT_FOUND_IMAGE}
 												className={styles.miniElement}
 												alt={char.element}
+												onError={handleImageError}
 											/>
 											<img
-												src={char.imageUrl}
+												src={char.imageUrl || NOT_FOUND_IMAGE}
 												className={styles.miniPortrait}
 												alt={char.displayName}
+												onError={handleImageError}
 											/>
 										</div>
 									);

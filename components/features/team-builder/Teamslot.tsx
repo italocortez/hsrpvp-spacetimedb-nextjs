@@ -7,6 +7,7 @@ import { Character, CharacterRank, Eidolons, Lightcone, LightconeRank, SuperImpo
 import { iconMaps } from "../hooks/useIconMaps";
 import { ClearIcon, LoadingSpinner, SynergyIcon } from "@/components/globals/icons";
 import { LightconeSelector } from "../drafting/components/LightconeSelector";
+import { NOT_FOUND_IMAGE, handleImageError } from "@/lib/image-fallback";
 
 interface TeamSlotProps {
 	index: number;
@@ -103,16 +104,18 @@ export function TeamSlot({
 		>
 			{/* Path background icon */}
 			<img
-                src={pathIconUrl}
+                src={pathIconUrl || NOT_FOUND_IMAGE}
                 className={styles.path}
                 alt={character.path}
+                onError={handleImageError}
             />
 
 			{/* Portrait */}
 			<img
-				src={character.imageUrl || ""}
+				src={character.imageUrl || NOT_FOUND_IMAGE}
 				className={styles.portrait}
 				alt={character.displayName}
+				onError={handleImageError}
 			/>
 
 			{/* Remove button */}
@@ -128,9 +131,10 @@ export function TeamSlot({
 			<div className={styles.character}>
 				<div className={styles.icons}>
 					<img
-						src={elementIconUrl}
+						src={elementIconUrl || NOT_FOUND_IMAGE}
 						className={styles.element}
 						alt={character.element}
+						onError={handleImageError}
 					/>
 					{hasActivePairing && <SynergyIcon />}
 				</div>
