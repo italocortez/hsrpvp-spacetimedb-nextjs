@@ -31,7 +31,13 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' wss://maincloud.spacetimedb.com https://maincloud.spacetimedb.com ws://localhost:* https://discord.com https://cdn.discordapp.com",
+              // ufs.sh + i.imgur.com added for the Service Worker fetch handler
+              // (Phase 16 Plan 04 / D-17). The SW re-issues image requests via
+              // fetch(), which is subject to the SW's own CSP connect-src — so
+              // img-src alone isn't enough. Without these, the SW rejects every
+              // CDN image load with 'NetworkError when attempting to fetch
+              // resource' (Phase 16 UAT Test 3).
+              "connect-src 'self' wss://maincloud.spacetimedb.com https://maincloud.spacetimedb.com ws://localhost:* https://discord.com https://cdn.discordapp.com https://*.ufs.sh https://i.imgur.com",
               "frame-ancestors 'none'",
             ].join('; '),
           },

@@ -38,7 +38,21 @@ self.addEventListener('fetch', (event) => {
     caches.open(ASSET_CACHE).then(async (cache) => {
       const cached = await cache.match(event.request);
       if (cached) return cached;
-      const response = await fetch(event.request);
+      let response;
+      try {
+        response = await fetch(event.request);
+      } catch (err) {
+        // Network / CSP connect-src / CORS failure. Log context so the opaque
+        // 'NetworkError when attempting to fetch resource' doesn't disappear
+        // into a rejected respondWith promise (Phase 16 UAT Test 3 diagnosis).
+        console.warn(
+          '[SW] fetch failed for', event.request.url,
+          '— mode=', event.request.mode,
+          'referrer=', event.request.referrer,
+          'err=', err
+        );
+        throw err;
+      }
       if (response.ok && event.request.method === 'GET') {
         // WR-03: extend SW lifetime for the cache write WITHOUT delaying the response.
         // A rejected cache.put (quota exceeded, Safari private mode) is swallowed with a
