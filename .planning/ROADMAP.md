@@ -44,6 +44,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 
 - [x] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views (completed 2026-04-13)
 - [x] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes (completed 2026-04-19)
+- [ ] **Phase 16.1: CSS module hygiene** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
 - [ ] **Phase 19: Team builder — data** — Team composition state, cost budget, synergy compute, `team_builder_draft` backend + reducers
@@ -243,6 +244,25 @@ Plans:
 - [x] 16-05-viewport-primitives-PLAN.md — lib/render-tier + ViewportWriter + ViewportGate + SafariWarning + app/layout.tsx mount (FOUND-08, FOUND-09, FOUND-10, FOUND-11, FOUND-12)
 - [x] 16-06-docs-component-hygiene-PLAN.md — docs/frontend/component-hygiene.md R8 rules + docs/auth/architecture.md subscription lifecycle update
 **UI hint**: yes
+
+### Phase 16.1: CSS module hygiene
+**Goal**: Every component owns its own co-located `.module.css`; no component imports styles from `app/.../page.module.css`; no cross-feature CSS imports. Enforces R8 component-hygiene rule retroactively for Phase 16 and pre-Phase-16 code.
+**Depends on**: Phase 16.
+**Context**: Surfaced during Phase 16 UAT Test 7 investigation. Firefox browser warning — `resource … .css was preloaded using link preload but not used within a few seconds` — traced to Next.js 15 aggressively preloading CSS chunks that multiple components share across route groups. Root-cause anti-patterns:
+  - 5 components in `components/features/team-builder/` (Teamslot, TeamRoster, LoadoutDropdown, SynergyDisplay, LoadoutControls) all import from `@/app/(public)/teambuilder/page.module.css` — inverted dependency (leaf → trunk).
+  - `components/features/costs/components/LightconeCostTable.tsx` imports `@/components/features/drafting/components/CharacterPool.module.css` — cross-feature coupling.
+  - Page `.module.css` files used as dumping ground for component-level styles instead of page-layout-only rules.
+**Scope**:
+  - Redistribute `app/(public)/teambuilder/page.module.css` component-level rules into `components/features/team-builder/<Component>.module.css` siblings. Leave only page-layout rules in the original file.
+  - Resolve `LightconeCostTable → CharacterPool.module.css` cross-feature import. Prefer duplication for small shared rule sets; extract to `components/shared/styles/` only when ≥20 identical lines repeat across ≥3 sites.
+  - Audit remaining `components/**/*.tsx` for any `@/app/**/*.module.css` imports; fix every occurrence.
+**Success Criteria**:
+  1. `rg -n "from ['\"]@/app/.*\\.module\\.css['\"]" components/` returns zero matches.
+  2. Cross-feature CSS imports (e.g. `components/features/costs/` importing `components/features/drafting/*.module.css`) resolve via duplication or a shared module under `components/shared/styles/` — never a direct sibling-feature import.
+  3. `npm run build` produces no new warnings; bundle size stays within ±5% of Phase 16 baseline.
+  4. Navigating to `/costs` and `/teambuilder` in a prod build (`npm run start`) produces no "preload … not used" warning in the console.
+**Plans**: TBD
+**UI hint**: no (pure refactor, no visual change)
 
 ### Phase 17: Cost tables — data
 **Goal**: Cost tables page renders character/lightcone/synergy cost rows sourced from the global public subscriptions; portrait assets warm in cache before the user interacts.
@@ -555,6 +575,7 @@ Plans:
 | 15.4. Cost-table draftMode restructure | 6/6 | Complete | 2026-04-14 |
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
+| 16.1. CSS module hygiene | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |
