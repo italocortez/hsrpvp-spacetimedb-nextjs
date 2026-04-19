@@ -12,10 +12,11 @@ export function SafariWarning() {
 
     useEffect(() => {
         setMounted(true);
+        const safari = isSafari();
         const isDismissed = typeof window !== 'undefined' && localStorage.getItem(DISMISSED_KEY) === '1';
-        const show = isSafari() && !isDismissed;
+        const show = safari && !isDismissed;
         setShouldShow(show);
-        console.log(`[SafariWarning] mount: isSafari=${isSafari()} dismissed=${isDismissed} show=${show}`);
+        console.log(`[SafariWarning] mount: isSafari=${safari} dismissed=${isDismissed} show=${show}`);
     }, []);
 
     const dismiss = () => {
