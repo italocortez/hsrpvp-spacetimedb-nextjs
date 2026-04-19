@@ -17,8 +17,8 @@ Infrastructure delivery. Enables every feature phase.
 
 - [x] **FOUND-01**: Backend exposes `skelUrl`, `atlasUrl`, `atlasImgUrls` columns on `hsr_character` with admin editing reducer
 - [x] **FOUND-02**: Backend exposes `view_my_match_session_history`, `view_my_match_session_step_history`, `view_my_match_participant_history`, `view_my_mmr_history`, `view_my_match_result_game_history` — all filtered server-side by `ctx.sender`
-- [ ] **FOUND-03**: Frontend runs on Next.js ≥15.2.3 with `experimental.typedRoutes: true` enabled
-- [ ] **FOUND-04**: Route groups renamed: `(landing-page)` → `(public)`, `(authenticated)` → `(authed)`, `(game)/draft` collapsed into `(authed)/(match)/draft`; all `<Link>` and `router.push` callers updated
+- [x] **FOUND-03**: Frontend runs on Next.js ≥15.2.3 with `experimental.typedRoutes: true` enabled
+- [x] **FOUND-04**: Route groups renamed: `(landing-page)` → `(public)`, `(authenticated)` → `(authed)`, `(game)/draft` collapsed into `(authed)/(match)/draft`; all `<Link>` and `router.push` callers updated
 - [ ] **FOUND-05**: `user` subscription moved from `useAuth.ts` to `(authed)/layout.tsx`; `useAuth.ts` retains only `view_my_profile` bootstrap
 - [ ] **FOUND-06**: `providers.tsx` subscribes globally to 6 public reference tables + `view_my_profile` for all sessions (anon and authed)
 - [ ] **FOUND-07**: Service Worker at `/public/sw.js` caches UploadThing asset CDN requests, gated to `NODE_ENV === 'production'` or `NEXT_PUBLIC_ENABLE_SW === 'true'`
@@ -259,8 +259,8 @@ Each requirement maps to exactly one phase. Coverage validated by roadmapper.
 |--------|-------|--------|
 | FOUND-01 | 15 | Complete |
 | FOUND-02 | 15 | Complete |
-| FOUND-03 | 16 | Pending |
-| FOUND-04 | 16 | Pending |
+| FOUND-03 | 16 | Complete |
+| FOUND-04 | 16 | Complete |
 | FOUND-05 | 16 | Pending |
 | FOUND-06 | 16 | Pending |
 | FOUND-07 | 16 | Pending |

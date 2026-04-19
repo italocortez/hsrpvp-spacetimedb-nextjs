@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16
-current_plan: null
-status: ready_to_execute
-stopped_at: "Phase 16 planned. 6 plans across 3 waves: Wave 1 = [01 config+rename, 05 viewport primitives] parallel; Wave 2 = [02 subscriptions, 03 middleware, 04 service-worker] parallel after 01; Wave 3 = [06 docs] after 02. All 11 FOUND-IDs (FOUND-03..FOUND-13) covered. Plan-checker PASSED on iteration 2 after 1 blocker (Plan 06 wave label) + 2 targeted edits (D-26 compliance + Plan 01 Task 1 STOP clause). Artifacts: 16-CONTEXT.md, 16-RESEARCH.md (1186 lines), 16-VALIDATION.md, 16-PATTERNS.md, 16-0{1..6}-*-PLAN.md. Next action: /gsd-execute-phase 16."
-last_updated: "2026-04-18T21:40:00Z"
-last_activity: 2026-04-18
+current_plan: 2
+status: executing
+stopped_at: "Completed 16-01-config-route-group-rename-PLAN.md (Wave A) — Next 15.5.15 pinned, top-level typedRoutes active, 3 route groups renamed ((landing-page)->( public), (authenticated)->(authed), (game)/draft->(authed)/(match)/draft), MatchLayout Server Component passthrough created for Phase 28 slot. 4 atomic commits (1558a54 chore(next): bump; e02c81f refactor(app): (landing-page)->(public); e6c56c9 refactor(app): (authenticated)->(authed); f9d9da6 refactor(app): (game)/draft->(authed)/(match)). Commit 5 absorbed per plan step 6 (zero residual refs). Build + typecheck green at every commit. Regression harness test/backend/auth/auth-subscriptions.test.ts 2/2 green. FOUND-03 + FOUND-04 satisfied. Wave B (Plans 16-02/03/04) unblocked."
+last_updated: "2026-04-19T04:38:21.999Z"
+last_activity: 2026-04-19
 progress:
   total_phases: 32
   completed_phases: 6
   total_plans: 46
-  completed_plans: 40
-  percent: 87
+  completed_plans: 41
+  percent: 89
 ---
 
 # Session State
@@ -23,17 +23,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 15.3 — audit-spread-type-helper
+**Current focus:** Phase 16 — route-global-foundation
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 15.3 (COMPLETE — next: Phase 16)
-**Current plan:** 17 (Wave 4c post-publish trailing cleanup)
-**Status:** Phase 15.3 COMPLETE — all 17 plans shipped (Wave 0 pilot + Waves 1/2/2b/3/4/4b/5/4c). Refactored bundle live on maincloud (hsrpvp-spacetimedb-nextjs-test1) since 2026-04-18. **232 `as any` eliminated** (417 baseline → 185 residual, 55.6%). Zero behavior change. Next action: Phase 16 (Route + global foundation).
-**Last activity:** 2026-04-18
+**Current phase:** 16
+**Current plan:** 2 (Plan 16-01 complete; Wave B next — Plans 02/03/04 parallel after 01, then Plan 05 Wave-1 parallel with 01, then Plan 06 Wave 3 docs after 02)
+**Status:** Executing Phase 16. Plan 16-01 (config + route-group rename) COMPLETE. Next 15.5.15 pinned, top-level typedRoutes active, 3 route groups renamed, MatchLayout passthrough reserved for Phase 28. 4 atomic commits: 1558a54, e02c81f, e6c56c9, f9d9da6. Commit 5 absorbed. Build + typecheck green at every commit. FOUND-03 + FOUND-04 satisfied. Next: Plan 16-02 (or 16-05 Wave 1 parallel) — Wave B unblocked.
+**Last activity:** 2026-04-19
 
-Progress: [████████████████████████] 40/40 plans (Phase 15 + 15.2 + 15.3 + 15.4 + 15.5 all complete; Phase 15.3 Plans 01-17 all shipped [Wave 0 + Wave 1 + Wave 2 + Wave 2b + Wave 3 + Wave 4 + Wave 4b + Wave 5 + Wave 4c])
+Progress: [█████████░] 41/46 plans (Phase 16 Plan 01 COMPLETE — Wave A landed; Plans 02/03/04/05/06 remaining across Waves 1-3)
 
 ## Previous Milestone
 
@@ -136,6 +136,9 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 15.3]: D-01..D-18 honored: 385 audit call sites migrated across 57 files, ~228 `as any` eliminated (from 417 baseline = ~55% of backend baseline). Two-tier API validated (insertWithAudit/updateWithAudit helpers + auditUpdate/auditInsert primitives for P4/P5 preserved sites). Wave 2b D-17/D-18 eliminated 17 additional `as any` via mergeForUpdate signature tightening + build-then-insert typing. Wave 3 Option α selected (auditInsert exported indefinitely for 9 conditional sites across 4 files — rosterMutations L55 + rosterAdmin L160 + finalizationHelpers L148 + costSetManagement 6 sites — JSDoc codified). Wave 4 converted 8 placeholder `expect(true).toBe(true)` tests to `it.todo` (7 across auth/brackets/match-results) + 1 dead else-branch removed in rating-admin. Wave 4b (Plan 16) closed 21 real-miss sites + 1 Rule 1 latent bug fix (seriesManagement initialTimerState schema drift: wrote nonexistent pausedAt+pauseRemainingMs; corrected to canonical teamBlueReserveMs/teamRedReserveMs/accumulatedPauseMs per draftClassic.ts L124-130). Single maincloud publish non-destructive on 2026-04-18 (DB hsrpvp-spacetimedb-nextjs-test1, identity c2005439f74300bfd5f275871c810689906f7724e12896cd03fda072a4d115d6, empty migration plan = zero schema change); post-publish SQL confirms SYSTEM row (id=1, created_by_id=0, last_modified_by_id=0 per feedback_system_user_id_sentinel.md) + 359 users + 358 user_identities intact. .env.local unmodified (non-destructive publish preserves auth per feedback_post_publish_only.md). Zero behavior change. Residual 189 `as any` across backend: 138 tagged-enum literals (user-scoped D-16 OOS), 28 architectural P4/P5/Pitfall-6 preserved, 4 LobbyMemberAccount CORRECT by-design, ~19 SDK-level non-audit patterns.
 - [Phase 15.3]: Plan 15 pattern — Phase-end maincloud publish is a non-destructive bundle replacement when schema is unchanged. `npm run spacetime:publish` prompts "Are you sure you want to proceed? [y/N]" for non-local servers; pipe `echo y |` to auto-confirm in automation contexts. Empty "Database Migration Plan" header confirms zero schema change before upload. Dashboard URL pattern is `https://spacetimedb.com/<database-name>` (NOT `@username/name` per CLAUDE.md docs — maincloud dashboards resolve directly from the DB name). SQL COUNT(*) requires alias (`SELECT COUNT(*) AS total FROM user`) — SpacetimeDB SQL dialect rejects unaliased aggregates with "Aggregate expressions must have column aliases".
 - [Phase 15.3]: Plan 17 — 4 redundant `as any` casts removed from lobbyLifecycle.ts LobbyMemberAccount inserts (L321/L324/L329/L354). Misclassified CORRECT during Plan 16 triage on "no-audit-columns → cast required" reasoning; actually just legacy copy-paste noise (accountSelection.ts L81/L87 precedent writes same shape zero-cast). Classification-rule correction: "table has no audit columns" does NOT imply "insert requires `as any`" — the generated binding at module_bindings/types.ts:917 fully types the ctx.db.LobbyMemberAccount accessor; the 3-field object literal satisfies strict row type without any cast. Post-publish trailing fix; zero bundle change (pure TS annotation removal); no re-publish needed. Final phase residual: 185 `as any` (232 eliminated, 55.6% of 417 baseline).
+- [Phase 16-01]: Pinned next to ^15.5.0 (resolved 15.5.15); top-level typedRoutes active; 3 route groups renamed ((landing-page)->(public), (authenticated)->(authed), (game)/draft->(authed)/(match)/draft); MatchLayout Server Component passthrough created (slot reserved for Phase 28 match-tier subscription wiring); 5 team-builder CSS imports migrated atomically with Commit 2; Commit 5 absorbed per plan step 6 (zero residual @/app/(landing-page|authenticated|game) matches); 4 atomic commits (1558a54, e02c81f, e6c56c9, f9d9da6) each independently green on npm run build + npm run test:typecheck; FOUND-03 + FOUND-04 satisfied; Wave B (Plans 16-02/03/04) unblocked.
+- [Phase 16-01]: Pattern — "`experimental` token must be zero-sum in next.config.ts" acceptance criterion requires dropping the word from both code and comments (initial draft kept an explanatory mention of `experimental.typedRoutes`; final draft rewrote the comment to preserve rationale without the banned token).
+- [Phase 16-01]: Pattern — Commit 5 absorption is the correct outcome when Commits 2-4 handle all dependent-import rewrites atomically. Writing an empty commit just to honor a 5-commit sequence literal violates CLAUDE.md "don't create an empty commit".
 
 ### Roadmap Evolution
 
@@ -172,7 +175,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-18T02:45:00Z
-Stopped at: Completed 15.3-17-PLAN.md (Wave 4c post-publish trailing fix) — PHASE 15.3 NOW TRULY COMPLETE. 4 redundant `as any` casts removed from lobbyLifecycle.ts LobbyMemberAccount inserts (L321/L324/L329/L354 — all 3-field `{ lobbyId, userId, hsrAccountId }` inserts, zero-cast precedent established by accountSelection.ts L81/L87). These were misclassified CORRECT during Plan 16 triage on rationale "no audit columns → cast required"; actually just legacy copy-paste noise. Pure TypeScript annotation removal, zero JavaScript output change, no maincloud re-publish needed (emitted bundle semantically identical). Typecheck 0 errors in spacetimedb/src, 35 test/backend baseline unchanged. Commit b60fcfa. Final `as any` tally: 232 eliminated (417 baseline → 185 residual = 55.6% reduction). Residual breakdown: 138 tagged-enum literals (user-scoped OOS — "enum thing" kept as-is, not deferred), 28 architectural P4/P5/Pitfall-6 preserved, ~19 SDK non-audit patterns, 0 LobbyMemberAccount by-design (all 4 removed in Plan 17). Phase 15.3 final tally: 17 plans shipped across 8 waves (Wave 0 pilot + W1 clusters A-G + W2 individual files + W2b type-hygiene + W3 Option α docs + W4 placeholder tests + W4b real-miss cleanup + W5 publish + W4c post-publish cleanup). 57 files touched in source. Option α canon (9 permanent auditInsert callers) preserved end-to-end. Zero behavior change. Phases complete in v0.9: Phase 15 + 15.1 + 15.2 + 15.3 + 15.4 + 15.5.
+Last session: 2026-04-19T04:38:18.189Z
+Stopped at: Completed 16-01-config-route-group-rename-PLAN.md (Wave A) — Next 15.5.15 pinned on ^15.5.0 spec (CVE-2025-29927 middleware-bypass patched), top-level `typedRoutes: true` active in next.config.ts (no `experimental` key anywhere), 3 route groups renamed ((landing-page)->(public), (authenticated)->(authed), (game)/draft->(authed)/(match)/draft), new app/(authed)/(match)/layout.tsx is a 5-line Server Component empty passthrough reserving the match-tier slot for Phase 28. 5 team-builder absolute-path CSS imports migrated atomically with Commit 2 (LoadoutControls + LoadoutDropdown + SynergyDisplay + TeamRoster + Teamslot). 4 atomic commits: 1558a54 chore(next): bump to 15.5.x + enable top-level typedRoutes; e02c81f refactor(app): rename (landing-page) -> (public); e6c56c9 refactor(app): rename (authenticated) -> (authed); f9d9da6 refactor(app): collapse (game)/draft -> (authed)/(match)/draft. Commit 5 absorbed per plan step 6 (grep returned zero residual refs). Build + typecheck exit 0 at every commit. Regression harness test/backend/auth/auth-subscriptions.test.ts 2/2 green on fresh-DB run (install state healthy, no subscription spillover). FOUND-03 + FOUND-04 satisfied. Wave B (Plans 16-02 subscriptions / 16-03 middleware / 16-04 service-worker) unblocked; Plan 16-05 viewport primitives can run parallel with Wave A (already done); Plan 16-06 docs after 02. 41/46 plans complete (89%).
 Resume file: None
-Next action: `/gsd-verify-work 15.3` OR `/gsd-discuss-phase 16` (Phase 15.3 is code-complete and shipped to maincloud; next phase is Phase 16 Route + global foundation — the long-awaited frontend foundation work gating Phases 17-41. FOUND-03 handoff from Phase 15.5 still open for Phase 16 discussion scope.)
+Next action: `/gsd-execute-phase 16` continues Wave 1 Plan 05 (viewport primitives — parallel with the just-finished Plan 01) and Wave 2 (Plans 02/03/04 parallel after 01). Optionally run `/gsd-verify-work 16.1` first if per-plan verification is desired before continuing the phase.
