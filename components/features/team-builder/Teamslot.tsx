@@ -102,24 +102,14 @@ export function TeamSlot({
 			onDrop={(e) => onDrop(index, e)}
 		>
 			{/* Path background icon */}
-			<img 
-                // These are for <Image />. This combination leaves the dimensions up to the CSS.
-                // width={0}
-                // height={0}
-                // sizes="100vw"
-
-                src={pathIconUrl} 
-                className={styles.path} 
-                alt={character.path} 
+			<img
+                src={pathIconUrl}
+                className={styles.path}
+                alt={character.path}
             />
 
 			{/* Portrait */}
 			<img
-                // These are for <Image />. This combination leaves the dimensions up to the CSS.
-                // width={0}
-                // height={0}
-                // sizes="100vw"
-
 				src={character.imageUrl || ""}
 				className={styles.portrait}
 				alt={character.displayName}
@@ -138,11 +128,6 @@ export function TeamSlot({
 			<div className={styles.character}>
 				<div className={styles.icons}>
 					<img
-                        // These are for <Image />. This combination leaves the dimensions up to the CSS.
-                        // width={0}
-                        // height={0}
-                        // sizes="100vw"
-
 						src={elementIconUrl}
 						className={styles.element}
 						alt={character.element}
