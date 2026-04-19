@@ -1,20 +1,27 @@
 ---
-status: partial
+status: testing
 phase: 16-route-global-foundation
 source: [16-VERIFICATION.md]
 started: 2026-04-18T00:00:00Z
-updated: 2026-04-18T00:00:00Z
+updated: 2026-04-19T00:00:00Z
 ---
 
 ## Current Test
 
-[awaiting human testing]
+number: 1
+name: Cookie-less visit to an authed path redirects to landing
+expected: |
+  Visiting http://localhost:3000/profile with stdb_session cookie cleared returns 307 redirect to /; console shows `[middleware] redirect: /profile (no stdb_session cookie)`; /costs does NOT redirect (not in positive-list matcher); /sw.js not redirected either
+awaiting: user response
 
 ## Tests
 
 ### 1. Cookie-less visit to an authed path redirects to landing
-expected: Visiting http://localhost:3001/profile with stdb_session cookie cleared returns 307 redirect to /; console shows `[middleware] redirect: /profile (no stdb_session cookie)`; /costs does NOT redirect (not in positive-list matcher); /sw.js not redirected either
-result: [pending]
+expected: Visiting http://localhost:3000/profile with stdb_session cookie cleared returns 307 redirect to /; console shows `[middleware] redirect: /profile (no stdb_session cookie)`; /costs does NOT redirect (not in positive-list matcher); /sw.js not redirected either
+result: issue
+reported: "application never starts, stays loading forever on localhost:3000 in Firefox private tab. Console: 'Uncaught EvalError: call to eval() blocked by CSP' — script-src 'self' 'unsafe-inline' missing 'unsafe-eval'. Firefox also shows GET /favicon.ico 404."
+severity: blocker
+root_cause: "next.config.ts CSP header (WR-04 change) dropped 'unsafe-eval' unconditionally, but `next dev` requires eval() for React Fast Refresh / HMR. CSP header applies to dev + prod alike because headers() has no env check. Fix: gate 'unsafe-eval' on NODE_ENV === 'development'."
 
 ### 2. Cookie-present visit to authed path passes through
 expected: After Guest login the stdb_session cookie is set; revisiting /profile shows the page; console shows `[middleware] pass: /profile (cookie present)`
@@ -25,11 +32,11 @@ expected: `npm run build && npm run start` — DevTools Application → Service 
 result: [pending]
 
 ### 4. Service Worker registration dev opt-in flag
-expected: NEXT_PUBLIC_ENABLE_SW=true in .env.local + `npm run dev` — DevTools console shows `[SW] registered, scope=http://localhost:3001/`; removing the flag reverts to `[SW] skip register: NODE_ENV=development`
+expected: NEXT_PUBLIC_ENABLE_SW=true in .env.local + `npm run dev` — DevTools console shows `[SW] registered, scope=http://localhost:3000/`; removing the flag reverts to `[SW] skip register: NODE_ENV=development`
 result: [pending]
 
 ### 5. Safari banner renders on Safari UA and dismissal persists
-expected: DevTools → Network conditions → User agent Safari → reload http://localhost:3001/ → amber banner above NavBar; click Dismiss → persists in localStorage.hsrpvp_safari_warning_dismissed='1'; reload stays dismissed; clearing the key re-shows
+expected: DevTools → Network conditions → User agent Safari → reload http://localhost:3000/ → amber banner above NavBar; click Dismiss → persists in localStorage.hsrpvp_safari_warning_dismissed='1'; reload stays dismissed; clearing the key re-shows
 result: [pending]
 
 ### 6. ViewportWriter vp cookie mechanics
@@ -48,9 +55,22 @@ result: [pending]
 
 total: 8
 passed: 0
-issues: 0
-pending: 8
+issues: 1
+pending: 7
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+- truth: "Dev server loads and serves pages at localhost:3000"
+  status: failed
+  reason: "User reported: application never starts, stays loading forever on localhost:3000 (Firefox private tab). Console: 'Uncaught EvalError: call to eval() blocked by CSP' — script-src is missing 'unsafe-eval'"
+  severity: blocker
+  test: 1
+  root_cause: "next.config.ts:26 CSP script-src omits 'unsafe-eval'. Dropped by WR-04 on the assumption only prod builds were affected, but headers() has no env gate so dev mode also loses eval(). next dev uses eval() for Fast Refresh / HMR — without it, webpack hot chunks and React refresh fail, hanging the page at the IPC spinner."
+  artifacts:
+    - path: "next.config.ts"
+      issue: "script-src directive missing 'unsafe-eval' for development"
+  missing:
+    - "Conditional CSP: add 'unsafe-eval' when process.env.NODE_ENV === 'development' (or when phase flag NEXT_PUBLIC_DEV_CSP is set)"
+  debug_session: ""
