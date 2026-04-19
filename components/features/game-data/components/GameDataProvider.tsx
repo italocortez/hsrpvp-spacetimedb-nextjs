@@ -137,7 +137,11 @@ export function GameDataProvider({ children }: { children: React.ReactNode }) {
         archetypes: archetypeRows as unknown as ArchetypeRow[],
         characterArchetypes: characterArchetypeRows as unknown as HsrCharacterArchetypeRow[],
 
-        isReady: !!characterRows && !!lightconeRows
+        // WR-07: was `!!characterRows && !!lightconeRows` — arrays are always truthy, so
+        // isReady was truthy-since-mount. `allReady` (line ~110) already tracks the real
+        // "all 7 tables populated" state for the log; reuse it here so useProfile +
+        // downstream consumers get the correct "data landed" signal.
+        isReady: allReady
     };
 
     return <GameDataContext.Provider value={value}>{children}</GameDataContext.Provider>;
