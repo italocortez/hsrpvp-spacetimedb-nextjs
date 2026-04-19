@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 15.3
-current_plan: 17
-status: phase_complete
-stopped_at: "Completed 15.3-17-PLAN.md (Wave 4c post-publish trailing fix). 4 redundant `as any` casts removed from lobbyLifecycle.ts LobbyMemberAccount inserts (L321/L324/L329/L354) — these were misclassified CORRECT during Plan 16 triage on the rationale 'no audit columns → cast required', but accountSelection.ts L81/L87 writes the identical 3-field shape on the same table with zero casts and typechecks clean (generated binding at module_bindings/types.ts:917 fully types the accessor). Pure TypeScript annotation removal, zero JavaScript output change, no maincloud re-publish needed (bundle semantically identical). Typecheck: 0 errors in spacetimedb/src, 35 test/backend baseline unchanged. Plan 17 commit b60fcfa. Final phase tally: 232 `as any` eliminated (417 baseline → 185 residual, 55.6%). PHASE 15.3 COMPLETE across 17 plans / 7 waves (Wave 0 pilot + W1/W2/W2b/W3/W4/W4b/W5 publish + W4c post-publish cleanup)."
-last_updated: "2026-04-18T02:45:00Z"
+current_phase: 16
+current_plan: null
+status: ready_to_execute
+stopped_at: "Phase 16 planned. 6 plans across 3 waves: Wave 1 = [01 config+rename, 05 viewport primitives] parallel; Wave 2 = [02 subscriptions, 03 middleware, 04 service-worker] parallel after 01; Wave 3 = [06 docs] after 02. All 11 FOUND-IDs (FOUND-03..FOUND-13) covered. Plan-checker PASSED on iteration 2 after 1 blocker (Plan 06 wave label) + 2 targeted edits (D-26 compliance + Plan 01 Task 1 STOP clause). Artifacts: 16-CONTEXT.md, 16-RESEARCH.md (1186 lines), 16-VALIDATION.md, 16-PATTERNS.md, 16-0{1..6}-*-PLAN.md. Next action: /gsd-execute-phase 16."
+last_updated: "2026-04-18T21:40:00Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 32
   completed_phases: 6
-  total_plans: 40
+  total_plans: 46
   completed_plans: 40
-  percent: 100
+  percent: 87
 ---
 
 # Session State
