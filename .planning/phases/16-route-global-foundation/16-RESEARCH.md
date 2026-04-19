@@ -1055,7 +1055,7 @@ None blocking. A few notes for the planner:
 | TypeScript | `typedRoutes` + typecheck gates | ✓ | `~5.6.2` | — |
 | Chrome/Edge/Firefox | SW + matchMedia testing | ✓ | Assumed dev browser | — |
 | Safari | Test `<SafariWarning>` renders correctly | Typically unavailable on Windows | — | Use UA-override in DevTools → Network conditions → Custom user agent |
-| SpacetimeDB connection | useTable / subscribe tests | ✓ | Maincloud, DB `hsrpvp-spacetimedb-nextjs-test1` | Local SpacetimeDB fallback: `npm run spacetime:publish:local` |
+| SpacetimeDB connection | useTable / subscribe tests | ✓ | Maincloud, DB `hsrpvp-spacetimedb-nextjs-test1` | — (maincloud-only project) |
 
 **Missing dependencies with no fallback:** None.
 
