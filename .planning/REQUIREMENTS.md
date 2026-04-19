@@ -21,7 +21,7 @@ Infrastructure delivery. Enables every feature phase.
 - [x] **FOUND-04**: Route groups renamed: `(landing-page)` → `(public)`, `(authenticated)` → `(authed)`, `(game)/draft` collapsed into `(authed)/(match)/draft`; all `<Link>` and `router.push` callers updated
 - [x] **FOUND-05**: `user` subscription moved from `useAuth.ts` to `(authed)/layout.tsx`; `useAuth.ts` retains only `view_my_profile` bootstrap
 - [x] **FOUND-06**: `providers.tsx` subscribes globally to 6 public reference tables + `view_my_profile` for all sessions (anon and authed)
-- [ ] **FOUND-07**: Service Worker at `/public/sw.js` caches UploadThing asset CDN requests, gated to `NODE_ENV === 'production'` or `NEXT_PUBLIC_ENABLE_SW === 'true'`
+- [x] **FOUND-07**: Service Worker at `/public/sw.js` caches UploadThing asset CDN requests, gated to `NODE_ENV === 'production'` or `NEXT_PUBLIC_ENABLE_SW === 'true'`
 - [x] **FOUND-08**: Safari users see dismissible warning banner above NavBar; `getRenderTier()` returns `image-only` for Safari
 - [x] **FOUND-09**: `getRenderTier()` correctly classifies device capability (full vs image-only) using WebGL + software-rasterizer + core-count + user preferences; cached 7-day TTL with VERSION bump invalidation; user override honored
 - [x] **FOUND-10**: `<ViewportWriter />` component writes `vp=desktop|mobile` cookie (1-year, `SameSite=Lax`) on every page mount based on `matchMedia('(pointer: coarse) and (hover: none)')` + `innerWidth`
@@ -263,7 +263,7 @@ Each requirement maps to exactly one phase. Coverage validated by roadmapper.
 | FOUND-04 | 16 | Complete |
 | FOUND-05 | 16 | Complete |
 | FOUND-06 | 16 | Complete |
-| FOUND-07 | 16 | Pending |
+| FOUND-07 | 16 | Complete |
 | FOUND-08 | 16 | Complete |
 | FOUND-09 | 16 | Complete |
 | FOUND-10 | 16 | Complete |
