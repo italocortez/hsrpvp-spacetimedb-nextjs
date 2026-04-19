@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   // Next.js configuration
   // Note: Use port 3001 (via npm scripts) to avoid conflict with SpacetimeDB on port 3000
 
+  // D-29 Commit 1 + RESEARCH Pitfall 1 correction: top-level `typedRoutes` is
+  // the stable key on Next 15.5+. The nested deprecated form triggers a warning
+  // on every `next build` and is removed in Next 16.
+  typedRoutes: true,
+
   async headers() {
     return [
       {
