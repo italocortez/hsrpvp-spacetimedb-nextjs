@@ -36,6 +36,11 @@ function extractProfileSignature(user: any): string {
 }
 
 export function useAuth() {
+    // Phase 16 D-33: subscription ownership delegated out of useAuth.
+    // Stage 1 (view_my_profile) now lives in AuthProvider; Stage 2 (User) lives in (authed)/layout.tsx.
+    // This hook retains readProfileFromConnection + state-machine + reader coordination only.
+    console.log('[useAuth] subscription ownership delegated to AuthProvider + (authed)/layout.tsx');
+
     const router = useRouter();
     const { data: session, status: nextAuthStatus } = useSession();
     const { isActive, identity, getConnection, connectionError } = useSpacetimeDB();
@@ -44,8 +49,6 @@ export function useAuth() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [profileReady, setProfileReady] = useState(false);
     const [guestLoginPending, setGuestLoginPending] = useState(false);
-    const stage1Ref = useRef(false);
-    const stage2Ref = useRef(false);
 
     // Dedupe: stores the last-resolved profile signature. Prevents redundant setResolvedUser
     // calls when Stage 1 (view_my_profile) and Stage 2 (User table) both resolve the same profile
@@ -53,132 +56,14 @@ export function useAuth() {
     // resolve is treated as new. Live updates pass through because any changed field flips the signature.
     const resolvedSignatureRef = useRef<string | null>(null);
 
-    // D-01: Stage 2 gate signals. Refs initialized once at mount.
+    // D-09: isWaitingForData signals. Refs initialized once at mount.
+    // Post Phase 16 they no longer gate a subscription (route-group mount is the gate),
+    // but they still drive `isWaitingForData` composition below.
     const hadSessionCookie = useRef(typeof document !== 'undefined' && document.cookie.includes('stdb_session'));
-    // D-01 revision: gate signal switched from SPACETIMEDB_TOKEN_KEY to USER_ID_KEY.
-    // The SDK auto-stores an identity token on first anonymous WS connect (see app/providers.tsx onConnect),
+    // D-09: the SDK auto-stores an identity token on first anonymous WS connect (see app/providers.tsx onConnect),
     // so a token alone does NOT indicate prior authentication. USER_ID_KEY is only written inside
     // setResolvedUser after a real User row resolves — the correct "has authenticated" signal.
     const hadUserIdOnMount = useRef(typeof window !== 'undefined' && !!localStorage.getItem(USER_ID_KEY));
-
-    // Stage 2 gate (D-01): opens when any of the three auth signals is present.
-    // Mirrors isWaitingForData's signal set, plus currentUser != null so Stage 2
-    // stays open after auth resolution.
-    const stage2Gate = currentUser != null || hadUserIdOnMount.current || hadSessionCookie.current;
-
-    // Stage 1: always-on view_my_profile subscription
-    // Fires as soon as SpacetimeDB connection is active, regardless of auth state.
-    // Anonymous callers receive 0 rows (ctx.sender filter); authenticated callers receive their own profile.
-    useEffect(() => {
-        if (!isActive || stage1Ref.current) return;
-        const conn = getConnection();
-        if (!conn) return;
-        stage1Ref.current = true;
-
-        console.log('[useAuth] Stage 1 subscribing: view_my_profile (always-on, anon-safe)');
-        conn.subscriptionBuilder()
-            .onApplied(() => {
-                console.log('[useAuth] Stage 1 onApplied: view_my_profile subscription active');
-                setProfileReady(true);
-                readProfileRef.current(conn);
-            })
-            .subscribe('SELECT * FROM view_my_profile');
-
-        const isLiveChange = (ctx: any) => {
-            const tag = ctx?.event?.tag;
-            return tag === 'Reducer' || tag === 'Transaction';
-        };
-
-        const onViewProfileInsert = (ctx: any, row: any) => {
-            if (!isLiveChange(ctx)) return;
-            console.log(`[useAuth] view_my_profile.onInsert: id=${row?.id}`);
-            readProfileRef.current(conn);
-        };
-        const onViewProfileUpdate = (ctx: any, oldRow: any, row: any) => {
-            if (!isLiveChange(ctx)) return;
-            console.log(`[useAuth] view_my_profile.onUpdate: id=${row?.id}`);
-            readProfileRef.current(conn);
-        };
-        conn.db.view_my_profile.onInsert(onViewProfileInsert);
-        conn.db.view_my_profile.onUpdate(onViewProfileUpdate);
-
-        return () => {
-            conn.db.view_my_profile.removeOnInsert(onViewProfileInsert);
-            conn.db.view_my_profile.removeOnUpdate(onViewProfileUpdate);
-            stage1Ref.current = false;
-            setProfileReady(false);
-        };
-    }, [isActive, getConnection]);
-
-    // Stage 2: SELECT * FROM user subscription, gated on stage2Gate (D-01).
-    // Anonymous visitors never fire this effect — the gate is false until auth evidence exists.
-    useEffect(() => {
-        if (!isActive) {
-            console.log('[useAuth] Stage 2 skip: connection not active');
-            return;
-        }
-        if (!stage2Gate) {
-            console.log(`[useAuth] Stage 2 gated (anon-safe): no auth signal yet (currentUser=null, hadUserId=${hadUserIdOnMount.current}, hadCookie=${hadSessionCookie.current})`);
-            return;
-        }
-        if (stage2Ref.current) return;
-        const conn = getConnection();
-        if (!conn) return;
-        stage2Ref.current = true;
-
-        // Fast-reconnect guard (WR-04): the subscription's onApplied may fire after this effect's
-        // cleanup has run (e.g. connection dropped + re-established quickly, leaving the stale
-        // subscription's onApplied queued). Without this flag, the callback would iterate a stale
-        // conn's cache and push outdated rows through setResolvedUser.
-        let cancelled = false;
-
-        console.log(`[useAuth] Stage 2 subscribing: SELECT * FROM user (gate opened via ${currentUser ? 'currentUser' : hadUserIdOnMount.current ? 'userId' : 'cookie'})`);
-        conn.subscriptionBuilder()
-            .onApplied(() => {
-                if (cancelled) return;
-                console.log('[useAuth] Stage 2 onApplied: User subscription active');
-                // Dedupe: if currentUser already resolved (fresh-guest path, where Stage 1 delivered the
-                // profile row first and flipped the gate via currentUser), Stage 1's readProfile already
-                // ran — skip. Only re-read on the returning-user path where Stage 2 opened via userId/cookie
-                // BEFORE view_my_profile delivered, so currentUser is still null at this moment.
-                if (currentUser) {
-                    console.log('[useAuth] Stage 2 onApplied: skipping readProfile (already resolved by Stage 1)');
-                    return;
-                }
-                readProfileRef.current(conn);
-            })
-            .subscribe('SELECT * FROM user');
-
-        // MOVED from pre-refactor Stage 1 (was useAuth.ts:63-80).
-        // User callbacks must register AFTER the SELECT * FROM user subscription is active,
-        // not before — registering them in Stage 1 would make them dead code for anon visitors
-        // and architecturally wrong for authed visitors. See RESEARCH §Pitfall 2.
-        const isLiveChange = (ctx: any) => {
-            const tag = ctx?.event?.tag;
-            return tag === 'Reducer' || tag === 'Transaction';
-        };
-
-        const onUserInsert = (ctx: any, row: any) => {
-            if (!isLiveChange(ctx)) return;
-            console.log(`[useAuth] User.onInsert: id=${row?.id} username=${row?.username}`);
-            readProfileRef.current(conn);
-        };
-        const onUserUpdate = (ctx: any, oldRow: any, row: any) => {
-            if (!isLiveChange(ctx)) return;
-            console.log(`[useAuth] User.onUpdate: id=${row?.id} username=${row?.username} (was: ${oldRow?.username})`);
-            readProfileRef.current(conn);
-        };
-        conn.db.User.onInsert(onUserInsert);
-        conn.db.User.onUpdate(onUserUpdate);
-
-        return () => {
-            cancelled = true;
-            conn.db.User.removeOnInsert(onUserInsert);
-            conn.db.User.removeOnUpdate(onUserUpdate);
-            stage2Ref.current = false;
-            // Do NOT reset setProfileReady — Stage 1 owns that.
-        };
-    }, [isActive, stage2Gate, getConnection]);
 
     // Persist userId + session cookie when resolved
     const setResolvedUser = useCallback((user: any) => {
@@ -464,6 +349,22 @@ export function useAuth() {
         signOut({ callbackUrl: '/' });
     }, [getConnection]);
 
+    // Phase 16 D-03: subscription-owner coordination.
+    //
+    // INTERNAL USE ONLY — exposed on the useAuth return shape so that AuthProvider (Stage 1
+    // view_my_profile owner) and (authed)/layout.tsx (Stage 2 User owner) can drive the
+    // existing state machine from their respective effect callbacks. Consumers outside
+    // those two owners must NOT call these — doing so only flips local UI state, grants
+    // no privilege, and violates the provider/layout-owns-lifecycle architectural invariant.
+    //
+    // triggerReadProfile is a useRef-backed ref so callers always hit the latest reader
+    // without re-renders; wrap in a stable callback that forwards to readProfileRef.current.
+    const triggerReadProfile = useCallback(() => {
+        const conn = getConnection();
+        if (!conn) return;
+        readProfileRef.current(conn);
+    }, [getConnection]);
+
     return {
         ...authState,
         isDeleted,
@@ -472,5 +373,9 @@ export function useAuth() {
         loginDiscord,
         logout,
         deleteGuestAccount,
+        /** @internal Phase 16 D-03 — AuthProvider calls this from view_my_profile.onApplied. */
+        setProfileReady,
+        /** @internal Phase 16 D-03 — AuthProvider + (authed)/layout.tsx call this from subscription callbacks. */
+        triggerReadProfile,
     };
 }
