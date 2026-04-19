@@ -4,7 +4,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { useSpacetimeDB } from 'spacetimedb/react';
 import { SPACETIMEDB_TOKEN_KEY } from '@/lib/spacetimedb';
 import { setSessionCookie, clearSessionCookie } from '@/lib/session-cookie';
-import { AuthState, User } from '../types';
+import { User } from '../types';
 
 // localStorage key for the resolved userId. Written by setResolvedUser after a User row
 // resolves; cleared by logout / deleteGuestAccount. Used as the "has authenticated" signal
@@ -39,7 +39,6 @@ export function useAuth() {
     // Phase 16 D-33: subscription ownership delegated out of useAuth.
     // Stage 1 (view_my_profile) now lives in AuthProvider; Stage 2 (User) lives in (authed)/layout.tsx.
     // This hook retains readProfileFromConnection + state-machine + reader coordination only.
-    console.log('[useAuth] subscription ownership delegated to AuthProvider + (authed)/layout.tsx');
 
     const router = useRouter();
     const { data: session, status: nextAuthStatus } = useSession();
@@ -49,6 +48,16 @@ export function useAuth() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [profileReady, setProfileReady] = useState(false);
     const [guestLoginPending, setGuestLoginPending] = useState(false);
+
+    // Render-diagnostic log: shows WHICH state change triggered this render.
+    // If renders look excessive, diff consecutive entries to isolate the culprit.
+    console.log('[useAuth] render', {
+        isActive,
+        idShort: identity?.toHexString().slice(0, 8),
+        profileReady,
+        nextAuthStatus,
+        hasUser: !!currentUser,
+    });
 
     // Dedupe: stores the last-resolved profile signature. Prevents redundant setResolvedUser
     // calls when Stage 1 (view_my_profile) and Stage 2 (User table) both resolve the same profile
@@ -165,7 +174,12 @@ export function useAuth() {
     // Keep ref in sync so table callbacks always use latest version
     readProfileRef.current = readProfileFromConnection;
 
-    // Re-read profile when profileReady changes or identity changes
+    // Re-read profile when profileReady changes or identity changes.
+    // Uses readProfileRef (assigned every render on line above) so reference churn of
+    // readProfileFromConnection does NOT re-fire this effect. That previously caused
+    // 3x "No user found" on anon cold-load because `session` reference flips during
+    // next-auth resolution, regenerating readProfileFromConnection, re-invalidating
+    // this effect. Stable deps here; the latest reader is always called.
     useEffect(() => {
         if (!isActive || !profileReady) {
             setCurrentUser(null);
@@ -173,8 +187,8 @@ export function useAuth() {
         }
         const conn = getConnection();
         if (!conn) return;
-        readProfileFromConnection(conn);
-    }, [isActive, profileReady, identity, getConnection, readProfileFromConnection]);
+        readProfileRef.current(conn);
+    }, [isActive, profileReady, identity, getConnection]);
 
     // Discord linking logic (same intent pattern, updated body)
     const DISCORD_INTENT_KEY = 'discord_login_intent';
@@ -302,14 +316,8 @@ export function useAuth() {
     const isWaitingForData = !currentUser && (hadUserIdOnMount.current || hadSessionCookie.current) && !isOrphanedIdentity;
     const isConnecting = !isActive && !connectionError;
 
-    const authState: AuthState = {
-        identity: identity || null,
-        user: currentUser,
-        isAuthenticated: !!currentUser && !isLinkingDiscord,
-        isConnecting,
-        isLoadingData: isLinkingDiscord || isWaitingForData,
-        connectionError,
-    };
+    const isAuthenticated = !!currentUser && !isLinkingDiscord;
+    const isLoadingData = isLinkingDiscord || isWaitingForData;
 
     const loginGuest = useCallback(() => {
         const conn = getConnection();
@@ -368,8 +376,18 @@ export function useAuth() {
         readProfileRef.current(conn);
     }, [getConnection]);
 
-    return {
-        ...authState,
+    // Memoize the return so consumers (9 useAuthContext callers including NavBar,
+    // AuthRequired, useProfile, layouts) skip re-renders when upstream providers
+    // cause AuthProvider to re-render without any auth-relevant state change.
+    // Before this memo: 12 AuthProvider renders -> 12 cascades to every consumer.
+    // After: cascade only fires when a listed semantic dep actually changes.
+    return useMemo(() => ({
+        identity: identity || null,
+        user: currentUser,
+        isAuthenticated,
+        isConnecting,
+        isLoadingData,
+        connectionError,
         isDeleted,
         guestLoginPending,
         loginGuest,
@@ -380,5 +398,10 @@ export function useAuth() {
         setProfileReady,
         /** @internal Phase 16 D-03 — AuthProvider + (authed)/layout.tsx call this from subscription callbacks. */
         triggerReadProfile,
-    };
+    }), [
+        identity, currentUser, isAuthenticated, isConnecting, isLoadingData,
+        connectionError, isDeleted, guestLoginPending,
+        loginGuest, loginDiscord, logout, deleteGuestAccount,
+        setProfileReady, triggerReadProfile,
+    ]);
 }

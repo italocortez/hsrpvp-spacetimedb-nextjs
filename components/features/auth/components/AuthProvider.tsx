@@ -44,8 +44,11 @@ function useViewMyProfileSubscription(auth: AuthContextType) {
         conn.subscriptionBuilder()
             .onApplied(() => {
                 console.log('[AuthProvider] Stage 1 onApplied: view_my_profile subscription active');
+                // setProfileReady(true) alone is enough: it flips a useAuth useEffect dep,
+                // which then calls readProfileRef.current(conn) on the next render. Calling
+                // triggerReadProfile() here too caused a second redundant read (was the
+                // second of 3x "No user found" fires on anon cold-load).
                 auth.setProfileReady(true);
-                auth.triggerReadProfile();
             })
             .subscribe('SELECT * FROM view_my_profile');
 
