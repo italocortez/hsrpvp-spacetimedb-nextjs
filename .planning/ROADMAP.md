@@ -237,7 +237,7 @@ Plans:
   8. The `/public/sw.js` Service Worker registers in production (and opt-in dev with `NEXT_PUBLIC_ENABLE_SW=true`) and intercepts only asset-CDN hostnames — never the app origin.
 **Plans**: 6 plans
 - [x] 16-01-config-route-group-rename-PLAN.md — Next 15.5 bump + top-level typedRoutes + 5-commit route-group rename sequence (FOUND-03, FOUND-04)
-- [ ] 16-02-subscription-reshuffle-PLAN.md — GameDataProvider 7 useTable + AuthProvider Stage 1 + (authed)/layout.tsx Stage 2 + useAuth.ts trim (FOUND-05, FOUND-06)
+- [x] 16-02-subscription-reshuffle-PLAN.md — GameDataProvider 7 useTable + AuthProvider Stage 1 + (authed)/layout.tsx Stage 2 + useAuth.ts trim (FOUND-05, FOUND-06)
 - [ ] 16-03-middleware-PLAN.md — Positive-list middleware.ts with stdb_session cookie redirect (FOUND-13)
 - [ ] 16-04-service-worker-PLAN.md — public/sw.js asset-CDN cache + providers.tsx register + dev-unregister-sw page (FOUND-07)
 - [x] 16-05-viewport-primitives-PLAN.md — lib/render-tier + ViewportWriter + ViewportGate + SafariWarning + app/layout.tsx mount (FOUND-08, FOUND-09, FOUND-10, FOUND-11, FOUND-12)
@@ -554,7 +554,7 @@ Plans:
 | 15.3. Audit Spread Type Helper | 16/16 | Complete | 2026-04-18 |
 | 15.4. Cost-table draftMode restructure | 6/6 | Complete | 2026-04-14 |
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
-| 16. Route + global foundation | 2/6 | In Progress|  |
+| 16. Route + global foundation | 3/6 | In Progress|  |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |
