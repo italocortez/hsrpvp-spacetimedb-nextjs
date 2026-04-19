@@ -70,7 +70,7 @@ export function LoadoutDropdown({
 						<button
 							key={idx}
 							disabled={idx === loadoutIndex}
-							onClick={() => onSelectIndex(idx)}
+							onClick={() => handleSelect(idx)}
 							className={styles.teamOption}
 						>
 							<h3
