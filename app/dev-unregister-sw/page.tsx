@@ -16,13 +16,22 @@ export default function DevUnregisterSW() {
 
   const unregister = async () => {
     setStatus('unregistering...');
-    const regs = await navigator.serviceWorker.getRegistrations();
-    for (const reg of regs) await reg.unregister();
-    const cacheNames = await caches.keys();
-    for (const n of cacheNames) await caches.delete(n);
-    setStatus(`done — ${regs.length} SW unregistered, ${cacheNames.length} caches cleared`);
-    // redirect to home after a beat so the user sees the status
-    setTimeout(() => window.location.replace('/'), 1500);
+    try {
+      // WR-02: guard against missing SW / caches APIs (Safari private mode,
+      // non-HTTPS contexts, SW-disabled browsers). Devs hit this page precisely
+      // when something is broken — crash-proof the handler.
+      const regs = 'serviceWorker' in navigator
+        ? await navigator.serviceWorker.getRegistrations()
+        : [];
+      for (const reg of regs) await reg.unregister();
+      const cacheNames = typeof caches !== 'undefined' ? await caches.keys() : [];
+      for (const n of cacheNames) await caches.delete(n);
+      setStatus(`done — ${regs.length} SW unregistered, ${cacheNames.length} caches cleared`);
+      // redirect to home after a beat so the user sees the status
+      setTimeout(() => window.location.replace('/'), 1500);
+    } catch (err) {
+      setStatus(`error: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   return (
