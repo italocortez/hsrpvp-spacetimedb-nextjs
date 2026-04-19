@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import styles from "@/app/(landing-page)/teambuilder/page.module.css";
+import styles from "@/app/(public)/teambuilder/page.module.css";
 import { Loadout, ResolvedTeamMember, TEAM_SIZE, TeamMember } from "./LoadoutManager";
 import { Character, Lightcone, RuleSet, Synergy } from "../types/enums";
 import { TeamSlot } from "./Teamslot";

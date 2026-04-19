@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import styles from "@/app/(landing-page)/teambuilder/page.module.css";
+import styles from "@/app/(public)/teambuilder/page.module.css";
 import { ResolvedTeamMember } from "./LoadoutManager";
 import { Character, CharacterRank, Eidolons, Lightcone, LightconeRank, SuperImpositions, Synergy } from "../types/enums";
 import { iconMaps } from "../hooks/useIconMaps";
