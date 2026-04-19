@@ -43,7 +43,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 ### v0.9 Frontend — Phase Summary
 
 - [x] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views (completed 2026-04-13)
-- [ ] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes
+- [x] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes (completed 2026-04-19)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
 - [ ] **Phase 19: Team builder — data** — Team composition state, cost budget, synergy compute, `team_builder_draft` backend + reducers
@@ -241,7 +241,7 @@ Plans:
 - [x] 16-03-middleware-PLAN.md — Positive-list middleware.ts with stdb_session cookie redirect (FOUND-13)
 - [x] 16-04-service-worker-PLAN.md — public/sw.js asset-CDN cache + providers.tsx register + dev-unregister-sw page (FOUND-07)
 - [x] 16-05-viewport-primitives-PLAN.md — lib/render-tier + ViewportWriter + ViewportGate + SafariWarning + app/layout.tsx mount (FOUND-08, FOUND-09, FOUND-10, FOUND-11, FOUND-12)
-- [ ] 16-06-docs-component-hygiene-PLAN.md — docs/frontend/component-hygiene.md R8 rules + docs/auth/architecture.md subscription lifecycle update
+- [x] 16-06-docs-component-hygiene-PLAN.md — docs/frontend/component-hygiene.md R8 rules + docs/auth/architecture.md subscription lifecycle update
 **UI hint**: yes
 
 ### Phase 17: Cost tables — data
@@ -554,7 +554,7 @@ Plans:
 | 15.3. Audit Spread Type Helper | 16/16 | Complete | 2026-04-18 |
 | 15.4. Cost-table draftMode restructure | 6/6 | Complete | 2026-04-14 |
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
-| 16. Route + global foundation | 5/6 | In Progress|  |
+| 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |

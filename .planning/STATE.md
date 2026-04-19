@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 16
-current_plan: 6 (Plans 16-01 + 16-05 + 16-02 + 16-03 + 16-04 complete; Wave B done — only Wave 3 Plan 06 docs remains)
-status: executing
-stopped_at: "Completed 16-04-service-worker-PLAN.md (Wave B Plan 04 of 4 — last Wave B plan) — first Service Worker in the repo: public/sw.js (48 LOC, zero deps, root scope via /sw.js) with ALLOWED_HOSTS=['ufs.sh','i.imgur.com'] (D-17 UploadThing + Imgur; Discord explicitly excluded) + app-origin origin-guard as FIRST fetch-handler line (D-18 Pitfall 3 defense) + cache-first strategy (caches.open → match || fetch + put on response.ok && GET) + VERSION=1 invalidation lever. app/providers.tsx useEffect with empty dep array [] (Pitfall 7) gated on NODE_ENV=production || NEXT_PUBLIC_ENABLE_SW=true (D-19). app/dev-unregister-sw/page.tsx with notFound() as FIRST statement (D-20) + inline-style UI (D-25 no HeroUI/Tailwind) + getRegistrations + caches.keys cleanup + 1.5s redirect. 3 atomic commits: 06e162c, 0f09fb2, f9ff6e5. Build + typecheck exit 0 at every commit; 15.5 harness (auth-subscriptions.test.ts) 2/2 green unmodified; zero deletions; zero deviations (no Rule 1/2/3 auto-fixes). [SW] D-33 bracketed logs on install/activate/intercept/register-success/register-failure/dev-skip/feature-check-skip. New route /dev-unregister-sw = 714 B. .env.local untouched. FOUND-07 satisfied. Wave B COMPLETE; Plan 06 Wave 3 docs is the only remaining Phase 16 work. 45/46 plans (98%)."
-last_updated: "2026-04-19T05:18:00.000Z"
+current_phase: 16 (COMPLETE)
+current_plan: 6 (ALL Phase 16 plans 01–06 complete)
+status: verifying
+stopped_at: Completed 16-06-docs-component-hygiene-PLAN.md — PHASE 16 COMPLETE. 46/46 plans (100%).
+last_updated: "2026-04-19T05:33:53.378Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 32
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 46
-  completed_plans: 45
-  percent: 98
+  completed_plans: 46
+  percent: 100
 ---
 
 # Session State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 16
-**Current plan:** 6 (Plans 16-01 + 16-05 + 16-02 + 16-03 + 16-04 complete; Wave B done — only Wave 3 Plan 06 docs remains)
-**Status:** Executing Phase 16. Plans 16-01 (config + route-group rename), 16-05 (viewport primitives), 16-02 (subscription reshuffle), 16-03 (middleware), and 16-04 (service worker) COMPLETE. Plan 16-04 shipped the first Service Worker in the repo — `public/sw.js` (48 LOC, zero deps, root scope via `/sw.js`) with `ALLOWED_HOSTS=['ufs.sh','i.imgur.com']` (D-17 UploadThing + Imgur; Discord explicitly excluded), app-origin origin-guard as FIRST fetch-handler line (D-18 Pitfall 3 defense), cache-first strategy (caches.open → match || fetch + put on response.ok && GET), VERSION=1 invalidation lever. `app/providers.tsx` adds a single empty-dep-array useEffect (Pitfall 7) gated on `NODE_ENV=production || NEXT_PUBLIC_ENABLE_SW=true` (D-19). `app/dev-unregister-sw/page.tsx` has `notFound()` as FIRST statement (D-20) + inline-style UI (D-25 no HeroUI/Tailwind). 3 atomic commits: 06e162c, 0f09fb2, f9ff6e5. Build + typecheck exit 0 at every commit; 15.5 harness (auth-subscriptions.test.ts) 2/2 green unmodified; zero deletions; zero deviations (no Rule 1/2/3 auto-fixes). `[SW]` D-33 bracketed logs across install/activate/intercept/register-success/register-failure/dev-skip/feature-check-skip. New route `/dev-unregister-sw = 714 B`. `.env.local` untouched. FOUND-07 satisfied. Wave B COMPLETE. Next: Plan 16-06 (Wave 3 docs + component-hygiene wrap-up).
+**Current phase:** 16 (COMPLETE)
+**Current plan:** 6 (ALL Phase 16 plans 01–06 complete)
+**Status:** PHASE 16 COMPLETE. All 6 plans landed: 16-01 (config + route-group rename), 16-02 (subscription reshuffle), 16-03 (middleware), 16-04 (service worker), 16-05 (viewport primitives), 16-06 (docs — component-hygiene + auth architecture Subscription Lifecycle reshuffle). Plan 16-06 shipped two docs: NEW `docs/frontend/component-hygiene.md` (315 LOC) with 5 R8 rules + Good/Bad examples, Rule 3 tool-agnostic with BOTH CSS Modules + Tailwind examples (D-25), zero PR-template infrastructure (D-24); `docs/auth/architecture.md` Subscription Lifecycle rewritten to reflect Plan 02 ownership — Stage 1 → AuthProvider (D-03), Stage 2 → (authed)/layout.tsx (D-07), route-group mount elevated to a THIRD privacy gate, middleware explicitly classified UX-only (NOT an auth trust boundary), Regression Guard subsection names auth-subscriptions.test.ts as canonical. Both docs signed with Phase 16 execution rows per CLAUDE.md. 2 atomic commits: f4f999e, 93da7ca. Build + typecheck exit 0; 15.5 harness 2/2 green unmodified (13.99s); zero deletions; zero deviations. FOUND-05 + FOUND-06 documentation satisfied (code completed at Plan 02). Phase 16 ready for `/gsd-verify-work 16`. Next phase: 17.
 **Last activity:** 2026-04-19
 
-Progress: [██████████] 45/46 plans (Phase 16 Plans 01 + 02 + 03 + 04 + 05 COMPLETE; only Plan 06 remaining)
+Progress: [██████████] 46/46 plans (Phase 16 Plans 01 + 02 + 03 + 04 + 05 + 06 COMPLETE; Phase 16 DONE)
 
 ## Previous Milestone
 
@@ -149,6 +149,9 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase ?]: [Phase 16-04]: Pattern — Hand-written SW at ~40-50 LOC + zero build-step is the right tool for asset-CDN-only caching. Workbox / next-pwa / @serwist/next are ~20 KB gzipped + a build pipeline — overkill for a 2-entry hostname allowlist. Revisit library adoption only on a trigger event: PWA install, offline mode, or background sync (none in current v0.9 scope).
 - [Phase ?]: [Phase 16-04]: Pattern — Allowlist early-ship. The `i.imgur.com` entry lands in Phase 16 even though Imgur uploads don't wire until Phase 32 (D-17 anticipation). 2-entry constant array has zero logic cost; pre-empting the re-edit of public/sw.js at Phase 32 is strictly better than a 1-entry array that must be re-touched later. If Phase 32 discovers additional Imgur CDN hostnames (s.imgur.com for thumbnails, etc.) it can extend the array without reworking the SW shape.
 - [Phase ?]: [Phase 16-04]: Pattern — Prod-gated dev utility via notFound() as FIRST component-body statement. Cleaner than route-level gating (no framework ceremony) and trivially removable (no other code depends on the page; deleting the file suffices). Ships ~1KB unreachable code in prod bundle — acceptable tradeoff for a dev utility that doubles as a user-facing recovery tool when we eventually enable SW in prod.
+- [Phase ?]: [Phase 16-06]: docs/frontend/component-hygiene.md ships with 5 R8 rules + Good/Bad examples (315 LOC). Rule 3 intentionally tool-agnostic per D-25 — CSS Modules AND Tailwind examples both shown. Zero PR-template infrastructure (D-24). Phase History signed Phase 16 execution. Commit f4f999e.
+- [Phase ?]: [Phase 16-06]: docs/auth/architecture.md Subscription Lifecycle expanded to 3-gate privacy model (projection + subscription + route-group-mount). Stage 1 → AuthProvider (D-03); Stage 2 → (authed)/layout.tsx (D-07). Middleware UX-only, NOT an auth trust boundary. Regression Guard subsection added. Phase History append-only. Commit 93da7ca.
+- [Phase ?]: [Phase 16-06]: Pattern — Tool-agnostic R8 rule framing. When a rule names a specific tool (Tailwind), rewriting it mechanism-neutral and showing examples in BOTH the current tool AND the alternative (CSS Modules) is the structural hedge against future tool swaps. Discipline survives the stack change.
 
 ### Roadmap Evolution
 
@@ -185,7 +188,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-19T05:18:00.000Z
-Stopped at: Completed 16-04-service-worker-PLAN.md (Wave B Plan 04 of 4 — LAST Wave B plan) — first Service Worker in the repo: public/sw.js (48 LOC, zero deps) with ALLOWED_HOSTS=['ufs.sh','i.imgur.com'] (D-17 Discord explicitly excluded), app-origin origin-guard FIRST (D-18 Pitfall 3), cache-first strategy, VERSION=1 invalidation lever. app/providers.tsx adds empty-dep-array useEffect (Pitfall 7) gated on NODE_ENV=production || NEXT_PUBLIC_ENABLE_SW=true (D-19). app/dev-unregister-sw/page.tsx has notFound() FIRST (D-20) + inline-style UI + getRegistrations + caches.keys cleanup + 1.5s redirect. 3 atomic commits: 06e162c, 0f09fb2, f9ff6e5. Build + typecheck exit 0 at every commit; 15.5 harness (auth-subscriptions.test.ts) 2/2 green unmodified; zero deletions; zero deviations. New route /dev-unregister-sw = 714 B. .env.local untouched. FOUND-07 complete. Wave B COMPLETE. 45/46 plans (98%).
+Last session: 2026-04-19T05:33:53.374Z
+Stopped at: Completed 16-06-docs-component-hygiene-PLAN.md — PHASE 16 COMPLETE. 46/46 plans (100%).
 Resume file: None
-Next action: `/gsd-execute-phase 16` continues with Plan 16-06 (Wave 3 docs + component-hygiene wrap-up) — the ONLY remaining Phase 16 plan. Optionally run `/gsd-verify-work 16.4` or `/gsd-verify-work 16` (full-phase UAT including live-browser SW registration walkthrough per 16-04 Manual UAT table) before Plan 06 lands.
+Next action: Phase 16 is complete. Run `/gsd-verify-work 16` for full-phase UAT (route-group rename + subscription reshuffle + middleware + service worker + viewport primitives + docs). After verify-work passes, proceed with `/gsd-research-phase 17` (or similar) for the next UX phase.
