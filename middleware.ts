@@ -11,6 +11,8 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (!cookie) {
+    // WR-10: defense-in-depth against self-redirect loop if matcher ever includes '/'.
+    if (path === '/') return NextResponse.next();
     console.log(`[middleware] redirect: ${path} (no stdb_session cookie)`);
     return NextResponse.redirect(new URL('/', request.url));
   }
