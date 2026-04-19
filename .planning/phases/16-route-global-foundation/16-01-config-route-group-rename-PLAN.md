@@ -155,7 +155,7 @@ Windows/Git Bash note (RESEARCH.md:411):
      async headers() { /* unchanged */ },
    };
    ```
-4. Run `npm run build`. Triage any TypeScript errors about invalid `<Link href>` strings or `router.push` calls. For each broken href, fix the href string OR the referenced route file per D-32 — NO `as Route` casts, NO `// @ts-expect-error` silences, NO deferral. If more than ~5 broken hrefs surface, STOP and note in the SUMMARY that a sub-plan may be warranted; otherwise fix them in this commit.
+4. Run `npm run build`. Triage any TypeScript errors about invalid `<Link href>` strings or `router.push` calls. For each broken href, fix the href string OR the referenced route file per D-32 — NO `as Route` casts, NO `// @ts-expect-error` silences, NO deferral. Fix ALL broken hrefs inline in this commit regardless of count. The `npm run build` exit-0 gate is the natural circuit breaker — do not escalate, do not pause. Note the count in the SUMMARY for phase retrospective only.
 5. Run `npm run test:typecheck` and confirm exit 0.
 6. Stage: `git add package.json package-lock.json next.config.ts` plus any `.tsx` files fixed in step 4. Verify none of the staged paths appear in `.gitignore` (per CLAUDE.md Gitignore Guardrail — no `git add -f`, and frontmatter must not list gitignored paths).
 7. Commit with message: `chore(next): bump to 15.5.x + enable top-level typedRoutes`.
@@ -403,7 +403,7 @@ Wave A final state (run after all 5 commits land, before handing off to Wave B):
 <output>
 After completion, create `.planning/phases/16-route-global-foundation/16-01-SUMMARY.md` documenting:
 - Resolved Next.js version (15.5.x exact patch).
-- Number of pre-existing broken hrefs fixed in Commit 1 (likely 0; flag explicitly if >5 and note sub-plan recommendation).
+- Number of pre-existing broken hrefs fixed in Commit 1 (likely 0; record the count for phase retrospective — no sub-plan escalation per D-32 clean-slate).
 - Whether Commit 5 was made or absorbed.
 - Confirmation that the async-params pattern in `/draft/[matchId]/page.tsx` was preserved by `git mv`.
 - Manual-verify log entry for anonymous `/draft/abc` access (Plan 03 will lock it).

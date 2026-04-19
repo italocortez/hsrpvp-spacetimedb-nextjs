@@ -2,7 +2,7 @@
 phase: 16-route-global-foundation
 plan: 06
 type: execute
-wave: 2
+wave: 3
 depends_on: [02]
 files_modified:
   - docs/frontend/component-hygiene.md
@@ -302,4 +302,5 @@ After completion, create `.planning/phases/16-route-global-foundation/16-06-SUMM
 - Confirmation that both files have a `Phase 16 execution` row in Phase History.
 - Line count of docs/frontend/component-hygiene.md (target ~120).
 - Note: no contract.md files edited (CLAUDE.md Backend Feature Docs rule — execution-phase doc edits go through /gsd-verify-work checkpoint for contract.md; architecture.md can be updated during execution per feedback_docs_maintenance.md).
+</output>
 </output>

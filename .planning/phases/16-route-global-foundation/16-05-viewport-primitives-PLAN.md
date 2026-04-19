@@ -573,6 +573,7 @@ Exact position depends on current app/layout.tsx structure — executor preserve
     - `grep -c "\\[ViewportGate\\]" components/globals/viewport/ViewportGate.tsx` returns at least 3 (Skeleton, matchMedia, sibling-mount paths).
     - `npm run build && npm run test:typecheck` both exit 0.
     - Manual UAT logged: vp cookie written on initial load; matchMedia change event flips vp; cookie has 1-year max-age; Secure absent on localhost, expected on HTTPS.
+    - D-26 compliance: this plan ships ONLY the `ViewportGate` primitive — no consumer call site in Phase 16. Dual-DOM consumers are deferred to Phases 27 (Calendar), 31 (Match Drafting), and 35 (Tournament brackets). `grep -rnE "import.*ViewportGate.*from" app/ components/` returns zero matches outside `components/globals/viewport/` itself.
   </acceptance_criteria>
   <done>
     ViewportWriter writes `vp=desktop|mobile` cookie with 1-year max-age + SameSite=Lax + conditional Secure; returns null (side-effect only). ViewportGate is a Skeleton-first primitive supporting single-DOM fallback (FOUND-12) and dual-DOM Skeleton-first SSR (D-27). Both primitives use D-33 tagged logging. Manual UAT confirms cookie write mechanics. Build+typecheck green. Atomic commit made.
