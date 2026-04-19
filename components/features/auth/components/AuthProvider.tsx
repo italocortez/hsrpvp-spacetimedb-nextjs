@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import { useAuth } from '../hooks/useAuth';
+import { isLiveChange } from '@/lib/spacetimedb';
+import type { EventContext } from '@/src/module_bindings';
 
 type AuthContextType = ReturnType<typeof useAuth>;
 
@@ -49,17 +51,16 @@ function useViewMyProfileSubscription(auth: AuthContextType) {
 
         // Pitfall 5: filter SubscribeApplied events out of onInsert/onUpdate callbacks —
         // the SDK fires them for EVERY row matching the initial state, not just live changes.
-        const isLiveChange = (ctx: any) => {
-            const tag = ctx?.event?.tag;
-            return tag === 'Reducer' || tag === 'Transaction';
-        };
-
-        const onViewProfileInsert = (ctx: any, row: any) => {
+        // isLiveChange hoisted to @/lib/spacetimedb (IN-15).
+        // `row` stays as `any` — the SDK's current generator emits `{ [k: string]: {} }` as
+        // the row-param type on table handlers (view row-types not projected through __Infer),
+        // so a narrower shape won't satisfy the callback signature. EventContext is typed (IN-01).
+        const onViewProfileInsert = (ctx: EventContext, row: any) => {
             if (!isLiveChange(ctx)) return;
             console.log(`[AuthProvider] view_my_profile.onInsert: id=${row?.id}`);
             auth.triggerReadProfile();
         };
-        const onViewProfileUpdate = (ctx: any, _oldRow: any, row: any) => {
+        const onViewProfileUpdate = (ctx: EventContext, _oldRow: any, row: any) => {
             if (!isLiveChange(ctx)) return;
             console.log(`[AuthProvider] view_my_profile.onUpdate: id=${row?.id}`);
             auth.triggerReadProfile();

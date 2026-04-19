@@ -5,6 +5,8 @@ import { useSpacetimeDB } from 'spacetimedb/react';
 import AuthRequired from '@/components/features/auth/components/AuthRequired';
 import DeletionBanner from '@/components/features/auth/components/DeletionBanner';
 import { useAuthContext } from '@/components/features/auth/components/AuthProvider';
+import { isLiveChange } from '@/lib/spacetimedb';
+import type { EventContext } from '@/src/module_bindings';
 import styles from './layout.module.css';
 
 /**
@@ -69,17 +71,17 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
             .subscribe('SELECT * FROM user');
 
         // Pitfall 5: filter SubscribeApplied events out of onInsert/onUpdate callbacks.
-        const isLiveChange = (ctx: any) => {
-            const tag = ctx?.event?.tag;
-            return tag === 'Reducer' || tag === 'Transaction';
-        };
-
-        const onUserInsert = (ctx: any, row: any) => {
+        // isLiveChange hoisted to @/lib/spacetimedb (IN-15).
+        // `row` stays as `any` because the SDK generator produces `{ [k: string]: {} }` as
+        // the table's row shape — TS can't narrow specific types against an empty-value
+        // index signature. Upgrade to typed rows when the SDK generator emits inferrable
+        // row types. EventContext is usable today (IN-01).
+        const onUserInsert = (ctx: EventContext, row: any) => {
             if (!isLiveChange(ctx)) return;
             console.log(`[authedLayout] User.onInsert: id=${row?.id} username=${row?.username}`);
             auth.triggerReadProfile();
         };
-        const onUserUpdate = (ctx: any, oldRow: any, row: any) => {
+        const onUserUpdate = (ctx: EventContext, oldRow: any, row: any) => {
             if (!isLiveChange(ctx)) return;
             console.log(`[authedLayout] User.onUpdate: id=${row?.id} username=${row?.username} (was: ${oldRow?.username})`);
             auth.triggerReadProfile();
