@@ -37,7 +37,7 @@ Exit.
 
 Check `commit_docs` config:
 ```bash
-COMMIT_DOCS=$(gsd-sdk query config-get commit_docs 2>/dev/null || echo "true")
+COMMIT_DOCS=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get commit_docs 2>/dev/null || echo "true")
 ```
 </step>
 
@@ -222,7 +222,7 @@ If this routing line already exists (append mode), leave it as-is.
 Commit all artifacts (if `COMMIT_DOCS` is true):
 
 ```bash
-gsd-sdk query commit "docs(spike-wrap-up): package [N] spike findings into project skill" .planning/spikes/WRAP-UP-SUMMARY.md
+node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs(spike-wrap-up): package [N] spike findings into project skill" .planning/spikes/WRAP-UP-SUMMARY.md
 ```
 </step>
 

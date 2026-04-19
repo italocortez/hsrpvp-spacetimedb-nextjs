@@ -36,7 +36,7 @@ ls -d .planning/spikes/[0-9][0-9][0-9]-* 2>/dev/null | sort | tail -1
 
 Check `commit_docs` config:
 ```bash
-COMMIT_DOCS=$(gsd-sdk query config-get commit_docs 2>/dev/null || echo "true")
+COMMIT_DOCS=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get commit_docs 2>/dev/null || echo "true")
 ```
 </step>
 
@@ -185,7 +185,7 @@ tags: [tag1, tag2]
 
 **i.** Commit (if `COMMIT_DOCS` is true):
 ```bash
-gsd-sdk query commit "docs(spike-NNN): [VERDICT] — [key finding in one sentence]" .planning/spikes/NNN-descriptive-name/ .planning/spikes/MANIFEST.md
+node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs(spike-NNN): [VERDICT] — [key finding in one sentence]" .planning/spikes/NNN-descriptive-name/ .planning/spikes/MANIFEST.md
 ```
 
 **j.** Report before moving to next spike:

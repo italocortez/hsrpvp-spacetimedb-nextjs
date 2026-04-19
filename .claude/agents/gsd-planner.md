@@ -804,7 +804,7 @@ start of execution when `--reviews` flag is present or reviews mode is active.
 Load planning context:
 
 ```bash
-INIT=$(gsd-sdk query init.plan-phase "${PHASE}")
+INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.plan-phase "${PHASE}")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 ```
 
@@ -909,7 +909,7 @@ Apply discovery level protocol (see discovery_levels section).
 
 **Step 1 — Generate digest index:**
 ```bash
-gsd-sdk query history-digest
+node .claude/get-shit-done/bin/gsd-sdk.cjs query history-digest
 ```
 
 **Step 2 — Select relevant phases (typically 2-4):**
@@ -954,7 +954,7 @@ Read the most recent milestone retrospective and cross-milestone trends. Extract
 </step>
 
 <step name="inject_global_learnings">
-If `features.global_learnings` is `true`: run `gsd-sdk query learnings.query --tag <tag> --limit 5` once per tag from PLAN.md frontmatter `tags` (or use the single most specific keyword). The handler matches one `--tag` at a time. Prefix matches with `[Prior learning from <project>]` as weak priors. Project-local decisions take precedence. Skip silently if disabled or no matches.
+If `features.global_learnings` is `true`: run `node .claude/get-shit-done/bin/gsd-sdk.cjs query learnings.query --tag <tag> --limit 5` once per tag from PLAN.md frontmatter `tags` (or use the single most specific keyword). The handler matches one `--tag` at a time. Prefix matches with `[Prior learning from <project>]` as weak priors. Project-local decisions take precedence. Skip silently if disabled or no matches.
 </step>
 
 <step name="gather_phase_context">
@@ -1083,7 +1083,7 @@ Include all frontmatter fields.
 Validate each created PLAN.md using `gsd-sdk query`:
 
 ```bash
-VALID=$(gsd-sdk query frontmatter.validate "$PLAN_PATH" --schema plan)
+VALID=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query frontmatter.validate "$PLAN_PATH" --schema plan)
 ```
 
 Returns JSON: `{ valid, missing, present, schema }`
@@ -1096,7 +1096,7 @@ Required plan frontmatter fields:
 Also validate plan structure:
 
 ```bash
-STRUCTURE=$(gsd-sdk query verify.plan-structure "$PLAN_PATH")
+STRUCTURE=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query verify.plan-structure "$PLAN_PATH")
 ```
 
 Returns JSON: `{ valid, errors, warnings, task_count, tasks }`
@@ -1133,7 +1133,7 @@ Plans:
 
 <step name="git_commit">
 ```bash
-gsd-sdk query commit "docs($PHASE): create phase plan" \
+node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs($PHASE): create phase plan" \
   .planning/phases/$PHASE-*/$PHASE-*-PLAN.md .planning/ROADMAP.md
 ```
 </step>

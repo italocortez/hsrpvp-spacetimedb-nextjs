@@ -80,7 +80,7 @@ Rules:
 Collect phase artifacts for the review prompt:
 
 ```bash
-INIT=$(gsd-sdk query init.phase-op "${PHASE_ARG}")
+INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.phase-op "${PHASE_ARG}")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 ```
 
@@ -152,10 +152,10 @@ Read model preferences from planning config. Null/missing values fall back to CL
 
 ```bash
 # JSON scalars from gsd-sdk query; use jq -r to strip JSON string quotes (install jq if missing)
-GEMINI_MODEL=$(gsd-sdk query config-get review.models.gemini 2>/dev/null | jq -r '.' 2>/dev/null || true)
-CLAUDE_MODEL=$(gsd-sdk query config-get review.models.claude 2>/dev/null | jq -r '.' 2>/dev/null || true)
-CODEX_MODEL=$(gsd-sdk query config-get review.models.codex 2>/dev/null | jq -r '.' 2>/dev/null || true)
-OPENCODE_MODEL=$(gsd-sdk query config-get review.models.opencode 2>/dev/null | jq -r '.' 2>/dev/null || true)
+GEMINI_MODEL=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get review.models.gemini 2>/dev/null | jq -r '.' 2>/dev/null || true)
+CLAUDE_MODEL=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get review.models.claude 2>/dev/null | jq -r '.' 2>/dev/null || true)
+CODEX_MODEL=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get review.models.codex 2>/dev/null | jq -r '.' 2>/dev/null || true)
+OPENCODE_MODEL=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get review.models.opencode 2>/dev/null | jq -r '.' 2>/dev/null || true)
 ```
 
 For each selected CLI, invoke in sequence (not parallel — avoid rate limits):
@@ -307,7 +307,7 @@ plans_reviewed: [{list of PLAN.md files}]
 
 Commit:
 ```bash
-gsd-sdk query commit "docs: cross-AI review for phase {N}" {phase_dir}/{padded_phase}-REVIEWS.md
+node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs: cross-AI review for phase {N}" {phase_dir}/{padded_phase}-REVIEWS.md
 ```
 </step>
 

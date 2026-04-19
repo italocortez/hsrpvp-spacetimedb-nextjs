@@ -143,7 +143,7 @@ Related code and decisions found in the current codebase:
 
 <step name="commit_seed">
 ```bash
-gsd-sdk query commit "docs: plant seed — {$IDEA}" .planning/seeds/SEED-{PADDED}-{slug}.md
+node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs: plant seed — {$IDEA}" .planning/seeds/SEED-{PADDED}-{slug}.md
 ```
 </step>
 

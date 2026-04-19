@@ -248,7 +248,7 @@ Update `.planning/STATE.md` if appropriate (e.g., increment total plan count).
 
 Commit the imported plan and updated files:
 ```bash
-gsd-sdk query commit "docs({phase}): import plan from {basename FILEPATH}" .planning/phases/{phase}/{plan}-PLAN.md .planning/ROADMAP.md
+node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs({phase}): import plan from {basename FILEPATH}" .planning/phases/{phase}/{plan}-PLAN.md .planning/ROADMAP.md
 ```
 
 Display completion:

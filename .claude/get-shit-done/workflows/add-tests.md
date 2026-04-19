@@ -33,7 +33,7 @@ Exit.
 Load phase operation context:
 
 ```bash
-INIT=$(gsd-sdk query init.phase-op "${PHASE_ARG}")
+INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.phase-op "${PHASE_ARG}")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 ```
 
@@ -300,7 +300,7 @@ Create a test coverage report and present to user:
 
 Record test generation in project state:
 ```bash
-gsd-sdk query state-snapshot
+node .claude/get-shit-done/bin/gsd-sdk.cjs query state-snapshot
 ```
 
 If there are passing tests to commit:

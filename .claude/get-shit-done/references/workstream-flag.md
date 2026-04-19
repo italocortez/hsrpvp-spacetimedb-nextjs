@@ -93,19 +93,19 @@ This ensures workstream scope chains automatically through the workflow:
 ## CLI Usage
 
 ```bash
-# All gsd-sdk query commands accept --ws
-gsd-sdk query state.json --ws feature-a
-gsd-sdk query find-phase 3 --ws feature-b
+# All node .claude/get-shit-done/bin/gsd-sdk.cjs query commands accept --ws
+node .claude/get-shit-done/bin/gsd-sdk.cjs query state.json --ws feature-a
+node .claude/get-shit-done/bin/gsd-sdk.cjs query find-phase 3 --ws feature-b
 
 # Session-local switching without --ws on every command
-GSD_SESSION_KEY=my-terminal-a gsd-sdk query workstream.set feature-a
-GSD_SESSION_KEY=my-terminal-a gsd-sdk query state.json
-GSD_SESSION_KEY=my-terminal-b gsd-sdk query workstream.set feature-b
-GSD_SESSION_KEY=my-terminal-b gsd-sdk query state.json
+GSD_SESSION_KEY=my-terminal-a node .claude/get-shit-done/bin/gsd-sdk.cjs query workstream.set feature-a
+GSD_SESSION_KEY=my-terminal-a node .claude/get-shit-done/bin/gsd-sdk.cjs query state.json
+GSD_SESSION_KEY=my-terminal-b node .claude/get-shit-done/bin/gsd-sdk.cjs query workstream.set feature-b
+GSD_SESSION_KEY=my-terminal-b node .claude/get-shit-done/bin/gsd-sdk.cjs query state.json
 
 # Workstream CRUD
-gsd-sdk query workstream.create <name>
-gsd-sdk query workstream.list
-gsd-sdk query workstream.status <name>
-gsd-sdk query workstream.complete <name>
+node .claude/get-shit-done/bin/gsd-sdk.cjs query workstream.create <name>
+node .claude/get-shit-done/bin/gsd-sdk.cjs query workstream.list
+node .claude/get-shit-done/bin/gsd-sdk.cjs query workstream.status <name>
+node .claude/get-shit-done/bin/gsd-sdk.cjs query workstream.complete <name>
 ```

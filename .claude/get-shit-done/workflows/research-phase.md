@@ -23,7 +23,7 @@ Resolve model for:
 @D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/references/phase-argument-parsing.md
 
 ```bash
-PHASE_INFO=$(gsd-sdk query roadmap.get-phase "${PHASE}")
+PHASE_INFO=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query roadmap.get-phase "${PHASE}")
 ```
 
 If `found` is false: Error and exit.
@@ -39,10 +39,10 @@ If exists: Offer update/view/skip options.
 ## Step 3: Gather Phase Context
 
 ```bash
-INIT=$(gsd-sdk query init.phase-op "${PHASE}")
+INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.phase-op "${PHASE}")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 # Extract: phase_dir, padded_phase, phase_number, state_path, requirements_path, context_path
-AGENT_SKILLS_RESEARCHER=$(gsd-sdk query agent-skills gsd-researcher 2>/dev/null)
+AGENT_SKILLS_RESEARCHER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-researcher 2>/dev/null)
 ```
 
 ## Step 4: Spawn Researcher

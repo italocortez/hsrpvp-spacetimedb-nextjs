@@ -130,7 +130,7 @@ Display: "◆ Scanning sessions..."
 
 Run session scan:
 ```bash
-SCAN_RESULT=$(gsd-sdk query scan-sessions --json 2>/dev/null)
+SCAN_RESULT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query scan-sessions --json 2>/dev/null)
 ```
 
 Parse the JSON output to get session count and project count.
@@ -150,7 +150,7 @@ Display: "◆ Sampling messages..."
 
 Run profile sampling:
 ```bash
-SAMPLE_RESULT=$(gsd-sdk query profile-sample --json 2>/dev/null)
+SAMPLE_RESULT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query profile-sample --json 2>/dev/null)
 ```
 
 Parse the JSON output to get the temp directory path and message count.
@@ -201,7 +201,7 @@ Display: "Using questionnaire to build your profile."
 
 **Get questions:**
 ```bash
-QUESTIONS=$(gsd-sdk query profile-questionnaire --json 2>/dev/null)
+QUESTIONS=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query profile-questionnaire --json 2>/dev/null)
 ```
 
 Parse the questions JSON. It contains 8 questions, one per dimension.
@@ -224,7 +224,7 @@ Write the answers JSON to `$ANSWERS_PATH`.
 
 **Convert answers to analysis:**
 ```bash
-ANALYSIS_RESULT=$(gsd-sdk query profile-questionnaire --answers "$ANSWERS_PATH" --json 2>/dev/null)
+ANALYSIS_RESULT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query profile-questionnaire --answers "$ANSWERS_PATH" --json 2>/dev/null)
 ```
 
 Parse the analysis JSON from the result.
@@ -271,7 +271,7 @@ Write updated analysis JSON back to `$ANALYSIS_PATH`.
 Display: "◆ Writing profile..."
 
 ```bash
-gsd-sdk query write-profile --input "$ANALYSIS_PATH" --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query write-profile --input "$ANALYSIS_PATH" --json 2>/dev/null
 ```
 
 Display: "✓ Profile written to D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/USER-PROFILE.md"
@@ -350,7 +350,7 @@ Generate selected artifacts sequentially (file I/O is fast, no benefit from para
 **For /gsd-dev-preferences (if selected):**
 
 ```bash
-gsd-sdk query generate-dev-preferences --analysis "$ANALYSIS_PATH" --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-dev-preferences --analysis "$ANALYSIS_PATH" --json 2>/dev/null
 ```
 
 Display: "✓ Generated /gsd-dev-preferences at D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/commands/gsd/dev-preferences.md"
@@ -358,7 +358,7 @@ Display: "✓ Generated /gsd-dev-preferences at D:/GitsWork/hsrpvp-spacetimedb-n
 **For CLAUDE.md profile section (if selected):**
 
 ```bash
-gsd-sdk query generate-claude-profile --analysis "$ANALYSIS_PATH" --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-claude-profile --analysis "$ANALYSIS_PATH" --json 2>/dev/null
 ```
 
 Display: "✓ Added profile section to CLAUDE.md"
@@ -366,7 +366,7 @@ Display: "✓ Added profile section to CLAUDE.md"
 **For Global CLAUDE.md (if selected):**
 
 ```bash
-gsd-sdk query generate-claude-profile --analysis "$ANALYSIS_PATH" --global --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-claude-profile --analysis "$ANALYSIS_PATH" --global --json 2>/dev/null
 ```
 
 Display: "✓ Added profile section to D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/CLAUDE.md"
@@ -446,7 +446,7 @@ rm -f "$ANALYSIS_PATH" 2>/dev/null
 - [ ] Profile written to USER-PROFILE.md via write-profile subcommand
 - [ ] Result display shows report card table and highlight reel with evidence
 - [ ] Artifact selection uses multiSelect with all options pre-selected
-- [ ] Artifacts generated sequentially via gsd-sdk query (or gsd-tools.cjs) subcommands
+- [ ] Artifacts generated sequentially via node .claude/get-shit-done/bin/gsd-sdk.cjs query (or gsd-tools.cjs) subcommands
 - [ ] Refresh diff shows changed dimensions when --refresh was used
 - [ ] Temp files cleaned up on completion
 </success_criteria>

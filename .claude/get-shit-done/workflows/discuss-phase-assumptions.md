@@ -64,9 +64,9 @@ plain-text numbered list and ask the user to type their choice number.
 Phase number from argument (required).
 
 ```bash
-INIT=$(gsd-sdk query init.phase-op "${PHASE}")
+INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.phase-op "${PHASE}")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
-AGENT_SKILLS_ANALYZER=$(gsd-sdk query agent-skills gsd-assumptions-analyzer 2>/dev/null)
+AGENT_SKILLS_ANALYZER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-assumptions-analyzer 2>/dev/null)
 ```
 
 Parse JSON for: `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`,
@@ -171,7 +171,7 @@ Structure the extracted information for use in assumption generation.
 Check if any pending todos are relevant to this phase's scope.
 
 ```bash
-TODO_MATCHES=$(gsd-sdk query todo.match-phase "${PHASE_NUMBER}")
+TODO_MATCHES=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query todo.match-phase "${PHASE_NUMBER}")
 ```
 
 Parse JSON for: `todo_count`, `matches[]`.
@@ -548,7 +548,7 @@ Write file.
 Commit phase context and discussion log:
 
 ```bash
-gsd-sdk query commit "docs(${padded_phase}): capture phase context (assumptions mode)" "${phase_dir}/${padded_phase}-CONTEXT.md" "${phase_dir}/${padded_phase}-DISCUSSION-LOG.md"
+node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs(${padded_phase}): capture phase context (assumptions mode)" "${phase_dir}/${padded_phase}-CONTEXT.md" "${phase_dir}/${padded_phase}-DISCUSSION-LOG.md"
 ```
 
 Confirm: "Committed: docs(${padded_phase}): capture phase context (assumptions mode)"
@@ -558,7 +558,7 @@ Confirm: "Committed: docs(${padded_phase}): capture phase context (assumptions m
 Update STATE.md with session info:
 
 ```bash
-gsd-sdk query state.record-session \
+node .claude/get-shit-done/bin/gsd-sdk.cjs query state.record-session \
   --stopped-at "Phase ${PHASE} context gathered (assumptions mode)" \
   --resume-file "${phase_dir}/${padded_phase}-CONTEXT.md"
 ```
@@ -566,7 +566,7 @@ gsd-sdk query state.record-session \
 Commit STATE.md:
 
 ```bash
-gsd-sdk query commit "docs(state): record phase ${PHASE} context session" .planning/STATE.md
+node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs(state): record phase ${PHASE} context session" .planning/STATE.md
 ```
 </step>
 
@@ -619,18 +619,18 @@ Check for auto-advance trigger:
 2. Sync chain flag:
    ```bash
    if [[ ! "$ARGUMENTS" =~ --auto ]]; then
-     gsd-sdk query config-set workflow._auto_chain_active false 2>/dev/null
+     node .claude/get-shit-done/bin/gsd-sdk.cjs query config-set workflow._auto_chain_active false 2>/dev/null
    fi
    ```
 3. Read chain flag and user preference:
    ```bash
-   AUTO_CHAIN=$(gsd-sdk query config-get workflow._auto_chain_active 2>/dev/null || echo "false")
-   AUTO_CFG=$(gsd-sdk query config-get workflow.auto_advance 2>/dev/null || echo "false")
+   AUTO_CHAIN=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get workflow._auto_chain_active 2>/dev/null || echo "false")
+   AUTO_CFG=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get workflow.auto_advance 2>/dev/null || echo "false")
    ```
 
 **If `--auto` flag present AND `AUTO_CHAIN` is not true:**
 ```bash
-gsd-sdk query config-set workflow._auto_chain_active true
+node .claude/get-shit-done/bin/gsd-sdk.cjs query config-set workflow._auto_chain_active true
 ```
 
 **If `--auto` flag present OR `AUTO_CHAIN` is true OR `AUTO_CFG` is true:**

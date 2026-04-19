@@ -25,7 +25,7 @@ fi
 **Run health validation:**
 
 ```bash
-gsd-sdk query validate.health $REPAIR_FLAG
+node .claude/get-shit-done/bin/gsd-sdk.cjs query validate.health $REPAIR_FLAG
 ```
 
 Parse JSON output:
@@ -112,7 +112,7 @@ If yes, re-run with --repair flag and display results.
 Re-run health check without --repair to confirm issues are resolved:
 
 ```bash
-gsd-sdk query validate.health
+node .claude/get-shit-done/bin/gsd-sdk.cjs query validate.health
 ```
 
 Report final status.

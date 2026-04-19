@@ -9,4 +9,4 @@ allowed-tools:
 
 Show the following output to the user verbatim, with no extra commentary:
 
-!`gsd-sdk query config-set-model-profile $ARGUMENTS --raw`
+!`node .claude/get-shit-done/bin/gsd-sdk.cjs query config-set-model-profile $ARGUMENTS --raw`

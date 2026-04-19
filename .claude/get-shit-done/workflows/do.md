@@ -26,7 +26,7 @@ Wait for response before continuing.
 **Check if project exists.**
 
 ```bash
-INIT=$(gsd-sdk query state.load 2>/dev/null)
+INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query state.load 2>/dev/null)
 ```
 
 Track whether `.planning/` exists — some routes require it, others don't.

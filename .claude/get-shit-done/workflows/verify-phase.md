@@ -29,7 +29,7 @@ Then verify each level against the actual codebase.
 Load phase operation context:
 
 ```bash
-INIT=$(gsd-sdk query init.phase-op "${PHASE_ARG}")
+INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.phase-op "${PHASE_ARG}")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 ```
 
@@ -37,14 +37,14 @@ Extract from init JSON: `phase_dir`, `phase_number`, `phase_name`, `has_plans`, 
 
 Then load phase details and list plans/summaries:
 ```bash
-gsd-sdk query roadmap.get-phase "${phase_number}"
+node .claude/get-shit-done/bin/gsd-sdk.cjs query roadmap.get-phase "${phase_number}"
 grep -E "^| ${phase_number}" .planning/REQUIREMENTS.md 2>/dev/null || true
 ls "$phase_dir"/*-SUMMARY.md "$phase_dir"/*-PLAN.md 2>/dev/null || true
 ```
 
 Load full milestone phases for deferred-item filtering (Step 9b):
 ```bash
-gsd-sdk query roadmap.analyze
+node .claude/get-shit-done/bin/gsd-sdk.cjs query roadmap.analyze
 ```
 
 Extract **phase goal** from ROADMAP.md (the outcome to verify, not tasks), **requirements** from REQUIREMENTS.md if it exists, and **all milestone phases** from roadmap analyze (for cross-referencing gaps against later phases).
@@ -57,7 +57,7 @@ Use `gsd-sdk query` verify handlers (or legacy gsd-tools) to extract must_haves 
 
 ```bash
 for plan in "$PHASE_DIR"/*-PLAN.md; do
-  MUST_HAVES=$(gsd-sdk query frontmatter.get "$plan" --field must_haves)
+  MUST_HAVES=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query frontmatter.get "$plan" --field must_haves)
   echo "=== $plan ===" && echo "$MUST_HAVES"
 done
 ```
@@ -71,7 +71,7 @@ Aggregate all must_haves across plans for phase-level verification.
 If no must_haves in frontmatter (MUST_HAVES returns error or empty), check for Success Criteria:
 
 ```bash
-PHASE_DATA=$(gsd-sdk query roadmap.get-phase "${phase_number}" --raw)
+PHASE_DATA=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query roadmap.get-phase "${phase_number}" --raw)
 ```
 
 Parse the `success_criteria` array from the JSON output. If non-empty:
@@ -103,11 +103,11 @@ For each truth: identify supporting artifacts → check artifact status → chec
 </step>
 
 <step name="verify_artifacts">
-Use `gsd-sdk query verify.artifacts` (or legacy gsd-tools) for artifact verification against must_haves in each PLAN:
+Use `node .claude/get-shit-done/bin/gsd-sdk.cjs query verify.artifacts` (or legacy gsd-tools) for artifact verification against must_haves in each PLAN:
 
 ```bash
 for plan in "$PHASE_DIR"/*-PLAN.md; do
-  ARTIFACT_RESULT=$(gsd-sdk query verify.artifacts "$plan")
+  ARTIFACT_RESULT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query verify.artifacts "$plan")
   echo "=== $plan ===" && echo "$ARTIFACT_RESULT"
 done
 ```
@@ -146,11 +146,11 @@ wiring or leftover code from plan revisions.
 </step>
 
 <step name="verify_wiring">
-Use `gsd-sdk query verify.key-links` (or legacy gsd-tools) for key link verification against must_haves in each PLAN:
+Use `node .claude/get-shit-done/bin/gsd-sdk.cjs query verify.key-links` (or legacy gsd-tools) for key link verification against must_haves in each PLAN:
 
 ```bash
 for plan in "$PHASE_DIR"/*-PLAN.md; do
-  LINKS_RESULT=$(gsd-sdk query verify.key-links "$plan")
+  LINKS_RESULT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query verify.key-links "$plan")
   echo "=== $plan ===" && echo "$LINKS_RESULT"
 done
 ```
