@@ -18,7 +18,12 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              // WR-04: dropped 'unsafe-eval' — modern Next prod builds do not require eval().
+              // 'unsafe-inline' retained as a fallback; a dedicated security phase will
+              // replace it with per-request nonces + 'strict-dynamic' once middleware grows
+              // nonce-generation. Audit deps before then; re-add 'unsafe-eval' ONLY if a
+              // build/runtime breakage traces to it.
+              "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
