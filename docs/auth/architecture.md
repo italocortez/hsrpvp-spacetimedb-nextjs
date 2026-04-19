@@ -193,23 +193,37 @@ Reactive callbacks: `conn.db.User.onInsert` and `conn.db.User.onUpdate` trigger 
 
 `hasDiscordIntent` (sessionStorage flag, 5-minute TTL) gates Discord linking to prevent stale NextAuth sessions from auto-linking.
 
-## Subscription Lifecycle (Phase 15.5 D-05)
+## Subscription Lifecycle (Phase 15.5 D-05, Phase 16 reshuffle)
 
 SpacetimeDB offers two complementary privacy tools for client-facing data:
 
 | Privacy Gate | Where It Runs | What It Closes |
 |--------------|---------------|----------------|
 | **Projection-based** (anonymous views) | Server — inside the view body | What a caller *sees* (field masking, row filtering by opt-in flags) |
-| **Subscription-based** (client gating) | Client — inside `useAuth.ts` | When a subscription *fires* (anonymous visitors cause zero pre-auth egress on sensitive tables) |
+| **Subscription-based** (client gating) | Client — inside the route-group render tree | When a subscription *fires* (anonymous visitors cause zero pre-auth egress on sensitive tables) |
+| **Route-group mount** (structural gating) | Client — via `app/(authed)/layout.tsx` | Whether the subscribing effect even mounts (authed-only layout never renders for unauth'd visitors) |
 
-These are not substitutes. Projection-based privacy is authoritative for any data the user has opted to share anonymously; subscription-based gating is how the client decides when to incur the bandwidth cost of a raw table subscription.
+These three gates layer. Projection-based privacy is authoritative for any data the user has opted to share anonymously. Subscription-based gating is how the client decides when to incur the bandwidth cost of a raw table subscription. Route-group mount is the structural gate Phase 16 introduced — some subscriptions don't need runtime ref bookkeeping because their owner component is only ever reachable after auth by construction.
 
-### The Two-Stage Rule (`useAuth.ts`)
+### The Two-Stage Rule (post-Phase-16)
 
-- **Stage 1 — always on:** `SELECT * FROM view_my_profile` subscribes as soon as the SpacetimeDB connection is active. The server applies the `ctx.sender` filter — anonymous callers receive 0 rows, authenticated callers receive their single merged User + UserPrivate row.
-- **Stage 2 — gated:** `SELECT * FROM user` subscribes ONLY when `currentUser != null || hadUserIdOnMount.current || hadSessionCookie.current`. The signal set was revised mid-execution (Plan 02 D-01 deviation, commit `790a39c`) from `hadTokenOnMount` (reading `SPACETIMEDB_TOKEN_KEY`) to `hadUserIdOnMount` (reading `spacetimedb_user_id`) — the SpacetimeDB SDK auto-persists an anonymous identity token on first WS connect (`app/providers.tsx:12-15`), so token presence is NOT proof of prior authentication. `spacetimedb_user_id` is only written by `setResolvedUser` after a real User row resolves, making it the correct post-auth signal. Cookie presence is a UX hint — if cookie/userId is stale/revoked, the WS handshake itself fails (`isActive` stays false) and Stage 2 never fires regardless. The Stage 2 effect's first guard is `if (!isActive) return;` (`useAuth.ts:116`), making the handshake gate authoritative.
+Phase 16 relocated the two subscribe effects from `useAuth.ts` (Phase 15.5's runtime-gated pattern) to their architectural owners. The Stage split is identical; the ownership differs.
 
-A truly anonymous visitor (no cached token, no session cookie, no resolved User) causes zero egress on the User table. The bandwidth leak that Phase 15.2 UAT Test 4 exposed — unconditional `SELECT * FROM user` pre-auth — is closed by this split.
+- **Stage 1 — always on, owned by `components/features/auth/components/AuthProvider.tsx`:** `SELECT * FROM view_my_profile` subscribes as soon as the SpacetimeDB connection is active. The effect was moved out of `useAuth.ts:72-111` (Phase 15.5 location) into `AuthProvider` during Phase 16 Plan 02 (D-03). `AuthProvider` is already a child of `SpacetimeDBProvider` in `app/providers.tsx`, so the "providers.tsx owns view_my_profile" architectural intent is satisfied structurally without touching `providers.tsx` itself. The server still applies the `ctx.sender` filter — anonymous callers receive 0 rows, authenticated callers receive their single merged User + UserPrivate row. The `onInsert` / `onUpdate` callbacks on `view_my_profile` call `triggerReadProfile` (exposed on the useAuth context as `@internal`) so useAuth remains the single authoritative reader via `readProfileFromConnection`.
+
+- **Stage 2 — gated by route-group mount, owned by `app/(authed)/layout.tsx`:** `SELECT * FROM user` subscribes only when `(authed)/layout.tsx` mounts. The effect was moved out of `useAuth.ts:115-181` (Phase 15.5 location) into the authed layout during Phase 16 Plan 02 (D-07). The route-group mount IS the new privacy gate: anonymous visitors never reach the authed layout (middleware redirects them — see "Middleware is UX-only" below — and more importantly, no authed-route render path terminates for an unauthenticated client). The 15.5 runtime ref-based `stage2Gate` check (`currentUser != null || hadUserIdOnMount.current || hadSessionCookie.current`) is retired; the structural mount IS the gate. `onInsert` / `onUpdate` callbacks on `User` call `triggerReadProfile` to refresh useAuth's resolved-user state on row changes.
+
+`useAuth.ts` retains `readProfileFromConnection` (the 3-fallback reader), login / logout / Discord-link / guest-login / soft-delete state, `guestLoginPending` UX state, and the `hadSessionCookie` + `hadUserIdOnMount` refs (now driving only the `isWaitingForData` spinner — Phase 16 D-09). It lost ONLY the two subscribe effects (Phase 16 D-10). `setProfileReady` + `triggerReadProfile` are exposed on the useAuth return shape tagged `@internal` in JSDoc — consumers outside `AuthProvider` and `(authed)/layout.tsx` MUST NOT call them.
+
+A truly anonymous visitor (no cached identity, no session cookie, no resolved User) causes zero egress on the User table. The bandwidth leak that Phase 15.2 UAT Test 4 exposed — unconditional `SELECT * FROM user` pre-auth — stays closed; Phase 16 reshuffles ownership without changing the behavior contract.
+
+### Regression Guard
+
+`test/backend/auth/auth-subscriptions.test.ts` (the Phase 15.5 D-12 harness) remains the canonical regression guard for the Stage 1 / Stage 2 contract. Phase 16 D-12 required it passes unmodified after the Plan 02 reshuffle — confirmed green 2/2 at Plan 02 landing commit and at every subsequent Phase 16 plan commit (Plans 03, 04, 05, 06).
+
+### Middleware is UX-only, not an auth trust boundary
+
+Phase 16 Plan 03 introduced `middleware.ts` with a positive-list matcher (`/profile`, `/admin-view`, `/lobby`, `/draft/:path*`) that redirects cookie-less visitors to `/`. This is UX optimization — a friendlier "please log in" nudge than letting an authed page render a logged-out shell. It is NOT an authorization gate. Real access control lives in SpacetimeDB reducer-level checks (`ensureVerifiedUser`, `ensureAdmin`) and view-level projection / anonymousView boundaries. Middleware is bypassable by any client with a stale cookie; SpacetimeDB RLS is not. See `REQUIREMENTS.md` §Out of Scope → "Middleware as auth trust boundary" for the explicit non-commitment.
 
 ### Intentional Anonymous Exceptions
 
@@ -222,7 +236,7 @@ These do NOT need Stage 2 gating — applying it would regress intentional pre-a
 
 ### Rule for Future Subscriptions
 
-Any new frontend subscription to a raw table (no projection view body) OR a per-user view MUST go through the Stage 2 gate. If a new anonymous projection view is added whose body performs the privacy filtering, it may remain `anonymousView` — document that decision in this section alongside the two existing exceptions.
+Any new frontend subscription to a raw table (no projection view body) OR a per-user view MUST be owned by `(authed)/layout.tsx` or a deeper authed-route layout (e.g., `(authed)/(match)/layout.tsx` at Phase 28), not by `useAuth` or `AuthProvider`. The route-group-mount gate is the structural default; runtime ref-based gates are only justifiable for a subscription that must fire before an authed layout mounts (no current case). If a new anonymous projection view is added whose body performs the privacy filtering, it may remain `anonymousView` at the `providers.tsx` level alongside the 7 public HSR reference tables — document that decision in this section alongside the two existing exceptions.
 
 ### Accepted Tradeoff (from 15.2 D-01 / 15.5 CONTEXT)
 
@@ -247,10 +261,11 @@ Any new frontend subscription to a raw table (no projection view body) OR a per-
 | UAT verify-work confirmed all 9 cascade + archive behaviors on live maincloud. Two issues surfaced for follow-up (scoped to Phase 15.5 via seed `.planning/seeds/phase-15.5-auth-gated-user-subscription.md`): (1) D-06's `spacetimedb.view()` does NOT reject anonymous subscribers at the framework level — per SpacetimeDB docs, `view` vs `anonymousView` only differs in whether `ctx.sender()` is exposed, not in who can call; the runtime flip is a no-op without an explicit body-level auth check. (2) The actual bandwidth-leak surface is `useAuth.ts:38`'s unconditional `SELECT * FROM user` subscription pre-auth — no client ever subscribes to `view_user_directory`. Phase 15.5 will delete the dead view and gate the raw `user` subscription behind auth state | Phase 15.2 execution | 2026-04-16 |
 | Phase 15.5: `view_user_directory` deleted (dead code — zero client subscribers, cosmetic 15.2 D-06 flip retired); `view_public_accounts` renamed to `view_public_hsr_accounts` (D-04) — underlying table is HsrAccount, name now explicit; `useAuth.ts` subscription split into Stage 1 (`view_my_profile`, always) and Stage 2 (`SELECT * FROM user`, gated on `currentUser != null \|\| hadUserIdOnMount.current \|\| hadSessionCookie.current`) — closes the UAT Test 4 bandwidth leak; gate signal swapped from `hadTokenOnMount` (SDK auto-persists anonymous identity token, false-positive) to `hadUserIdOnMount` (`spacetimedb_user_id`, only written by `setResolvedUser`) per Plan 02 D-01 deviation `790a39c`; new `guestLoginPending` state drives a narrow Login-button spinner scoped strictly to the `loginAsGuest` pending window (D-03); `docs/auth/architecture.md` Subscription Lifecycle section codifies the projection-vs-subscription privacy distinction (D-05) with `view_lobby_browser` and `view_public_hsr_accounts` named as intentional anonymous exceptions | Phase 15.5 execution | 2026-04-16 |
 | Phase 15.5 verify-work harmonization: doc wording aligned with shipped `useAuth.ts` identifier `hadUserIdOnMount` (was `hadTokenOnMount` in pre-execution drafts); Subscription Lifecycle Stage 2 gate description expanded with the SDK token-auto-persist rationale and the `useAuth.ts:116` `if (!isActive) return;` first-guard reference | Phase 15.5 verify-work | 2026-04-17 |
+| Phase 16 reshuffle: Subscription Lifecycle ownership relocated — Stage 1 (`view_my_profile`) moved from `useAuth.ts:72-111` to `components/features/auth/components/AuthProvider.tsx` (D-03); Stage 2 (`SELECT * FROM user`) moved from `useAuth.ts:115-181` to `app/(authed)/layout.tsx` (D-07); route-group mount replaces 15.5's ref-based `stage2Gate` check as the structural gate (D-07). `useAuth.ts` retains `readProfileFromConnection` + login/logout/Discord-link/guest-login/soft-delete state only; `setProfileReady` + `triggerReadProfile` exposed as `@internal` on the auth context. D-12 regression guard `test/backend/auth/auth-subscriptions.test.ts` confirmed green unmodified across all Phase 16 plan commits. `middleware.ts` (Plan 03 new) clarified as UX-only redirect — NOT an auth trust boundary (real access control remains at SpacetimeDB reducer/view level). | Phase 16 execution | 2026-04-18 |
 
 ---
 
-*Last updated: 2026-04-17*
-*Feature owner: Phase 01 / Phase 12*
+*Last updated: 2026-04-18*
+*Feature owner: Phase 01 / Phase 12 / Phase 16*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)
