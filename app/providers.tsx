@@ -1,7 +1,7 @@
 'use client';
 
 import { SessionProvider } from "next-auth/react";
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { SpacetimeDBProvider } from 'spacetimedb/react';
 import { DbConnection, ErrorContext } from '../src/module_bindings';
 import { Identity } from 'spacetimedb';
@@ -44,6 +44,29 @@ export function Providers({ children }: { children: React.ReactNode }) {
         .onConnectError(onConnectError),
     []
   );
+
+  // Phase 16 Plan 04 — Service Worker registration (D-19).
+  // Empty dep array: run once per mount (Pitfall 7 — dep-drift causes multi-register).
+  useEffect(() => {
+    const shouldRegister =
+      process.env.NODE_ENV === 'production' ||
+      process.env.NEXT_PUBLIC_ENABLE_SW === 'true';
+
+    if (!shouldRegister) {
+      console.log('[SW] skip register: NODE_ENV=' + process.env.NODE_ENV);
+      return;
+    }
+    if (!('serviceWorker' in navigator)) {
+      console.log('[SW] skip register: serviceWorker API unavailable');
+      return;
+    }
+
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => console.log('[SW] registered, scope=' + reg.scope))
+      .catch((err) => console.error('[SW] register failed:', err));
+  }, []);
+
   // we wrap everything inside the session provider so that the session is available to the client
   return (
     <SessionProvider>
