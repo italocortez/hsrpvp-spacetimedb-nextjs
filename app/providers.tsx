@@ -63,7 +63,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     navigator.serviceWorker
       .register('/sw.js')
-      .then((reg) => console.log('[SW] registered, scope=' + reg.scope))
+      .then((reg) => {
+        console.log('[SW] registered, scope=' + reg.scope);
+        // IN-11: log when a new SW version is waiting so a VERSION bump reaches
+        // existing tabs predictably. The new SW activates on full tab close.
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          nw?.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[SW] update available — next reload will activate new version');
+            }
+          });
+        });
+      })
       .catch((err) => console.error('[SW] register failed:', err));
   }, []);
 

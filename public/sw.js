@@ -40,7 +40,13 @@ self.addEventListener('fetch', (event) => {
       if (cached) return cached;
       const response = await fetch(event.request);
       if (response.ok && event.request.method === 'GET') {
-        cache.put(event.request, response.clone());
+        // WR-03: extend SW lifetime for the cache write WITHOUT delaying the response.
+        // A rejected cache.put (quota exceeded, Safari private mode) is swallowed with a
+        // warning rather than escaping as an unhandled promise rejection.
+        event.waitUntil(
+          cache.put(event.request, response.clone())
+            .catch((err) => console.warn('[SW] cache.put failed', err))
+        );
       }
       return response;
     })
