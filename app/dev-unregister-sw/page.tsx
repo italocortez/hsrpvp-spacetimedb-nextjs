@@ -35,12 +35,34 @@ export default function DevUnregisterSW() {
   };
 
   return (
-    <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
+    <div style={{ padding: 32, fontFamily: 'sans-serif', maxWidth: 720 }}>
       <h1>Dev: Unregister Service Worker</h1>
-      <p>{status}</p>
-      <button onClick={unregister} style={{ padding: '12px 24px' }}>
+      <p style={{ marginTop: 16, marginBottom: 24, lineHeight: 1.5, opacity: 0.85 }}>
+        Clears all registered Service Workers and Cache Storage for this origin,
+        then redirects to <code>/</code>.
+        {' '}
+        <strong>Before reloading, also remove <code>NEXT_PUBLIC_ENABLE_SW=true</code> from <code>.env.local</code></strong>
+        {' '}
+        (or set it to <code>false</code>) — otherwise <code>providers.tsx</code> will re-register the SW on the next page load and you&apos;ll be right back where you started.
+      </p>
+      <button
+        onClick={unregister}
+        style={{
+          padding: '12px 24px',
+          fontSize: 15,
+          fontWeight: 600,
+          color: '#fff',
+          background: '#b91c1c',
+          border: '1px solid #991b1b',
+          borderRadius: 6,
+          cursor: 'pointer',
+        }}
+      >
         Unregister all SW + clear all caches
       </button>
+      <p style={{ marginTop: 16, minHeight: '1.5em', fontFamily: 'monospace', opacity: 0.8 }}>
+        {status === 'idle' ? ' ' : status}
+      </p>
     </div>
   );
 }
