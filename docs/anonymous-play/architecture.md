@@ -1,147 +1,135 @@
-# Anonymous Play
+# Anonymous Play -- Architecture
 
-Architecture documentation for server-enforced anonymous mode at the data write layer.
+Last updated: 2026-04-09
 
-*Created Phase 6 execution -- write-layer enforcement, label computation, tournament inheritance, roster visibility.*
+## Overview
 
----
+Anonymous play is enforced at the server write layer, not at the client display layer. When a lobby has `isAnonymousPlayers=true` or `isAnonymousSpectators=true`, reducers that write to real-time tables replace the real userId with a sentinel value (0) and attach a deterministic label computed from LobbyMember data. The frontend subscribes to views that further enforce anonymization per-viewer -- no conditional branching needed on the client.
 
-## Write-Layer Enforcement Pattern
+There are no anonymous-play-specific tables. This feature is implemented entirely through the write-layer pattern in existing table reducers, the label computation helper, and server-side views.
 
-Anonymous mode is enforced at the server write layer, not at the client display layer. When a lobby has `isAnonymousPlayers=true` or `isAnonymousSpectators=true`, reducers that write to real-time tables replace the real userId with a sentinel value and attach a deterministic label.
-
-### Sentinel Pattern (D-01)
-
-Real-time tables use `userId=0` as a sentinel to hide identity:
-
-| Table | Enforcement | userId Column | anonymousLabel Column |
-|-------|------------|---------------|----------------------|
-| LobbyCursorEvent | broadcast_cursor | senderUserId=0 | anonymousLabel (D-62) |
-| MatchSessionStep | step reducers | actorUserId=0 | anonymousLabel (D-62) |
-| ChatMessage | send_chat | userId=0 | anonymousLabel (already existed) |
-
-The server resolves the caller's identity from `ctx.sender` for authorization, then writes the sentinel userId and computed label to the row. Clients subscribed to these tables cannot see the real identity.
-
-### History Tables Keep Real UserIds (D-02)
-
-History tables written during finalization preserve real userIds for post-match replay:
-
-- **MatchParticipantHistory** -- real userId + displayName
-- **MatchSessionStepHistory** -- real actorUserId + actorDisplayName
-
-Identity is revealed only after the match ends, when history data becomes available.
-
-### Match Result Tables Keep Real UserIds (D-03)
-
-Ephemeral match result tables are server-internal and not player-facing:
-
-- **MatchResultRecord** -- real userId fields
-- **MatchResultParticipant** -- real userId
-
-These records are deleted during finalization. They never contain anonymous labels because they are never displayed to other participants.
-
----
-
-## Label Computation (D-04, D-05)
-
-### computeAnonymousLabel(ctx, lobbyId, userId)
-
-Deterministic label computed from LobbyMember data -- no new table required.
-
-**Key file:** `spacetimedb/src/helpers/anonymousLabels.ts`
-
-### Algorithm
-
-1. Look up the caller's LobbyMember row for the given lobbyId
-2. Determine role: isCoach, isReferee, or player/spectator from teamSlot
-3. Compute label based on role + team side + join order among peers
-
-### Label Formats (D-04)
-
-| Role | teamSlot | Label Format | Examples |
-|------|----------|-------------|----------|
-| Player | Blue | "Blue-{N}" | Blue-1, Blue-2, Blue-3 |
-| Player | Red | "Red-{N}" | Red-1, Red-2, Red-3 |
-| Coach | Blue | "Coach-Blue" | Coach-Blue |
-| Coach | Red | "Coach-Red" | Coach-Red |
-| Spectator | Spectator | "Spectator-{N}" | Spectator-1, Spectator-2 |
-
-N is derived from join order among members with the same teamSlot and role.
-
-### Stability Guarantee (D-05)
-
-Labels are deterministic from the same LobbyMember data. Same teamSlot + same join order always produces the same label. Stable across reconnects -- no randomness, no stored state.
-
----
-
-## Anonymous Toggles (D-07, D-08)
-
-Two independent toggles on the Lobby table control anonymity:
-
-| Column | Scope | Default |
-|--------|-------|---------|
-| isAnonymousPlayers | Players + coaches | false |
-| isAnonymousSpectators | Spectators | false |
-
-### Configuration Rules
-
-- Set at lobby creation, locked after (D-08)
-- Host controls anonymous setting, not referee (D-08)
-- Referee operates within the lobby config
-- Non-anonymous lobby: no sentinel, no label -- real userId written to all tables
-
----
-
-## Tournament Inheritance (D-06)
+## Table Relationships
 
 ```
-Tournament
-  isAnonymousDefault ──> Lobby.isAnonymousPlayers (when isTournamentControlled=true)
-  isAnonymousSpectators ──> Lobby.isAnonymousSpectators (when isTournamentControlled=true)
+Lobby (id: u32 autoInc PK)
+  +-- isAnonymousPlayers: bool  (anonymizes players + coaches)
+  +-- isAnonymousSpectators: bool  (anonymizes spectators)
+  +-- isTournamentControlled: bool  (inherits from Tournament when true)
+
+Tournament (id: u32 autoInc PK)
+  +-- isAnonymousDefault: bool  -> propagates to Lobby.isAnonymousPlayers when isTournamentControlled
+  +-- isAnonymousSpectators: bool  -> propagates to Lobby.isAnonymousSpectators when isTournamentControlled
+
+Real-time tables with write-layer anonymization:
+  LobbyCursorEvent
+    +-- senderUserId: u32  (0 when anonymous)
+    +-- anonymousLabel: string?  (computed label e.g. "Blue-1")
+
+  MatchSessionStep
+    +-- actorUserId: u32  (0 when anonymous)
+    +-- anonymousLabel: string?
+
+  ChatMessage
+    +-- senderUserId: u32  (0 when anonymous)
+    +-- anonymousLabel: string?
+
+History tables (real userIds preserved -- gated by views):
+  MatchParticipantHistory
+    +-- userId: u32  (real userId for post-match replay)
+    +-- displayName: string
+
+  MatchSessionStepHistory
+    +-- actorUserId: u32  (real userId)
+    +-- actorDisplayName: string
 ```
 
-When `Lobby.isTournamentControlled=true`:
-- Anonymous settings propagate from the tournament's `isAnonymousDefault` and `isAnonymousSpectators`
-- No separate override column on Lobby -- tournament config is the source of truth
-- `isTournamentControlled` also gates other inherited settings (requireOwnership, rosterVisibility)
+## Reducer Flows
+
+### broadcast_cursor(lobbyId, x, y, pageId)
+1. Resolve caller from `ctx.sender` via UserIdentity
+2. Find `LobbyMember` for caller in this lobby
+3. If `lobby.isAnonymousPlayers || lobby.isAnonymousSpectators`:
+   - Compute `computeAnonymousLabel(ctx, lobbyId, userId)` from LobbyMember join order
+   - Write `senderUserId=0`, `anonymousLabel=computedLabel`
+4. Otherwise: write `senderUserId=userId`, `anonymousLabel=undefined`
+5. Insert `LobbyCursorEvent` row
+
+### send_chat_message(lobbyId, content, metadata?)
+1. Resolve caller, find lobby, find LobbyMember
+2. Validate content length (<=500 chars) and metadata JSON
+3. If lobby anonymous settings active: compute label, write `senderUserId=0`, `anonymousLabel`
+4. Rolling window: delete oldest if >50 messages per lobby
+5. Insert `ChatMessage` row
+
+### Draft step reducers (pick, ban, etc.)
+1. Resolve caller, find lobby
+2. If `lobby.isAnonymousPlayers`: compute label, write `actorUserId=0`, `anonymousLabel`
+3. Insert `MatchSessionStep` row with sentinel or real userId
+
+### computeAnonymousLabel(ctx, lobbyId, userId) -- helper
+1. Look up the caller's `LobbyMember` row for the given lobbyId
+2. Determine role from `lobbySlot`: BlueCoach/RedCoach -> Coach, BluePlayer/RedPlayer -> Player, Spectator
+3. Check `isReferee` flag
+4. Compute label from slot + join order among peers with same slot:
+   - BluePlayer -> "Blue-{N}" (N = join order among BluePlayer members)
+   - RedPlayer -> "Red-{N}"
+   - BlueCoach -> "Coach-Blue"
+   - RedCoach -> "Coach-Red"
+   - Spectator -> "Spectator-{N}"
+5. Return label string (deterministic, stable across reconnects)
+
+## View Definitions
+
+### Real-time views (view_my_* prefix -- scoped to caller's lobbies)
+
+| View | Source Table | Anonymizes |
+|------|-------------|------------|
+| `view_my_lobby_chat` | ChatMessage | senderUserId, uses stored anonymousLabel |
+| `view_my_lobby_members` | LobbyMember | userId, resolves displayName or label |
+| `view_my_match_steps` | MatchSessionStep | actorUserId |
+| `view_my_match_participants` | MatchResultParticipant | userId |
+
+`shouldAnonymize()` decides per-row whether to mask identity based on lobby anonymous settings and caller's team membership. Non-anonymous lobbies: views return real data. Anonymous lobbies: views mask opponent data. Same subscription either way.
+
+### History views (post-match -- gated by isPubliclyVisible)
+
+| View | Source Table | Gate |
+|------|-------------|------|
+| `view_match_history` | MatchSessionHistory | isPubliclyVisible OR participated |
+| `view_match_participant_history` | MatchParticipantHistory | same |
+| `view_match_step_history` | MatchSessionStepHistory | same |
+
+All three share `buildVisibleMatchIds()` for consistent visibility logic. Tournament match history stays hidden until `revealTournamentHistory` sets `isPubliclyVisible=true` at tournament completion.
+
+### Frontend subscription queries
+```
+SELECT * FROM view_my_lobby_chat
+SELECT * FROM view_my_lobby_members
+SELECT * FROM view_my_match_steps
+SELECT * FROM view_my_match_participants
+SELECT * FROM view_match_history
+SELECT * FROM view_match_participant_history
+SELECT * FROM view_match_step_history
+```
+
+## Phase History
+
+| Decision | Source | Date |
+|----------|--------|------|
+| Write-layer sentinel pattern -- server replaces userId with 0 on real-time tables (D-01) | Phase 06 CONTEXT.md | 2026-03-07 |
+| History tables keep real userIds for post-match replay (D-02) | Phase 06 CONTEXT.md | 2026-03-07 |
+| Match result tables are server-internal ephemeral records, never displayed during match (D-03) | Phase 06 CONTEXT.md | 2026-03-07 |
+| Team-based deterministic labels from LobbyMember data (D-04, D-05) | Phase 06 CONTEXT.md | 2026-03-07 |
+| Tournament anonymous inheritance via isTournamentControlled (D-06) | Phase 06 CONTEXT.md | 2026-03-07 |
+| Independent toggles for players vs spectators (D-07) | Phase 06 CONTEXT.md | 2026-03-07 |
+| Anonymous mode locked after lobby creation, host-controlled (D-08) | Phase 06 CONTEXT.md | 2026-03-07 |
+| Bracket anonymization is client-side courtesy only -- not a security boundary (D-09) | Phase 06 CONTEXT.md | 2026-03-07 |
+| Real-time views (D-92) and history views (D-93) added; frontend subscribes to views, not raw tables | Phase 06 execution | 2026-03-07 |
+| Normalized to standard template | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-## Bracket Anonymization (D-09)
-
-Tournament bracket anonymization is **client-side only** -- a courtesy, not a security boundary.
-
-- Client shows "Seed-N" labels when `tournament.isAnonymousDefault=true`
-- Bracket tables (BracketMatch, BracketRound) remain public
-- A savvy user could cross-reference 4 tables to deanonymize (acceptable trade-off)
-- No server enforcement -- bracket data is not sensitive enough to warrant per-user views
-
----
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `spacetimedb/src/helpers/anonymousLabels.ts` | computeAnonymousLabel helper |
-| `spacetimedb/src/reducers/cursor.ts` | broadcast_cursor with anonymous enforcement |
-| `spacetimedb/src/tables/lobbyCursorEvent.ts` | LobbyCursorEvent (anonymousLabel column) |
-| `spacetimedb/src/tables/matchSessionStep.ts` | MatchSessionStep (anonymousLabel column) |
-| `spacetimedb/src/tables/chatMessage.ts` | ChatMessage (anonymousLabel column -- pre-existing) |
-| `spacetimedb/src/tables/lobbyMember.ts` | LobbyMember (team side + join order for label computation) |
-
----
-
-## Key Decisions
-
-- Write-layer sentinel pattern -- server replaces userId with 0 on real-time tables (D-01)
-- History tables reveal identity in replay after match ends (D-02)
-- Match result tables are server-internal ephemeral records (D-03)
-- Team-based deterministic labels from LobbyMember data (D-04, D-05)
-- Tournament anonymous inheritance via isTournamentControlled (D-06)
-- Independent toggles for players vs spectators (D-07)
-- Anonymous mode locked after lobby creation, host-controlled (D-08)
-- Bracket anonymization is client-side courtesy only (D-09)
-
----
+*Last updated: 2026-04-09*
+*Feature owner: Phase 06*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

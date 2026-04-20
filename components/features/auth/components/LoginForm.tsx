@@ -6,17 +6,27 @@ import styles from './LoginForm.module.css';
 interface LoginFormProps {
     loginGuest: () => void;
     loginDiscord: () => void;
+    guestLoginPending: boolean;
 }
 
-export default function LoginForm({ loginGuest, loginDiscord }: LoginFormProps) {
+export default function LoginForm({ loginGuest, loginDiscord, guestLoginPending }: LoginFormProps) {
     return (
         <div className={styles.login_container}>
             <div className={styles.guest_section}>
                 <button
                     onClick={loginGuest}
                     className={styles.btn_guest}
+                    disabled={guestLoginPending}
+                    aria-busy={guestLoginPending}
                 >
-                    Play as Guest
+                    {guestLoginPending ? (
+                        <>
+                            <span className={styles.spinner} aria-hidden="true" />
+                            <span>Signing in…</span>
+                        </>
+                    ) : (
+                        'Play as Guest'
+                    )}
                 </button>
             </div>
 

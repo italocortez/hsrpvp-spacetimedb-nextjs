@@ -2,7 +2,8 @@
 // Community-wide character aggregates (pick rate, ban rate, win rate).
 // Per D-34: GlobalCharacterStat is public, incremented during finalization.
 
-import { auditInsert, auditUpdate } from './auditColumns';
+import { auditUpdate } from './auditColumns';
+import { insertWithAudit } from './auditHelpers';
 
 /**
  * Increments GlobalCharacterStat for a character action (pick or ban).
@@ -49,7 +50,7 @@ export function incrementGlobalCharacterStat(
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
-        ctx.db.GlobalCharacterStat.insert({
+        ctx.db.GlobalCharacterStat.insert(insertWithAudit(ctx, {
             characterName,
             gameMode,
             draftMode,
@@ -61,7 +62,6 @@ export function incrementGlobalCharacterStat(
             wins: isPick && isWin ? 1 : 0,
             losses: isPick && !isWin ? 1 : 0,
             matchesPlayed: isPick ? 1 : 0,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }

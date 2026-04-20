@@ -5,7 +5,8 @@
 //   - incrementBanStat: timesBannedInMatch (for ALL participants per banned character)
 //   - incrementFacedStat: timesFaced, winsAgainst, lossesAgainst (opponent characters)
 
-import { auditInsert, auditUpdate } from './auditColumns';
+import { auditUpdate } from './auditColumns';
+import { insertWithAudit } from './auditHelpers';
 
 /**
  * Finds an existing PlayerCharacterStat row by full composite PK.
@@ -79,7 +80,7 @@ export function incrementPlayerCharacterStat(
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
-        ctx.db.PlayerCharacterStat.insert({
+        ctx.db.PlayerCharacterStat.insert(insertWithAudit(ctx, {
             userId,
             characterName,
             gameMode,
@@ -91,8 +92,7 @@ export function incrementPlayerCharacterStat(
             matchesPlayed: 1,
             wins: isWin ? 1 : 0,
             losses: !isWin ? 1 : 0,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }
 
@@ -134,7 +134,7 @@ export function incrementBanStat(
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
-        ctx.db.PlayerCharacterStat.insert({
+        ctx.db.PlayerCharacterStat.insert(insertWithAudit(ctx, {
             userId,
             characterName,
             gameMode,
@@ -144,8 +144,7 @@ export function incrementBanStat(
             teamSize,
             ...defaultCounters(),
             timesBannedInMatch: 1,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }
 
@@ -187,7 +186,7 @@ export function incrementFacedStat(
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
-        ctx.db.PlayerCharacterStat.insert({
+        ctx.db.PlayerCharacterStat.insert(insertWithAudit(ctx, {
             userId,
             characterName: opponentCharacterName,
             gameMode,
@@ -199,7 +198,6 @@ export function incrementFacedStat(
             timesFaced: 1,
             winsAgainst: didWin ? 1 : 0,
             lossesAgainst: !didWin ? 1 : 0,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }

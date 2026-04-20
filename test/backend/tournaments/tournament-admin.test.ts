@@ -16,6 +16,8 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 describe.skipIf(!hasServerToken())('Tournament Admin', () => {
   let admin: TestHarness;
@@ -25,49 +27,11 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
   let nonMod: TestHarness;
 
   let tournamentId: number;
+  const openedTournamentIds: number[] = [];
 
   const adminTournaments = () => [...admin.conn.db.Tournament.iter()].filter(t => t.organizerId === admin.userId);
 
   /** Helper to promote a harness user to a role via server connection */
-  async function promoteToRole(h: TestHarness, roleTag: string) {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    if (!user) throw new Error(`User ${h.userId} not found in cache`);
-    const username = user.username;
-
-    const { DbConnection } = await import('@/src/module_bindings');
-    const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN || '';
-    const uri = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-    const db = process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1';
-
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
-      DbConnection.builder()
-        .withUri(uri)
-        .withDatabaseName(db)
-        .withToken(serverToken)
-        .onConnect(async (serverConn) => {
-          try {
-            await serverConn.reducers.serverSetRole({ username, roleTag });
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            setTimeout(resolve, 500);
-          } catch (err) {
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            reject(err);
-          }
-        })
-        .onConnectError((_ctx: any, err: any) => {
-          clearTimeout(timeout);
-          reject(new Error(`Server connection failed: ${err}`));
-        })
-        .onDisconnect(() => {})
-        .build();
-    });
-
-    await h.sync(1000);
-  }
-
   beforeAll(async () => {
     admin = await createVerifiedTestHarness();
     target = await createVerifiedTestHarness();
@@ -88,7 +52,7 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -96,6 +60,7 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -103,26 +68,32 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await admin.sync();
 
     const mine = adminTournaments();
     tournamentId = mine[mine.length - 1].id;
+    openedTournamentIds.push(tournamentId);
 
     // Advance to Registration
     await admin.call.advanceTournamentStage({ tournamentId, nextStage: 'Registration' });
     await admin.sync();
 
     // Register player1 and player2
-    await player1.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await player1.call.registerForTournament({ tournamentId });
     await player1.sync();
-    await player2.call.registerForTournament({ tournamentId, teamGroupId: 0 });
+    await player2.call.registerForTournament({ tournamentId });
     await player2.sync();
 
     await admin.sync();
   }, 30000);
 
   afterAll(async () => {
+    // D-03: strict cleanup per resource opened
+    for (const tid of openedTournamentIds) {
+      await cleanupTournament(admin, tid);
+    }
     await admin?.disconnect();
     await target?.disconnect();
     await player1?.disconnect();
@@ -140,7 +111,7 @@ describe.skipIf(!hasServerToken())('Tournament Admin', () => {
       });
       await admin.sync();
 
-      const p = [...admin.conn.db.TournamentParticipant.iter()].find(
+      const p = [...admin.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tournamentId && p.userId === player1.userId
       );
       expect(p).toBeDefined();

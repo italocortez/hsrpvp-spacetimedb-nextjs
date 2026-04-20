@@ -6,14 +6,27 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { createVerifiedTestHarness, hasServerToken, expectReducerError, queryPrivateTable, type TestHarness } from '../../shared/connection';
 import { nextUid, resetUidCounter } from '../../shared/fixtures';
 
 describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
   let h: TestHarness;
 
   /** Return only this test user's accounts (avoids cross-user pollution from shared DB) */
-  const myAccounts = () => [...h.conn.db.HsrAccount.iter()].filter(a => a.userId === h.userId);
+  const myAccounts = async () => {
+    const rows = await queryPrivateTable(`SELECT * FROM hsr_account WHERE user_id = ${h.userId}`);
+    return rows.map(r => ({
+      id: Number(r.id),
+      userId: Number(r.user_id),
+      uid: r.uid.replace(/"/g, ''),
+      region: r.region.replace(/"/g, ''),
+      displayLabel: r.display_label.replace(/"/g, ''),
+      isActive: r.is_active === 'true',
+      isRosterPublic: r.is_roster_public === 'true',
+      isRatingPublic: r.is_rating_public === 'true',
+      isDuplicateUid: r.is_duplicate_uid === 'true',
+    }));
+  };
 
   beforeAll(async () => {
     resetUidCounter();
@@ -32,20 +45,20 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
       await h.call.createHsrAccount({ uid, displayLabel: 'Asia Account' });
       await h.sync();
 
-      const created = myAccounts().find((a) => a.uid === uid);
+      const created = (await myAccounts()).find((a) => a.uid === uid);
       expect(created).toBeDefined();
       expect(created!.region).toBe('Asia');
       expect(created!.displayLabel).toBe('Asia Account');
     });
 
     it('auto-activates the first account for a user', async () => {
-      const myAccount = myAccounts().find((a) => a.uid === '800000099');
+      const myAccount = (await myAccounts()).find((a) => a.uid === '800000099');
       expect(myAccount).toBeDefined();
       expect(myAccount!.isActive).toBe(true);
     });
 
     it('defaults isRatingPublic to false', async () => {
-      const created = myAccounts().find((a) => a.uid === '800000099');
+      const created = (await myAccounts()).find((a) => a.uid === '800000099');
       expect(created!.isRatingPublic).toBe(false);
       // isDuplicateUid may be true if UID exists from a prior test run (shared DB)
     });
@@ -69,7 +82,7 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
       await h.call.createHsrAccount({ uid, displayLabel: '' });
       await h.sync();
 
-      const created = myAccounts().find((a) => a.uid === uid);
+      const created = (await myAccounts()).find((a) => a.uid === uid);
       expect(created).toBeDefined();
       expect(created!.displayLabel).toMatch(/^Account \d+$/);
     });
@@ -80,7 +93,7 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
   describe('5-account limit', () => {
     it('enforces maximum 5 accounts per user', async () => {
       // Fill up to 5
-      const currentCount = myAccounts().length;
+      const currentCount = (await myAccounts()).length;
       for (let i = currentCount; i < 5; i++) {
         await h.call.createHsrAccount({ uid: nextUid(), displayLabel: `Fill ${i}` });
         await h.sync(300);
@@ -98,7 +111,7 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
 
   describe('update_hsr_account', () => {
     it('updates label and visibility fields', async () => {
-      const target = myAccounts()[0];
+      const target = (await myAccounts())[0];
 
       await h.call.updateHsrAccount({
         hsrAccountId: target.id,
@@ -108,14 +121,15 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
       });
       await h.sync();
 
-      const updated = h.conn.db.HsrAccount.id.find(target.id);
-      expect(updated?.displayLabel).toBe('Updated Label');
-      expect(updated?.isRosterPublic).toBe(true);
-      expect(updated?.isRatingPublic).toBe(true);
+      const updatedRow = (await queryPrivateTable(`SELECT * FROM hsr_account WHERE id = ${target.id}`))[0];
+      expect(updatedRow).toBeDefined();
+      expect(updatedRow.display_label.replace(/"/g, '')).toBe('Updated Label');
+      expect(updatedRow.is_roster_public).toBe('true');
+      expect(updatedRow.is_rating_public).toBe('true');
     });
 
     it('rejects empty display label', async () => {
-      const target = myAccounts()[0];
+      const target = (await myAccounts())[0];
 
       const msg = await expectReducerError(
         h.call.updateHsrAccount({
@@ -133,7 +147,7 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
 
   describe('set_active_hsr_account', () => {
     it('activates target and deactivates others', async () => {
-      const accounts = myAccounts();
+      const accounts = await myAccounts();
       if (accounts.length < 2) return;
 
       const inactive = accounts.find((a) => !a.isActive);
@@ -142,11 +156,12 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
       await h.call.setActiveHsrAccount({ hsrAccountId: inactive.id });
       await h.sync();
 
-      const refreshed = h.conn.db.HsrAccount.id.find(inactive.id);
-      expect(refreshed?.isActive).toBe(true);
+      const refreshedRow = (await queryPrivateTable(`SELECT * FROM hsr_account WHERE id = ${inactive.id}`))[0];
+      expect(refreshedRow).toBeDefined();
+      expect(refreshedRow.is_active).toBe('true');
 
       // All others should be inactive
-      for (const acc of myAccounts()) {
+      for (const acc of await myAccounts()) {
         if (acc.id !== inactive.id) {
           expect(acc.isActive).toBe(false);
         }
@@ -154,7 +169,7 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
     });
 
     it('is a no-op when called on already-active account', async () => {
-      const active = myAccounts().find((a) => a.isActive);
+      const active = (await myAccounts()).find((a) => a.isActive);
       if (!active) return;
 
       // Should succeed without error
@@ -167,7 +182,7 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
   describe('delete_hsr_account', () => {
     it('deletes account and cascades character rows', async () => {
       // Use an existing account (we're at the 5-account limit after the previous test)
-      const accounts = myAccounts();
+      const accounts = await myAccounts();
       const account = accounts[accounts.length - 1]; // pick the last one
       if (!account) return;
 
@@ -175,13 +190,11 @@ describe.skipIf(!hasServerToken())('HSR Account CRUD', () => {
       await h.sync();
 
       // Account should be gone
-      const deleted = h.conn.db.HsrAccount.id.find(account.id);
-      expect(deleted).toBeNull();
+      const deletedRows = await queryPrivateTable(`SELECT * FROM hsr_account WHERE id = ${account.id}`);
+      expect(deletedRows.length).toBe(0);
 
       // No orphan characters
-      const orphans = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-        (c) => c.hsrAccountId === account.id
-      );
+      const orphans = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${account.id}`);
       expect(orphans).toHaveLength(0);
     });
   });

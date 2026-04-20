@@ -16,7 +16,6 @@ export const bracketMatchColumns = {
     gameMode: GameMode,
     winnerAdvantage: t.u8(),
     scheduledAt: t.timestamp().optional(),
-    lobbyId: t.u32().optional(),
     checkInRequired: t.bool(),
     winnerTeamId: t.u32().optional(),
     resultStatus: MatchResultStatus,
@@ -31,6 +30,6 @@ export const BracketMatch = table({
     public: true,
     indexes: [
         { accessor: 'tournament_id', algorithm: 'btree', columns: ['tournamentId'] },
-        { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        // lobby_id index removed (D-43): relationship now navigated via Lobby.bracketMatchId with bracket_match_id btree on Lobby
     ],
 }, bracketMatchColumns);

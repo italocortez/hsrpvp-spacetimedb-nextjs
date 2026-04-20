@@ -1,15 +1,18 @@
 import { table, t } from 'spacetimedb/server';
-import { ParticipationRole, TeamLabel } from '../types/enums';
+import { LobbySlot } from '../types/enums';
 
 export const lobbyMemberColumns = {
     lobbyId: t.u32(),
     userId: t.u32(),
 
     isOnline: t.bool(),
-    participationRole: ParticipationRole, // Player vs Spectator
-    isReferee: t.bool(),    // Admin powers within this lobby
-    isCoach: t.bool(),
-    teamSlot: TeamLabel,    // Blue, Red, or Spectator
+    lobbySlot: LobbySlot,   // BluePlayer, BlueCoach, RedPlayer, RedCoach, or Spectator
+    isReferee: t.bool(),     // Admin powers within this lobby
+    isConfirmed: t.bool(),   // Ready-up per D-29
+    isCaptain: t.bool(),     // Captain designation per D-30
+    voluntarilyLeft: t.bool(),                // D-31: player voluntarily left active match
+    disconnectedAt: t.timestamp().optional(), // D-08: timestamp of disconnect event
+    disconnectPoolRemainingMs: t.u32(),       // D-10: remaining disconnect pool in ms (init 300000 at draft start)
     createdById: t.u32(),
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),

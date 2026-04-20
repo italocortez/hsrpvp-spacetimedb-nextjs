@@ -19,7 +19,7 @@ export const hsrAccountColumns = {
 
 export const HsrAccount = table({
     name: 'hsr_account',
-    public: true,
+    // D-20: Intentionally NOT public — raw subscriptions replaced by server-side views
     indexes: [
         { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
         { accessor: 'uid', algorithm: 'btree', columns: ['uid'] },

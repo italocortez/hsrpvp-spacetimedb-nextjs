@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import styles from "@/app/(landing-page)/teambuilder/page.module.css";
+import styles from "./Teamslot.module.css";
 import { ResolvedTeamMember } from "./LoadoutManager";
 import { Character, CharacterRank, Eidolons, Lightcone, LightconeRank, SuperImpositions, Synergy } from "../types/enums";
 import { iconMaps } from "../hooks/useIconMaps";
 import { ClearIcon, LoadingSpinner, SynergyIcon } from "@/components/globals/icons";
 import { LightconeSelector } from "../drafting/components/LightconeSelector";
+import { NOT_FOUND_IMAGE, handleImageError } from "@/lib/image-fallback";
 
 interface TeamSlotProps {
 	index: number;
@@ -30,6 +31,9 @@ interface TeamSlotProps {
 	onDragLeave: () => void;
 	onDragEnd: () => void;
 	onDrop: (index: number, e: React.DragEvent) => void;
+
+	// Roster-level hover signal from TeamRoster (D-06) — toggles .clearButtonVisible
+	isRosterHovered: boolean;
 }
 
 export function TeamSlot({
@@ -50,6 +54,7 @@ export function TeamSlot({
 	onDragLeave,
 	onDragEnd,
 	onDrop,
+	isRosterHovered,
 }: TeamSlotProps) {
 	const [isHovered, setIsHovered] = useState<boolean>(false);
 
@@ -102,33 +107,25 @@ export function TeamSlot({
 			onDrop={(e) => onDrop(index, e)}
 		>
 			{/* Path background icon */}
-			<img 
-                // These are for <Image />. This combination leaves the dimensions up to the CSS.
-                // width={0}
-                // height={0}
-                // sizes="100vw"
-
-                src={pathIconUrl} 
-                className={styles.path} 
-                alt={character.path} 
+			<img
+                src={pathIconUrl || NOT_FOUND_IMAGE}
+                className={styles.path}
+                alt={character.path}
+                onError={handleImageError}
             />
 
 			{/* Portrait */}
 			<img
-                // These are for <Image />. This combination leaves the dimensions up to the CSS.
-                // width={0}
-                // height={0}
-                // sizes="100vw"
-
-				src={character.imageUrl || ""}
+				src={character.imageUrl || NOT_FOUND_IMAGE}
 				className={styles.portrait}
 				alt={character.displayName}
+				onError={handleImageError}
 			/>
 
 			{/* Remove button */}
 			<button
 				onClick={() => onRemove(index)}
-				className={styles.clearButton}
+				className={`${styles.clearButton}${isRosterHovered ? ` ${styles.clearButtonVisible}` : ""}`}
 				title={`Remove ${character.displayName}`}
 			>
 				<ClearIcon />
@@ -138,14 +135,10 @@ export function TeamSlot({
 			<div className={styles.character}>
 				<div className={styles.icons}>
 					<img
-                        // These are for <Image />. This combination leaves the dimensions up to the CSS.
-                        // width={0}
-                        // height={0}
-                        // sizes="100vw"
-
-						src={elementIconUrl}
+						src={elementIconUrl || NOT_FOUND_IMAGE}
 						className={styles.element}
 						alt={character.element}
+						onError={handleImageError}
 					/>
 					{hasActivePairing && <SynergyIcon />}
 				</div>

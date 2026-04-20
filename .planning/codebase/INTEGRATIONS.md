@@ -1,149 +1,141 @@
 # External Integrations
 
-**Analysis Date:** 2026-03-15
+**Analysis Date:** 2026-04-12
 
 ## APIs & External Services
 
-**Discord OAuth:**
-- Service: Discord OAuth 2.0
-- What it's used for: User authentication and identity linking
-- SDK/Client: `next-auth` with `DiscordProvider`
-- Auth: Environment variables `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`
-- Scope: 'identify' (provides user ID, username, avatar)
-- Flow: Configured in `app/api/auth/authOptions.ts`, handled by `app/api/auth/[...nextauth]/route.ts`
-- Webhook: Discord session info received via `/api/auth/[...nextauth]/callback` (standard NextAuth OAuth callback)
+**Real-Time Database:**
+- SpacetimeDB Maincloud — Primary data store and real-time sync engine for all game state
+  - SDK/Client: `spacetimedb` ^2.1.0 (npm, upgraded in Phase 12.2)
+  - Client transport: WebSocket (`wss://maincloud.spacetimedb.com`)
+  - Client auth: SpacetimeDB identity token stored in `localStorage` under key `${HOST}/${DB_NAME}/auth_token`
+  - Server auth: `SPACETIMEDB_SERVER_TOKEN` env var (trusted server identity)
+  - Dashboard: `https://spacetimedb.com/@<username>/hsrpvp-spacetimedb-nextjs-test1`
+  - Module: 67 tables, 44 reducer files, 32 named views
+  - Energy budget: egress is dominant cost on maincloud; bandwidth-critical design patterns in use (views filter private data server-side)
+
+**Discord:**
+- Discord OAuth — User identity/authentication only (no bot, no server management, no DMs)
+  - SDK/Client: `next-auth/providers/discord` (part of `next-auth` ^4.24.13)
+  - Auth: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`
+  - Scope requested: `identify` only (fetches Discord user ID, username, avatar)
+  - CDN access: `https://cdn.discordapp.com` (avatar images; explicitly allowed in CSP)
+  - Bridge: Custom `POST /api/auth/link-discord` endpoint connects Discord OAuth session to SpacetimeDB identity
+  - Backend reducer: `server_link_provider` (renamed from `server_link_discord` in Phase 12; generic OAuth bridge)
+  - Storage: Discord ID and username stored in `UserPrivate` table (`public: false`) — NOT in the public `User` table (CR-01)
+
+**Imgur (Indirect):**
+- Screenshot hosting for match results — no API integration
+  - Pattern: Players upload screenshots to Imgur externally; paste URLs into match result submission
+  - Storage: Screenshot URLs stored as strings in `MatchResultGame` table (`screenshotUrl` column)
+  - No server-side validation of URL format or Imgur API used
+
+**Vercel:**
+- Next.js hosting and deployment
+  - Deployment: `vercel deploy` or Vercel Git integration
+  - No special Vercel-specific configuration detected beyond standard Next.js `output` behavior
+  - CSP header allows `wss://maincloud.spacetimedb.com` for client WebSocket connections
 
 ## Data Storage
 
 **Databases:**
-- SpacetimeDB (primary)
-  - Type: Real-time multiplayer database with automatic sync
-  - Connection: WebSocket (wss:// or ws://)
-  - Host: `NEXT_PUBLIC_SPACETIMEDB_HOST` and `SPACETIMEDB_HOST` environment variables
-  - Default: `wss://maincloud.spacetimedb.com`
-  - Client: `spacetimedb` npm package v2.0.3
-  - ORM/Access: Generated TypeScript bindings from module (in `src/module_bindings/`)
-  - Tables: User, UserIdentity, ServerIdentity, HsrCharacter, HsrLightcone, HsrCharacterCost, HsrLightconeCost, HsrSynergyCost, Lobby, LobbyMember, LobbyCursorEvent, MatchSession, MatchSessionStep, MatchSessionHistory, MatchSessionStepHistory, UserDeletionJob
-  - Module location: `spacetimedb/` directory with TypeScript source code
+- SpacetimeDB (cloud-hosted, maincloud)
+  - Client connection: `NEXT_PUBLIC_SPACETIMEDB_HOST` + `NEXT_PUBLIC_SPACETIMEDB_DB_NAME`
+  - Server connection: `SPACETIMEDB_HOST` + `SPACETIMEDB_DB_NAME`
+  - Client SDK pattern: `DbConnection.builder().withConfirmedReads(false).build()` (Phase 12.2)
+  - Server singleton: `lib/spacetimedb-server.ts` — lazy `Promise<DbConnection>` with reconnect on disconnect
+  - Schema: 67 tables covering users, tournaments, lobbies, drafts, match results, MMR, achievements, calendar, chat, leaderboards, rosters, cost sets
 
 **File Storage:**
-- Not detected - Application does not integrate with cloud file storage (S3, Firebase Storage, etc.)
-- Avatar storage: Likely via Discord CDN URLs from user profile
+- None — no S3, GCS, or local file upload integration; Imgur URLs stored as plain strings
 
 **Caching:**
-- In-memory via SpacetimeDB's automatic subscription system (tables synced to client)
-- LocalStorage: Auth token caching (`SPACETIMEDB_TOKEN_KEY` in `app/providers.tsx`)
+- None — no Redis, Memcached, or Next.js cache directives in use; all real-time state from SpacetimeDB subscriptions
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- NextAuth v4.24.13 with Discord OAuth
-- Implementation: Session-based authentication via `next-auth`
-  - Client sessions stored via `SessionProvider` from `next-auth/react`
-  - Server validation via `getServerSession()` in API routes
-  - SpacetimeDB identities managed via custom identities table and reducers
+- Discord OAuth via NextAuth.js v4
+  - Implementation: `app/api/auth/authOptions.ts` — `DiscordProvider` configuration
+  - Session route: `app/api/auth/[...nextauth]/` (catch-all NextAuth handler)
+  - Session wrapping: `SessionProvider` in `app/providers.tsx`
+  - Required env: `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+  - Discord ID exposed on session object as `session.user.id` (set in `session` callback; requires `(session.user as any).id` due to v4 type gap)
 
-**Identity Management:**
-- SpacetimeDB Identity tokens: Stored in localStorage as `{host}/{db}/auth_token`
-- Server identity: Separate `SPACETIMEDB_SERVER_TOKEN` for trusted server-side operations
-- User identity mapping: `UserIdentity` table links SpacetimeDB identities to user records
-- Discord linking: Handled by `server_link_discord` reducer in `spacetimedb/src/reducers/server.ts`
+**SpacetimeDB Identity Linking:**
+- Custom bridge: `POST /api/auth/link-discord` (`app/api/auth/link-discord/route.ts`)
+  - Flow: Client completes Discord OAuth → calls endpoint with SpacetimeDB `callerIdentityHex` → server verifies NextAuth session → calls `server_link_provider` reducer via trusted server identity connection
+  - Trusted server identity registered via `scripts/register-server.ts`; token stored as `SPACETIMEDB_SERVER_TOKEN`
+  - Phase 12 change: Discord data now stored in `UserPrivate` (private table), not `User` public table
 
-**Session Encryption:**
-- `NEXTAUTH_SECRET` - Environment variable for NextAuth session encryption
+**Guest Auth:**
+- SpacetimeDB `login_as_guest` reducer — anonymous identity without Discord link; `User.isGuest = true`
+
+**Auth Profile Resolution (Phase 12.2):**
+1. Primary: `conn.db.view_my_profile.iter()` — per-user view merging `User` + `UserPrivate` (includes `discordId`, `discordUsername`)
+2. Fallback: `conn.db.User.iter()` subscription cache
+3. Dead: `view_my_identity` SQL subscription removed (D-17)
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- Not detected - No integration with Sentry, DataDog, or similar error tracking services
-- Basic logging: Console.log statements in client and server code
+- None — no Sentry, Datadog, or similar error tracking service
 
 **Logs:**
-- Client: Browser console logs
-- Server: Next.js stdout/stderr
-- SpacetimeDB: Server logs via `spacetime logs <db-name>` CLI command
+- `console.log` / `console.error` throughout `lib/spacetimedb-server.ts` and component hooks
+- SpacetimeDB server-side logs accessible via `spacetime logs <db-name>` CLI
+- Log prefixes for structured identification: `[DISCONNECT]`, `[IDENTITY_GC]`
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Primary: Vercel (implied by Next.js setup and project skills for `vercel-deploy` and `vercel-logs`)
-- SpacetimeDB: maincloud.spacetimedb.com (default hosted service)
+- Vercel (Next.js frontend)
+- SpacetimeDB maincloud (backend module)
 
 **CI Pipeline:**
-- Not detected - No GitHub Actions, GitLab CI, or similar configured
+- Not present — no `.github/workflows/`, no CircleCI, no GitLab CI config
 
-**Database Publishing:**
-- SpacetimeDB module publishing to maincloud via `npm run spacetime:publish`
-- Database name: `hsrpvp-spacetimedb-nextjs-test1` (in `spacetime.json`)
-- Server: maincloud (https://spacetimedb.com/@<username>/<database-name>)
+**Deployment flow:**
+1. Backend: `spacetime publish --module-path spacetimedb --server maincloud` (from root)
+2. Generate bindings: `npm run spacetime:generate` (regenerates `src/module_bindings/`)
+3. Frontend: `vercel deploy` or git push to Vercel-connected branch
 
 ## Environment Configuration
 
-**Required env vars:**
-- Frontend-accessible (NEXT_PUBLIC_*):
-  - `NEXT_PUBLIC_SPACETIMEDB_HOST` - SpacetimeDB WebSocket URL
-  - `NEXT_PUBLIC_SPACETIMEDB_DB_NAME` - Database name
-- Server-only (not exposed to client):
-  - `SPACETIMEDB_HOST` - Server-side connection URL
-  - `SPACETIMEDB_DB_NAME` - Database name for server
-  - `SPACETIMEDB_SERVER_TOKEN` - Trusted server identity token (generated by `scripts/register-server.ts`)
-  - `DISCORD_CLIENT_ID` - OAuth app ID
-  - `DISCORD_CLIENT_SECRET` - OAuth app secret
-  - `NEXTAUTH_SECRET` - Session encryption key
-  - `NEXTAUTH_URL` - Callback URL for OAuth (default: `http://localhost:3000`)
+**Required env vars (from `.env.example`):**
+- `NEXT_PUBLIC_SPACETIMEDB_HOST` — WebSocket URL for client-side connection (e.g., `wss://maincloud.spacetimedb.com`)
+- `NEXT_PUBLIC_SPACETIMEDB_DB_NAME` — Database name exposed to browser
+- `SPACETIMEDB_HOST` — WebSocket URL for server-side (API route) connection
+- `SPACETIMEDB_DB_NAME` — Database name for server-side connection
+- `SPACETIMEDB_SERVER_TOKEN` — Auth token for the trusted server identity (never expose to client; rotated by `post-publish.ts` after `--clear-database`)
+- `DISCORD_CLIENT_ID` — Discord OAuth app client ID
+- `DISCORD_CLIENT_SECRET` — Discord OAuth app client secret
+- `NEXTAUTH_SECRET` — NextAuth session signing secret
+- `NEXTAUTH_URL` — Public URL of the app (e.g., `http://localhost:3001` for dev)
 
 **Secrets location:**
-- `.env.local` - Local development secrets (not committed)
-- `.env.example` - Template of required variables (committed)
-- Production: Vercel Environment Variables dashboard
+- `.env.local` (git-ignored, never committed per CLAUDE.md rule)
+- `.env.example` is the canonical reference and IS committed
 
-## Webhooks & Callbacks
+## Client-Side Integration Architecture
 
-**Incoming:**
-- Discord OAuth callback: `/api/auth/[...nextauth]/callback/discord` (handled by NextAuth automatically)
-- Custom Discord linking endpoint: `/api/auth/link-discord` (POST) in `app/api/auth/link-discord/route.ts`
+Provider stack in `app/providers.tsx`:
 
-**Outgoing:**
-- Discord API calls: OAuth token exchange (handled by NextAuth)
-- SpacetimeDB module binding: Reducer invocations (transactional calls to `server_link_discord`, `delete_guest_account`, etc.)
+1. `SessionProvider` (NextAuth) — Discord session management
+2. `HeroUIProvider` (HeroUI) — UI theme and component registry
+3. `SpacetimeDBProvider` (SpacetimeDB SDK 2.1.0) — Real-time WebSocket connection; built with `.withConfirmedReads(false)` since Phase 12.2
+4. `AuthProvider` (custom) — Bridges Discord session + SpacetimeDB identity; reads `view_my_profile` as primary auth source
+5. `GameDataProvider` (custom) — App-level game data subscriptions (characters, lightcones, costs)
 
-## SpacetimeDB Integration Details
+## Out of Scope Integrations
 
-**Client Connection:**
-- Location: `lib/spacetimedb.ts` - Configuration constants
-- Provider: `SpacetimeDBProvider` from `spacetimedb/react` in `app/providers.tsx`
-- Connection builder: `DbConnection.builder()` with:
-  - URI: SpacetimeDB host URL
-  - Database name: From environment
-  - Token: Retrieved from localStorage on client, passed on initialization
-  - Callbacks: `onConnect`, `onDisconnect`, `onConnectError`
-
-**Server Connection:**
-- Location: `lib/spacetimedb-server.ts` - Singleton server connection
-- Usage: Called by API routes like `app/api/auth/link-discord/route.ts`
-- Authentication: Uses `SPACETIMEDB_SERVER_TOKEN` for trusted operations
-- Lazy initialization: First call triggers WebSocket connection, cached for reuse
-
-**Module Bindings:**
-- Location: `src/module_bindings/` - Auto-generated from SpacetimeDB module
-- Generation command: `npm run generate` or `npm run spacetime:generate`
-- Types exported: `DbConnection`, `ErrorContext`, reducers, and table schemas
-
-## Security Posture
-
-**Content Security Policy (CSP):**
-- Configured in `next.config.ts`
-- Allows connections to:
-  - `wss://maincloud.spacetimedb.com` (SpacetimeDB WebSocket)
-  - `ws://localhost:*` (Local dev SpacetimeDB)
-  - `https://discord.com` and `https://cdn.discordapp.com` (Discord OAuth and assets)
-- Restricts: script execution to `'self'`, frame embedding to `'none'`
-
-**Token Management:**
-- SpacetimeDB tokens stored in localStorage (client)
-- Server tokens stored in environment variables only (never exposed to client)
-- NextAuth session secrets encrypted with `NEXTAUTH_SECRET`
+The following integrations were explicitly descoped:
+- **HoYoverse API** — roster import deferred; API availability uncertain
+- **Computer vision** — screenshot roster import deferred; high complexity
+- **Voice/video chat** — out of platform scope
+- **Payment/monetization** — not needed
+- **Email notifications** — not planned
 
 ---
 
-*Integration audit: 2026-03-15*
+*Integration audit: 2026-04-12 (regenerated from 2026-04-09; Phase 12.3 added no new external integrations — changes were internal-only: rosterMutations helper, schema columns, D-G/D-H guards; Phase 14 added global-setup.ts which uses spacetime CLI publish internally)*

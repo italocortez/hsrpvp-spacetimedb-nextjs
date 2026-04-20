@@ -11,7 +11,6 @@ export const EVENT_TABLES: ReadonlySet<string> = new Set([
 // Derived by listing all tables where public: true and event is not true.
 export const PUBLIC_TABLES = [
     'User',
-    'UserIdentity',
     'HsrCharacter',
     'HsrLightcone',
     'HsrCharacterCost',
@@ -32,9 +31,9 @@ export type PublicTableName = typeof PUBLIC_TABLES[number];
 export const UPSERT_TABLE_COLUMNS = {
     HsrCharacter: ['name', 'displayName', 'aliases', 'rarity', 'path', 'element', 'role', 'imageUrl'],
     HsrLightcone: ['name', 'displayName', 'aliases', 'path', 'rarity', 'imageUrl', 'posX', 'posY', 'width'],
-    HsrCharacterCost: ['characterName', 'gameMode', 'classicCosts', 'auctionBaseBid'],
-    HsrLightconeCost: ['lightconeName', 'classicCosts', 'auctionBaseBid'],
-    HsrSynergyCost: ['sourceName', 'targetName', 'gameMode', 'costModifier'],
+    HsrCharacterCost: ['characterName', 'gameMode', 'draftMode', 'costs'],
+    HsrLightconeCost: ['lightconeName', 'gameMode', 'draftMode', 'costs'],
+    HsrSynergyCost: ['sourceName', 'targetName', 'gameMode', 'draftMode', 'costModifier'],
 } as const;
 
 export type UpsertTableName = keyof typeof UPSERT_TABLE_COLUMNS;
@@ -43,7 +42,7 @@ export type UpsertTableName = keyof typeof UPSERT_TABLE_COLUMNS;
 export const TABLE_ENUM_COLUMNS: Record<UpsertTableName, Record<string, string>> = {
     HsrCharacter: { path: 'path', element: 'element', role: 'role' },
     HsrLightcone: { path: 'path' },
-    HsrCharacterCost: { gameMode: 'gameMode' },
-    HsrLightconeCost: {},
-    HsrSynergyCost: { gameMode: 'gameMode' },
+    HsrCharacterCost: { gameMode: 'gameMode', draftMode: 'draftMode' },
+    HsrLightconeCost: { gameMode: 'gameMode', draftMode: 'draftMode' },
+    HsrSynergyCost: { gameMode: 'gameMode', draftMode: 'draftMode' },
 };

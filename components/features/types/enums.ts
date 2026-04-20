@@ -102,9 +102,9 @@ export const DRAFT_MODE_VARIANTS = ['Classic', 'Auction'] as const;
 
 export const BAN_MODE_VARIANTS = ['None', 'Two', 'Four', 'Six'] as const;
 
-export const LOBBY_STAGE_VARIANTS = ['Waiting', 'Drafting', 'Finished'] as const;
+export const LOBBY_STAGE_VARIANTS = ['Waiting', 'Drafting', 'Equipping', 'Scoring', 'Finished'] as const;
 
-export const PARTICIPATION_ROLE_VARIANTS = ['Player', 'Spectator'] as const;
+export const PARTICIPATION_ROLE_VARIANTS = ['Player', 'Coach'] as const;
 
 export const TEAM_LABEL_VARIANTS = ['Spectator', 'Blue', 'Red'] as const;
 

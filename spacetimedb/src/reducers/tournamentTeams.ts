@@ -1,11 +1,12 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { transferTournamentCaptain } from '../helpers/tournamentHelpers';
+import { insertWithAudit } from '../helpers/auditHelpers';
 
 // ─── create_tournament_team ───────────────────────────────────────────────────
 // Creates a tournament-scoped team for the calling user (captain).
-// The creator is set as captain and their TournamentParticipant is updated to Team type.
+// Per D-20: reads TournamentEnrolled to verify registration, inserts TournamentTeamMember.
 
 export const create_tournament_team = spacetimedb.reducer(
     {
@@ -32,42 +33,35 @@ export const create_tournament_team = spacetimedb.reducer(
             throw new SenderError('Cannot create teams in a solo tournament.');
         }
 
-        // Player must be registered in the tournament
-        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
-        if (!participant) {
+        // Player must be registered in the tournament (TournamentEnrolled)
+        const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([tournamentId, user.id])][0];
+        if (!enrolled) {
             throw new SenderError('You must be registered in the tournament before creating a team.');
         }
 
-        // Player must not already be on a team
-        if (participant.teamGroupId !== undefined && participant.teamGroupId !== 0) {
+        // Player must not already be on a team (no TournamentTeamMember row for this tournament)
+        const existingMembership = [...ctx.db.TournamentTeamMember.by_tournament_and_user.filter([tournamentId, user.id])][0];
+        if (existingMembership) {
             throw new SenderError('You are already on a team in this tournament.');
         }
 
-        // Player must not already captain a team in this tournament
-        const existingCaptained = [...ctx.db.TournamentTeam.captain_user_id.filter(user.id)]
-            .find((team: any) => team.tournamentId === tournamentId);
-        if (existingCaptained) {
-            throw new SenderError('You already captain a team in this tournament.');
-        }
-
         // Insert the team row
-        const newTeam = ctx.db.TournamentTeam.insert({
+        const newTeam = ctx.db.TournamentTeam.insert(insertWithAudit(ctx, {
             id: 0,
             tournamentId,
             name: trimmedName,
             captainUserId: user.id,
-            ...auditInsert(ctx, user.id),
-        } as any);
+            seedNumber: undefined,
+        }, user.id));
 
         const teamId = newTeam.id;
 
-        // Update captain's participant row: set teamGroupId
-        ctx.db.TournamentParticipant.delete(participant);
-        ctx.db.TournamentParticipant.insert({
-            ...participant,
-            teamGroupId: teamId,
-            ...auditUpdate(ctx, participant, user.id),
-        } as any);
+        // Insert TournamentTeamMember row for the captain (D-20)
+        ctx.db.TournamentTeamMember.insert(insertWithAudit(ctx, {
+            teamId,
+            userId: user.id,
+            tournamentId,
+        }, user.id));
     }
 );
 
@@ -90,14 +84,15 @@ export const request_join_team = spacetimedb.reducer(
             throw new SenderError('Teams can only be joined during the Registration stage.');
         }
 
-        // User must be registered in the same tournament
-        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([team.tournamentId, user.id])][0];
-        if (!participant) {
+        // User must be registered in the same tournament (TournamentEnrolled)
+        const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([team.tournamentId, user.id])][0];
+        if (!enrolled) {
             throw new SenderError('You must be registered in the tournament before joining a team.');
         }
 
-        // User must not already be on a team
-        if (participant.teamGroupId !== undefined && participant.teamGroupId !== 0) {
+        // User must not already be on a team (no TournamentTeamMember for this tournament)
+        const existingMembership = [...ctx.db.TournamentTeamMember.by_tournament_and_user.filter([team.tournamentId, user.id])][0];
+        if (existingMembership) {
             throw new SenderError('You are already on a team in this tournament.');
         }
 
@@ -107,16 +102,16 @@ export const request_join_team = spacetimedb.reducer(
             throw new SenderError('You already have a pending request to join this team.');
         }
 
-        ctx.db.TournamentTeamRequest.insert({
+        ctx.db.TournamentTeamRequest.insert(insertWithAudit(ctx, {
             teamId,
             userId: user.id,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
 // ─── accept_team_request ──────────────────────────────────────────────────────
 // Captain accepts a join request, adding the player to the team.
+// Per D-20: inserts TournamentTeamMember for the accepted user.
 
 export const accept_team_request = spacetimedb.reducer(
     {
@@ -135,28 +130,31 @@ export const accept_team_request = spacetimedb.reducer(
         const request = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([teamId, userId])][0];
         if (!request) throw new SenderError('Join request not found.');
 
-        // Check current team member count
+        // Check current team member count via TournamentTeamMember
         const tournament = ctx.db.Tournament.id.find(team.tournamentId);
         if (!tournament) throw new SenderError('Tournament not found.');
-        const memberCount = [...ctx.db.TournamentParticipant.tournament_id.filter(team.tournamentId)]
-            .filter((p: any) => p.teamGroupId === teamId && !p.isWaitlisted).length;
+        const memberCount = [...ctx.db.TournamentTeamMember.team_id.filter(teamId)].length;
         if (memberCount >= tournament.teamSize) {
             throw new SenderError('Team is already full.');
         }
 
-        // Delete the request row (transactional — existence = pending)
+        // Delete the accepted request row (transactional — existence = pending)
         ctx.db.TournamentTeamRequest.delete(request);
 
-        // Update the accepted player's TournamentParticipant: set teamGroupId
-        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([team.tournamentId, userId])][0];
-        if (!participant) throw new SenderError('Participant record not found.');
+        // Clean up user's other pending requests to other teams in this tournament
+        const otherTeams = [...ctx.db.TournamentTeam.tournament_id.filter(team.tournamentId)];
+        for (const otherTeam of otherTeams) {
+            if (otherTeam.id === teamId) continue;
+            const otherReq = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([otherTeam.id, userId])][0];
+            if (otherReq) ctx.db.TournamentTeamRequest.delete(otherReq);
+        }
 
-        ctx.db.TournamentParticipant.delete(participant);
-        ctx.db.TournamentParticipant.insert({
-            ...participant,
-            teamGroupId: teamId,
-            ...auditUpdate(ctx, participant, caller.id),
-        } as any);
+        // Insert TournamentTeamMember row for the accepted user (D-20)
+        ctx.db.TournamentTeamMember.insert(insertWithAudit(ctx, {
+            teamId,
+            userId,
+            tournamentId: team.tournamentId,
+        }, caller.id));
     }
 );
 
@@ -187,7 +185,10 @@ export const reject_team_request = spacetimedb.reducer(
 
 // ─── leave_tournament_team ────────────────────────────────────────────────────
 // Leaves a tournament team.
-// The captain cannot leave — they must disband the team instead.
+// Per D-20, D-22, D-23, D-24:
+//   - Deletes TournamentTeamMember row.
+//   - If captain: transfer captain to next lowest userId member.
+//   - If last member after delete: destroy team (enrolled members stay enrolled, teamless).
 
 export const leave_tournament_team = spacetimedb.reducer(
     {
@@ -199,30 +200,35 @@ export const leave_tournament_team = spacetimedb.reducer(
         const team = ctx.db.TournamentTeam.id.find(teamId);
         if (!team) throw new SenderError('Team not found.');
 
-        // Captain cannot leave (must disband)
-        if (team.captainUserId === user.id) {
-            throw new SenderError('Captain cannot leave the team. Use disband_tournament_team to disband it.');
-        }
-
-        // Verify user is a member of this team
-        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([team.tournamentId, user.id])][0];
-        if (!participant) throw new SenderError('Participant record not found.');
-        if (participant.teamGroupId !== teamId) {
+        // Verify user is a member of this team via TournamentTeamMember
+        const ttm = [...ctx.db.TournamentTeamMember.by_tournament_and_user.filter([team.tournamentId, user.id])][0];
+        if (!ttm || ttm.teamId !== teamId) {
             throw new SenderError('You are not a member of this team.');
         }
 
-        // Reset: clear teamGroupId
-        ctx.db.TournamentParticipant.delete(participant);
-        ctx.db.TournamentParticipant.insert({
-            ...participant,
-            teamGroupId: undefined,
-            ...auditUpdate(ctx, participant, user.id),
-        } as any);
+        if (team.captainUserId === user.id) {
+            // Captain leaving: attempt captain-transfer first
+            const transferred = transferTournamentCaptain(ctx, teamId, user.id, user.id);
+            // Delete the captain's TTM row
+            ctx.db.TournamentTeamMember.delete(ttm);
+
+            if (!transferred) {
+                // No other members — destroy the team (D-24 enrolled stay enrolled)
+                for (const req of [...ctx.db.TournamentTeamRequest.team_id.filter(teamId)]) {
+                    ctx.db.TournamentTeamRequest.delete(req);
+                }
+                ctx.db.TournamentTeam.id.delete(teamId);
+            }
+        } else {
+            // Non-captain leaving: delete TTM row only (user stays enrolled, D-24)
+            ctx.db.TournamentTeamMember.delete(ttm);
+        }
     }
 );
 
 // ─── disband_tournament_team ──────────────────────────────────────────────────
-// Captain disbands the team: resets all members, deletes pending requests, deletes team.
+// Captain disbands the team: deletes all TournamentTeamMember rows, pending requests, and team.
+// All former members stay enrolled and teamless per D-24.
 // Only allowed in Registration stage.
 
 export const disband_tournament_team = spacetimedb.reducer(
@@ -244,16 +250,9 @@ export const disband_tournament_team = spacetimedb.reducer(
             throw new SenderError('Teams can only be disbanded during the Registration stage.');
         }
 
-        // Reset all members: clear teamGroupId
-        const members = [...ctx.db.TournamentParticipant.tournament_id.filter(team.tournamentId)]
-            .filter((p: any) => p.teamGroupId === teamId);
-        for (const member of members) {
-            ctx.db.TournamentParticipant.delete(member);
-            ctx.db.TournamentParticipant.insert({
-                ...member,
-                teamGroupId: undefined,
-                ...auditUpdate(ctx, member, user.id),
-            } as any);
+        // Delete ALL TournamentTeamMember rows for this team (members stay enrolled, D-24)
+        for (const member of [...ctx.db.TournamentTeamMember.team_id.filter(teamId)]) {
+            ctx.db.TournamentTeamMember.delete(member);
         }
 
         // Delete all requests for this team

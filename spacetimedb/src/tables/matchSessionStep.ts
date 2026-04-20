@@ -1,16 +1,17 @@
 import { table, t } from 'spacetimedb/server';
-import { ActionType, TeamLabel } from '../types/enums';
+import { ActionType, TeamSide } from '../types/enums';
 import { StepPayload } from '../types/structs';
 
 export const matchSessionStepColumns = {
     id: t.u32().primaryKey().autoInc(),
 
     lobbyId: t.u32(),      // FK to Lobby/MatchSession
-    sequence: t.u32(),     // 1, 2, 3... (Strict ordering)
+    gameNumber: t.u8(),    // 1-indexed game number within the series (per D-13); game 1 = 1
+    sequence: t.u32(),     // 1, 2, 3... (Strict ordering within the game)
 
     actorUserId: t.u32(), // Who performed the action (persistent User ID)
     anonymousLabel: t.string().optional(),
-    actorSlot: TeamLabel,  // Blue/Red/Spectator
+    actorSlot: TeamSide,  // Blue/Red/Spectator
 
     action: ActionType,    // Pick, Ban, Bid...
 
@@ -28,5 +29,8 @@ export const MatchSessionStep = table({
     indexes: [
         // Fast lookup: "Get full history for Lobby 123"
         { accessor: 'lobby_id', algorithm: 'btree', columns: ['lobbyId'] },
+        // Phase 15 WR-07: Replaces admin_delete_row's full-table scan when guarding
+        // user-deletion against active match involvement.
+        { accessor: 'by_actor_user', algorithm: 'btree', columns: ['actorUserId'] },
     ]
 }, matchSessionStepColumns);

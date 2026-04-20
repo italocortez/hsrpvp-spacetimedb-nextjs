@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import {
     type BracketMatchDescriptor,
     generateSingleElimBracket,
@@ -27,7 +27,7 @@ function insertBracketMatches(
     // Pass 1: Insert all matches with null FKs, build positionKey -> insertedId map
     const idMap = new Map<string, number>();
     for (const desc of descriptors) {
-        const row = ctx.db.BracketMatch.insert({
+        const row = ctx.db.BracketMatch.insert(insertWithAudit(ctx, {
             id: 0,
             tournamentId: tournament.id,
             roundNumber: desc.roundNumber,
@@ -48,8 +48,7 @@ function insertBracketMatches(
             resultStatus: desc.winnerTeamId
                 ? { tag: 'Validated', value: {} } as any
                 : { tag: 'Pending', value: {} } as any,
-            ...auditInsert(ctx, userId),
-        } as any);
+        }, userId));
         idMap.set(desc.positionKey, row.id);
     }
 
@@ -65,13 +64,10 @@ function insertBracketMatches(
             const nextLoserId = desc.nextLoserRef ? idMap.get(desc.nextLoserRef) : undefined;
 
             if (nextWinnerId !== undefined || nextLoserId !== undefined) {
-                ctx.db.BracketMatch.id.update({
-                    ...row,
+                ctx.db.BracketMatch.id.update(updateWithAudit(ctx, row, {
                     nextWinnerMatchId: nextWinnerId ?? row.nextWinnerMatchId,
                     nextLoserMatchId: nextLoserId ?? row.nextLoserMatchId,
-                    lastModifiedById: userId,
-                    lastModifiedDate: ctx.timestamp,
-                } as any);
+                }, userId));
             }
         }
     }
@@ -89,28 +85,22 @@ function insertBracketMatches(
 
             // Place BYE winner in the appropriate slot of the next match
             if (!nextMatch.team1Id) {
-                ctx.db.BracketMatch.id.update({
-                    ...nextMatch,
+                ctx.db.BracketMatch.id.update(updateWithAudit(ctx, nextMatch, {
                     team1Id: desc.winnerTeamId,
-                    lastModifiedById: userId,
-                    lastModifiedDate: ctx.timestamp,
-                } as any);
+                }, userId));
             } else if (!nextMatch.team2Id) {
-                ctx.db.BracketMatch.id.update({
-                    ...nextMatch,
+                ctx.db.BracketMatch.id.update(updateWithAudit(ctx, nextMatch, {
                     team2Id: desc.winnerTeamId,
-                    lastModifiedById: userId,
-                    lastModifiedDate: ctx.timestamp,
-                } as any);
+                }, userId));
             }
         }
     }
 }
 
 /**
- * Creates GroupStanding rows for all teams assigned to each group.
+ * Creates GroupPhaseRecord rows for all teams assigned to each group.
  */
-function insertGroupStandings(
+function insertGroupPhaseRecords(
     ctx: any,
     tournamentId: number,
     userId: number,
@@ -118,7 +108,7 @@ function insertGroupStandings(
 ): void {
     for (const [groupId, teamIds] of groupAssignments) {
         for (const teamId of teamIds) {
-            ctx.db.GroupStanding.insert({
+            ctx.db.GroupPhaseRecord.insert(insertWithAudit(ctx, {
                 tournamentId,
                 groupId,
                 teamId: teamId,
@@ -126,8 +116,7 @@ function insertGroupStandings(
                 losses: 0,
                 draws: 0,
                 points: 0,
-                ...auditInsert(ctx, userId),
-            } as any);
+            }, userId));
         }
     }
 }
@@ -149,27 +138,16 @@ export const generate_bracket = spacetimedb.reducer(
             ctx.db.BracketMatch.id.delete(match.id);
         }
 
-        // Delete all existing GroupStanding rows for this tournament
-        for (const gs of [...ctx.db.GroupStanding.tournament_id.filter(tournamentId)]) {
-            (ctx.db.GroupStanding as any).primaryKey.delete({
-                tournamentId: gs.tournamentId,
-                groupId: gs.groupId,
-                teamId: gs.teamId,
-            });
+        // Delete all existing GroupPhaseRecord rows for this tournament
+        for (const gpr of [...ctx.db.GroupPhaseRecord.tournament_id.filter(tournamentId)]) {
+            ctx.db.GroupPhaseRecord.delete(gpr);
         }
 
-        // Get all active teams for this tournament (teams with at least one active participant)
-        const allParticipants = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)]
-            .filter((p: any) =>
-                p.status.tag !== 'Withdrawn' &&
-                p.status.tag !== 'Disqualified' &&
-                !p.isWaitlisted
-            );
-
+        // Get all active teams for this tournament (teams with at least one TournamentTeamMember)
         const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)]
             .filter((team: any) => {
-                // Only include teams that have at least one active participant
-                const members = allParticipants.filter((p: any) => p.teamGroupId === team.id);
+                // Only include teams that have at least one member
+                const members = [...ctx.db.TournamentTeamMember.team_id.filter(team.id)];
                 return members.length > 0;
             })
             .sort((a: any, b: any) => {
@@ -215,7 +193,7 @@ export const generate_bracket = spacetimedb.reducer(
                 tournament.groupAssignmentMode.tag,
             );
             insertBracketMatches(ctx, tournament, user.id, matches);
-            insertGroupStandings(ctx, tournamentId, user.id, groupAssignments);
+            insertGroupPhaseRecords(ctx, tournamentId, user.id, groupAssignments);
             descriptorCount = matches.length;
 
         } else if (formatTag === 'GroupIntoSingleElim') {
@@ -231,7 +209,7 @@ export const generate_bracket = spacetimedb.reducer(
             );
             insertBracketMatches(ctx, tournament, user.id, groupMatches);
             insertBracketMatches(ctx, tournament, user.id, elimMatches);
-            insertGroupStandings(ctx, tournamentId, user.id, groupAssignments);
+            insertGroupPhaseRecords(ctx, tournamentId, user.id, groupAssignments);
             descriptorCount = groupMatches.length + elimMatches.length;
 
         } else if (formatTag === 'GroupIntoDoubleElim') {
@@ -247,7 +225,7 @@ export const generate_bracket = spacetimedb.reducer(
             );
             insertBracketMatches(ctx, tournament, user.id, groupMatches);
             insertBracketMatches(ctx, tournament, user.id, elimMatches);
-            insertGroupStandings(ctx, tournamentId, user.id, groupAssignments);
+            insertGroupPhaseRecords(ctx, tournamentId, user.id, groupAssignments);
             descriptorCount = groupMatches.length + elimMatches.length;
 
         } else {
@@ -275,17 +253,10 @@ export const seed_bracket = spacetimedb.reducer(
             throw new SenderError('Invalid seeding mode. Must be "mmr" or "random".');
         }
 
-        // Get all active teams (teams with at least one active participant)
-        const allParticipants = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)]
-            .filter((p: any) =>
-                p.status.tag !== 'Withdrawn' &&
-                p.status.tag !== 'Disqualified' &&
-                !p.isWaitlisted
-            );
-
+        // Get all active teams (teams with at least one TournamentTeamMember)
         const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)]
             .filter((team: any) => {
-                const members = allParticipants.filter((p: any) => p.teamGroupId === team.id);
+                const members = [...ctx.db.TournamentTeamMember.team_id.filter(team.id)];
                 return members.length > 0;
             });
 
@@ -325,12 +296,9 @@ export const seed_bracket = spacetimedb.reducer(
 
         // Assign seedNumber 1..N
         for (const [index, team] of sortedTeams.entries()) {
-            ctx.db.TournamentTeam.id.update({
-                ...team,
+            ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team, {
                 seedNumber: index + 1,
-                lastModifiedById: user.id,
-                lastModifiedDate: ctx.timestamp,
-            } as any);
+            }, user.id));
         }
 
         console.log(`[BRACKET] Seeded ${teams.length} teams for tournament #${tournamentId} (mode: ${mode})`);
@@ -366,19 +334,13 @@ export const swap_seeds = spacetimedb.reducer(
         const seed1 = team1.seedNumber;
         const seed2 = team2.seedNumber;
 
-        ctx.db.TournamentTeam.id.update({
-            ...team1,
+        ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team1, {
             seedNumber: seed2,
-            lastModifiedById: user.id,
-            lastModifiedDate: ctx.timestamp,
-        } as any);
+        }, user.id));
 
-        ctx.db.TournamentTeam.id.update({
-            ...team2,
+        ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team2, {
             seedNumber: seed1,
-            lastModifiedById: user.id,
-            lastModifiedDate: ctx.timestamp,
-        } as any);
+        }, user.id));
 
         console.log(`[BRACKET] Swapped seeds for teams #${teamId1} (was ${seed1}) and #${teamId2} (was ${seed2}) in tournament #${tournamentId}`);
     }

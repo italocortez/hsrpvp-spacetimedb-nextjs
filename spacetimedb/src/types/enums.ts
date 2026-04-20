@@ -48,7 +48,6 @@ export const DraftMode = t.enum('DraftMode', {
 
 export const BanMode = t.enum('BanMode', {
     None: t.unit(),
-    Two: t.unit(),
     Four: t.unit(),
     Six: t.unit(),
 });
@@ -56,25 +55,43 @@ export const BanMode = t.enum('BanMode', {
 export const LobbyStage = t.enum('LobbyStage', {
     Waiting: t.unit(),
     Drafting: t.unit(),
-    Finished: t.unit(),
+    Equipping: t.unit(),
+    Scoring: t.unit(),
+    BetweenGames: t.unit(),   // Brief post-game transition (series not won yet); bestOf=1 skips this
+    Shelved: t.unit(),        // Long-term pause between games; casual=72h TTL, tournament persists until cancel
+    AwaitingResult: t.unit(), // Match submitted, players freed — lobby alive for finalization
+    Finished: t.unit(),       // Lobby closed/abandoned — GC cleans up after 30 min
 });
 
-export const ParticipationRole = t.enum('ParticipationRole', {
-    Player: t.unit(),
+// LobbySlot — unified team + role for lobby members.
+// Replaces the former TeamLabel + ParticipationRole two-column design.
+// Spectators are always spectators; coaches and players must be Blue or Red.
+export const LobbySlot = t.enum('LobbySlot', {
+    BluePlayer: t.unit(),
+    BlueCoach: t.unit(),
+    RedPlayer: t.unit(),
+    RedCoach: t.unit(),
     Spectator: t.unit(),
 });
 
-export const TeamLabel = t.enum('TeamLabel', {
+// TeamSide — pure team identifier for match tables, step actors, results.
+// NOT used for lobby member slots (use LobbySlot for that).
+export const TeamSide = t.enum('TeamSide', {
     Spectator: t.unit(),
     Blue: t.unit(),
     Red: t.unit(),
 });
 
-export const MatchOutcome = t.enum('MatchOutcome', {
-    BlueWins: t.unit(),
-    RedWins: t.unit(),
+export const MatchEndReason = t.enum('MatchEndReason', {
+    Completed: t.unit(), // Normal completion — winnerTeamSide indicates who won (or undefined for draw)
     Draw: t.unit(),
-    Aborted: t.unit(),
+    Concede: t.unit(),
+});
+
+export const ConcedeTrigger = t.enum('ConcedeTrigger', {
+    Disconnect: t.unit(),
+    VoluntaryLeave: t.unit(),
+    RefereeDecision: t.unit(),
 });
 
 export const MatchType = t.enum('MatchType', {
@@ -90,11 +107,15 @@ export const ActionType = t.enum('ActionType', {
     AuctionSold: t.unit(),
     Pause: t.unit(),
     Undo: t.unit(),
+    EquipLightcone: t.unit(),
+    ArrangeLineup: t.unit(),
+    ConfirmLineup: t.unit(),
 });
 
 export const TournamentStage = t.enum('TournamentStage', {
     Draft: t.unit(),
     Registration: t.unit(),
+    CheckIn: t.unit(),     // Optional check-in stage between Registration and Seeding (D-35)
     Seeding: t.unit(),
     InProgress: t.unit(),
     Completed: t.unit(),
@@ -130,8 +151,8 @@ export const ValidationStatus = t.enum('ValidationStatus', {
 });
 
 export const DisconnectPolicy = t.enum('DisconnectPolicy', {
-    Pause: t.unit(),
-    TimerThenForfeit: t.unit(),
+    Standard: t.unit(),
+    Deferred: t.unit(),
     NoAction: t.unit(),
 });
 
@@ -159,10 +180,12 @@ export const AchievementRarity = t.enum('AchievementRarity', {
     Legendary: t.unit(),
 });
 
-export const AchievementTriggerType = t.enum('AchievementTriggerType', {
-    StatThreshold: t.unit(),
-    CharacterSpecific: t.unit(),
-    Manual: t.unit(),
+export const ComparisonOperator = t.enum('ComparisonOperator', {
+    GreaterOrEqual: t.unit(),
+    GreaterThan: t.unit(),
+    Equal: t.unit(),
+    LessThan: t.unit(),
+    LessOrEqual: t.unit(),
 });
 
 export const ChatSenderType = t.enum('ChatSenderType', {
@@ -170,15 +193,16 @@ export const ChatSenderType = t.enum('ChatSenderType', {
     System: t.unit(),
 });
 
-export const TeamMemberRole = t.enum('TeamMemberRole', {
-    Owner: t.unit(),
-    Player: t.unit(),
-    Coach: t.unit(),
-});
-
 export const GroupAssignmentMode = t.enum('GroupAssignmentMode', {
     Auto: t.unit(),
     Manual: t.unit(),
+});
+
+export const InviteStatus = t.enum('InviteStatus', {
+    Pending: t.unit(),
+    Accepted: t.unit(),
+    Declined: t.unit(),
+    Tentative: t.unit(),
 });
 
 export const BracketSide = t.enum('BracketSide', {
@@ -187,4 +211,8 @@ export const BracketSide = t.enum('BracketSide', {
     GrandFinals: t.unit(),
     ThirdPlace: t.unit(),
     Group: t.unit(),
+});
+
+export const BanType = t.enum('BanType', {
+    DiscordId: t.unit(),
 });

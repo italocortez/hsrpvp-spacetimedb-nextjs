@@ -20,6 +20,7 @@
 6. [Maincloud Deployment](#maincloud-deployment)
 7. [Reconnection](#reconnection)
 8. [Row Level Security (deprecated)](#row-level-security)
+9. [v2.1.0 Bug Fixes](#v210-bug-fixes-relevant-to-clients)
 
 ---
 
@@ -108,7 +109,9 @@ This project uses `LobbyCursorEvent` as an event table.
 
 ## Confirmed Reads
 
-In 2.0, transactions require durability confirmation before sending updates to clients before notifying subscribers. This guarantees consistency but adds latency to every reducer round-trip — the client won't see subscription updates until the server has confirmed the write to durable storage.
+Transactions require durability confirmation before sending updates to clients. This guarantees consistency but adds latency to every reducer round-trip — the client won't see subscription updates until the server has confirmed the write to durable storage.
+
+**v2.1.0 change:** The TypeScript SDK now defaults to confirmed reads **enabled**. In v2.0.x, the server had confirmed reads on by default but the TypeScript connector did not explicitly opt in — so some clients may see a behavioral change after upgrading. If your app felt fast on 2.0.x and slower on 2.1.0, this is likely the cause.
 
 **Impact:** With confirmed reads enabled (the default), round-trip times of 200ms+ have been observed even when both server and client run on the same machine. Disabling confirmed reads can drop this to ~2ms locally. The setting applies to **both local development and maincloud** — it controls server-side behavior regardless of where the module is hosted.
 
@@ -204,3 +207,19 @@ This is a known rough edge — expect a better API for this soon.
 **Deprecated.** Use Views instead. See `api-guide.md` section 7 for the recommended view pattern.
 
 RLS is experimental/unstable and requires special pragma flags. Views are simpler, more performant, and provide full row/column access control.
+
+---
+
+## v2.1.0 Bug Fixes (relevant to clients)
+
+These fixes landed in v2.1.0 (released 2026-03-24). No client code changes required — all are server-side or SDK-internal fixes.
+
+- **`useTable` isReady regression** (#4580) — The `subscribe` callback captured a stale `computeSnapshot` closure. After `subscribeApplied` flipped to true, subsequent row events reverted `isReady` back to false. Fixed by adding `computeSnapshot` to the dependency array. If you had intermittent issues where table data appeared to "unload" after initial sync, this is the fix.
+
+- **Client disconnect dropping other clients' subscriptions** (#4648) — When a v2 client disconnected, the cleanup logic double-processed query hashes, decrementing a refcounted index twice. This could remove indexes that other active clients still needed, causing them to stop receiving updates. Critical fix for multi-client scenarios.
+
+- **Anonymous view subscription cleanup** (#4646) — Anonymous views with multiple subscribers were being prematurely dropped when one subscriber disconnected. More reliable view subscriptions in multi-client environments.
+
+- **Query column name correctness** (#4627) — `ColumnExpression` now carries both the TS accessor name and the DB column name. SQL generation uses the DB column name. Fixes a correctness issue for projects where TS accessors differ from DB column names (e.g., camelCase TS vs snake_case DB). For this project, no visible impact since the generated bindings handle the mapping.
+
+- **JS reducer execution throughput** (#4663) — JS reducers now execute on a single dedicated FIFO worker per module instead of a thread pool. Performance improvement from ~50K to ~85K TPS. Primarily affects JS modules, but related infrastructure improvements may benefit Rust modules too.

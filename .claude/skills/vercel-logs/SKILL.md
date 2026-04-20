@@ -1,5 +1,5 @@
 ---
-name: logs
+name: vercel-logs
 description: View Vercel deployment logs. Use when the user says "show logs", "check logs", "vercel logs", or "what went wrong with the deployment".
 ---
 

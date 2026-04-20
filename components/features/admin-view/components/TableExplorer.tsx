@@ -15,7 +15,6 @@ import { Chip } from '@heroui/chip';
 // Map display name → tables accessor
 const TABLE_MAP: Record<PublicTableName, any> = {
     User: tables.User,
-    UserIdentity: tables.UserIdentity,
     HsrCharacter: tables.HsrCharacter,
     HsrLightcone: tables.HsrLightcone,
     HsrCharacterCost: tables.HsrCharacterCost,
@@ -33,7 +32,6 @@ const TABLE_MAP: Record<PublicTableName, any> = {
 function getPrimaryKeyJson(tableName: PublicTableName, row: any): string {
     switch (tableName) {
         case 'User': return String(row.id);
-        case 'UserIdentity': return row.identity.toHexString();
         case 'HsrCharacter': return row.name;
         case 'HsrLightcone': return row.name;
         case 'HsrCharacterCost':

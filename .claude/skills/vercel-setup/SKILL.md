@@ -1,5 +1,5 @@
 ---
-name: setup
+name: vercel-setup
 description: Set up Vercel CLI and project configuration. Use when the user says "set up Vercel", "configure Vercel", "link to Vercel", or "vercel init".
 ---
 

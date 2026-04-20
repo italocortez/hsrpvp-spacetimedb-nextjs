@@ -7,10 +7,12 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 describe.skipIf(!hasServerToken())('Tournament Management', () => {
   let h: TestHarness;
   let tournamentId: number;
+  const openedTournamentIds: number[] = [];
 
   const myTournaments = () => [...h.conn.db.Tournament.iter()].filter(t => t.organizerId === h.userId);
 
@@ -29,6 +31,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
       DbConnection.builder()
         .withUri(uri).withDatabaseName(db).withToken(serverToken)
+        .withConfirmedReads(false)
         .onConnect(async (serverConn) => {
           try {
             await serverConn.reducers.serverSetRole({ username: user.username, roleTag: 'TournamentHost' });
@@ -52,7 +55,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -60,6 +63,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -67,14 +71,20 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await h.sync();
 
     const mine = myTournaments();
     tournamentId = mine[mine.length - 1].id;
+    openedTournamentIds.push(tournamentId);
   }, 30000);
 
   afterAll(async () => {
+    // D-03: strict cleanup per resource opened
+    for (const tid of openedTournamentIds) {
+      await cleanupTournament(h, tid);
+    }
     await h?.disconnect();
   });
 
@@ -87,13 +97,14 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       description: 'Updated description',
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 5,
       groupSize: 4,
       has3RdPlaceMatch: true,
       autoAdvanceBracket: true,
       winnerAdvantage: 1,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -101,6 +112,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await h.sync();
 
@@ -124,13 +136,14 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       description: 'Updated in registration',
       rosterVisibility: 'ClosedWithRating',
       isAnonymousDefault: true,
-      disconnectPolicy: 'TimerThenForfeit',
+      disconnectPolicy: 'Standard',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
       has3RdPlaceMatch: false,
       autoAdvanceBracket: true,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -138,6 +151,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await h.sync();
 
@@ -145,7 +159,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
     expect(t!.name).toBe('Reg Update');
     expect(t!.rosterVisibility.tag).toBe('ClosedWithRating');
     expect(t!.isAnonymousDefault).toBe(true);
-    expect(t!.disconnectPolicy.tag).toBe('TimerThenForfeit');
+    expect(t!.disconnectPolicy.tag).toBe('Standard');
   });
 
   // ── Reject update on Cancelled tournament ──
@@ -161,7 +175,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -169,6 +183,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -176,11 +191,13 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await h.sync();
 
     const cancelTarget = myTournaments().find(t => t.name === 'Cancel For Update Test');
     expect(cancelTarget).toBeDefined();
+    openedTournamentIds.push(cancelTarget!.id);
 
     await h.call.cancelTournament({ tournamentId: cancelTarget!.id });
     await h.sync();
@@ -192,13 +209,14 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
         description: 'Should not work',
         rosterVisibility: 'OpenRoster',
         isAnonymousDefault: false,
-        disconnectPolicy: 'Pause',
+        disconnectPolicy: 'Deferred',
         costSetId: 0,
         defaultBestOf: 3,
         groupSize: 4,
         has3RdPlaceMatch: false,
         autoAdvanceBracket: true,
         winnerAdvantage: 0,
+        requireOwnership: false,
         requireVerified: false,
         requireRoster: false,
         minimumMmr: 0,
@@ -206,6 +224,7 @@ describe.skipIf(!hasServerToken())('Tournament Management', () => {
         waitlistEnabled: false,
         scheduledStartAt: '',
         registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
       })
     );
     expect(err).toContain('Draft or Registration');

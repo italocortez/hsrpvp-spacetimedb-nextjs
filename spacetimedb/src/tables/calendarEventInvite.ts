@@ -1,4 +1,5 @@
 import { table, t } from 'spacetimedb/server';
+import { InviteStatus } from '../types/enums';
 
 export const calendarEventInviteColumns = {
     eventId: t.u32(),
@@ -7,6 +8,8 @@ export const calendarEventInviteColumns = {
     createdDate: t.timestamp(),
     lastModifiedById: t.u32(),
     lastModifiedDate: t.timestamp(),
+    inviteStatus: InviteStatus,           // D-01: Pending|Accepted|Declined|Tentative
+    respondedAt: t.timestamp().optional(), // D-02: when invitee responded
 };
 
 export const CalendarEventInvite = table({

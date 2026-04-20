@@ -1,9 +1,23 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureVerifiedUser } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { validateUid, deriveRegion, recalcDuplicateUid } from '../helpers/rosterHelpers';
-import { updateAccountRating } from '../helpers/accountRating';
+import { applyBatchUpsert, applyBatchRemove } from '../helpers/rosterMutations';
+
+/**
+ * D-G-02 (Phase 12.3): Builds a user-facing SenderError for the lobby-guard
+ * rejections. Cites the first conflicting lobby's joinCode (fallback: lobby id)
+ * so the user can find the match they need to leave.
+ */
+function buildLobbyGuardError(ctx: any, lmaRows: Array<{ lobbyId: number }>, verbPhrase: string): SenderError {
+    const firstLobbyId = lmaRows[0].lobbyId;
+    const lobby = ctx.db.Lobby.id.find(firstLobbyId);
+    const lobbyLabel = lobby?.joinCode ? `lobby ${lobby.joinCode}` : `lobby #${firstLobbyId}`;
+    return new SenderError(
+        `Cannot ${verbPhrase} while you have an account selected in ${lobbyLabel}. Leave the lobby first.`
+    );
+}
 
 // ─── create_hsr_account ───────────────────────────────────────────────────────
 // Creates a new HSR account entry for the authenticated user.
@@ -26,7 +40,7 @@ export const create_hsr_account = spacetimedb.reducer(
         const label = displayLabel.trim() || 'Account ' + (existing.length + 1);
         const isFirst = existing.length === 0;
 
-        ctx.db.HsrAccount.insert({
+        ctx.db.HsrAccount.insert(insertWithAudit(ctx, {
             id: 0,
             userId: user.id,
             uid,
@@ -36,8 +50,8 @@ export const create_hsr_account = spacetimedb.reducer(
             isRosterPublic: false,
             isRatingPublic: false,
             isDuplicateUid: false,
-            ...auditInsert(ctx, user.id),
-        } as any);
+            accountRating: 0,
+        }, user.id));
 
         recalcDuplicateUid(ctx, uid, user.id);
     }
@@ -59,13 +73,11 @@ export const update_hsr_account = spacetimedb.reducer(
         const trimmed = displayLabel.trim();
         if (!trimmed) throw new SenderError('Display label cannot be empty');
 
-        ctx.db.HsrAccount.id.update({
-            ...account,
+        ctx.db.HsrAccount.id.update(updateWithAudit(ctx, account, {
             displayLabel: trimmed,
             isRosterPublic,
             isRatingPublic,
-            ...auditUpdate(ctx, account, user.id),
-        });
+        }, user.id));
     }
 );
 
@@ -84,14 +96,33 @@ export const set_active_hsr_account = spacetimedb.reducer(
         // No-op if already active
         if (account.isActive) return;
 
-        const allAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
-        for (const acc of allAccounts) {
-            if (acc.isActive && acc.id !== hsrAccountId) {
-                ctx.db.HsrAccount.id.update({ ...acc, isActive: false, ...auditUpdate(ctx, acc, user.id) });
+        // D-G-01 (Phase 12.3, WIDE per research A1): reject when the target account
+        // OR any of the caller's currently-active accounts is bound to a live lobby.
+        // Covers two UX cases: (a) "I'm trying to activate an account that's already
+        // bound to a live lobby" and (b) "I'm trying to swap OUT of an account that's
+        // bound to a live lobby". Snapshot from Plan 01 already makes the system
+        // correct — this guard exists for clarity (D-G-03).
+        const targetBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (targetBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, targetBinding, 'change your active account');
+        }
+        const allBindings = ctx.db.HsrAccount.user_id.filter(user.id);
+        for (const acc of allBindings) {
+            if (!acc.isActive) continue;
+            const activeBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(acc.id)];
+            if (activeBinding.length > 0) {
+                throw buildLobbyGuardError(ctx, activeBinding, 'change your active account');
             }
         }
 
-        ctx.db.HsrAccount.id.update({ ...account, isActive: true, ...auditUpdate(ctx, account, user.id) });
+        const allAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
+        for (const acc of allAccounts) {
+            if (acc.isActive && acc.id !== hsrAccountId) {
+                ctx.db.HsrAccount.id.update(updateWithAudit(ctx, acc, { isActive: false }, user.id));
+            }
+        }
+
+        ctx.db.HsrAccount.id.update(updateWithAudit(ctx, account, { isActive: true }, user.id));
     }
 );
 
@@ -107,6 +138,22 @@ export const delete_hsr_account = spacetimedb.reducer(
         const account = ctx.db.HsrAccount.id.find(hsrAccountId);
         if (!account) throw new SenderError('HSR account not found');
         if (account.userId !== user.id) throw new SenderError('Not your account');
+
+        // D-24: Block deletion if account is currently selected in an active lobby
+        const activeLma = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (activeLma.length > 0) {
+            throw new SenderError('Cannot delete an account that is selected in an active lobby. Leave the lobby first.');
+        }
+
+        // D-24: Block if account is locked in an active tournament
+        const tpaEntries = [...ctx.db.TournamentPlayerAccount.by_user.filter(user.id)]
+            .filter((e: any) => e.hsrAccountId === hsrAccountId);
+        for (const tpa of tpaEntries) {
+            const tournament = ctx.db.Tournament.id.find(tpa.tournamentId);
+            if (tournament && tournament.stage.tag !== 'Completed' && tournament.stage.tag !== 'Cancelled') {
+                throw new SenderError('Cannot delete an account locked in an active tournament. Wait for the tournament to complete or be cancelled.');
+            }
+        }
 
         const uid = account.uid;
 
@@ -125,11 +172,9 @@ export const delete_hsr_account = spacetimedb.reducer(
                 remaining.sort((a: any, b: any) =>
                     Number(a.createdDate.microsSinceUnixEpoch - b.createdDate.microsSinceUnixEpoch)
                 );
-                ctx.db.HsrAccount.id.update({
-                    ...remaining[0],
+                ctx.db.HsrAccount.id.update(updateWithAudit(ctx, remaining[0], {
                     isActive: true,
-                    ...auditUpdate(ctx, remaining[0], user.id),
-                });
+                }, user.id));
             }
         }
 
@@ -150,36 +195,20 @@ export const batch_upsert_characters = spacetimedb.reducer(
         if (!account) throw new SenderError('HSR account not found');
         if (account.userId !== user.id) throw new SenderError('Not your account');
 
+        // D-G-01 (Phase 12.3, NARROW per research A2): reject when the specific
+        // target account is bound to a live lobby. Existing `by_account` index is
+        // sufficient — no new `by_user` index (C11).
+        const hsrAccountBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (hsrAccountBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, hsrAccountBinding, 'edit characters on this account');
+        }
+
         const items: Array<{ characterName: string; eidolonLevel: number }> = JSON.parse(charactersJson);
-        if (!Array.isArray(items) || items.length === 0) {
-            throw new SenderError('charactersJson must be a non-empty JSON array');
-        }
 
-        // Phase 1 — Validate ALL before writing ANY
-        for (const item of items) {
-            if (!ctx.db.HsrCharacter.name.find(item.characterName)) {
-                throw new SenderError(`Invalid character: "${item.characterName}"`);
-            }
-            if (item.eidolonLevel === undefined || item.eidolonLevel < 0 || item.eidolonLevel > 6) {
-                throw new SenderError(`Invalid eidolon level for "${item.characterName}": must be 0-6`);
-            }
-        }
-
-        // Phase 2 — Upsert all (composite PK: delete then insert)
-        for (const item of items) {
-            const existing = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([hsrAccountId, item.characterName])][0] ?? null;
-            if (existing) {
-                ctx.db.HsrAccountCharacter.delete(existing);
-            }
-            ctx.db.HsrAccountCharacter.insert({
-                hsrAccountId,
-                characterName: item.characterName,
-                eidolonLevel: item.eidolonLevel,
-                ...(existing ? auditUpdate(ctx, existing, user.id) : auditInsert(ctx, user.id)),
-            } as any);
-        }
-
-        updateAccountRating(ctx, hsrAccountId, user.id);
+        // D-D-02 (Phase 12.3): delegate to shared helper — validates items against
+        // HsrCharacter + eidolon range, upserts via composite-PK delete+insert, then
+        // recomputes accountRating. Single source of truth for "mutate chars + recompute".
+        applyBatchUpsert(ctx, hsrAccountId, items, user.id);
     }
 );
 
@@ -196,29 +225,17 @@ export const batch_remove_characters = spacetimedb.reducer(
         if (!account) throw new SenderError('HSR account not found');
         if (account.userId !== user.id) throw new SenderError('Not your account');
 
+        // D-G-01 (Phase 12.3, NARROW per research A2): reject when the target account
+        // is bound to a live lobby.
+        const hsrAccountBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (hsrAccountBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, hsrAccountBinding, 'remove characters from this account');
+        }
+
         const names: string[] = JSON.parse(characterNamesJson);
-        if (!Array.isArray(names) || names.length === 0) {
-            throw new SenderError('characterNamesJson must be a non-empty JSON array');
-        }
 
-        // Composite PK lookup: filter by indexed hsrAccountId, then match characterName
-        const accountChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(hsrAccountId)];
-
-        // Validate ALL names exist before deleting ANY
-        for (const name of names) {
-            const existing = accountChars.find(row => row.characterName === name) ?? null;
-            if (!existing) {
-                throw new SenderError(`Character "${name}" not found on this account`);
-            }
-        }
-
-        // All validated — now delete
-        for (const name of names) {
-            const row = accountChars.find(row => row.characterName === name)!;
-            ctx.db.HsrAccountCharacter.delete(row);
-        }
-
-        updateAccountRating(ctx, hsrAccountId, user.id);
+        // D-D-02 (Phase 12.3): delegate to shared helper.
+        applyBatchRemove(ctx, hsrAccountId, names, user.id);
     }
 );
 
@@ -248,29 +265,36 @@ export const migrate_roster = spacetimedb.reducer(
             throw new SenderError('Source and target cannot be the same account');
         }
 
-        const sourceChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(sourceAccountId)];
-
-        // Copy/upsert source characters into target
-        for (const char of sourceChars) {
-            const existingInTarget = [...ctx.db.HsrAccountCharacter.by_account_and_character.filter([targetAccountId, char.characterName])][0] ?? null;
-            if (existingInTarget) {
-                ctx.db.HsrAccountCharacter.delete(existingInTarget);
-            }
-            ctx.db.HsrAccountCharacter.insert({
-                hsrAccountId: targetAccountId,
-                characterName: char.characterName,
-                eidolonLevel: char.eidolonLevel,
-                ...(existingInTarget
-                    ? auditUpdate(ctx, existingInTarget, user.id)
-                    : auditInsert(ctx, user.id)),
-            } as any);
+        // D-G-01 (Phase 12.3): reject when EITHER side of the migration is bound
+        // to a live lobby. Both accounts are mutated, so both must be checked.
+        const sourceBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(sourceAccountId)];
+        if (sourceBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, sourceBinding, 'migrate characters from this account');
+        }
+        const targetBinding = [...ctx.db.LobbyMemberAccount.by_account.filter(targetAccountId)];
+        if (targetBinding.length > 0) {
+            throw buildLobbyGuardError(ctx, targetBinding, 'migrate characters to this account');
         }
 
-        // Move mode: delete source characters after copying
+        const sourceChars = [...ctx.db.HsrAccountCharacter.hsr_account_id.filter(sourceAccountId)];
+        if (sourceChars.length === 0) {
+            // Nothing to migrate — no rating change needed either.
+            return;
+        }
+
+        // D-D-03 (Phase 12.3): upsert source characters into target via the shared
+        // helper. This also recomputes the target's accountRating — fixing the pre-existing
+        // latent bug where migrate_roster never called updateAccountRating (D-D-04).
+        const itemsForTarget = sourceChars.map(c => ({
+            characterName: c.characterName,
+            eidolonLevel: c.eidolonLevel,
+        }));
+        applyBatchUpsert(ctx, targetAccountId, itemsForTarget, user.id);
+
+        // Move mode: also remove from source, which recomputes source's rating.
         if (mode === 'move') {
-            for (const char of sourceChars) {
-                ctx.db.HsrAccountCharacter.delete(char);
-            }
+            const namesToRemove = sourceChars.map(c => c.characterName);
+            applyBatchRemove(ctx, sourceAccountId, namesToRemove, user.id);
         }
     }
 );

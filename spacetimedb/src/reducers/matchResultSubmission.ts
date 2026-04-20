@@ -1,8 +1,10 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, isRoleAtLeast } from '../helpers/ensurePermissions';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 import { runFinalization } from '../helpers/finalizationHelpers';
+import { ensureMatchAlive } from '../helpers/disconnectHelpers';
+import type { MatchResultRecord } from '../module_bindings/types';
 
 // ─── confirm_match_scores ─────────────────────────────────────────────────────
 // Confirms scores for a team side. Two paths:
@@ -28,6 +30,12 @@ export const confirm_match_scores = spacetimedb.reducer(
             throw new SenderError('Scores can only be confirmed when the match is in Pending status.');
         }
 
+        // D-12: Liveness guard — block confirmation after concede
+        const confirmLobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
+        if (confirmLobby) {
+            ensureMatchAlive(ctx, confirmLobby);
+        }
+
         // Check if caller is a participant
         const participant = [...ctx.db.MatchResultParticipant.by_result_and_user.filter([matchResultId, user.id])][0];
 
@@ -38,11 +46,9 @@ export const confirm_match_scores = spacetimedb.reducer(
             }
 
             const sideFlag = participant.teamSide.tag === 'Blue' ? 'blueConfirmed' : 'redConfirmed';
-            ctx.db.MatchResultRecord.id.update({
-                ...matchResult,
+            ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
                 [sideFlag]: true,
-                ...auditUpdate(ctx, matchResult, user.id),
-            } as any);
+            } as Partial<MatchResultRecord>, user.id));
 
             console.log(`[MATCH] Captain #${user.id} confirmed ${participant.teamSide.tag} scores for match result #${matchResultId}`);
         } else {
@@ -57,12 +63,10 @@ export const confirm_match_scores = spacetimedb.reducer(
             }
 
             // Spectator referee confirms both sides
-            ctx.db.MatchResultRecord.id.update({
-                ...matchResult,
+            ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
                 blueConfirmed: true,
                 redConfirmed: true,
-                ...auditUpdate(ctx, matchResult, user.id),
-            } as any);
+            }, user.id));
 
             console.log(`[MATCH] Spectator referee #${user.id} confirmed both sides for match result #${matchResultId}`);
         }
@@ -73,13 +77,14 @@ export const confirm_match_scores = spacetimedb.reducer(
 // Submits the final match result with a winner.
 // Permission: lobby referee OR Moderator/Admin (for tournament matches also the TO/assistant).
 // Requires: all team captains must have confirmed scores first.
+// winnerId: participant userId, or 0 as sentinel for draw/no winner.
 
 export const submit_match_result = spacetimedb.reducer(
     {
         matchResultId: t.u32(),
-        winnerUserId: t.u32(),
+        winnerId: t.u32(),
     },
-    (ctx, { matchResultId, winnerUserId }) => {
+    (ctx, { matchResultId, winnerId }) => {
         const user = getAuthenticatedUser(ctx);
 
         // Find the MatchResultRecord
@@ -93,18 +98,26 @@ export const submit_match_result = spacetimedb.reducer(
             throw new SenderError('Match result can only be submitted when in Pending status.');
         }
 
+        // D-12: Liveness guard — block submission after concede
+        const submitLobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
+        if (submitLobby) {
+            ensureMatchAlive(ctx, submitLobby);
+        }
+
         // Check both sides have confirmed (record-level flags)
         if (!matchResult.blueConfirmed || !matchResult.redConfirmed) {
             throw new SenderError('All team captains must confirm scores before submission.');
         }
 
-        // Validate winnerUserId is a valid participant (or 0 for draw)
+        // Validate winnerId is a valid participant (or 0 for draw)
         const participants = [...ctx.db.MatchResultParticipant.match_result_id.filter(matchResultId)];
-        if (winnerUserId !== 0) {
-            const winnerParticipant = participants.find((p: any) => p.userId === winnerUserId);
+        let winnerTeamSide: 'Blue' | 'Red' | undefined;
+        if (winnerId !== 0) {
+            const winnerParticipant = participants.find((p: any) => p.userId === winnerId);
             if (!winnerParticipant) {
                 throw new SenderError('Invalid winner: must be a match participant or 0 for a draw.');
             }
+            winnerTeamSide = winnerParticipant.teamSide.tag as 'Blue' | 'Red';
         }
 
         // Validate caller has referee authority:
@@ -122,15 +135,20 @@ export const submit_match_result = spacetimedb.reducer(
         }
 
         // 3. For tournament matches, also check tournament access (TO/assistant)
-        if (!hasAuthority && matchResult.isTournamentControlled && matchResult.tournamentId !== undefined) {
-            const tournament = ctx.db.Tournament.id.find(matchResult.tournamentId);
-            if (tournament && tournament.organizerId === user.id) {
-                hasAuthority = true;
-            }
-            if (!hasAuthority) {
-                const assistant = [...ctx.db.TournamentAssistant.by_tournament_and_user.filter([matchResult.tournamentId, user.id])][0];
-                if (assistant && assistant.canValidateResults) {
+        // Derive tournamentId from bracketMatch since tournamentId was removed from MatchResultRecord (D-42)
+        if (!hasAuthority && matchResult.isTournamentControlled && matchResult.bracketMatchId !== undefined) {
+            const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
+            const derivedTournamentId = bracketMatch?.tournamentId;
+            if (derivedTournamentId) {
+                const tournament = ctx.db.Tournament.id.find(derivedTournamentId);
+                if (tournament && tournament.organizerId === user.id) {
                     hasAuthority = true;
+                }
+                if (!hasAuthority) {
+                    const assistant = [...ctx.db.TournamentAssistant.by_tournament_and_user.filter([derivedTournamentId, user.id])][0];
+                    if (assistant && assistant.canValidateResults) {
+                        hasAuthority = true;
+                    }
                 }
             }
         }
@@ -147,16 +165,29 @@ export const submit_match_result = spacetimedb.reducer(
             ? { tag: 'Validated', value: {} }
             : { tag: 'Submitted', value: {} };
 
-        ctx.db.MatchResultRecord.id.update({
-            ...matchResult,
-            status: newStatus as any,
-            winnerUserId: winnerUserId !== 0 ? winnerUserId : undefined,
+        // Determine matchEndReason based on whether there is a winner
+        const matchEndReason: any = winnerTeamSide
+            ? { tag: 'Completed', value: {} }
+            : { tag: 'Draw', value: {} };
+
+        ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
+            status: newStatus as MatchResultRecord['status'],
+            winnerTeamSide: winnerTeamSide ? { tag: winnerTeamSide, value: {} } as any : undefined,
+            matchEndReason,
             refereeUserId: user.id,
-            ...auditUpdate(ctx, matchResult, user.id),
-        } as any);
+        }, user.id));
+
+        // Transition lobby → AwaitingResult (frees players to join new lobbies)
+        const lobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
+        if (lobby && lobby.stage.tag !== 'AwaitingResult' && lobby.stage.tag !== 'Finished') {
+            ctx.db.Lobby.id.update(updateWithAudit(ctx, lobby, {
+                stage: { tag: 'AwaitingResult', value: {} } as any,
+                lastActivityAt: ctx.timestamp,
+            }, user.id));
+        }
 
         const statusLabel = matchResult.matchType.tag === 'Casual' ? 'Validated (auto)' : 'Submitted';
-        console.log(`[MATCH] Match result #${matchResultId} ${statusLabel} by user #${user.id}, winner: #${winnerUserId}`);
+        console.log(`[MATCH] Match result #${matchResultId} ${statusLabel} by user #${user.id}, winnerTeamSide: ${winnerTeamSide ?? 'draw'}`);
 
         // Auto-finalize casual matches inline (per D-37)
         if (matchResult.matchType.tag === 'Casual') {
@@ -185,20 +216,31 @@ export const dispute_match_result = spacetimedb.reducer(
             throw new SenderError('Match result not found.');
         }
 
+        // Check idempotency first — more specific error when already disputed
+        // Note: use status.tag check instead of disputedByUserId !== undefined
+        // because SpacetimeDB optional u32 representation may not equal JS undefined.
+        if (matchResult.status.tag === 'Disputed') {
+            throw new SenderError('This match result has already been disputed.');
+        }
+
         // Validate status is Submitted (can only dispute after submission)
         if (matchResult.status.tag !== 'Submitted') {
             throw new SenderError('A match result can only be disputed after it has been submitted.');
+        }
+
+        // Block dispute after concede (but NOT after AwaitingResult — disputes happen there)
+        const disputeLobby = ctx.db.Lobby.id.find(matchResult.lobbyId);
+        if (disputeLobby) {
+            const existingResult = [...ctx.db.MatchResultRecord.lobby_id.filter(disputeLobby.id)][0];
+            if (existingResult?.matchEndReason?.tag === 'Concede') {
+                throw new SenderError('Match has been conceded.');
+            }
         }
 
         // Validate caller is a match participant via MatchResultParticipant
         const participant = [...ctx.db.MatchResultParticipant.by_result_and_user.filter([matchResultId, user.id])][0];
         if (!participant) {
             throw new SenderError('You are not a participant of this match.');
-        }
-
-        // Validate only one dispute per match
-        if (matchResult.disputedByUserId !== undefined) {
-            throw new SenderError('This match result has already been disputed.');
         }
 
         // Validate reason length
@@ -211,13 +253,11 @@ export const dispute_match_result = spacetimedb.reducer(
         }
 
         // Update the MatchResultRecord
-        ctx.db.MatchResultRecord.id.update({
-            ...matchResult,
+        ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
             status: { tag: 'Disputed', value: {} } as any,
             disputedByUserId: user.id,
             disputeReason: trimmedReason,
-            ...auditUpdate(ctx, matchResult, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[MATCH] Match result #${matchResultId} disputed by player #${user.id}`);
     }

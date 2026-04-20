@@ -35,18 +35,20 @@ const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
     HsrCharacterCost: `[{
   "characterName": "march7th",
   "gameMode": "MemoryOfChaos",
-  "classicCosts": { "e0": 5, "e1": 7, "e2": 9, "e3": 11, "e4": 13, "e5": 15, "e6": 17 },
-  "auctionBaseBid": { "e0": 3, "e1": 5, "e2": 7, "e3": 9, "e4": 11, "e5": 13, "e6": 15 }
+  "draftMode": "Classic",
+  "costs": { "e0": 5, "e1": 7, "e2": 9, "e3": 11, "e4": 13, "e5": 15, "e6": 17 }
 }]`,
     HsrLightconeCost: `[{
   "lightconeName": "momentofvictory",
-  "classicCosts": { "s1": 2, "s2": 3, "s3": 4, "s4": 5, "s5": 6 },
-  "auctionBaseBid": { "s1": 1, "s2": 2, "s3": 3, "s4": 4, "s5": 5 }
+  "gameMode": "MemoryOfChaos",
+  "draftMode": "Classic",
+  "costs": { "s1": 2, "s2": 3, "s3": 4, "s4": 5, "s5": 6 }
 }]`,
     HsrSynergyCost: `[{
   "sourceName": "cerydra",
   "targetName": "anaxa",
   "gameMode": "MemoryOfChaos",
+  "draftMode": "Classic",
   "costModifier": 1.5
 }]`,
 };

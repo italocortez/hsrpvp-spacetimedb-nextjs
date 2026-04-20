@@ -3,7 +3,7 @@
 // Called inline after MMR processing (finalize_match_result for standalone Ranked,
 // process_tournament_mmr for tournament batch).
 
-import { auditInsert } from './auditColumns';
+import { insertWithAudit } from './auditHelpers';
 
 /** Minimum matches required to appear on a leaderboard (D-46). */
 const MIN_MATCHES = 2;
@@ -63,7 +63,7 @@ export function rebuildLeaderboard(ctx: any, actingUserId: number, seasonId?: nu
                 .filter((s: any) => s.gameMode.tag === gameModeTag && s.seasonId === effectiveSeasonId)
                 .reduce((sum: number, s: any) => sum + s.wins, 0);
 
-            ctx.db.Leaderboard.insert({
+            ctx.db.Leaderboard.insert(insertWithAudit(ctx, {
                 category,
                 rank: i + 1,
                 userId: entry.userId,
@@ -71,8 +71,7 @@ export function rebuildLeaderboard(ctx: any, actingUserId: number, seasonId?: nu
                 matchesPlayed: entry.matchesPlayed,
                 wins,
                 seasonId: effectiveSeasonId,
-                ...auditInsert(ctx, actingUserId),
-            } as any);
+            }, actingUserId));
         }
     }
 
@@ -108,7 +107,7 @@ export function rebuildLeaderboard(ctx: any, actingUserId: number, seasonId?: nu
 
     for (let i = 0; i < topGlobal.length; i++) {
         const entry = topGlobal[i];
-        ctx.db.Leaderboard.insert({
+        ctx.db.Leaderboard.insert(insertWithAudit(ctx, {
             category: 'Global',
             rank: i + 1,
             userId: entry.userId,
@@ -116,7 +115,6 @@ export function rebuildLeaderboard(ctx: any, actingUserId: number, seasonId?: nu
             matchesPlayed: entry.totalMatches,
             wins: entry.totalWins,
             seasonId: effectiveSeasonId,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }

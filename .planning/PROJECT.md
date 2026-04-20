@@ -35,82 +35,47 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 - ✓ Match results and MMR (score submission, ELO calculation, leaderboard, bracket advancement via finalization) — Validated in Phase 5
 - ✓ Anonymous play enforcement (label computation, cursor anonymization, roster/stat visibility, tournament account locking) — Validated in Phase 6
 - ✓ Player statistics (win/loss/spectated tracking, character stats, global character stats, match replay archival, auto-finalize casual) — Validated in Phase 6
+- ✓ Achievements and titles (flexible criteria definitions, auto-award during finalization, manual award, profile title display) — Validated in Phase 7
+- ✓ Calendar and scheduling (recurring availability slots, saved calendars, calendar events with invites, tournament match scheduling, cross-feature cascade deletions) — Validated in Phase 8
+- ✓ Mouse tracking (XY cursor broadcast, spectator/coach visibility, coach pick restriction) — Validated in Phase 9
+- ✓ Chat (ephemeral per-lobby messages, rolling window cleanup, rich content structure) — Validated in Phase 9
+- ✓ Lobby browser (view_lobby_browser, filter support, visibility controls) — Validated in Phase 9
+- ✓ Disconnect handling (configurable per-lobby/tournament, timer+forfeit, graceful rejoin) — Validated in Phase 10
+- ✓ Cost table parity (HsrLightconeCost gains gameMode composite key) — Validated in Phase 10
+- ✓ Match schema rework (series support, best-of-N, shelve/resume, MatchSessionHistory consolidation) — Validated in Phase 10.1
+- ✓ Tournament organizer views (view_to_dashboard, view_to_bracket_matches) — Validated in Phase 10.3
+- ✓ Account selection per match (multi-account per match, LobbyMemberAccount, drop TournamentEnrolled.hsrAccountId) — Validated in Phase 10.4
+- ✓ Test suite stabilization (shared helpers, cleanup hygiene, cross-file isolation) — Validated in Phase 10.5
+- ✓ Account rating matrix (vertical + horizontal dimensions, admin config, auto-recalc) — Validated in Phase 11
+- ✓ Auth security hardening (UserPrivate isolation, view-based profile, ban enforcement, identity cleanup) — Validated in Phase 12
+- ✓ Identity garbage collection (scheduled cleanup of stale UserIdentity rows, 90-day TTL) — Validated in Phase 12.1
+- ✓ SDK upgrade audit (2.0.3 → 2.1.0, view exports, .catch() error handling, confirmed reads) — Validated in Phase 12.2
+- ✓ MMR rating snapshot (account rating captured at match start via `MRP.accountRatingSnapshot`, monotonic-upward hook in `select_match_account`, tournament-stage ordering guard, roster mutation guards) — Validated in Phase 12.3
+- ✓ Documentation normalization (standardized architecture/contract templates, full hydration, codebase docs regen, FRONTEND-HANDOFF rewrite, ERD update) — Validated in Phase 13
+- ✓ Audit spread type helper refactor (insertWithAudit/updateWithAudit typed helpers across 57 files; ~228 `as any` eliminated = 55% of backend baseline; two-tier API with 9 preserved auditInsert primitives + ~30 P4 composite-PK carry sites; 1 Rule 1 latent bug fix in seriesManagement TimerState; zero behavior change) — Validated in Phase 15.3 (shipped to maincloud 2026-04-18)
 
 ### Active
 
-<!-- Current scope. Building toward these. -->
+<!-- Current scope: v0.9 Frontend milestone. v0.5 backend is complete. -->
 
-**Roster Management**
-- [ ] User can manually add owned characters with eidolon levels
-- [ ] User can manually add owned lightcones with superimposition levels
-- [ ] User can manage multiple HSR accounts (select active account for play)
-- [ ] Admin can add/edit roster entries on behalf of users
-- [ ] User can set roster visibility (public/private), overridden by lobby/tournament settings
-- [ ] Account rating calculated from roster (characters + eidolons owned)
+## Current Milestone: v0.9 Frontend
 
-**Achievements & Titles**
-- [ ] Admin can create achievement definitions with criteria
-- [ ] System auto-awards achievements when conditions are met (e.g., "Win 10 matches")
-- [ ] Admin/TO can manually award achievements to players
-- [ ] User can collect and display titles on their profile
+**Goal:** Complete frontend coverage of the v0.5 backend — every feature surfaced through a Next.js App Router frontend with SpacetimeDB subscriptions as the single data plane. Subscription architecture is the foundation; pages are built on top of each subscription layer.
 
-**Tournament System**
-- [ ] Role-based tournament creation (users request TO role, admins approve)
-- [ ] Tournament types: single elimination, double elimination, group phase (soccer-style)
-- [ ] Self-signup and team signup for tournaments
-- [ ] Bracket visualization and progression tracking
-- [ ] Tournament-level settings: anonymous play, open/closed roster, disconnect behavior
-- [ ] Referee assignment and management per tournament/match
-- [ ] Coach role: can view match (mouse tracking) but cannot pick for team
+**Target features:**
+- Backend pre-work: Spine asset columns on `hsr_character` + self-scoped historical views
+- Route-group subscription lifecycle: global → public → authed → match → entity
+- Three-tier asset delivery: portraits, Spine animations, image-only fallback (Service Worker + Web Worker)
+- Public pages: cost tables, team builder (consuming anon reference subs)
+- Authed pages: profile (with historical data), admin panel
+- Match zone: lobby list, lobby detail, live draft with Spine pedestal
+- Tournament flows: creation, registration, brackets, stage management
+- Leaderboards + MMR visualization
+- Render capability detection (`getRenderTier()` — Chrome/Edge/Firefox supported, Safari defensively gated)
 
-**Match Results & Scoring**
-- [ ] Game-mode-specific scoring: cycles (MoC, Anomaly Arbitration), score (Apocalyptic Shadow)
-- [ ] Both players upload score screenshots (via Imgur) and submit scores
-- [ ] Mutual confirmation for casual matches
-- [ ] Ref/admin validation required for tournament matches
-- [ ] Support for 2-boss scoring (per boss or combined screenshot)
+**Architectural decisions:** See `notes/v09-frontend-subscription-strategy.md` (8 binding decisions).
 
-**Anonymous Play**
-- [ ] Per-lobby/match toggle for anonymous player names
-- [ ] Per-tournament default for anonymous play (individual matches can override)
-- [ ] Open/closed roster visibility toggle (independent of anonymous names)
-
-**Calendar & Scheduling**
-- [ ] Players can set recurring availability (daily, weekly, monthly with Feb handling)
-- [ ] Players can view up to 5 other players' calendars (toggleable visibility)
-- [ ] Auto-sync feature to find common availability between players
-- [ ] Event creation with player invites
-- [ ] Tournament organizers can use calendar for match scheduling
-
-**Mouse Tracking**
-- [ ] Full XY cursor position broadcast within the page while browser tab is active
-- [ ] Visible to all match participants, spectators, and coaches
-- [ ] Coaches can see cursor tracking but cannot pick for their team
-
-**Chat**
-- [ ] Ephemeral per-lobby/match chat (event table, not persisted after match ends)
-- [ ] Flexible message structure to support future emoji/rich content
-
-**User Profile & Stats**
-- [ ] Matches played, wins, losses, win rate
-- [ ] Matches spectated count
-- [ ] Best Ally card (user with most shared wins)
-- [ ] Nemesis card (user with most losses against)
-- [ ] Match history with step-by-step replay of archived matches + final result
-- [ ] Character-level stats: win rate, loss rate, character-vs-character win ratio
-
-**MMR System**
-- [ ] Per-game-mode MMR rating (chess-style ELO)
-- [ ] Global composite MMR (equal weight across game modes)
-- [ ] MMR leaderboard (season support in schema, but seasons not implemented yet)
-
-**Lobby Browser**
-- [ ] Browse available lobbies with filters
-- [ ] Lobby visibility and join controls
-
-**Disconnect & Rejoin**
-- [ ] Configurable disconnect behavior per tournament/lobby (pause, timer+forfeit, etc.)
-- [ ] Graceful rejoin logic preserving match state
+**Priority order:** cost tables → team builder → admin panel → profile page → lobby/matches → tournaments → leaderboards.
 
 ### Out of Scope
 
@@ -126,15 +91,17 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 
 ## Context
 
-- Existing codebase has SpacetimeDB backend with 15+ tables, Next.js 15 frontend with HeroUI
+- **v0.5 shipped** (2026-04-12): 67 tables, ~156 reducers, 32 server-side views, 728 integration tests across 23 phases
+- 28,040 LOC backend TypeScript, 23,450 LOC tests, 6,678 LOC frontend (landing page)
+- SpacetimeDB SDK 2.1.0 with TypeScript backend, Next.js 15 frontend with HeroUI
 - SpacetimeDB handles all persistent state and real-time sync via WebSocket subscriptions
-- Trusted server identity pattern established for privileged operations (Discord linking, role management)
-- Audit columns (createdAt/By, updatedAt/By) are standard on all tables
-- Cost tables already support per-game-mode pricing with eidolon/superimposition granularity
-- Match history tables (MatchSessionHistory + MatchSessionStepHistory) already exist for replay
-- Cursor broadcasting pattern already established via LobbyCursorEvent
-- This milestone focuses on backend only: tables, reducers, views, edge cases (disconnect, permissions)
-- Frontend/UI will be a separate milestone
+- Privacy enforced via PRIVATE tables + 32 named views (no raw private table subscriptions)
+- Trusted server identity pattern for privileged operations (Discord linking, role management)
+- Audit columns (createdAt/By, updatedAt/By) standard on all tables
+- UserPrivate isolation (Phase 12): profile data accessed only via view_my_profile
+- All reducer calls use .catch() pattern (Phase 12.2), no _then() callbacks
+- 19 feature doc sets normalized (architecture.md + contract.md) with standardized templates (Phase 13)
+- Frontend/UI is the next milestone (v1)
 
 ## Constraints
 
@@ -151,14 +118,35 @@ Players can organize, play, and track competitive HSR matches and tournaments in
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Manual roster entry first | HoYoverse API availability uncertain; manual is reliable | — Pending |
-| Imgur for screenshot hosting | Avoids storing images in SpacetimeDB; public URLs sufficient for verification | — Pending |
-| Ephemeral chat via event table | Keeps match data lean; chat not needed for replay | — Pending |
-| Per-game-mode MMR with equal-weight global | Reflects different skill sets per mode while giving one composite rank | — Pending |
-| Tournament settings override user roster visibility | Tournament integrity > personal preference | — Pending |
-| Role-based TO access | Prevents spam tournaments while allowing community organizing | — Pending |
-| Configurable disconnect behavior | Different contexts (casual vs tournament) need different handling | — Pending |
-| Backend-only milestone | Solid table design first, UI in separate milestone | — Pending |
+| Manual roster entry first | HoYoverse API availability uncertain; manual is reliable | Implemented (Phase 2) |
+| Imgur for screenshot hosting | Avoids storing images in SpacetimeDB; public URLs sufficient for verification | Implemented (Phase 5) |
+| Ephemeral chat via event table | Keeps match data lean; chat not needed for replay | Implemented (Phase 9) |
+| Per-game-mode MMR with equal-weight global | Reflects different skill sets per mode while giving one composite rank | Implemented (Phase 5) |
+| Tournament settings override user roster visibility | Tournament integrity > personal preference | Implemented (Phase 6) |
+| Role-based TO access | Prevents spam tournaments while allowing community organizing | Implemented (Phase 3) |
+| Configurable disconnect behavior | Different contexts (casual vs tournament) need different handling | Implemented (Phase 10) |
+| Backend-only milestone | Solid table design first, UI in separate milestone | ✓ Good — v0.5 shipped 2026-04-12 |
+| UserPrivate isolation | Profile data only via view_my_profile; no direct table subscription | Implemented (Phase 12) |
+| .catch() reducer error pattern | Replaces _then() callbacks after SDK 2.1.0 upgrade | Implemented (Phase 12.2) |
+| Matrix-based account rating | Vertical (eidolon depth) + horizontal (archetype coverage) with admin-tunable config | Implemented (Phase 11) |
+| Flat columns over config structs | Filterable data uses flat columns; LobbyConfig can be reworked | Convention |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
 
 ---
-*Last updated: 2026-03-22 after Phase 6 completion (Anonymous Play and Player Stats)*
+*Last updated: 2026-04-18 after Phase 15.3 maincloud publish. Backend refactor complete (audit spread type helper, ~228 `as any` eliminated); Phase 16 Route + global foundation is next.*

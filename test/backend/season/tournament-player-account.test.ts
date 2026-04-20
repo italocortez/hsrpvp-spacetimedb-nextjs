@@ -13,8 +13,10 @@ import {
   createVerifiedTestHarness,
   hasServerToken,
   expectReducerError,
+  queryPrivateTable,
   type TestHarness,
 } from '../../shared/connection';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
 
 describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
   let host: TestHarness;
@@ -22,52 +24,19 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
   let playerWithoutAccounts: TestHarness;
   let tournamentId: number;
 
-  /** Helper to promote a harness user to a role via server connection */
-  async function promoteToRole(h: TestHarness, roleTag: string) {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    if (!user) throw new Error(`User ${h.userId} not found in cache`);
-    const username = user.username;
-
-    const { DbConnection } = await import('@/src/module_bindings');
-    const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN || '';
-    const uri = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-    const db = process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1';
-
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
-      DbConnection.builder()
-        .withUri(uri)
-        .withDatabaseName(db)
-        .withToken(serverToken)
-        .onConnect(async (serverConn) => {
-          try {
-            await serverConn.reducers.serverSetRole({ username, roleTag });
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            setTimeout(resolve, 500);
-          } catch (err) {
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            reject(err);
-          }
-        })
-        .onConnectError((_ctx: any, err: any) => {
-          clearTimeout(timeout);
-          reject(new Error(`Server connection failed: ${err}`));
-        })
-        .onDisconnect(() => {})
-        .build();
-    });
-
-    await h.sync(1000);
-  }
-
   const tpaForUser = (h: TestHarness, tId: number, userId: number) =>
     [...h.conn.db.TournamentPlayerAccount.iter()]
       .filter(t => t.tournamentId === tId && t.userId === userId);
 
-  const userAccounts = (h: TestHarness, userId: number) =>
-    [...h.conn.db.HsrAccount.iter()].filter(a => a.userId === userId);
+  const userAccounts = async (_h: TestHarness, userId: number) => {
+    const rows = await queryPrivateTable(`SELECT * FROM hsr_account WHERE user_id = ${userId}`);
+    return rows.map(r => ({
+      id: Number(r.id),
+      userId: Number(r.user_id),
+      uid: r.uid.replace(/"/g, ''),
+      hsrAccountId: Number(r.id),
+    }));
+  };
 
   beforeAll(async () => {
     host = await createVerifiedTestHarness();
@@ -77,9 +46,9 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     await promoteToRole(host, 'TournamentHost');
 
     // Player creates 2 HSR accounts
-    await playerWithAccounts.call.createHsrAccount({ uid: '700100100', nickname: 'Main', region: 'NA' });
+    await playerWithAccounts.call.createHsrAccount({ uid: '700100100', displayLabel: 'Main' });
     await playerWithAccounts.sync(1000);
-    await playerWithAccounts.call.createHsrAccount({ uid: '700100101', nickname: 'Alt', region: 'EU' });
+    await playerWithAccounts.call.createHsrAccount({ uid: '700100101', displayLabel: 'Alt' });
     await playerWithAccounts.sync(1000);
 
     // Host creates tournament and opens registration
@@ -96,10 +65,11 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
-      has3rdPlaceMatch: false,
+      has3RdPlaceMatch: false,
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -107,6 +77,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync(1000);
 
@@ -127,7 +98,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
   // ─── Test 1: Registration locks ALL HSR accounts ──────────────────────────
 
   it('registration creates TPA rows for ALL user HSR accounts', async () => {
-    const accounts = userAccounts(playerWithAccounts, playerWithAccounts.userId);
+    const accounts = await userAccounts(playerWithAccounts, playerWithAccounts.userId);
     expect(accounts.length).toBe(2);
 
     await playerWithAccounts.call.registerForTournament({ tournamentId });
@@ -162,9 +133,9 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
     // Player is already withdrawn from test 2 (status=Withdrawn, TPA cleaned up).
     // Use a fresh player for this test to avoid "already registered" conflict.
     const scopePlayer = await createVerifiedTestHarness();
-    await scopePlayer.call.createHsrAccount({ uid: '700200200', nickname: 'ScopeMain', region: 'NA' });
+    await scopePlayer.call.createHsrAccount({ uid: '700200200', displayLabel: 'ScopeMain' });
     await scopePlayer.sync(1000);
-    await scopePlayer.call.createHsrAccount({ uid: '700200201', nickname: 'ScopeAlt', region: 'EU' });
+    await scopePlayer.call.createHsrAccount({ uid: '700200201', displayLabel: 'ScopeAlt' });
     await scopePlayer.sync(1000);
 
     // Register in first tournament
@@ -188,10 +159,11 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
-      has3rdPlaceMatch: false,
+      has3RdPlaceMatch: false,
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -199,6 +171,7 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync(1000);
 
@@ -233,19 +206,19 @@ describe.skipIf(!hasServerToken())('TournamentPlayerAccount', () => {
   // ─── Test 4: User without HSR accounts can still register ─────────────────
 
   it('user without HSR accounts registers with 0 TPA rows', async () => {
-    const accounts = userAccounts(playerWithoutAccounts, playerWithoutAccounts.userId);
+    const accounts = await userAccounts(playerWithoutAccounts, playerWithoutAccounts.userId);
     expect(accounts.length).toBe(0);
 
     await playerWithoutAccounts.call.registerForTournament({ tournamentId });
     await playerWithoutAccounts.sync(2000);
 
-    // Should have registered (TournamentParticipant exists) but no TPA rows
+    // Should have registered (TournamentEnrolled exists) but no TPA rows
     const tpa = tpaForUser(playerWithoutAccounts, tournamentId, playerWithoutAccounts.userId);
     expect(tpa.length).toBe(0);
 
-    // Verify the participant was actually created
-    const participants = [...playerWithoutAccounts.conn.db.TournamentParticipant.iter()]
+    // Verify the enrollment was actually created
+    const enrolled = [...playerWithoutAccounts.conn.db.TournamentEnrolled.iter()]
       .filter(p => p.tournamentId === tournamentId && p.userId === playerWithoutAccounts.userId);
-    expect(participants.length).toBe(1);
+    expect(enrolled.length).toBe(1);
   });
 });

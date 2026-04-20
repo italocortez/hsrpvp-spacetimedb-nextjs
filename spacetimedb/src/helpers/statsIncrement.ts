@@ -1,7 +1,8 @@
 // ─── Player Stat & Relationship Increment Helpers ───────────────────────────
 // Composite PK delete+insert upsert pattern for PlayerStat and PlayerRelationship.
 
-import { auditInsert, auditUpdate } from './auditColumns';
+import { auditUpdate } from './auditColumns';
+import { insertWithAudit } from './auditHelpers';
 
 /**
  * Increments PlayerStat for a participant after match finalization.
@@ -38,7 +39,7 @@ export function incrementPlayerStat(
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
-        ctx.db.PlayerStat.insert({
+        ctx.db.PlayerStat.insert(insertWithAudit(ctx, {
             userId,
             gameMode,
             draftMode,
@@ -50,8 +51,7 @@ export function incrementPlayerStat(
             seasonId,
             matchType,
             teamSize,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }
 
@@ -92,7 +92,7 @@ export function incrementPlayerRelationship(
             ...auditUpdate(ctx, existing, actingUserId),
         } as any);
     } else {
-        ctx.db.PlayerRelationship.insert({
+        ctx.db.PlayerRelationship.insert(insertWithAudit(ctx, {
             userId,
             otherUserId,
             gameMode,
@@ -104,7 +104,6 @@ export function incrementPlayerRelationship(
             seasonId,
             matchType,
             teamSize,
-            ...auditInsert(ctx, actingUserId),
-        } as any);
+        }, actingUserId));
     }
 }

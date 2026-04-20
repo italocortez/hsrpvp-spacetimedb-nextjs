@@ -1,14 +1,27 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser, ensureModerator, isRoleAtLeast } from '../helpers/ensurePermissions';
-import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { ensureTournamentAccess, transferTournamentCaptain } from '../helpers/tournamentHelpers';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
+import { deleteCalendarEventForBracketMatch } from '../helpers/calendarCascade';
+import { performConcede } from './concede';
+import { hardDeleteLobby } from './lobbyGc';
 
 // Valid override status tags
 const VALID_OVERRIDE_STATUSES = ['Validated', 'Rejected'];
 
+// Active lobby stages where players are engaged in the match
+const ACTIVE_LOBBY_STAGES = new Set(['Drafting', 'Equipping', 'Scoring']);
+
 // ─── dq_participant ───────────────────────────────────────────────────────────
 // Disqualifies a tournament participant.
+// Per D-21, D-22, D-23, D-25, D-26, D-27:
+//   - Updates TournamentEnrolled status to Disqualified.
+//   - Deletes TournamentTeamMember row.
+//   - Captain DQ: transfer captain to lowest-userId remaining member.
+//   - Last member DQ: destroy team, auto-advance opponent.
+//   - DQ during active lobby (Drafting/Equipping/Scoring): kick + force-concede on last member.
+//   - DQ during Shelved/BetweenGames: remove TTM row, hard-delete lobby on last member.
 // Permission: TO/assistant/moderator/admin (ensureTournamentAccess).
 
 export const dq_participant = spacetimedb.reducer(
@@ -20,82 +33,145 @@ export const dq_participant = spacetimedb.reducer(
     (ctx, { tournamentId, userId, reason }) => {
         const { user } = ensureTournamentAccess(ctx, tournamentId);
 
-        // Find the TournamentParticipant
-        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, userId])][0];
-        if (!participant) {
+        // Find the TournamentEnrolled row
+        const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([tournamentId, userId])][0];
+        if (!enrolled) {
             throw new SenderError('Participant not found in this tournament.');
         }
 
         // Validate participant is not already Disqualified or Withdrawn
-        if (participant.status.tag === 'Disqualified') {
+        if (enrolled.status.tag === 'Disqualified') {
             throw new SenderError('Participant is already disqualified.');
         }
-        if (participant.status.tag === 'Withdrawn') {
+        if (enrolled.status.tag === 'Withdrawn') {
             throw new SenderError('Cannot disqualify a participant who has already withdrawn.');
         }
 
         // Update status to Disqualified (delete + insert for composite PK)
-        ctx.db.TournamentParticipant.delete(participant);
-        ctx.db.TournamentParticipant.insert({
-            ...participant,
+        ctx.db.TournamentEnrolled.delete(enrolled);
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, enrolled, {
             status: { tag: 'Disqualified', value: {} } as any,
-            ...auditUpdate(ctx, participant, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[TOURNAMENT] Participant #${userId} disqualified from tournament #${tournamentId}: ${reason}`);
 
-        // Auto-advance opponent in bracket if autoAdvanceBracket is enabled
-        const tournament = ctx.db.Tournament.id.find(tournamentId);
-        if (tournament && tournament.autoAdvanceBracket && tournament.stage.tag === 'InProgress') {
-            // Find the participant's team
-            const teamGroupId = participant.teamGroupId;
-            if (teamGroupId) {
-                // Scan bracket matches for this tournament to find the DQ'd team's active match
-                // An "active" match is one where: the team is participant1 or participant2, AND winnerId is not set
-                const bracketMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
-                const activeMatch = bracketMatches.find((m: any) =>
-                    !m.winnerTeamId &&
-                    (m.team1Id === teamGroupId || m.team2Id === teamGroupId)
-                );
+        // Find team membership via TournamentTeamMember
+        const ttm = [...ctx.db.TournamentTeamMember.by_tournament_and_user.filter([tournamentId, userId])][0];
+        if (!ttm) {
+            // Player not on a team — nothing more to do
+            return;
+        }
 
-                if (activeMatch) {
-                    // Determine the opponent (the one who isn't DQ'd)
-                    const opponentTeamId = activeMatch.team1Id === teamGroupId
-                        ? activeMatch.team2Id
-                        : activeMatch.team1Id;
+        const teamId = ttm.teamId;
+        const team = ctx.db.TournamentTeam.id.find(teamId);
 
-                    if (opponentTeamId) {
-                        // Set opponent as winner
-                        ctx.db.BracketMatch.id.update({
-                            ...activeMatch,
-                            winnerTeamId: opponentTeamId,
-                            resultStatus: { tag: 'Validated', value: {} } as any,
-                            ...auditUpdate(ctx, activeMatch, user.id),
-                        } as any);
-
-                        // Place opponent in next match
-                        if (activeMatch.nextWinnerMatchId) {
-                            const nextMatch = ctx.db.BracketMatch.id.find(activeMatch.nextWinnerMatchId);
-                            if (nextMatch) {
-                                if (!nextMatch.team1Id) {
-                                    ctx.db.BracketMatch.id.update({
-                                        ...nextMatch,
-                                        team1Id: opponentTeamId,
-                                        ...auditUpdate(ctx, nextMatch, user.id),
-                                    } as any);
-                                } else if (!nextMatch.team2Id) {
-                                    ctx.db.BracketMatch.id.update({
-                                        ...nextMatch,
-                                        team2Id: opponentTeamId,
-                                        ...auditUpdate(ctx, nextMatch, user.id),
-                                    } as any);
-                                }
-                            }
-                        }
-
-                        console.log(`[TOURNAMENT] Auto-advanced team #${opponentTeamId} after DQ of team #${teamGroupId} in match #${activeMatch.id}`);
+        // Check for active/shelved lobby involving this team (D-25, D-26)
+        let activeLobby: any = undefined;
+        if (team) {
+            const bracketMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
+            for (const bm of bracketMatches) {
+                if (bm.team1Id !== teamId && bm.team2Id !== teamId) continue;
+                // Check if there's a lobby for this bracket match in active/shelved stages
+                for (const lobby of ctx.db.Lobby.iter()) {
+                    if (lobby.bracketMatchId === bm.id &&
+                        (ACTIVE_LOBBY_STAGES.has(lobby.stage.tag) ||
+                         lobby.stage.tag === 'BetweenGames' ||
+                         lobby.stage.tag === 'Shelved')) {
+                        activeLobby = { lobby, bracketMatch: bm };
+                        break;
                     }
                 }
+                if (activeLobby) break;
+            }
+        }
+
+        // Captain DQ: transfer captain first (D-21)
+        if (team && team.captainUserId === userId) {
+            transferTournamentCaptain(ctx, teamId, userId, user.id);
+        }
+
+        // Delete DQ'd user's TournamentTeamMember row
+        ctx.db.TournamentTeamMember.delete(ttm);
+
+        // Check if team is now empty (last member DQ'd)
+        const remainingMembers = [...ctx.db.TournamentTeamMember.team_id.filter(teamId)];
+        const isLastMember = remainingMembers.length === 0;
+
+        if (isLastMember && team) {
+            // Destroy the team
+            ctx.db.TournamentTeam.id.delete(teamId);
+
+            if (activeLobby) {
+                const { lobby, bracketMatch } = activeLobby;
+                if (ACTIVE_LOBBY_STAGES.has(lobby.stage.tag)) {
+                    // DQ during active draft/scoring — force-concede (D-25)
+                    // Determine which team side the DQ'd team is
+                    const losingTeamSide = bracketMatch.team1Id === teamId ? 'Blue' : 'Red';
+                    performConcede(
+                        ctx,
+                        lobby,
+                        losingTeamSide,
+                        user.id,
+                        { tag: 'RefereeDecision', value: {} } as any,
+                        undefined
+                    );
+                } else {
+                    // DQ during Shelved or BetweenGames — hard-delete lobby (D-26)
+                    hardDeleteLobby(ctx, lobby.id);
+                }
+            } else {
+                // Auto-advance opponent in bracket if tournament is InProgress (D-27)
+                const tournament = ctx.db.Tournament.id.find(tournamentId);
+                if (tournament && tournament.autoAdvanceBracket && tournament.stage.tag === 'InProgress') {
+                    const bracketMatches = [...ctx.db.BracketMatch.tournament_id.filter(tournamentId)];
+                    const activeMatch = bracketMatches.find((m: any) =>
+                        !m.winnerTeamId &&
+                        (m.team1Id === teamId || m.team2Id === teamId)
+                    );
+
+                    if (activeMatch) {
+                        // Delete calendar event for the active bracket match being resolved (D-22)
+                        deleteCalendarEventForBracketMatch(ctx, activeMatch.id);
+
+                        // Determine the opponent (the one who isn't DQ'd)
+                        const opponentTeamId = activeMatch.team1Id === teamId
+                            ? activeMatch.team2Id
+                            : activeMatch.team1Id;
+
+                        if (opponentTeamId) {
+                            // Set opponent as winner
+                            ctx.db.BracketMatch.id.update(updateWithAudit(ctx, activeMatch, {
+                                winnerTeamId: opponentTeamId,
+                                resultStatus: { tag: 'Validated', value: {} } as any,
+                            }, user.id));
+
+                            // Place opponent in next match
+                            if (activeMatch.nextWinnerMatchId) {
+                                const nextMatch = ctx.db.BracketMatch.id.find(activeMatch.nextWinnerMatchId);
+                                if (nextMatch) {
+                                    if (!nextMatch.team1Id) {
+                                        ctx.db.BracketMatch.id.update(
+                                            updateWithAudit(ctx, nextMatch, { team1Id: opponentTeamId }, user.id),
+                                        );
+                                    } else if (!nextMatch.team2Id) {
+                                        ctx.db.BracketMatch.id.update(
+                                            updateWithAudit(ctx, nextMatch, { team2Id: opponentTeamId }, user.id),
+                                        );
+                                    }
+                                }
+                            }
+
+                            console.log(`[TOURNAMENT] Auto-advanced team #${opponentTeamId} after DQ of team #${teamId} in match #${activeMatch.id}`);
+                        }
+                    }
+                }
+            }
+        } else if (activeLobby && ACTIVE_LOBBY_STAGES.has(activeLobby.lobby.stage.tag)) {
+            // Captain DQ during active lobby but team has other members — kick DQ'd player from lobby (D-25)
+            const lobbyMember = [...ctx.db.LobbyMember.lobby_id.filter(activeLobby.lobby.id)]
+                .find((m: any) => m.userId === userId);
+            if (lobbyMember) {
+                ctx.db.LobbyMember.delete(lobbyMember);
             }
         }
     }
@@ -103,16 +179,20 @@ export const dq_participant = spacetimedb.reducer(
 
 // ─── override_match_result ────────────────────────────────────────────────────
 // Overrides a match result status (Validated or Rejected).
+// Per D-30, D-31, D-42:
+//   - Uses winnerTeamSide instead of winnerUserId.
+//   - Uses matchEndReason instead of matchOutcome.
+//   - Derives tournamentId from bracketMatch.tournamentId (no tournamentId column on MatchResultRecord).
 // Permission: TO/assistant/mod/admin for tournament matches; Moderator+ for non-tournament matches.
 
 export const override_match_result = spacetimedb.reducer(
     {
         matchResultId: t.u32(),
         newStatusTag: t.string(),
-        winnerId: t.u32(),
+        winnerTeamSideTag: t.string(), // 'Blue', 'Red', or '' for draw/no winner
         reason: t.string(),
     },
-    (ctx, { matchResultId, newStatusTag, winnerId, reason }) => {
+    (ctx, { matchResultId, newStatusTag, winnerTeamSideTag, reason }) => {
         // Validate newStatusTag before permission check
         if (!VALID_OVERRIDE_STATUSES.includes(newStatusTag)) {
             throw new SenderError(`Invalid status override: "${newStatusTag}". Must be one of: ${VALID_OVERRIDE_STATUSES.join(', ')}`);
@@ -124,26 +204,36 @@ export const override_match_result = spacetimedb.reducer(
             throw new SenderError('Match result not found.');
         }
 
-        // Check permission based on whether it's a tournament match
+        // Check permission based on whether it's a tournament match (D-42: derive via bracketMatch)
         let actingUserId: number;
-        if (matchResult.isTournamentControlled && matchResult.tournamentId !== undefined) {
-            // Tournament match: TO/assistant/mod/admin can override
-            const { user } = ensureTournamentAccess(ctx, matchResult.tournamentId);
-            actingUserId = user.id;
+        if (matchResult.isTournamentControlled && matchResult.bracketMatchId !== undefined) {
+            // Derive tournament from bracketMatch (no tournamentId column, per D-42)
+            const bracketMatch = ctx.db.BracketMatch.id.find(matchResult.bracketMatchId);
+            if (bracketMatch) {
+                const { user } = ensureTournamentAccess(ctx, bracketMatch.tournamentId);
+                actingUserId = user.id;
+            } else {
+                // Bracket match not found — fall back to moderator check
+                const user = ensureModerator(ctx);
+                actingUserId = user.id;
+            }
         } else {
             // Non-tournament match: only Moderator/Admin can override
             const user = ensureModerator(ctx);
             actingUserId = user.id;
         }
 
-        // For Validated: winnerId must be a match participant or 0 for draw
+        // For Validated: winnerTeamSideTag must be 'Blue', 'Red', or '' (draw)
+        let winnerTeamSide: any = undefined;
         if (newStatusTag === 'Validated') {
-            if (winnerId !== 0) {
-                const participants = [...ctx.db.MatchResultParticipant.match_result_id.filter(matchResultId)];
-                const winnerParticipant = participants.find((p: any) => p.userId === winnerId);
-                if (!winnerParticipant) {
-                    throw new SenderError('Invalid winner for override: must be a match participant or 0 for a draw.');
-                }
+            if (winnerTeamSideTag === 'Blue') {
+                winnerTeamSide = { tag: 'Blue', value: {} };
+            } else if (winnerTeamSideTag === 'Red') {
+                winnerTeamSide = { tag: 'Red', value: {} };
+            } else if (winnerTeamSideTag === '' || winnerTeamSideTag === 'Draw' || winnerTeamSideTag === 'Spectator') {
+                winnerTeamSide = undefined; // Draw: no winner
+            } else {
+                throw new SenderError('Invalid winnerTeamSideTag: must be "Blue", "Red", or "" for a draw.');
             }
         }
 
@@ -163,15 +253,17 @@ export const override_match_result = spacetimedb.reducer(
             }
         }
 
-        // Update the MatchResultRecord
-        // For Rejected: clear the winnerUserId. For Validated: set the provided winnerId.
-        ctx.db.MatchResultRecord.id.update({
-            ...matchResult,
+        // Update the MatchResultRecord using winnerTeamSide + matchEndReason (D-30, D-31)
+        ctx.db.MatchResultRecord.id.update(updateWithAudit(ctx, matchResult, {
             status: { tag: newStatusTag, value: {} } as any,
-            winnerUserId: newStatusTag === 'Validated' ? (winnerId !== 0 ? winnerId : undefined) : undefined,
+            winnerTeamSide: newStatusTag === 'Validated' ? winnerTeamSide : undefined,
+            matchEndReason: newStatusTag === 'Validated'
+                ? (winnerTeamSide !== undefined
+                    ? { tag: 'Completed', value: {} } as any
+                    : { tag: 'Draw', value: {} } as any)
+                : matchResult.matchEndReason,
             disputeReason: reason, // Reuse disputeReason field to store override reason
-            ...auditUpdate(ctx, matchResult, actingUserId),
-        } as any);
+        }, actingUserId));
 
         console.log(`[MATCH] Match result #${matchResultId} overridden to "${newStatusTag}" by user #${actingUserId}: ${reason}`);
     }
@@ -224,19 +316,17 @@ export const assign_tournament_assistant = spacetimedb.reducer(
         if (existing) {
             // Delete + re-insert with updated permissions
             ctx.db.TournamentAssistant.delete(existing);
-            ctx.db.TournamentAssistant.insert({
-                ...existing,
+            ctx.db.TournamentAssistant.insert(updateWithAudit(ctx, existing, {
                 canValidateResults,
                 canOverrideResults,
                 canDqParticipants,
                 canManageBracket,
                 canAssignSeeds,
-                ...auditUpdate(ctx, existing, callerUser.id),
-            } as any);
+            }, callerUser.id));
             console.log(`[TOURNAMENT] Updated assistant #${userId} permissions for tournament #${tournamentId}`);
         } else {
             // Insert new assistant row
-            ctx.db.TournamentAssistant.insert({
+            ctx.db.TournamentAssistant.insert(insertWithAudit(ctx, {
                 tournamentId,
                 userId,
                 canValidateResults,
@@ -244,8 +334,7 @@ export const assign_tournament_assistant = spacetimedb.reducer(
                 canDqParticipants,
                 canManageBracket,
                 canAssignSeeds,
-                ...auditInsert(ctx, callerUser.id),
-            } as any);
+            }, callerUser.id));
             console.log(`[TOURNAMENT] Assigned user #${userId} as assistant for tournament #${tournamentId}`);
         }
     }
@@ -320,11 +409,9 @@ export const mod_promote_to_host = spacetimedb.reducer(
         }
 
         // Update user role to TournamentHost
-        ctx.db.User.id.update({
-            ...targetUser,
+        ctx.db.User.id.update(updateWithAudit(ctx, targetUser, {
             role: { tag: 'TournamentHost', value: {} } as any,
-            ...auditUpdate(ctx, targetUser, moderator.id),
-        } as any);
+        }, moderator.id));
 
         console.log(`[ADMIN] User #${userId} promoted to TournamentHost by moderator #${moderator.id}`);
     }
@@ -361,11 +448,9 @@ export const mod_demote_from_host = spacetimedb.reducer(
         }
 
         // Update user role to User
-        ctx.db.User.id.update({
-            ...targetUser,
+        ctx.db.User.id.update(updateWithAudit(ctx, targetUser, {
             role: { tag: 'User', value: {} } as any,
-            ...auditUpdate(ctx, targetUser, moderator.id),
-        } as any);
+        }, moderator.id));
 
         console.log(`[ADMIN] User #${userId} demoted from TournamentHost to User by moderator #${moderator.id}`);
     }

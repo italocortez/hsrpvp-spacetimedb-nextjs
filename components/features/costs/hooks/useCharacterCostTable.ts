@@ -48,23 +48,25 @@ export function useCharacterCostTable(
 ): CharacterCostRow[] {
     const { characters, characterCosts, synergyCosts } = useGameData();
 
-    // Build cost lookup: characterName -> cost row for selected gameMode
+    // Build cost lookup: characterName -> cost row for selected (gameMode, draftMode)
     const costMap = useMemo(() => {
         const map = new Map<string, HsrCharacterCostRow>();
+        const wantDraft = draftMode === 'classic' ? 'Classic' : 'Auction';
         for (const cost of characterCosts) {
-            if (cost.gameMode.tag === gameMode) {
+            if (cost.gameMode.tag === gameMode && cost.draftMode?.tag === wantDraft) {
                 map.set(cost.characterName, cost);
             }
         }
         return map;
-    }, [characterCosts, gameMode]);
+    }, [characterCosts, gameMode, draftMode]);
 
     // Build synergy lookup: sourceName -> synergy entries (only for classic + selected gameMode)
+    // Phase 15.4 D-31: only Classic-draftMode synergy rows render; Auction-mode display deferred.
     const synergyMap = useMemo(() => {
         const map = new Map<string, HsrSynergyCostRow[]>();
         if (draftMode !== 'classic') return map;
         for (const syn of synergyCosts) {
-            if (syn.gameMode.tag === gameMode) {
+            if (syn.gameMode.tag === gameMode && syn.draftMode?.tag === 'Classic') {
                 const existing = map.get(syn.sourceName) || [];
                 existing.push(syn);
                 map.set(syn.sourceName, existing);
@@ -88,9 +90,7 @@ export function useCharacterCostTable(
 
         for (const char of characters) {
             const cost = costMap.get(char.name);
-            const eidolonCosts = cost
-                ? (draftMode === 'classic' ? cost.classicCosts : cost.auctionBaseBid)
-                : null;
+            const eidolonCosts = cost ? cost.costs : null;
 
             const synergyRaw = synergyMap.get(char.name) || [];
             const synergies: SynergyEntry[] = synergyRaw.map(s => ({

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { createVerifiedTestHarness, hasServerToken, expectReducerError, queryPrivateTable, type TestHarness } from '../../shared/connection';
 import { nextUid, resetUidCounter, characterBatch, KNOWN_CHARACTERS } from '../../shared/fixtures';
 
 describe.skipIf(!hasServerToken())('Roster Migration', () => {
@@ -23,11 +23,10 @@ describe.skipIf(!hasServerToken())('Roster Migration', () => {
     await h.call.createHsrAccount({ uid: sourceUid, displayLabel: 'Source' });
     await h.sync(1000);
 
-    const source = [...h.conn.db.HsrAccount.iter()].find(
-      (a) => a.uid === sourceUid && a.userId === h.userId
-    );
+    const sourceRows = await queryPrivateTable(`SELECT * FROM hsr_account WHERE user_id = ${h.userId}`);
+    const source = sourceRows.find(a => a.uid.replace(/"/g, '') === sourceUid);
     if (!source) throw new Error('Source account not created');
-    sourceAccountId = source.id;
+    sourceAccountId = Number(source.id);
 
     await h.call.batchUpsertCharacters({
       hsrAccountId: sourceAccountId,
@@ -43,11 +42,10 @@ describe.skipIf(!hasServerToken())('Roster Migration', () => {
     await h.call.createHsrAccount({ uid: targetUid, displayLabel: 'Target' });
     await h.sync();
 
-    const target = [...h.conn.db.HsrAccount.iter()].find(
-      (a) => a.uid === targetUid && a.userId === h.userId
-    );
+    const targetRows = await queryPrivateTable(`SELECT * FROM hsr_account WHERE user_id = ${h.userId}`);
+    const target = targetRows.find(a => a.uid.replace(/"/g, '') === targetUid);
     if (!target) throw new Error('Target account not created');
-    targetAccountId = target.id;
+    targetAccountId = Number(target.id);
   });
 
   afterAll(async () => {
@@ -62,18 +60,14 @@ describe.skipIf(!hasServerToken())('Roster Migration', () => {
     });
     await h.sync();
 
-    const sourceChars = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-      (c) => c.hsrAccountId === sourceAccountId
-    );
+    const sourceChars = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${sourceAccountId}`);
     expect(sourceChars.length).toBeGreaterThanOrEqual(2);
 
-    const targetChars = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-      (c) => c.hsrAccountId === targetAccountId
-    );
+    const targetChars = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${targetAccountId}`);
     expect(targetChars.length).toBeGreaterThanOrEqual(2);
 
-    const targetChar0 = targetChars.find((c) => c.characterName === KNOWN_CHARACTERS[0]);
-    expect(targetChar0?.eidolonLevel).toBe(3);
+    const targetChar0 = targetChars.find((c) => c.character_name.replace(/"/g, '') === KNOWN_CHARACTERS[0]);
+    expect(targetChar0 ? Number(targetChar0.eidolon_level) : undefined).toBe(3);
   });
 
   it('move mode: transfers characters, source is emptied', async () => {
@@ -93,16 +87,15 @@ describe.skipIf(!hasServerToken())('Roster Migration', () => {
     });
     await h.sync();
 
-    const sourceChars = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-      (c) => c.hsrAccountId === sourceAccountId
-    );
+    const sourceChars = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${sourceAccountId}`);
     expect(sourceChars).toHaveLength(0);
 
-    const moved = [...h.conn.db.HsrAccountCharacter.iter()].find(
-      (c) => c.hsrAccountId === targetAccountId && c.characterName === KNOWN_CHARACTERS[2]
+    const movedRows = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${targetAccountId}`);
+    const moved = movedRows.find(
+      (c) => c.character_name.replace(/"/g, '') === KNOWN_CHARACTERS[2]
     );
     expect(moved).toBeDefined();
-    expect(moved?.eidolonLevel).toBe(4);
+    expect(moved ? Number(moved.eidolon_level) : undefined).toBe(4);
   });
 
   it('rejects invalid mode', async () => {

@@ -1,19 +1,21 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { ensureTournamentAccess } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { ensureTournamentAccess, transferTournamentCaptain } from '../helpers/tournamentHelpers';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
+import { deleteUserInvitesForTournament } from '../helpers/calendarCascade';
 
 // ─── register_for_tournament ──────────────────────────────────────────────────
 // Registers the authenticated user in a tournament.
 // Handles waitlist logic, approval requirements, and all registration validations.
+// Per D-20: inserts TournamentEnrolled row. No team assignment on enrollment.
+// Solo tournaments (teamSize=1) auto-create TournamentTeam + TournamentTeamMember.
 
 export const register_for_tournament = spacetimedb.reducer(
     {
         tournamentId: t.u32(),
-        teamGroupId: t.u32(),
     },
-    (ctx, { tournamentId, teamGroupId }) => {
+    (ctx, { tournamentId }) => {
         const user = getAuthenticatedUser(ctx);
 
         // Tournament must exist and be in Registration or Seeding stage
@@ -24,7 +26,7 @@ export const register_for_tournament = spacetimedb.reducer(
         }
 
         // Player must not already be registered
-        const existing = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
+        const existing = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([tournamentId, user.id])][0];
         if (existing) {
             throw new SenderError('You are already registered for this tournament.');
         }
@@ -45,24 +47,8 @@ export const register_for_tournament = spacetimedb.reducer(
         // MMR check deferred to Phase 5 — allow all participants for now
         // if (tournament.minimumMmr && tournament.minimumMmr > 0) { ... }
 
-        // If teamGroupId specified, validate the team exists and belongs to this tournament
-        if (teamGroupId !== 0) {
-            const team = ctx.db.TournamentTeam.id.find(teamGroupId);
-            if (!team) throw new SenderError('Tournament team not found.');
-            if (team.tournamentId !== tournamentId) {
-                throw new SenderError('Team does not belong to this tournament.');
-            }
-
-            // Validate team has room
-            const teamMemberCount = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)]
-                .filter((p: any) => p.teamGroupId === teamGroupId && !p.isWaitlisted).length;
-            if (teamMemberCount >= tournament.teamSize) {
-                throw new SenderError('Team is full.');
-            }
-        }
-
-        // Count active (non-waitlisted) participants
-        const activeCount = [...ctx.db.TournamentParticipant.tournament_id.filter(tournamentId)]
+        // Count active (non-waitlisted) enrolled participants
+        const activeCount = [...ctx.db.TournamentEnrolled.tournament_id.filter(tournamentId)]
             .filter((p: any) => !p.isWaitlisted).length;
 
         let isWaitlisted = false;
@@ -77,45 +63,35 @@ export const register_for_tournament = spacetimedb.reducer(
         // Determine approval timestamp
         const approvedByToAt = tournament.requireApproval ? undefined : ctx.timestamp;
 
-        // Get active HSR account id if any
-        const activeAccount = [...ctx.db.HsrAccount.user_id.filter(user.id)].find((a: any) => a.isActive);
-        const hsrAccountId = activeAccount ? activeAccount.id : undefined;
-
-        ctx.db.TournamentParticipant.insert({
+        // Insert TournamentEnrolled row (enrollment only, per D-20)
+        // hsrAccountId removed (D-23): TournamentPlayerAccount is the source of truth for locked accounts
+        ctx.db.TournamentEnrolled.insert(insertWithAudit(ctx, {
             tournamentId,
             userId: user.id,
-            teamGroupId: teamGroupId !== 0 ? teamGroupId : undefined,
             status: { tag: 'Registered', value: {} } as any,
             anonymousAlias: undefined,
             isWaitlisted,
             allowRandomTeamAssignment: false,
             approvedByToAt,
-            hsrAccountId,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         // Auto-create TournamentTeam for solo tournaments (teamSize === 1)
         // Solo players are also "teams" for bracket purposes — the team is invisible to the user
-        if (tournament.teamSize === 1 && teamGroupId === 0) {
-            const newTeam = ctx.db.TournamentTeam.insert({
+        if (tournament.teamSize === 1) {
+            const newTeam = ctx.db.TournamentTeam.insert(insertWithAudit(ctx, {
                 id: 0,
                 tournamentId,
                 name: user.displayName,
                 captainUserId: user.id,
                 seedNumber: undefined,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
 
-            // Update the participant to link to the auto-created team
-            const insertedParticipant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
-            if (insertedParticipant) {
-                ctx.db.TournamentParticipant.delete(insertedParticipant);
-                ctx.db.TournamentParticipant.insert({
-                    ...insertedParticipant,
-                    teamGroupId: newTeam.id,
-                    ...auditUpdate(ctx, insertedParticipant, user.id),
-                } as any);
-            }
+            // Insert TournamentTeamMember row for the auto-created team (D-20)
+            ctx.db.TournamentTeamMember.insert(insertWithAudit(ctx, {
+                teamId: newTeam.id,
+                userId: user.id,
+                tournamentId,
+            }, user.id));
         }
 
         // Lock in player's HSR accounts for this tournament (per D-21)
@@ -123,19 +99,19 @@ export const register_for_tournament = spacetimedb.reducer(
         // checks against these locked accounts, not whatever account is active at match time.
         const allAccounts = [...ctx.db.HsrAccount.user_id.filter(user.id)];
         for (const account of allAccounts) {
-            ctx.db.TournamentPlayerAccount.insert({
+            ctx.db.TournamentPlayerAccount.insert(insertWithAudit(ctx, {
                 tournamentId,
                 userId: user.id,
                 hsrAccountId: account.id,
-                ...auditInsert(ctx, user.id),
-            } as any);
+            }, user.id));
         }
     }
 );
 
 // ─── withdraw_from_tournament ─────────────────────────────────────────────────
-// Sets the participant's status to Withdrawn.
-// Does NOT delete the row (kept for audit/history).
+// Sets the enrolled participant's status to Withdrawn.
+// Does NOT delete the TournamentEnrolled row (kept for audit/history).
+// Deletes TournamentTeamMember row and handles captain-transfer (D-22).
 // Only allowed in Registration or Seeding stage.
 
 export const withdraw_from_tournament = spacetimedb.reducer(
@@ -151,19 +127,62 @@ export const withdraw_from_tournament = spacetimedb.reducer(
             throw new SenderError('Cannot withdraw during this stage. Contact the organizer to be disqualified.');
         }
 
-        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, user.id])][0];
-        if (!participant) throw new SenderError('You are not registered for this tournament.');
-        if (participant.status.tag === 'Withdrawn') throw new SenderError('Already withdrawn.');
+        const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([tournamentId, user.id])][0];
+        if (!enrolled) throw new SenderError('You are not registered for this tournament.');
+        if (enrolled.status.tag === 'Withdrawn') throw new SenderError('Already withdrawn.');
 
-        // Delete + re-insert pattern for composite PK table
-        ctx.db.TournamentParticipant.delete(participant);
-        ctx.db.TournamentParticipant.insert({
-            ...participant,
+        // Handle TournamentTeamMember removal and captain-transfer (D-22, D-23, D-24)
+        const ttm = [...ctx.db.TournamentTeamMember.by_tournament_and_user.filter([tournamentId, user.id])][0];
+        if (ttm) {
+            const teamId = ttm.teamId;
+            const team = ctx.db.TournamentTeam.id.find(teamId);
+
+            if (team) {
+                if (team.captainUserId === user.id) {
+                    // Captain withdrawal: attempt captain-transfer first (D-22)
+                    const transferred = transferTournamentCaptain(ctx, teamId, user.id, user.id);
+                    // Delete the withdrawing captain's TTM row
+                    ctx.db.TournamentTeamMember.delete(ttm);
+
+                    if (!transferred) {
+                        // No other members — destroy the team (D-24 enrolled stay enrolled)
+                        // Delete pending requests for this team
+                        for (const req of [...ctx.db.TournamentTeamRequest.team_id.filter(teamId)]) {
+                            ctx.db.TournamentTeamRequest.delete(req);
+                        }
+                        ctx.db.TournamentTeam.id.delete(teamId);
+                    }
+                } else {
+                    // Non-captain withdrawal: delete TTM row only (D-23)
+                    ctx.db.TournamentTeamMember.delete(ttm);
+                }
+            } else {
+                // Team not found, just delete the orphaned TTM row
+                ctx.db.TournamentTeamMember.delete(ttm);
+            }
+        }
+
+        // Clean up user's pending team requests in this tournament
+        const teams = [...ctx.db.TournamentTeam.tournament_id.filter(tournamentId)];
+        for (const team of teams) {
+            const req = [...ctx.db.TournamentTeamRequest.by_team_and_user.filter([team.id, user.id])][0];
+            if (req) ctx.db.TournamentTeamRequest.delete(req);
+        }
+
+        // Delete the withdrawing player's calendar invites for this tournament's scheduled matches (D-24)
+        deleteUserInvitesForTournament(ctx, user.id, tournamentId);
+
+        // Re-read enrolled row after potential TTM operations
+        const current = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([tournamentId, user.id])][0];
+        if (!current) throw new SenderError('Enrolled record not found.');
+
+        // Delete + re-insert pattern for composite PK table — update status to Withdrawn
+        ctx.db.TournamentEnrolled.delete(current);
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, current, {
             status: { tag: 'Withdrawn', value: {} } as any,
-            ...auditUpdate(ctx, participant, user.id),
-        } as any);
+        }, user.id));
 
-        // Clean up locked accounts on withdrawal (per D-21)
+        // Clean up locked accounts on withdrawal
         const lockedAccounts = [...ctx.db.TournamentPlayerAccount.by_tournament_and_user.filter([tournamentId, user.id])];
         for (const la of lockedAccounts) {
             ctx.db.TournamentPlayerAccount.delete(la);
@@ -183,19 +202,17 @@ export const approve_participant = spacetimedb.reducer(
     (ctx, { tournamentId, userId }) => {
         const { user } = ensureTournamentAccess(ctx, tournamentId);
 
-        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, userId])][0];
-        if (!participant) throw new SenderError('Participant not found.');
-        if (participant.approvedByToAt !== undefined) {
+        const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([tournamentId, userId])][0];
+        if (!enrolled) throw new SenderError('Participant not found.');
+        if (enrolled.approvedByToAt !== undefined) {
             throw new SenderError('Participant is already approved.');
         }
 
         // Delete + re-insert pattern for composite PK table
-        ctx.db.TournamentParticipant.delete(participant);
-        ctx.db.TournamentParticipant.insert({
-            ...participant,
+        ctx.db.TournamentEnrolled.delete(enrolled);
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, enrolled, {
             approvedByToAt: ctx.timestamp,
-            ...auditUpdate(ctx, participant, user.id),
-        } as any);
+        }, user.id));
     }
 );
 
@@ -211,20 +228,18 @@ export const waitlist_promote = spacetimedb.reducer(
     (ctx, { tournamentId, userId }) => {
         const { user } = ensureTournamentAccess(ctx, tournamentId);
 
-        const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filter([tournamentId, userId])][0];
-        if (!participant) throw new SenderError('Participant not found.');
-        if (!participant.isWaitlisted) {
+        const enrolled = [...ctx.db.TournamentEnrolled.by_tournament_and_user.filter([tournamentId, userId])][0];
+        if (!enrolled) throw new SenderError('Participant not found.');
+        if (!enrolled.isWaitlisted) {
             throw new SenderError('Participant is not on the waitlist.');
         }
 
         // Delete + re-insert pattern for composite PK table
         // Promoting from waitlist implies approval — TO explicitly chose this person
-        ctx.db.TournamentParticipant.delete(participant);
-        ctx.db.TournamentParticipant.insert({
-            ...participant,
+        ctx.db.TournamentEnrolled.delete(enrolled);
+        ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, enrolled, {
             isWaitlisted: false,
-            approvedByToAt: participant.approvedByToAt ?? ctx.timestamp,
-            ...auditUpdate(ctx, participant, user.id),
-        } as any);
+            approvedByToAt: enrolled.approvedByToAt ?? ctx.timestamp,
+        }, user.id));
     }
 );

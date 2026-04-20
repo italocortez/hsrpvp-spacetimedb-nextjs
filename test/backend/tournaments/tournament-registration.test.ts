@@ -2,7 +2,7 @@
  * Integration tests: Tournament registration, waitlist, approval, and withdrawal.
  *
  * Covers:
- * - Register verified user -> TournamentParticipant row appears with isWaitlisted=false
+ * - Register verified user -> TournamentEnrolled row appears with isWaitlisted=false
  * - Reject duplicate registration
  * - Reject registration on Draft stage tournament
  * - Waitlist flow: maxParticipants=2, waitlistEnabled=true, requireApproval=true
@@ -14,55 +14,19 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 describe.skipIf(!hasServerToken())('Tournament Registration', () => {
   let host: TestHarness;
   let player1: TestHarness;
   let player2: TestHarness;
   let player3: TestHarness;
+  const openedTournamentIds: number[] = [];
 
   const hostTournaments = () => [...host.conn.db.Tournament.iter()].filter(t => t.organizerId === host.userId);
 
   /** Helper to promote a harness user to a role via server connection */
-  async function promoteToRole(h: TestHarness, roleTag: string) {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    if (!user) throw new Error(`User ${h.userId} not found in cache`);
-    const username = user.username;
-
-    const { DbConnection } = await import('@/src/module_bindings');
-    const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN || '';
-    const uri = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-    const db = process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1';
-
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
-      DbConnection.builder()
-        .withUri(uri)
-        .withDatabaseName(db)
-        .withToken(serverToken)
-        .onConnect(async (serverConn) => {
-          try {
-            await serverConn.reducers.serverSetRole({ username, roleTag });
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            setTimeout(resolve, 500);
-          } catch (err) {
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            reject(err);
-          }
-        })
-        .onConnectError((_ctx: any, err: any) => {
-          clearTimeout(timeout);
-          reject(new Error(`Server connection failed: ${err}`));
-        })
-        .onDisconnect(() => {})
-        .build();
-    });
-
-    await h.sync(1000);
-  }
-
   beforeAll(async () => {
     host = await createVerifiedTestHarness();
     player1 = await createVerifiedTestHarness();
@@ -73,6 +37,10 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
   }, 30000);
 
   afterAll(async () => {
+    // D-03: strict cleanup per resource opened
+    for (const tid of openedTournamentIds) {
+      await cleanupTournament(host, tid);
+    }
     await host?.disconnect();
     await player1?.disconnect();
     await player2?.disconnect();
@@ -93,7 +61,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         maxParticipants: 8,
         rosterVisibility: 'OpenRoster',
         isAnonymousDefault: false,
-        disconnectPolicy: 'Pause',
+        disconnectPolicy: 'Deferred',
         costSetId: 0,
         defaultBestOf: 3,
         groupSize: 4,
@@ -101,6 +69,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         autoAdvanceBracket: true,
         countTowardsMmr: false,
         winnerAdvantage: 0,
+        requireOwnership: false,
         requireVerified: false,
         requireRoster: false,
         minimumMmr: 0,
@@ -108,11 +77,13 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         waitlistEnabled: false,
         scheduledStartAt: '',
         registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
       });
       await host.sync();
 
       const mine = hostTournaments();
       tid = mine[mine.length - 1].id;
+      openedTournamentIds.push(tid);
 
       await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
       await host.sync();
@@ -122,10 +93,10 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
     });
 
     it('registers verified user -> participant row with isWaitlisted=false', async () => {
-      await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player1.call.registerForTournament({ tournamentId: tid });
       await player1.sync();
 
-      const participants = [...player1.conn.db.TournamentParticipant.iter()].filter(
+      const participants = [...player1.conn.db.TournamentEnrolled.iter()].filter(
         p => p.tournamentId === tid && p.userId === player1.userId
       );
       expect(participants.length).toBe(1);
@@ -135,7 +106,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
     it('rejects duplicate registration', async () => {
       const msg = await expectReducerError(
-        player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 })
+        player1.call.registerForTournament({ tournamentId: tid })
       );
       expect(msg.toLowerCase()).toMatch(/already|registered|duplicate/);
     });
@@ -152,7 +123,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -160,6 +131,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -167,15 +139,17 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync();
 
     const mine = hostTournaments();
     const draftTid = mine[mine.length - 1].id;
+    openedTournamentIds.push(draftTid);
     expect(mine[mine.length - 1].stage.tag).toBe('Draft');
 
     const msg = await expectReducerError(
-      player1.call.registerForTournament({ tournamentId: draftTid, teamGroupId: 0 })
+      player1.call.registerForTournament({ tournamentId: draftTid })
     );
     expect(msg.toLowerCase()).toMatch(/registration|draft|stage/);
   });
@@ -194,7 +168,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         maxParticipants: 2,
         rosterVisibility: 'OpenRoster',
         isAnonymousDefault: false,
-        disconnectPolicy: 'Pause',
+        disconnectPolicy: 'Deferred',
         costSetId: 0,
         defaultBestOf: 3,
         groupSize: 4,
@@ -202,6 +176,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         autoAdvanceBracket: true,
         countTowardsMmr: false,
         winnerAdvantage: 0,
+        requireOwnership: false,
         requireVerified: false,
         requireRoster: false,
         minimumMmr: 0,
@@ -209,11 +184,13 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         waitlistEnabled: true,
         scheduledStartAt: '',
         registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
       });
       await host.sync();
 
       const mine = hostTournaments();
       tid = mine[mine.length - 1].id;
+      openedTournamentIds.push(tid);
 
       await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
       await host.sync();
@@ -221,19 +198,19 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
 
     it('first 2 registrants get isWaitlisted=false, 3rd gets isWaitlisted=true', async () => {
       // Register player1
-      await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player1.call.registerForTournament({ tournamentId: tid });
       await player1.sync();
 
       // Register player2
-      await player2.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player2.call.registerForTournament({ tournamentId: tid });
       await player2.sync();
 
       // Register player3 — should be waitlisted
-      await player3.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player3.call.registerForTournament({ tournamentId: tid });
       await player3.sync();
 
       await host.sync();
-      const allParticipants = [...host.conn.db.TournamentParticipant.iter()].filter(
+      const allParticipants = [...host.conn.db.TournamentEnrolled.iter()].filter(
         p => p.tournamentId === tid
       );
 
@@ -253,7 +230,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await host.call.approveParticipant({ tournamentId: tid, userId: player1.userId });
       await host.sync();
 
-      const p = [...host.conn.db.TournamentParticipant.iter()].find(
+      const p = [...host.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tid && p.userId === player1.userId
       );
       expect(p).toBeDefined();
@@ -271,7 +248,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await host.call.waitlistPromote({ tournamentId: tid, userId: player3.userId });
       await host.sync();
 
-      const p3 = [...host.conn.db.TournamentParticipant.iter()].find(
+      const p3 = [...host.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tid && p.userId === player3.userId
       );
       expect(p3).toBeDefined();
@@ -295,7 +272,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         maxParticipants: 8,
         rosterVisibility: 'OpenRoster',
         isAnonymousDefault: false,
-        disconnectPolicy: 'Pause',
+        disconnectPolicy: 'Deferred',
         costSetId: 0,
         defaultBestOf: 3,
         groupSize: 4,
@@ -303,6 +280,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         autoAdvanceBracket: true,
         countTowardsMmr: false,
         winnerAdvantage: 0,
+        requireOwnership: false,
         requireVerified: false,
         requireRoster: false,
         minimumMmr: 0,
@@ -310,16 +288,18 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         waitlistEnabled: false,
         scheduledStartAt: '',
         registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
       });
       await host.sync();
 
       const mine = hostTournaments();
       tid = mine[mine.length - 1].id;
+      openedTournamentIds.push(tid);
 
       await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
       await host.sync();
 
-      await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+      await player1.call.registerForTournament({ tournamentId: tid });
       await player1.sync();
     });
 
@@ -327,7 +307,7 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
       await player1.call.withdrawFromTournament({ tournamentId: tid });
       await player1.sync();
 
-      const p = [...player1.conn.db.TournamentParticipant.iter()].find(
+      const p = [...player1.conn.db.TournamentEnrolled.iter()].find(
         p => p.tournamentId === tid && p.userId === player1.userId
       );
       expect(p).toBeDefined();
@@ -339,6 +319,134 @@ describe.skipIf(!hasServerToken())('Tournament Registration', () => {
         player1.call.withdrawFromTournament({ tournamentId: tid })
       );
       expect(msg.toLowerCase()).toMatch(/already|withdrawn/);
+    });
+  });
+
+  // ── Withdrawal cleanup: team requests and TournamentTeamMember ──
+  describe('withdrawal cleanup', () => {
+    let tid: number;
+
+    it('creates team tournament, registers players, forms team', async () => {
+      await host.call.createTournament({
+        name: 'Reg Test: Withdrawal Cleanup',
+        description: 'Tests request and TournamentTeamMember cleanup on withdrawal',
+        format: 'SingleElimination',
+        teamSize: 3,
+        defaultGameMode: 'MemoryOfChaos',
+        maxParticipants: 16,
+        rosterVisibility: 'OpenRoster',
+        isAnonymousDefault: false,
+        disconnectPolicy: 'Deferred',
+        costSetId: 0,
+        defaultBestOf: 3,
+        groupSize: 4,
+        has3RdPlaceMatch: false,
+        autoAdvanceBracket: true,
+        countTowardsMmr: false,
+        winnerAdvantage: 0,
+        requireOwnership: false,
+        requireVerified: false,
+        requireRoster: false,
+        minimumMmr: 0,
+        requireApproval: false,
+        waitlistEnabled: false,
+        scheduledStartAt: '',
+        registrationDeadline: '',
+        maxAccountsPerPlayer: 1,
+      });
+      await host.sync();
+
+      const mine = hostTournaments();
+      tid = mine[mine.length - 1].id;
+      openedTournamentIds.push(tid);
+
+      await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
+      await host.sync();
+
+      // Register host, player1, player2
+      await host.call.registerForTournament({ tournamentId: tid });
+      await host.sync();
+      await player1.call.registerForTournament({ tournamentId: tid });
+      await player1.sync();
+      await player2.call.registerForTournament({ tournamentId: tid });
+      await player2.sync();
+
+      // Host creates a team
+      await host.call.createTournamentTeam({ tournamentId: tid, teamName: 'Cleanup Team' });
+      await host.sync();
+    });
+
+    it('withdrawal cleans up pending team requests', async () => {
+      const team = [...host.conn.db.TournamentTeam.iter()].find(
+        t => t.tournamentId === tid && t.captainUserId === host.userId
+      );
+      expect(team).toBeDefined();
+
+      // Player2 requests to join
+      await player2.call.requestJoinTeam({ teamId: team!.id });
+      await player2.sync();
+      await host.sync();
+
+      // Verify request exists
+      const reqBefore = [...host.conn.db.TournamentTeamRequest.iter()].find(
+        r => r.teamId === team!.id && r.userId === player2.userId
+      );
+      expect(reqBefore).toBeDefined();
+
+      // Player2 withdraws
+      await player2.call.withdrawFromTournament({ tournamentId: tid });
+      await player2.sync();
+      await host.sync();
+
+      // Request should be gone
+      const reqAfter = [...host.conn.db.TournamentTeamRequest.iter()].find(
+        r => r.teamId === team!.id && r.userId === player2.userId
+      );
+      expect(reqAfter).toBeUndefined();
+
+      // Player2 status should be Withdrawn
+      const p2 = [...host.conn.db.TournamentEnrolled.iter()].find(
+        p => p.tournamentId === tid && p.userId === player2.userId
+      );
+      expect(p2!.status.tag).toBe('Withdrawn');
+    });
+
+    it('withdrawal removes TournamentTeamMember for team member', async () => {
+      const team = [...host.conn.db.TournamentTeam.iter()].find(
+        t => t.tournamentId === tid && t.captainUserId === host.userId
+      );
+      expect(team).toBeDefined();
+
+      // Player1 joins the team
+      await player1.call.requestJoinTeam({ teamId: team!.id });
+      await player1.sync();
+      await host.sync();
+      await host.call.acceptTeamRequest({ teamId: team!.id, userId: player1.userId });
+      await host.sync();
+      await player1.sync();
+
+      // Verify player1 is on the team via TournamentTeamMember
+      const memberBefore = [...player1.conn.db.TournamentTeamMember.iter()].find(
+        m => m.tournamentId === tid && m.userId === player1.userId
+      );
+      expect(memberBefore).toBeDefined();
+      expect(memberBefore!.teamId).toBe(team!.id);
+
+      // Player1 withdraws (non-captain)
+      await player1.call.withdrawFromTournament({ tournamentId: tid });
+      await player1.sync();
+
+      // TournamentTeamMember row should be removed
+      const memberAfter = [...player1.conn.db.TournamentTeamMember.iter()].find(
+        m => m.tournamentId === tid && m.userId === player1.userId
+      );
+      expect(memberAfter).toBeUndefined();
+
+      // Enrollment status should be Withdrawn
+      const p1After = [...player1.conn.db.TournamentEnrolled.iter()].find(
+        p => p.tournamentId === tid && p.userId === player1.userId
+      );
+      expect(p1After!.status.tag).toBe('Withdrawn');
     });
   });
 });
