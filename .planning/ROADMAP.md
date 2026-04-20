@@ -44,7 +44,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 
 - [x] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views (completed 2026-04-13)
 - [x] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes (completed 2026-04-19)
-- [ ] **Phase 16.1: CSS module hygiene** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement)
+- [x] **Phase 16.1: CSS module hygiene** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement) (completed 2026-04-20)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
 - [ ] **Phase 19: Team builder — data** — Team composition state, cost budget, synergy compute, `team_builder_draft` backend + reducers
@@ -268,7 +268,7 @@ Plans:
 - [x] 16.1-04-PLAN.md — Co-locate LoadoutDropdown styles (Wave 4)
 - [x] 16.1-05-PLAN.md — Co-locate LoadoutControls styles (Wave 5)
 - [x] 16.1-06-PLAN.md — Duplicate drafting filter styles into local LightconeCostTable.module.css (Wave 6)
-- [ ] 16.1-07-PLAN.md — Sweep dead rules from page.module.css + R8 Rule 6 doc + bundle gate (Wave 7)
+- [x] 16.1-07-PLAN.md — Sweep dead rules from page.module.css + R8 Rule 6 doc + bundle gate (Wave 7)
 **UI hint**: no (pure refactor, no visual change)
 
 ### Phase 17: Cost tables — data
@@ -582,7 +582,7 @@ Plans:
 | 15.4. Cost-table draftMode restructure | 6/6 | Complete | 2026-04-14 |
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
-| 16.1. CSS module hygiene | 6/7 | In Progress|  |
+| 16.1. CSS module hygiene | 7/7 | Complete   | 2026-04-20 |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |

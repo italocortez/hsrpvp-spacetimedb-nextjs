@@ -5,15 +5,15 @@ milestone_name: Frontend — Phase Summary
 current_phase: 16.1
 current_plan: 7
 status: executing
-stopped_at: Phase 16.1 Plan 06 complete (LightconeCostTable cross-feature CSS duplication; both ROADMAP success-criterion greps return zero matches codebase-wide; D-11 reported for user approval)
-last_updated: "2026-04-20T05:09:54.577Z"
+stopped_at: Phase 16.1 Plan 07 complete (phase-finalization sweep; page.module.css 104→14 lines; docs/frontend/component-hygiene.md gains Rule 6 + 4-bullet Rationale; both ROADMAP greps zero matches; bundle sizes /costs 258kB + /teambuilder 243kB within ±5% of Phase 16 baseline; typecheck exit 0; D-11-analog Firefox preload-warning check reported to orchestrator for user approval)
+last_updated: "2026-04-20T06:57:25.918Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 33
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 53
-  completed_plans: 52
-  percent: 98
+  completed_plans: 53
+  percent: 100
 ---
 
 # Session State
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 **Status:** Executing Phase 16.1
 **Last activity:** 2026-04-20
 
-Progress: [██████████] 52/53 plans (98%) — Phase 16.1 Plan 06 complete (LightconeCostTable cross-feature CSS duplication; both ROADMAP success-criterion greps now return 0 matches codebase-wide; D-11 reported for user approval); next: Plan 07 dead-rule sweep on page.module.css + R8 Rule 6 doc append
+Progress: [██████████] 53/53 plans (100%) — Phase 16.1 Plan 07 complete (phase-finalization sweep + R8 Rule 6 doc append; 7 atomic commits landed per D-10; all 4 ROADMAP success criteria met — 2 grep criteria zero matches, bundle sizes within ±5% of Phase 16 baseline, Firefox preload-warning check reported to orchestrator for user approval); Phase 16.1 structurally complete; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1
 
 ## Previous Milestone
 
@@ -173,6 +173,10 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.1-06]: Pattern — duplication-over-extraction below the threshold. 4 classes × 1 consumer is well under ROADMAP's ≥20 lines × ≥3 sites shared-extract criterion. Shared extraction at this scale would create a components/shared/styles/ directory with a single consumer — a strictly worse outcome than duplication. Threshold re-evaluates automatically: the day a third consumer of these rules appears in a distinct feature, shared extraction becomes the right call. Phase 16.1 correctly defers the components/shared/styles/ directory (per CONTEXT.md deferred list).
 - [Phase 16.1-06]: Pattern — container-only rule subset copy (Pitfall 6). Source .paths rule in CharacterPool participates in a 3-selector group plus large child-button selector block (.paths > button variants, .paths > button:last-child, :not(.selected):hover). None copied — LightconeCostTable renders <FilterButtonGroup> which owns internal button markup/styling. Duplication captures only the container rule (flex-grow, border, overflow-x, transition). Rule-of-thumb for future cross-feature duplications: copy what the consumer's call-site actually references at `{aliasStyles}.X`, not the full selector group.
 - [Phase 16.1-06]: Phase 16.1 R8 grep surface now fully closed codebase-wide. 6 of 7 commits per D-10 landed (Plans 01-05 team-builder + Plan 06 costs). Only Plan 07 dead-rule sweep remains. Any Phase 17+ regression is caught by re-running the two canonical ripgrep patterns from CONTEXT.md § Verification surface.
+- [Phase 16.1-07]: Plan 07 phase-finalization sweep complete. page.module.css trimmed 104→14 lines (file header + single .teamBuilder rule); 11 dead rules deleted (.main + .confirmation* family + .dangerous + @keyframes grow-fade-in + @keyframes spin) after pre-sweep grep audit confirmed zero consumers across app/+components/+lib/. @keyframes spin verified dead despite external grep hits: HeroSection.module.css L28 + AuthRequired.module.css L25 both have their own LOCAL @keyframes spin definitions (L31/L57) per CSS Modules per-file keyframe scoping. docs/frontend/component-hygiene.md gains Rule 6 (component CSS co-location) + Good/Bad examples for leaf→trunk + cross-feature violation types + Rationale section with 4th bullet on @keyframes/@media per-file scoping (beyond D-13's 3-bullet wording; codifies the Plan 01 lesson). Phase History row tagged '16.1 execution' per CLAUDE.md. Both ROADMAP greps return 0 matches. npm run build exit 0: /costs 258 kB (baseline 257, ±5% range 244-270 PASS at +0.4%) + /teambuilder 243 kB (baseline 243, range 231-255 PASS at 0%). npm run test:typecheck exit 0. 2 atomic code commits: 78609ea + fe74ea1. D-11-analog Firefox console check on prod start reported to orchestrator for user approval (ROADMAP success criterion 4).
+- [Phase 16.1-07]: Pattern — pre-sweep grep-audit is a correctness gate, not a style preference. The CONTEXT.md D-02 dead-rule list is a pre-phase claim; the pre-sweep grep is the runtime verification. @keyframes behave differently from class names: grep for 'animation: <name>' AND for '@keyframes <name>' separately. External consumers with their own local @keyframes of the same name are NOT consumers of this file's keyframe (CSS Modules per-file scope); cross-file keyframe references silently resolve to no animation. Run the verification before any sweep commit; if any class/keyframe returns a non-zero in-consumer count outside the CSS file itself, STOP and revise. D-11 'forward-fix unless sweep regression' guidance applies.
+- [Phase 16.1-07]: Pattern — Rule 6 Rationale includes 4th bullet (@keyframes + @media per-file scoping) beyond D-13's 3-bullet wording. Codifies the actual correctness gate that surfaced during Plan 01 execution (Teamslot @keyframes fade-in had to co-locate with .imposition consumer). D-13's Claude's Discretion allows rephrasing; the additional bullet strengthens rule durability and captures a real Phase 16.1 execution lesson rather than purely abstract framing.
+- [Phase 16.1]: PHASE 16.1 COMPLETE — 7 atomic commits landed per D-10 (+ 1 Plan 06 refinement commit `7d1745f` for .paths > button cascade restoration). All 6 pre-Phase-16 R8 violations closed: 5 team-builder co-locations (Teamslot/TeamRoster/SynergyDisplay/LoadoutDropdown/LoadoutControls) + 1 costs cross-feature duplication (LightconeCostTable). Page.module.css shrunk 569→14 lines. docs/frontend/component-hygiene.md codifies Rule 6. Both ROADMAP grep criteria zero matches codebase-wide. Bundle sizes within ±5%: /costs 258 kB, /teambuilder 243 kB. Phase 17+ consumers inherit codified R8 Rule 6 as review-time-enforced invariant (two ripgrep one-liners per CONTEXT.md § Verification surface). ESLint rule still deferred per D-24.
 
 ### Roadmap Evolution
 
@@ -209,7 +213,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-20T05:09:35.889Z
-Stopped at: Phase 16.1 Plan 05 complete (LoadoutControls co-located; team-builder feature R8-Rule-6 grep-closed; D-11 reported for user approval)
+Last session: 2026-04-20T07:06:00.000Z
+Stopped at: Phase 16.1 Plan 07 complete — phase-finalization sweep + R8 Rule 6 doc append landed. page.module.css 104→14 lines; docs/frontend/component-hygiene.md Rule 6 codified; both ROADMAP greps zero matches; bundle sizes /costs 258 kB + /teambuilder 243 kB within ±5% of Phase 16 baseline; typecheck exit 0. D-11-analog Firefox prod-start preload-warning check reported to orchestrator for user approval.
 Resume file: None
-Next action: Execute Phase 16.1 Plan 06 — LightconeCostTable cross-feature duplication (costs feature imports drafting's CharacterPool.module.css; D-08 resolves via local duplication of 4 classes — filters, paths, searchBar, clearButton — into new LightconeCostTable.module.css, with `poolStyles` → `filterStyles` import alias rename at 4 call sites in LightconeCostTable.tsx. Different structural shape from Plans 01-05 — not a lift-and-shift from page.module.css).
+Next action: Run `/gsd-verify-work` on Phase 16.1 to close out the phase — verify all 7 plans' commits, confirm visual checkpoint (preload-warning absent on /costs + /teambuilder + /draft in Firefox prod start), and prompt for any `docs/{feature}/` architecture or contract updates. After verification: Phase 17 (Cost tables — data) unblocked.
