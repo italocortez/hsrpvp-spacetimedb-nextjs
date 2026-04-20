@@ -7,7 +7,7 @@ import { FilterButtonGroup } from '@/components/features/drafting/components/Fil
 import { iconMaps } from '@/components/features/hooks/useIconMaps';
 import { PATH_VARIANTS, type Path as PathTag } from '@/components/features/types/enums';
 import { ClearIcon } from '@/components/globals/icons';
-import poolStyles from '@/components/features/drafting/components/CharacterPool.module.css';
+import filterStyles from './LightconeCostTable.module.css';
 import styles from './CharacterCostTable.module.css';
 
 interface LightconeCostTableProps {
@@ -73,9 +73,9 @@ export default function LightconeCostTable({ draftMode }: LightconeCostTableProp
     return (
         <div className="flex flex-col gap-3">
             {/* Filter bar — paths + search + clear */}
-            <div className={poolStyles.filters}>
+            <div className={filterStyles.filters}>
                 <FilterButtonGroup
-                    className={poolStyles.paths}
+                    className={filterStyles.paths}
                     items={PATH_VARIANTS}
                     selected={selectedPaths}
                     onToggle={togglePath}
@@ -89,12 +89,12 @@ export default function LightconeCostTable({ draftMode }: LightconeCostTableProp
                     placeholder="Search lightcones..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className={poolStyles.searchBar}
+                    className={filterStyles.searchBar}
                     name="lc-search-bar"
                 />
 
                 <button
-                    className={poolStyles.clearButton}
+                    className={filterStyles.clearButton}
                     onClick={clearAll}
                     disabled={!hasActiveFilters}
                     title="Clear all filters"
