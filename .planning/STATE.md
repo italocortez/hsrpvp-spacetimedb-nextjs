@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.1
-current_plan: 6
+current_plan: 7
 status: executing
-stopped_at: Phase 16.1 Plan 05 complete (LoadoutControls co-located; team-builder feature R8-Rule-6 grep-closed; D-11 reported for user approval)
-last_updated: "2026-04-20T04:50:17.060Z"
+stopped_at: Phase 16.1 Plan 06 complete (LightconeCostTable cross-feature CSS duplication; both ROADMAP success-criterion greps return zero matches codebase-wide; D-11 reported for user approval)
+last_updated: "2026-04-20T05:09:54.577Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 33
   completed_phases: 7
   total_plans: 53
-  completed_plans: 51
-  percent: 96
+  completed_plans: 52
+  percent: 98
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.1
-**Current plan:** 6
+**Current plan:** 7
 **Status:** Executing Phase 16.1
 **Last activity:** 2026-04-20
 
-Progress: [██████████] 51/53 plans (96%) — Phase 16.1 Plan 05 complete (LoadoutControls co-located; all 5 team-builder components R8-Rule-6 compliant; D-11 reported for user approval); next: Plan 06 LightconeCostTable cross-feature fix
+Progress: [██████████] 52/53 plans (98%) — Phase 16.1 Plan 06 complete (LightconeCostTable cross-feature CSS duplication; both ROADMAP success-criterion greps now return 0 matches codebase-wide; D-11 reported for user approval); next: Plan 07 dead-rule sweep on page.module.css + R8 Rule 6 doc append
 
 ## Previous Milestone
 
@@ -168,6 +168,11 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase ?]: [Phase 16.1-05]: LoadoutControls co-located into sibling LoadoutControls.module.css (92 LOC, 9 classes + 2 hover variants). Import swapped to ./LoadoutControls.module.css; page.module.css thinned by 88 lines (197->109). All 5 team-builder components now R8-Rule-6 compliant (0 @/app/*.module.css imports in components/features/team-builder/). 2 atomic commits: c6de97e + 8bbdd3c. Build + typecheck green; /teambuilder First Load JS 82.6 kB (no regression). Zero deviations.
 - [Phase ?]: [Phase 16.1-05]: Pattern — five-plan canon confirmation. Self-contained extraction pattern holds across all 5 team-builder plans. Commit shape (2 atomic commits) is driven by structural features present (cross-file cascade, @keyframes, @media, hover-state wiring), NOT class-count. Hover variants migrate WITH their base class in the same commit — same correctness rule as @keyframes (Plan 01) and pseudo-elements (Plan 04); splitting leaks cross-file cascade during the interval.
 - [Phase ?]: [Phase 16.1-05]: Pattern — team-builder feature R8-Rule-6 grep-closed after Plan 05. Plan 06 (costs cross-feature) + Plan 07 (sweep) remain; team-builder feature is structurally clean.
+- [Phase 16.1-06]: LightconeCostTable cross-feature CSS decoupled. 4 filter classes (.filters, .paths, .searchBar, .clearButton) duplicated into new components/features/costs/components/LightconeCostTable.module.css (86 LOC) per D-08. Import swapped from @/components/features/drafting/components/CharacterPool.module.css (cross-feature) to ./LightconeCostTable.module.css with `filterStyles` alias rename; same-feature ./CharacterCostTable.module.css (`styles`) import preserved for rarityBadge + tableWrapper (dual-same-feature-import pattern per PATTERNS.md lines 193-198 + Critical Gotcha 4). 4 call sites renamed atomically poolStyles.X → filterStyles.X at L76/L78/L92/L97. CharacterPool.module.css UNTOUCHED (D-09). Both ROADMAP success-criterion greps now return 0 matches codebase-wide: (1) `from '@/app/*.module.css'` in components/ → 0; (2) cross-feature `from '@/components/features/.../.module.css'` in components/features/ → 0. Container-only .paths rule (drops child-button selectors per Pitfall 6 — FilterButtonGroup owns its own button markup). 2 atomic commits: 6c7574a (create module) + 36c1729 (swap import + rename call sites). Build + typecheck exit 0; /costs First Load JS 258 kB. Zero deviations.
+- [Phase 16.1-06]: Pattern — dual-same-feature CSS import with semantic aliases. When a component needs classes from BOTH its own sibling module AND a peer module in the same feature directory, introduce a semantic alias (`filterStyles` here) for whichever module is introduced later in the migration history. The peer-feature `styles` alias is preserved for stability across call sites that already reference `styles.rarityBadge` / `styles.tableWrapper`. Not a cross-feature violation because both imports resolve under components/features/costs/components/. Explicitly permitted by PATTERNS.md Critical Gotcha 4; avoids cascading rename churn across the TSX file.
+- [Phase 16.1-06]: Pattern — duplication-over-extraction below the threshold. 4 classes × 1 consumer is well under ROADMAP's ≥20 lines × ≥3 sites shared-extract criterion. Shared extraction at this scale would create a components/shared/styles/ directory with a single consumer — a strictly worse outcome than duplication. Threshold re-evaluates automatically: the day a third consumer of these rules appears in a distinct feature, shared extraction becomes the right call. Phase 16.1 correctly defers the components/shared/styles/ directory (per CONTEXT.md deferred list).
+- [Phase 16.1-06]: Pattern — container-only rule subset copy (Pitfall 6). Source .paths rule in CharacterPool participates in a 3-selector group plus large child-button selector block (.paths > button variants, .paths > button:last-child, :not(.selected):hover). None copied — LightconeCostTable renders <FilterButtonGroup> which owns internal button markup/styling. Duplication captures only the container rule (flex-grow, border, overflow-x, transition). Rule-of-thumb for future cross-feature duplications: copy what the consumer's call-site actually references at `{aliasStyles}.X`, not the full selector group.
+- [Phase 16.1-06]: Phase 16.1 R8 grep surface now fully closed codebase-wide. 6 of 7 commits per D-10 landed (Plans 01-05 team-builder + Plan 06 costs). Only Plan 07 dead-rule sweep remains. Any Phase 17+ regression is caught by re-running the two canonical ripgrep patterns from CONTEXT.md § Verification surface.
 
 ### Roadmap Evolution
 
@@ -204,7 +209,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-20T04:48:05Z
+Last session: 2026-04-20T05:09:35.889Z
 Stopped at: Phase 16.1 Plan 05 complete (LoadoutControls co-located; team-builder feature R8-Rule-6 grep-closed; D-11 reported for user approval)
-Resume file: .planning/phases/16.1-css-module-hygiene/16.1-06-PLAN.md
+Resume file: None
 Next action: Execute Phase 16.1 Plan 06 — LightconeCostTable cross-feature duplication (costs feature imports drafting's CharacterPool.module.css; D-08 resolves via local duplication of 4 classes — filters, paths, searchBar, clearButton — into new LightconeCostTable.module.css, with `poolStyles` → `filterStyles` import alias rename at 4 call sites in LightconeCostTable.tsx. Different structural shape from Plans 01-05 — not a lift-and-shift from page.module.css).
