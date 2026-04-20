@@ -264,7 +264,7 @@ Plans:
 **Plans**: 7 plans
 - [x] 16.1-01-PLAN.md — Co-locate Teamslot styles + @keyframes fade-in + isRosterHovered prop stub (Wave 1)
 - [x] 16.1-02-PLAN.md — Co-locate TeamRoster styles + wire onMouseEnter/Leave hover state (Wave 2)
-- [ ] 16.1-03-PLAN.md — Co-locate SynergyDisplay styles (Wave 3)
+- [x] 16.1-03-PLAN.md — Co-locate SynergyDisplay styles (Wave 3)
 - [ ] 16.1-04-PLAN.md — Co-locate LoadoutDropdown styles (Wave 4)
 - [ ] 16.1-05-PLAN.md — Co-locate LoadoutControls styles (Wave 5)
 - [ ] 16.1-06-PLAN.md — Duplicate drafting filter styles into local LightconeCostTable.module.css (Wave 6)

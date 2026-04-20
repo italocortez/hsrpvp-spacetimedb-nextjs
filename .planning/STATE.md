@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.1
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Phase 16.1 Plan 02 complete (TeamRoster co-located + hover state wired, D-11 approved)
-last_updated: "2026-04-20T03:40:00.000Z"
+stopped_at: Phase 16.1 Plan 03 complete (SynergyDisplay co-located, D-11 reported for user approval)
+last_updated: "2026-04-20T03:38:57.786Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 33
   completed_phases: 7
   total_plans: 53
-  completed_plans: 48
-  percent: 91
+  completed_plans: 49
+  percent: 92
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.1
-**Current plan:** 3
+**Current plan:** 4
 **Status:** Executing Phase 16.1
 **Last activity:** 2026-04-20
 
-Progress: [█████████░] 48/53 plans (91%) — Phase 16.1 Plan 02 complete (TeamRoster co-located + hover state wired); next: Plan 03 SynergyDisplay
+Progress: [█████████░] 49/53 plans (92%) — Phase 16.1 Plan 03 complete (SynergyDisplay co-located, D-11 reported for user approval); next: Plan 04 LoadoutDropdown
 
 ## Previous Milestone
 
@@ -159,6 +159,9 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.1-02]: TeamRoster co-located into sibling `components/features/team-builder/TeamRoster.module.css` (35 LOC). Real `isRosterHovered` wired via `const [isRosterHovered, setIsRosterHovered] = useState(false)` + `onMouseEnter`/`onMouseLeave` on the root `.roster` div; Plan 01's `isRosterHovered={false}` stub replaced with `isRosterHovered={isRosterHovered}` at the `<TeamSlot>` call site. `.charactersContainer` `@media (<=800px)` override migrated alongside its consumer per D-04; `.roster` + `.charactersContainer` + now-empty 800px @media block removed from page.module.css (28 lines net). D-06 cross-file cascade replacement fully landed. 2 atomic commits: ce5870c (create sibling) + 819f081 (wire state + thin page module). D-11 visual verification approved. Zero deviations.
 - [Phase 16.1-02]: Pattern — two-plan cascade replacement. Plan 01 ships the prop contract with a stub value + CSS class toggle; Plan 02 wires the real state producer. Order matters in the cross-plan sense: if Plan 01 had removed the `.roster:hover .clearButton` cascade WITHOUT introducing the prop stub, the browser would ship broken hover behavior between Plan 01 and Plan 02 commits. Non-optional prop + stub value is the bridge.
 - [Phase 16.1-02]: Pattern — hover handlers attach to the root container div only, never to an inner child. Matches the previous `.roster:hover` CSS selector semantics 1:1 — hovering the padding/gap around the character grid still counts as hovering the roster. Attaching to `.charactersContainer` instead would narrow the trigger area visibly and change the UX.
+- [Phase 16.1-03]: SynergyDisplay co-located into sibling `components/features/team-builder/SynergyDisplay.module.css` (27 LOC) with `.synergies`, `.synergies > h2` child selector, `.pair`, `.emptyMessage`. SynergyDisplay.tsx L5 import swapped from `@/app/(public)/teambuilder/page.module.css` to `./SynergyDisplay.module.css`; page.module.css thinned by 24 lines (Synergies section comment + 4 rule blocks removed). Simplest extraction in the phase: no @keyframes, no @media, no :global, no hover-state wiring. 2 atomic commits: 56e2690 (create sibling) + 5a8852e (swap import + thin page module). Build + typecheck exit 0. Zero deviations. D-11 visual verification reported to orchestrator for user approval (no commit).
+- [Phase 16.1-03]: Pattern — self-contained extraction canon. Components whose migrated class set has zero cross-file cascade, zero @keyframes consumers, and zero @media overrides collapse to a two-commit pattern: create-sibling FIRST, then swap-import + delete-from-page SECOND (atomic). Third plan in the phase; holds across all three migrated components (Teamslot, TeamRoster, SynergyDisplay).
+- [Phase 16.1-03]: Pattern — plan line-number drift is NOT a deviation. When prior waves (Plans 01 + 02) have thinned the source file, the plan's originally-written line numbers will be off by the prior plans' deletion counts (170 + 28 = 198 lines here; the plan cited lines 182-205 but the actual rules were at 20-43). Rule names and content remained identical. Anchor edits to rule names / section comments, not raw line numbers, when executing a plan in a multi-wave phase that sequentially thins a shared file.
 
 ### Roadmap Evolution
 
@@ -195,7 +198,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-20T03:40:00.000Z
-Stopped at: Phase 16.1 Plan 02 complete (TeamRoster co-located + hover state wired, D-11 approved)
-Resume file: .planning/phases/16.1-css-module-hygiene/16.1-03-PLAN.md
-Next action: Execute Phase 16.1 Plan 03 — SynergyDisplay CSS co-location (third team-builder component; follows the atomic sibling-create → wire-and-thin pattern validated in Plans 01 + 02).
+Last session: 2026-04-20T03:37:49.000Z
+Stopped at: Phase 16.1 Plan 03 complete (SynergyDisplay co-located, D-11 reported for user approval)
+Resume file: .planning/phases/16.1-css-module-hygiene/16.1-04-PLAN.md
+Next action: Execute Phase 16.1 Plan 04 — LoadoutDropdown CSS co-location (fourth team-builder component; self-contained extraction canon validated across three components — Teamslot, TeamRoster, SynergyDisplay — but LoadoutDropdown has `.rostersList::before` pseudo-element + ~12 classes, larger than Plans 01-03 but same structural shape).
