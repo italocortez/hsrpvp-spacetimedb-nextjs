@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 16 (VERIFIED + SECURED)
+current_phase: 16 (VERIFIED + SECURED — closed 2026-04-19)
 current_plan: 6 (ALL Phase 16 plans 01–06 complete)
-status: ready-for-next-phase
-stopped_at: Phase 16 fully closed — UAT 8/8 passed (commit 787a4d1), security audit 36/36 threats closed (commit ed52f86). 46/46 plans (100%). Next phase: 16.1 (CSS module hygiene).
-last_updated: "2026-04-19T20:00:00.000Z"
+status: "PHASE 16 FULLY CLOSED. All 6 plans landed + 8/8 UAT passed (commit 787a4d1) + 36/36 threats closed (commit ed52f86). UAT surfaced 4 inline blockers (CSP unsafe-eval dev, CSP connect-src, SW CORS mode, dev-unregister UX) fixed in commits c6c3391/6ad7ba0/d661ff9/ab4ed6c/7eafbbf. Phase 16.1 (CSS module hygiene) was inserted post-UAT (commit 8e9e7c2) from UAT Test 7 investigation — addresses 5 team-builder + 1 costs cross-feature CSS imports and Next 15 preload warnings. Next phase: 16.1 → then Phase 17 (Cost tables — data)."
+stopped_at: Phase 16.1 context gathered
+last_updated: "2026-04-20T00:46:37.552Z"
 last_activity: 2026-04-19
 progress:
-  total_phases: 32
+  total_phases: 33
   completed_phases: 7
   total_plans: 46
   completed_plans: 46
@@ -188,7 +188,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-19T20:00:00.000Z
-Stopped at: Phase 16 fully closed — UAT 8/8 passed + security 36/36 closed + ROADMAP checked off.
-Resume file: None
+Last session: 2026-04-20T00:46:37.549Z
+Stopped at: Phase 16.1 context gathered
+Resume file: .planning/phases/16.1-css-module-hygiene/16.1-CONTEXT.md
 Next action: Start Phase 16.1 (CSS module hygiene) — retroactive R8 enforcement surfaced during Phase 16 UAT Test 7. Run `/gsd-discuss-phase 16.1` or `/gsd-plan-phase 16.1`. Plan 16.1 unblocks Phase 17 (Cost tables — data).
