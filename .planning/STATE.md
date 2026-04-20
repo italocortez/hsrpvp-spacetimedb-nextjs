@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.1
-current_plan: 7
-status: executing
-stopped_at: Phase 16.1 Plan 07 complete (phase-finalization sweep; page.module.css 104→14 lines; docs/frontend/component-hygiene.md gains Rule 6 + 4-bullet Rationale; both ROADMAP greps zero matches; bundle sizes /costs 258kB + /teambuilder 243kB within ±5% of Phase 16 baseline; typecheck exit 0; D-11-analog Firefox preload-warning check reported to orchestrator for user approval)
-last_updated: "2026-04-20T06:57:25.918Z"
+current_plan: 8
+status: complete
+stopped_at: Phase 16.1 Plan 08 complete (improvised during Plan 07 D-11 verify after Firefox preload warning persisted; disabled Next.js <Link> prefetch on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits 31fd2c4 → 594d3e1 → ec3daa8 → 8337475 all on components/globals/layout/NavBar.tsx; ROADMAP success criterion 4 CLOSED by user out-of-band; bundle sizes /teambuilder 82.5 kB + /costs 258 kB unchanged; typecheck + build exit 0; Phase 16.1 FULLY COMPLETE with 8 plans + 1 refinement commit)
+last_updated: "2026-04-20T09:30:00.000Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 33
   completed_phases: 8
-  total_plans: 53
-  completed_plans: 53
+  total_plans: 54
+  completed_plans: 54
   percent: 100
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.1
-**Current plan:** 7
-**Status:** Executing Phase 16.1
+**Current plan:** 8 (complete)
+**Status:** Phase 16.1 complete — ready for `/gsd-verify-work`
 **Last activity:** 2026-04-20
 
-Progress: [██████████] 53/53 plans (100%) — Phase 16.1 Plan 07 complete (phase-finalization sweep + R8 Rule 6 doc append; 7 atomic commits landed per D-10; all 4 ROADMAP success criteria met — 2 grep criteria zero matches, bundle sizes within ±5% of Phase 16 baseline, Firefox preload-warning check reported to orchestrator for user approval); Phase 16.1 structurally complete; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1
+Progress: [██████████] 54/54 plans (100%) — Phase 16.1 Plan 08 complete (improvised-during-verify Next.js <Link> prefetch disable on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits; ROADMAP success criterion 4 closed by user out-of-band); Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1
 
 ## Previous Milestone
 
@@ -177,6 +177,10 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.1-07]: Pattern — pre-sweep grep-audit is a correctness gate, not a style preference. The CONTEXT.md D-02 dead-rule list is a pre-phase claim; the pre-sweep grep is the runtime verification. @keyframes behave differently from class names: grep for 'animation: <name>' AND for '@keyframes <name>' separately. External consumers with their own local @keyframes of the same name are NOT consumers of this file's keyframe (CSS Modules per-file scope); cross-file keyframe references silently resolve to no animation. Run the verification before any sweep commit; if any class/keyframe returns a non-zero in-consumer count outside the CSS file itself, STOP and revise. D-11 'forward-fix unless sweep regression' guidance applies.
 - [Phase 16.1-07]: Pattern — Rule 6 Rationale includes 4th bullet (@keyframes + @media per-file scoping) beyond D-13's 3-bullet wording. Codifies the actual correctness gate that surfaced during Plan 01 execution (Teamslot @keyframes fade-in had to co-locate with .imposition consumer). D-13's Claude's Discretion allows rephrasing; the additional bullet strengthens rule durability and captures a real Phase 16.1 execution lesson rather than purely abstract framing.
 - [Phase 16.1]: PHASE 16.1 COMPLETE — 7 atomic commits landed per D-10 (+ 1 Plan 06 refinement commit `7d1745f` for .paths > button cascade restoration). All 6 pre-Phase-16 R8 violations closed: 5 team-builder co-locations (Teamslot/TeamRoster/SynergyDisplay/LoadoutDropdown/LoadoutControls) + 1 costs cross-feature duplication (LightconeCostTable). Page.module.css shrunk 569→14 lines. docs/frontend/component-hygiene.md codifies Rule 6. Both ROADMAP grep criteria zero matches codebase-wide. Bundle sizes within ±5%: /costs 258 kB, /teambuilder 243 kB. Phase 17+ consumers inherit codified R8 Rule 6 as review-time-enforced invariant (two ripgrep one-liners per CONTEXT.md § Verification surface). ESLint rule still deferred per D-24.
+- [Phase 16.1-08]: Plan 08 improvised during Plan 07 D-11 verify — the Firefox prod-start preload warning persisted on homepage despite Plans 01-07 closing every R8 Rule 6 violation. Root cause: Next.js <Link> default-prefetches every route whose link appears in the viewport. NavBar mounted 4 heavy-route Links (/teambuilder, /costs, /profile, /admin-view) at /, triggering <link rel=preload> for each route's CSS chunk regardless of chunk co-location. Fix: `prefetch={false}` on the heavy Links. 4 atomic refactor commits iterated shape without amending the working fix: (1) 31fd2c4 heavy: true flag on NAV_ITEMS center tabs + 4 inline `prefetch={false}` on right-section auth-conditional Links; (2) 594d3e1 hoist to single HEAVY_ROUTES Set + prefetchFor(href) helper, both map + right-section call uniformly; (3) ec3daa8 collapse into single NAV_ITEMS = { staticTabs[], profile, adminView, lobbyInstance } object with `heavy` flag per entry (also adds forward-compat lobbyInstance slot for dynamic /lobby/[id] tabs from Phase 28+ useLobbies()); (4) 8337475 pull right-section href from NAV_ITEMS.{profile,adminView} too — single-source-of-truth finish. All 4 commits on components/globals/layout/NavBar.tsx only. /teambuilder 82.5 kB + /costs 258 kB unchanged across all 4 commits; 11 routes compile; typecheck + build exit 0. public/sw.js untouched (cache-first reactive SW, not precache manifest — prefetch disable does not regress asset warming). ROADMAP success criterion 4 CLOSED by user out-of-band after Plan 08 landed. No PLAN.md written — improvised-during-verify posture per Phase 16.1's lean-ceremony canon.
+- [Phase 16.1-08]: Pattern — Next.js <Link> prefetch policy is the canonical lever for "preloaded but not used" Firefox warnings on heavy routes. CSS co-location (Phases 16.1 Plans 01-07) reduces chunk size; prefetch policy controls whether the chunk is fetched at all. They are orthogonal. `prefetch={false}` opts out of the default viewport-preload behavior. Rule-of-thumb for future NavBar additions: any route with non-trivial CSS/JS chunks the user may not navigate to in a session gets heavy: true in NAV_ITEMS. Light routes (homepage, /lobby) keep default prefetch for snappy back-and-forth.
+- [Phase 16.1-08]: Pattern — single-config-object NavBar with forward-compat slots. NAV_ITEMS = { staticTabs[], profile, adminView, lobbyInstance } collapses all route knowledge into one object. staticTabs[] is iterable for center row render; profile + adminView are named flat entries for right-section conditional render; lobbyInstance is a structure-only slot for dynamic /lobby/[id] tabs that Phase 28+ useLobbies() will render. Adding a new NavBar entry is a one-line edit at NAV_ITEMS. Route rename, prefetch policy change, and heavy-flag toggle all touch the same shape. Replaces prior HEAVY_ROUTES Set + prefetchFor() helper (intermediate step) with zero behavior change.
+- [Phase 16.1-08]: Pattern — improvised-during-verify plans are legitimate phase members. No PLAN.md needed when the fix is single-file + single-behavior + root-cause-obvious from DevTools. Atomic commits land directly on the feature branch per autonomous-execution rules; retrospective SUMMARY + STATE + ROADMAP update is the documentation layer. Phase 16.1 ledger counts 8 plans (Plans 01-08) plus 1 Plan 06 refinement commit. `/gsd-verify-work` invariant ("every commit accounted for in a SUMMARY") is satisfied by the SUMMARY's task-commit table.
 
 ### Roadmap Evolution
 
@@ -213,7 +217,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-20T07:06:00.000Z
-Stopped at: Phase 16.1 Plan 07 complete — phase-finalization sweep + R8 Rule 6 doc append landed. page.module.css 104→14 lines; docs/frontend/component-hygiene.md Rule 6 codified; both ROADMAP greps zero matches; bundle sizes /costs 258 kB + /teambuilder 243 kB within ±5% of Phase 16 baseline; typecheck exit 0. D-11-analog Firefox prod-start preload-warning check reported to orchestrator for user approval.
+Last session: 2026-04-20T09:30:00.000Z
+Stopped at: Phase 16.1 Plan 08 complete — improvised-during-verify plan closed ROADMAP success criterion 4 (Firefox preload warning on /). Next.js <Link> prefetch disabled on heavy NavBar routes via consolidated NAV_ITEMS object with per-entry heavy flag + forward-compat lobbyInstance slot. 4 atomic refactor commits (31fd2c4 → 594d3e1 → ec3daa8 → 8337475) all on components/globals/layout/NavBar.tsx; /teambuilder 82.5 kB + /costs 258 kB unchanged; typecheck + build exit 0. User confirmed warning absent out-of-band. Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified.
 Resume file: None
-Next action: Run `/gsd-verify-work` on Phase 16.1 to close out the phase — verify all 7 plans' commits, confirm visual checkpoint (preload-warning absent on /costs + /teambuilder + /draft in Firefox prod start), and prompt for any `docs/{feature}/` architecture or contract updates. After verification: Phase 17 (Cost tables — data) unblocked.
+Next action: Run `/gsd-verify-work` on Phase 16.1 to close out the phase — verify all 8 plans' commits (Plans 01-07 CSS co-location + Plan 08 Link prefetch policy + Plan 06 refinement commit 7d1745f), confirm docs/frontend/component-hygiene.md Rule 6 codified, and prompt for any `docs/{feature}/` architecture or contract updates. After verification: Phase 17 (Cost tables — data) unblocked.
