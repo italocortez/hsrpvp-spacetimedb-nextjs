@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import styles from "@/app/(public)/teambuilder/page.module.css";
+import styles from "./LoadoutControls.module.css";
 import { Loadout } from "./LoadoutManager";
 import { ClearIcon, EditIcon } from "@/components/globals/icons";
 import { LoadoutDropdown } from "./LoadoutDropdown";
