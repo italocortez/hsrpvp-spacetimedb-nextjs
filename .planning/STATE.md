@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.1
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Phase 16.1 Plan 03 complete (SynergyDisplay co-located, D-11 reported for user approval)
-last_updated: "2026-04-20T03:38:57.786Z"
+stopped_at: Phase 16.1 Plan 04 complete (LoadoutDropdown co-located, D-11 reported for user approval)
+last_updated: "2026-04-20T04:28:21.024Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 33
   completed_phases: 7
   total_plans: 53
-  completed_plans: 49
-  percent: 92
+  completed_plans: 50
+  percent: 94
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.1
-**Current plan:** 4
+**Current plan:** 5
 **Status:** Executing Phase 16.1
 **Last activity:** 2026-04-20
 
-Progress: [█████████░] 49/53 plans (92%) — Phase 16.1 Plan 03 complete (SynergyDisplay co-located, D-11 reported for user approval); next: Plan 04 LoadoutDropdown
+Progress: [█████████░] 50/53 plans (94%) — Phase 16.1 Plan 04 complete (LoadoutDropdown co-located, D-11 reported for user approval); next: Plan 05 LoadoutControls
 
 ## Previous Milestone
 
@@ -162,6 +162,9 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.1-03]: SynergyDisplay co-located into sibling `components/features/team-builder/SynergyDisplay.module.css` (27 LOC) with `.synergies`, `.synergies > h2` child selector, `.pair`, `.emptyMessage`. SynergyDisplay.tsx L5 import swapped from `@/app/(public)/teambuilder/page.module.css` to `./SynergyDisplay.module.css`; page.module.css thinned by 24 lines (Synergies section comment + 4 rule blocks removed). Simplest extraction in the phase: no @keyframes, no @media, no :global, no hover-state wiring. 2 atomic commits: 56e2690 (create sibling) + 5a8852e (swap import + thin page module). Build + typecheck exit 0. Zero deviations. D-11 visual verification reported to orchestrator for user approval (no commit).
 - [Phase 16.1-03]: Pattern — self-contained extraction canon. Components whose migrated class set has zero cross-file cascade, zero @keyframes consumers, and zero @media overrides collapse to a two-commit pattern: create-sibling FIRST, then swap-import + delete-from-page SECOND (atomic). Third plan in the phase; holds across all three migrated components (Teamslot, TeamRoster, SynergyDisplay).
 - [Phase 16.1-03]: Pattern — plan line-number drift is NOT a deviation. When prior waves (Plans 01 + 02) have thinned the source file, the plan's originally-written line numbers will be off by the prior plans' deletion counts (170 + 28 = 198 lines here; the plan cited lines 182-205 but the actual rules were at 20-43). Rule names and content remained identical. Anchor edits to rule names / section comments, not raw line numbers, when executing a plan in a multi-wave phase that sequentially thins a shared file.
+- [Phase ?]: [Phase 16.1-04]: LoadoutDropdown co-located into sibling components/features/team-builder/LoadoutDropdown.module.css (149 LOC) with 13 classes + 3 pseudo-elements (.selectButton:hover, .rostersList::before triangle pointer, .dropdownHeader::before/::after divider bars, .teamOption:not(:disabled):hover, .teamOption:disabled). LoadoutDropdown.tsx L4 import swapped to ./LoadoutDropdown.module.css; page.module.css thinned by 150 lines (346 -> 196). Largest single-component extraction in the phase by class-count but same two-commit structural shape as Plans 01-03 (no @keyframes, no @media, no :global, no hover-state wiring). 2 atomic commits: c459065 + 26cb535. Build + typecheck exit 0; /teambuilder First Load JS 82.6 kB (no regression). Zero deviations. D-11 visual verification reported to orchestrator for user approval.
+- [Phase ?]: [Phase 16.1-04]: Pattern — pseudo-element co-location parity. Pseudo-elements (::before, ::after, :hover, :not(:disabled):hover, :disabled) that reference a base class migrating to a sibling module travel WITH the base rule in the same commit. CSS Modules scope pseudo-element selectors per file exactly like class selectors; the .rostersList::before triangle pointer in the new module behaves byte-identically to its pre-move form. Splitting base + pseudo across commits would leak cross-file cascade during the interval — same correctness risk class as @keyframes in Plan 01.
+- [Phase ?]: [Phase 16.1-04]: Pattern — self-contained extraction canon is class-count-agnostic. LoadoutDropdown migrated 13 classes + 3 pseudo-elements in exactly two commits, same structural shape as Plans 01-03 (Teamslot 9 classes, TeamRoster 2 classes, SynergyDisplay 3 classes). The commit shape is driven by presence/absence of cross-file cascade, @keyframes consumers, and @media overrides — NOT by the size of the migrated class set. Four consecutive plans confirm the canon; only a genuinely different structural feature (hover-state wiring in Plan 02, future @keyframes in Plan 01) would change the commit shape.
 
 ### Roadmap Evolution
 
@@ -198,7 +201,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-20T03:37:49.000Z
-Stopped at: Phase 16.1 Plan 03 complete (SynergyDisplay co-located, D-11 reported for user approval)
-Resume file: .planning/phases/16.1-css-module-hygiene/16.1-04-PLAN.md
-Next action: Execute Phase 16.1 Plan 04 — LoadoutDropdown CSS co-location (fourth team-builder component; self-contained extraction canon validated across three components — Teamslot, TeamRoster, SynergyDisplay — but LoadoutDropdown has `.rostersList::before` pseudo-element + ~12 classes, larger than Plans 01-03 but same structural shape).
+Last session: 2026-04-20T03:53:45Z
+Stopped at: Phase 16.1 Plan 04 complete (LoadoutDropdown co-located, D-11 reported for user approval)
+Resume file: .planning/phases/16.1-css-module-hygiene/16.1-05-PLAN.md
+Next action: Execute Phase 16.1 Plan 05 — LoadoutControls CSS co-location (fifth and last team-builder component; self-contained extraction canon validated across four components — Teamslot, TeamRoster, SynergyDisplay, LoadoutDropdown; expected to match same two-commit structural shape since `.controls*`, `.loadoutName`, `.helperText`, `.nameEditor`, `.button`, `.clearBtn`, `.menuBtn` are all self-contained per D-07).
