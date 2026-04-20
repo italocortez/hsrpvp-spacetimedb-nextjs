@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 16.1
-current_plan: 8
-status: complete
-stopped_at: Phase 16.1 Plan 08 complete (improvised during Plan 07 D-11 verify after Firefox preload warning persisted; disabled Next.js <Link> prefetch on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits 31fd2c4 → 594d3e1 → ec3daa8 → 8337475 all on components/globals/layout/NavBar.tsx; ROADMAP success criterion 4 CLOSED by user out-of-band; bundle sizes /teambuilder 82.5 kB + /costs 258 kB unchanged; typecheck + build exit 0; Phase 16.1 FULLY COMPLETE with 8 plans + 1 refinement commit)
-last_updated: "2026-04-20T09:30:00.000Z"
+current_phase: 17
+current_plan: Not started
+status: planning
+stopped_at: Phase 16.1 Plan 08 complete — improvised-during-verify plan closed ROADMAP success criterion 4 (Firefox preload warning on /). Next.js <Link> prefetch disabled on heavy NavBar routes via consolidated NAV_ITEMS object with per-entry heavy flag + forward-compat lobbyInstance slot. 4 atomic refactor commits (31fd2c4 → 594d3e1 → ec3daa8 → 8337475) all on components/globals/layout/NavBar.tsx; /teambuilder 82.5 kB + /costs 258 kB unchanged; typecheck + build exit 0. User confirmed warning absent out-of-band. Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified.
+last_updated: "2026-04-20T09:45:15.526Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 33
   completed_phases: 8
-  total_plans: 54
+  total_plans: 53
   completed_plans: 54
   percent: 100
 ---
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 16.1
-**Current plan:** 8 (complete)
-**Status:** Phase 16.1 complete — ready for `/gsd-verify-work`
+**Current phase:** 17
+**Current plan:** Not started
+**Status:** Ready to plan
 **Last activity:** 2026-04-20
 
 Progress: [██████████] 54/54 plans (100%) — Phase 16.1 Plan 08 complete (improvised-during-verify Next.js <Link> prefetch disable on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits; ROADMAP success criterion 4 closed by user out-of-band); Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1

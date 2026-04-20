@@ -583,7 +583,7 @@ Plans:
 | 15.4. Cost-table draftMode restructure | 6/6 | Complete | 2026-04-14 |
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
-| 16.1. CSS module hygiene | 8/8 | Complete   | 2026-04-20 |
+| 16.1. CSS module hygiene | 8/7 | Complete    | 2026-04-20 |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |
