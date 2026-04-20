@@ -100,6 +100,7 @@ export function TeamRoster({
 							onDragLeave={handleDragLeave}
 							onDragEnd={handleDragEnd}
 							onDrop={handleDrop}
+							isRosterHovered={false}
 						/>
 					);
 				})}

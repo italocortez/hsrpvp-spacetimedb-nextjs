@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import styles from "@/app/(public)/teambuilder/page.module.css";
+import styles from "./Teamslot.module.css";
 import { ResolvedTeamMember } from "./LoadoutManager";
 import { Character, CharacterRank, Eidolons, Lightcone, LightconeRank, SuperImpositions, Synergy } from "../types/enums";
 import { iconMaps } from "../hooks/useIconMaps";
@@ -31,6 +31,9 @@ interface TeamSlotProps {
 	onDragLeave: () => void;
 	onDragEnd: () => void;
 	onDrop: (index: number, e: React.DragEvent) => void;
+
+	// Roster-level hover signal from TeamRoster (D-06) — toggles .clearButtonVisible
+	isRosterHovered: boolean;
 }
 
 export function TeamSlot({
@@ -51,6 +54,7 @@ export function TeamSlot({
 	onDragLeave,
 	onDragEnd,
 	onDrop,
+	isRosterHovered,
 }: TeamSlotProps) {
 	const [isHovered, setIsHovered] = useState<boolean>(false);
 
@@ -121,7 +125,7 @@ export function TeamSlot({
 			{/* Remove button */}
 			<button
 				onClick={() => onRemove(index)}
-				className={styles.clearButton}
+				className={`${styles.clearButton}${isRosterHovered ? ` ${styles.clearButtonVisible}` : ""}`}
 				title={`Remove ${character.displayName}`}
 			>
 				<ClearIcon />
