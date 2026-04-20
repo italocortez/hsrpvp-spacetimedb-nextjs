@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.1
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Phase 16.1 Plan 04 complete (LoadoutDropdown co-located, D-11 reported for user approval)
-last_updated: "2026-04-20T04:28:21.024Z"
+stopped_at: Phase 16.1 Plan 05 complete (LoadoutControls co-located; team-builder feature R8-Rule-6 grep-closed; D-11 reported for user approval)
+last_updated: "2026-04-20T04:50:17.060Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 33
   completed_phases: 7
   total_plans: 53
-  completed_plans: 50
-  percent: 94
+  completed_plans: 51
+  percent: 96
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.1
-**Current plan:** 5
+**Current plan:** 6
 **Status:** Executing Phase 16.1
 **Last activity:** 2026-04-20
 
-Progress: [█████████░] 50/53 plans (94%) — Phase 16.1 Plan 04 complete (LoadoutDropdown co-located, D-11 reported for user approval); next: Plan 05 LoadoutControls
+Progress: [██████████] 51/53 plans (96%) — Phase 16.1 Plan 05 complete (LoadoutControls co-located; all 5 team-builder components R8-Rule-6 compliant; D-11 reported for user approval); next: Plan 06 LightconeCostTable cross-feature fix
 
 ## Previous Milestone
 
@@ -165,6 +165,9 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase ?]: [Phase 16.1-04]: LoadoutDropdown co-located into sibling components/features/team-builder/LoadoutDropdown.module.css (149 LOC) with 13 classes + 3 pseudo-elements (.selectButton:hover, .rostersList::before triangle pointer, .dropdownHeader::before/::after divider bars, .teamOption:not(:disabled):hover, .teamOption:disabled). LoadoutDropdown.tsx L4 import swapped to ./LoadoutDropdown.module.css; page.module.css thinned by 150 lines (346 -> 196). Largest single-component extraction in the phase by class-count but same two-commit structural shape as Plans 01-03 (no @keyframes, no @media, no :global, no hover-state wiring). 2 atomic commits: c459065 + 26cb535. Build + typecheck exit 0; /teambuilder First Load JS 82.6 kB (no regression). Zero deviations. D-11 visual verification reported to orchestrator for user approval.
 - [Phase ?]: [Phase 16.1-04]: Pattern — pseudo-element co-location parity. Pseudo-elements (::before, ::after, :hover, :not(:disabled):hover, :disabled) that reference a base class migrating to a sibling module travel WITH the base rule in the same commit. CSS Modules scope pseudo-element selectors per file exactly like class selectors; the .rostersList::before triangle pointer in the new module behaves byte-identically to its pre-move form. Splitting base + pseudo across commits would leak cross-file cascade during the interval — same correctness risk class as @keyframes in Plan 01.
 - [Phase ?]: [Phase 16.1-04]: Pattern — self-contained extraction canon is class-count-agnostic. LoadoutDropdown migrated 13 classes + 3 pseudo-elements in exactly two commits, same structural shape as Plans 01-03 (Teamslot 9 classes, TeamRoster 2 classes, SynergyDisplay 3 classes). The commit shape is driven by presence/absence of cross-file cascade, @keyframes consumers, and @media overrides — NOT by the size of the migrated class set. Four consecutive plans confirm the canon; only a genuinely different structural feature (hover-state wiring in Plan 02, future @keyframes in Plan 01) would change the commit shape.
+- [Phase ?]: [Phase 16.1-05]: LoadoutControls co-located into sibling LoadoutControls.module.css (92 LOC, 9 classes + 2 hover variants). Import swapped to ./LoadoutControls.module.css; page.module.css thinned by 88 lines (197->109). All 5 team-builder components now R8-Rule-6 compliant (0 @/app/*.module.css imports in components/features/team-builder/). 2 atomic commits: c6de97e + 8bbdd3c. Build + typecheck green; /teambuilder First Load JS 82.6 kB (no regression). Zero deviations.
+- [Phase ?]: [Phase 16.1-05]: Pattern — five-plan canon confirmation. Self-contained extraction pattern holds across all 5 team-builder plans. Commit shape (2 atomic commits) is driven by structural features present (cross-file cascade, @keyframes, @media, hover-state wiring), NOT class-count. Hover variants migrate WITH their base class in the same commit — same correctness rule as @keyframes (Plan 01) and pseudo-elements (Plan 04); splitting leaks cross-file cascade during the interval.
+- [Phase ?]: [Phase 16.1-05]: Pattern — team-builder feature R8-Rule-6 grep-closed after Plan 05. Plan 06 (costs cross-feature) + Plan 07 (sweep) remain; team-builder feature is structurally clean.
 
 ### Roadmap Evolution
 
@@ -201,7 +204,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-20T03:53:45Z
-Stopped at: Phase 16.1 Plan 04 complete (LoadoutDropdown co-located, D-11 reported for user approval)
-Resume file: .planning/phases/16.1-css-module-hygiene/16.1-05-PLAN.md
-Next action: Execute Phase 16.1 Plan 05 — LoadoutControls CSS co-location (fifth and last team-builder component; self-contained extraction canon validated across four components — Teamslot, TeamRoster, SynergyDisplay, LoadoutDropdown; expected to match same two-commit structural shape since `.controls*`, `.loadoutName`, `.helperText`, `.nameEditor`, `.button`, `.clearBtn`, `.menuBtn` are all self-contained per D-07).
+Last session: 2026-04-20T04:48:05Z
+Stopped at: Phase 16.1 Plan 05 complete (LoadoutControls co-located; team-builder feature R8-Rule-6 grep-closed; D-11 reported for user approval)
+Resume file: .planning/phases/16.1-css-module-hygiene/16.1-06-PLAN.md
+Next action: Execute Phase 16.1 Plan 06 — LightconeCostTable cross-feature duplication (costs feature imports drafting's CharacterPool.module.css; D-08 resolves via local duplication of 4 classes — filters, paths, searchBar, clearButton — into new LightconeCostTable.module.css, with `poolStyles` → `filterStyles` import alias rename at 4 call sites in LightconeCostTable.tsx. Different structural shape from Plans 01-05 — not a lift-and-shift from page.module.css).

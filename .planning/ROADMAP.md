@@ -266,7 +266,7 @@ Plans:
 - [x] 16.1-02-PLAN.md — Co-locate TeamRoster styles + wire onMouseEnter/Leave hover state (Wave 2)
 - [x] 16.1-03-PLAN.md — Co-locate SynergyDisplay styles (Wave 3)
 - [x] 16.1-04-PLAN.md — Co-locate LoadoutDropdown styles (Wave 4)
-- [ ] 16.1-05-PLAN.md — Co-locate LoadoutControls styles (Wave 5)
+- [x] 16.1-05-PLAN.md — Co-locate LoadoutControls styles (Wave 5)
 - [ ] 16.1-06-PLAN.md — Duplicate drafting filter styles into local LightconeCostTable.module.css (Wave 6)
 - [ ] 16.1-07-PLAN.md — Sweep dead rules from page.module.css + R8 Rule 6 doc + bundle gate (Wave 7)
 **UI hint**: no (pure refactor, no visual change)
@@ -582,7 +582,7 @@ Plans:
 | 15.4. Cost-table draftMode restructure | 6/6 | Complete | 2026-04-14 |
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
-| 16.1. CSS module hygiene | 4/7 | In Progress|  |
+| 16.1. CSS module hygiene | 5/7 | In Progress|  |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |
