@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 16 (COMPLETE)
+current_phase: 16 (VERIFIED + SECURED)
 current_plan: 6 (ALL Phase 16 plans 01–06 complete)
-status: verifying
-stopped_at: Completed 16-06-docs-component-hygiene-PLAN.md — PHASE 16 COMPLETE. 46/46 plans (100%).
-last_updated: "2026-04-19T05:33:53.378Z"
+status: ready-for-next-phase
+stopped_at: Phase 16 fully closed — UAT 8/8 passed (commit 787a4d1), security audit 36/36 threats closed (commit ed52f86). 46/46 plans (100%). Next phase: 16.1 (CSS module hygiene).
+last_updated: "2026-04-19T20:00:00.000Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 32
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 16 (COMPLETE)
+**Current phase:** 16 (VERIFIED + SECURED — closed 2026-04-19)
 **Current plan:** 6 (ALL Phase 16 plans 01–06 complete)
-**Status:** PHASE 16 COMPLETE. All 6 plans landed: 16-01 (config + route-group rename), 16-02 (subscription reshuffle), 16-03 (middleware), 16-04 (service worker), 16-05 (viewport primitives), 16-06 (docs — component-hygiene + auth architecture Subscription Lifecycle reshuffle). Plan 16-06 shipped two docs: NEW `docs/frontend/component-hygiene.md` (315 LOC) with 5 R8 rules + Good/Bad examples, Rule 3 tool-agnostic with BOTH CSS Modules + Tailwind examples (D-25), zero PR-template infrastructure (D-24); `docs/auth/architecture.md` Subscription Lifecycle rewritten to reflect Plan 02 ownership — Stage 1 → AuthProvider (D-03), Stage 2 → (authed)/layout.tsx (D-07), route-group mount elevated to a THIRD privacy gate, middleware explicitly classified UX-only (NOT an auth trust boundary), Regression Guard subsection names auth-subscriptions.test.ts as canonical. Both docs signed with Phase 16 execution rows per CLAUDE.md. 2 atomic commits: f4f999e, 93da7ca. Build + typecheck exit 0; 15.5 harness 2/2 green unmodified (13.99s); zero deletions; zero deviations. FOUND-05 + FOUND-06 documentation satisfied (code completed at Plan 02). Phase 16 ready for `/gsd-verify-work 16`. Next phase: 17.
+**Status:** PHASE 16 FULLY CLOSED. All 6 plans landed + 8/8 UAT passed (commit 787a4d1) + 36/36 threats closed (commit ed52f86). UAT surfaced 4 inline blockers (CSP unsafe-eval dev, CSP connect-src, SW CORS mode, dev-unregister UX) fixed in commits c6c3391/6ad7ba0/d661ff9/ab4ed6c/7eafbbf. Phase 16.1 (CSS module hygiene) was inserted post-UAT (commit 8e9e7c2) from UAT Test 7 investigation — addresses 5 team-builder + 1 costs cross-feature CSS imports and Next 15 preload warnings. Next phase: 16.1 → then Phase 17 (Cost tables — data).
 **Last activity:** 2026-04-19
 
 Progress: [██████████] 46/46 plans (Phase 16 Plans 01 + 02 + 03 + 04 + 05 + 06 COMPLETE; Phase 16 DONE)
@@ -188,7 +188,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-19T05:33:53.374Z
-Stopped at: Completed 16-06-docs-component-hygiene-PLAN.md — PHASE 16 COMPLETE. 46/46 plans (100%).
+Last session: 2026-04-19T20:00:00.000Z
+Stopped at: Phase 16 fully closed — UAT 8/8 passed + security 36/36 closed + ROADMAP checked off.
 Resume file: None
-Next action: Phase 16 is complete. Run `/gsd-verify-work 16` for full-phase UAT (route-group rename + subscription reshuffle + middleware + service worker + viewport primitives + docs). After verify-work passes, proceed with `/gsd-research-phase 17` (or similar) for the next UX phase.
+Next action: Start Phase 16.1 (CSS module hygiene) — retroactive R8 enforcement surfaced during Phase 16 UAT Test 7. Run `/gsd-discuss-phase 16.1` or `/gsd-plan-phase 16.1`. Plan 16.1 unblocks Phase 17 (Cost tables — data).

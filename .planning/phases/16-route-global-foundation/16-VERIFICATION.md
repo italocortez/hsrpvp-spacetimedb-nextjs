@@ -1,8 +1,9 @@
 ---
 phase: 16-route-global-foundation
 verified: 2026-04-18T00:00:00Z
-status: human_needed
-score: 8/8 must-haves verified
+verified_human: 2026-04-19T19:00:00Z
+status: verified
+score: 8/8 must-haves verified (including 8/8 human-UAT checks)
 overrides_applied: 2
 requirement_coverage:
   satisfied:
@@ -77,8 +78,10 @@ human_verification:
 # Phase 16: Route + Global Foundation Verification Report
 
 **Phase Goal:** Every downstream phase builds on a route-group structure, primitives (`<ViewportGate>`, `<ViewportWriter>`, render-tier), middleware, and asset-caching Service Worker that are settled and non-negotiable.
-**Verified:** 2026-04-18
-**Status:** human_needed
+**Verified (static):** 2026-04-18
+**Verified (human UAT):** 2026-04-19 — all 8 human_verification items PASSED (see `16-HUMAN-UAT.md` + commit `787a4d1`)
+**Security audit:** 2026-04-19 — 36/36 threats closed (see `16-SECURITY.md` + commit `ed52f86`)
+**Status:** verified
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
@@ -223,7 +226,10 @@ See `human_verification` array in frontmatter. Eight items:
 
 The 8 human-verification items are browser-runtime checks that no static analysis can perform: cookie manipulation, UA spoofing, WebSocket SW registration, localStorage persistence across reloads, and React hydration warnings. These should be exercised during the developer's `/gsd-verify-work 16` walkthrough before marking the phase merged.
 
+**Human UAT outcome (2026-04-19):** all 8 items exercised and PASSED in `/gsd-verify-work 16`. See `16-HUMAN-UAT.md` (`status: complete`) for per-test results + history. Inline fixes captured in commits `c6c3391` (CSP dev unsafe-eval for HMR), `6ad7ba0` (CSP connect-src), `d661ff9` (SW CORS mode + imgur removal), `ab4ed6c` (dev-unregister UX), `7eafbbf` (countdown + cancel). Summary: UAT Test 1 blocker resolved, Tests 3/5/8 required code fixes, all 8 tests green on re-test.
+
 ---
 
-_Verified: 2026-04-18_
-_Verifier: Claude (gsd-verifier)_
+_Verified (static): 2026-04-18 — Claude (gsd-verifier)_
+_Verified (human UAT): 2026-04-19 — user via `/gsd-verify-work 16`_
+_Security audit: 2026-04-19 — gsd-security-auditor (36/36 threats closed)_
