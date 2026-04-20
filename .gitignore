@@ -56,3 +56,7 @@ notes/
 
 #quell
 quell.exe
+
+# playwright-cli (dev-env local: config is per-user, session artifacts are ephemeral)
+.playwright/
+.playwright-cli/

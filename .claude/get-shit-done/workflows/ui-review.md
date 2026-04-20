@@ -151,25 +151,43 @@ Full review: {path to UI-REVIEW.md}
 ───────────────────────────────────────────────────────────────
 ```
 
-## Automated UI Verification (when Playwright-MCP is available)
+## Automated UI Verification (Playwright CLI or Playwright-MCP)
 
-If `mcp__playwright__*` tools are accessible in this session:
+Two browser backends are supported. Detect at runtime and prefer CLI (lower
+token overhead — no MCP tool-schema bloat):
 
-1. Navigate to each UI component described in the phase's UI-SPEC.md using
-   `mcp__playwright__navigate` (or equivalent Playwright-MCP tool).
-2. Take a screenshot of each component using `mcp__playwright__screenshot`.
-3. Compare against the spec's visual requirements — dimensions, color palette,
-   layout, spacing scale, and typography.
-4. Report any dimension, color, or layout discrepancies automatically as
-   additional findings within the relevant pillar section of UI-REVIEW.md.
-5. Flag items that require human judgment (brand feel, content tone) as
-   `needs_human_review: true` in the findings — these are surfaced to the user
-   separately after the automated pass completes.
+```bash
+# Backend detection (run once at start of audit step)
+HAS_CLI=$(command -v playwright-cli >/dev/null 2>&1 && echo "true" || echo "false")
+HAS_MCP=$(compgen -A function mcp__playwright__ 2>/dev/null | head -1 | grep -q . && echo "true" || echo "false")
+```
 
-If Playwright-MCP is not available in this session, this section is skipped
-entirely. The audit falls back to the standard code-only review described above.
-No configuration change is required — the availability of `mcp__playwright__*`
-tools is detected at runtime.
+If `HAS_CLI=true` OR `HAS_MCP=true`:
+
+1. Start the dev server if not already running (`npm run dev` in background).
+2. Open a browser session:
+   - **CLI (preferred):** `rtk proxy playwright-cli open <base-url>` — opens once, reused across components
+   - **MCP:** `mcp__playwright__navigate` per component
+3. For each component described in UI-SPEC.md, navigate and screenshot:
+   - **CLI:** `rtk proxy playwright-cli goto <route>` then `rtk proxy playwright-cli screenshot --filename {phase_dir}/screenshots/{component}.png`
+   - **MCP:** `mcp__playwright__screenshot` per component
+4. `Read` each PNG. Compare against the spec's visual requirements — dimensions,
+   color palette, layout, spacing scale, and typography.
+5. Report any dimension, color, or layout discrepancies as additional findings
+   within the relevant pillar section of UI-REVIEW.md.
+6. Flag items that require human judgment (brand feel, content tone) as
+   `needs_human_review: true` — surfaced to the user separately after the
+   automated pass.
+7. **CLI only:** close the session with `rtk proxy playwright-cli close` at audit end.
+
+If NEITHER backend is available, this section is skipped entirely and the audit
+falls back to the standard code-only review. No configuration change is required
+— backend availability is detected at runtime.
+
+**Note:** Screenshots are dropped under `{phase_dir}/screenshots/` for review
+traceability. This path is intentionally committed (unlike ephemeral `tmp/pw/`
+drops used during execution) so the audit artifact is durable alongside
+UI-REVIEW.md.
 
 ## 5. Commit (if configured)
 
