@@ -308,6 +308,53 @@ export function MatchCardCompact({ match }: { match: Match }) {
 </main>
 ```
 
+## Rule 6 — Component CSS is co-located with the component file
+
+Every component file has a sibling `.module.css` with the same basename (PascalCase mirror). Components import only their own sibling module — never a page-level `page.module.css` from a route, and never a different feature's `.module.css`.
+
+This rule closes two anti-patterns that surfaced during Phase 16 UAT. The first is **leaf → trunk inversion**: a component in `components/features/team-builder/` importing from `app/(public)/teambuilder/page.module.css`. The page becomes a dumping ground for component-scoped styles; a rule change in the page file can silently break a component that happens to import from it; and Next.js 15 aggressively preloads the page CSS chunk on routes that mount the component, triggering the "preload not used within a few seconds" warning. The second is **cross-feature coupling**: a component under `components/features/costs/` importing from `components/features/drafting/`. Two features that should evolve independently become joined at the CSS layer — a refactor in one feature's module file can visually break the other.
+
+The rule is narrow and grep-friendly on purpose. Reviewer runs two ripgrep patterns on every PR touching CSS Modules: `rg "from ['\"]@/app/.*\.module\.css['\"]" components/` and `rg "from ['\"]@/components/features/[^/]+/.+\.module\.css['\"]" components/features/`. Zero matches = clean.
+
+### ✅ Good
+
+```
+components/features/team-builder/Teamslot.tsx
+components/features/team-builder/Teamslot.module.css   ← sibling
+```
+
+```tsx
+// components/features/team-builder/Teamslot.tsx
+import styles from './Teamslot.module.css';
+```
+
+Page CSS holds page-wrapper rules only (`.teamBuilder` for route `/teambuilder`). Keyframes, `@media` overrides, `:hover` states, and descendant selectors all live in the sibling module alongside the rule they modify. CSS Modules scope these per file; splitting them across modules silently breaks animations and cascades.
+
+### ❌ Bad — leaf imports trunk
+
+```tsx
+// components/features/team-builder/Teamslot.tsx — do NOT do this
+import styles from '@/app/(public)/teambuilder/page.module.css';
+```
+
+Page CSS holds page-wrapper rules only. Leaf components MUST NOT import from trunk files. If a component renders styles, those rules live beside the component.
+
+### ❌ Bad — cross-feature import
+
+```tsx
+// components/features/costs/components/LightconeCostTable.tsx — do NOT do this
+import poolStyles from '@/components/features/drafting/components/CharacterPool.module.css';
+```
+
+If rules are genuinely shared across features, duplicate them locally. Extract to `components/shared/styles/` ONLY when ≥20 identical lines repeat across ≥3 sites. A single consumer of a cross-feature module is always a duplication candidate, never a shared-extraction one; the second consumer may or may not be; the third triggers the extract.
+
+### Rationale
+
+- **Bundle scope** — Next.js App Router preloads CSS chunks per route; shared chunks get preloaded on unrelated routes and trigger "preload not used" warnings. Co-located modules keep the CSS graph aligned with the component graph.
+- **Blast radius** — a rule change in a page or sibling feature should not affect unrelated components. Co-location makes the blast radius visible at the import line.
+- **Grepability** — the audit is a one-liner. `rg "from ['\"]@/app/.*\.module\.css['\"]" components/` returns zero matches in a healthy codebase; a single line is a failing PR.
+- **Keyframe + @media correctness** — CSS Modules scope `@keyframes` names and media queries per file. A keyframe referenced from one module but defined in another silently resolves to no animation. Co-location makes "keyframe + its consumer in the same file" the default, not a rule to remember.
+
 ## Phase History
 
 | Phase | Change | Date |
@@ -315,3 +362,4 @@ export function MatchCardCompact({ match }: { match: Match }) {
 | 16 execution | Initial 5 R8 rules with tool-agnostic Rule 3 + Good/Bad examples | 2026-04-18 |
 | 16 verify-work | UAT Test 7 surfaced a Next.js "CSS preload not used within a few seconds" warning traced to R8 violations: 5 components in `components/features/team-builder/` import styles from `@/app/(public)/teambuilder/page.module.css` (leaf → trunk inversion); `components/features/costs/components/LightconeCostTable.tsx` imports `@/components/features/drafting/components/CharacterPool.module.css` (cross-feature coupling). Phase 16.1 (CSS module hygiene) added to ROADMAP.md as the remediation — will relocate component-level styles into co-located `<Component>.module.css` siblings and restrict page `.module.css` files to page-layout rules only. R8 enforcement begins Phase 17+ per this doc's Status line; Phase 16 code is grandfathered and scheduled for the 16.1 retroactive refactor | 2026-04-19 |
 | 16 verify-work | UAT Test 8 improved the dev-only `/dev-unregister-sw` escape-hatch page UX: visible red "Unregister" button (was indistinguishable from text on the dark theme); prominent warning paragraph telling the dev to flip `NEXT_PUBLIC_ENABLE_SW=false` in `.env.local` before the post-unregister redirect lands on `/`, otherwise `providers.tsx` re-registers the SW immediately; 10-second countdown redirect (was 1.5s, too tight) with a Cancel button so the dev can take their time. Gate logic unchanged — the page still renders in dev regardless of flag, 404s in prod without the flag, renders in prod with the flag | 2026-04-19 |
+| 16.1 execution | Added Rule 6 (component CSS co-located with the component file). Closes 6 pre-Phase-16 R8 violations retroactively — 5 team-builder components (Teamslot / TeamRoster / SynergyDisplay / LoadoutDropdown / LoadoutControls) decoupled from `app/(public)/teambuilder/page.module.css`; 1 costs component (LightconeCostTable) decoupled from cross-feature `components/features/drafting/components/CharacterPool.module.css`. Both ROADMAP grep criteria now return zero matches codebase-wide. `page.module.css` thinned from 569 → 14 lines (page-layout-only) | 2026-04-20 |
