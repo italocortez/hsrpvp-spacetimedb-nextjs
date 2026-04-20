@@ -14,17 +14,20 @@ interface NavBarProps {
   className?: string;
 }
 
-// Phase 16.1 Plan 08: `heavy` disables Link prefetch for routes whose CSS/JS
+// Phase 16.1 Plan 08: single source of truth for routes whose CSS/JS
 // chunks are too large to warm on every homepage load. The staged SpacetimeDB
 // subscription already gates render on Stage 2, so the ~100ms first-nav fetch
-// is absorbed into the existing loading window. Home + /lobby stay prefetch
-// enabled (light chunks, quick back-and-forth).
+// is absorbed into the existing loading window. Routes NOT in this set keep
+// Next.js's default prefetch behavior (light chunks, quick back-and-forth).
+const HEAVY_ROUTES = new Set<string>(['/teambuilder', '/costs', '/profile', '/admin-view']);
+const prefetchFor = (href: string) => (HEAVY_ROUTES.has(href) ? false : undefined);
+
 const NAV_ITEMS = [
-  { label: 'LOBBIES', href: '/lobby', heavy: false },
-  { label: 'TEAM BUILDER', href: '/teambuilder', heavy: true },
-  { label: 'COST TABLES', href: '/costs', heavy: true },
-  { label: 'TOURNAMENTS', href: null, heavy: false },   // placeholder per D-11
-  { label: 'EVENTS', href: null, heavy: false },         // placeholder per D-11
+  { label: 'LOBBIES', href: '/lobby' },
+  { label: 'TEAM BUILDER', href: '/teambuilder' },
+  { label: 'COST TABLES', href: '/costs' },
+  { label: 'TOURNAMENTS', href: null },   // placeholder per D-11
+  { label: 'EVENTS', href: null },         // placeholder per D-11
 ] as const;
 
 export const NavBar = ({ className }: NavBarProps) => {
@@ -108,7 +111,7 @@ export const NavBar = ({ className }: NavBarProps) => {
               <Link
                 key={item.label}
                 href={item.href}
-                prefetch={item.heavy ? false : undefined}
+                prefetch={prefetchFor(item.href)}
                 className={`${styles.navItem}${isSelected ? ` ${styles.selected}` : ''}`}
               >
                 <span className={styles.navItemBorder} />
@@ -146,7 +149,7 @@ export const NavBar = ({ className }: NavBarProps) => {
       <div className={styles.rightSection}>
         {/* Profile link for authenticated users */}
         {isAuthenticated && (
-          <Link href="/profile" prefetch={false} className={styles.iconButton} title="View Profile">
+          <Link href="/profile" prefetch={prefetchFor('/profile')} className={styles.iconButton} title="View Profile">
             <svg
               width={20}
               height={20}
@@ -165,19 +168,19 @@ export const NavBar = ({ className }: NavBarProps) => {
 
         {/* Admin link */}
         {isAdmin && (
-          <Link href="/admin-view" prefetch={false} className={styles.iconButton} title="Admin Panel">
+          <Link href="/admin-view" prefetch={prefetchFor('/admin-view')} className={styles.iconButton} title="Admin Panel">
             <GearIcon size={20} color="currentColor" />
           </Link>
         )}
 
         {/* Admin panel link */}
-        <Link href="/admin-view" prefetch={false} className={`${styles.iconButton} ${styles.gearButton}`} aria-label="Admin Panel">
+        <Link href="/admin-view" prefetch={prefetchFor('/admin-view')} className={`${styles.iconButton} ${styles.gearButton}`} aria-label="Admin Panel">
           <GearIcon size={20} color="currentColor" />
         </Link>
 
         {/* Auth: user display, loading, or login CTA */}
         {isAuthenticated ? (
-          <Link href="/profile" prefetch={false} className={styles.userInfo}>
+          <Link href="/profile" prefetch={prefetchFor('/profile')} className={styles.userInfo}>
             {user?.displayName}
           </Link>
         ) : (isLoadingData || isConnecting) ? (
