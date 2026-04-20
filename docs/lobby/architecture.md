@@ -209,10 +209,11 @@ TournamentStandIn (PK: [tournamentId, userId])  [public: true]
 | hardDeleteLobby cascade order: LobbyMemberAccount -> LobbyMember -> LobbyBan -> LobbyCursorEvent -> ChatMessage -> GcJob -> Lobby | Phase 12.1 execution | 2026-04-04 |
 | refereeControlsShelving flag: allows referee to call advance_to_next_game / shelve_series / resume_series | Phase 10.1 execution | 2026-03-25 |
 | Normalized to standard template | Phase 13 normalization | 2026-04-09 |
+| Phase 16 route-group rename: frontend lobby page moved from `app/(authenticated)/lobby/page.tsx` → `app/(authed)/lobby/page.tsx`. Backend reducers, tables, views, and behavior unchanged — this is a pure file-path change driven by the `(authenticated)` → `(authed)` route-group convention locked in Phase 16 Plan 01 | Phase 16 execution | 2026-04-18 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 05 / Phase 09 / Phase 10.1 / Phase 10.4 / Phase 12.1*
+*Last updated: 2026-04-18*
+*Feature owner: Phase 05 / Phase 09 / Phase 10.1 / Phase 10.4 / Phase 12.1 / Phase 16*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md)

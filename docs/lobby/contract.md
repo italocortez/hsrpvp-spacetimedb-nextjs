@@ -999,8 +999,9 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | hardDeleteLobby cascade extended with step 1.5: delete all LobbyMemberAccount rows for lobby before LobbyMember deletion (D-28) | Phase 10.4 execution | 2026-04-04 |
 | Stand-in TPA snapshot at join_lobby: if TournamentStandIn row exists and no TPA entries yet, snapshot all accounts into TPA then create LMA (D-26) | Phase 10.4 execution | 2026-04-04 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
+| Phase 16 route-group rename: client-facing lobby URL remains `/lobby` (no URL change) but the file path moved `app/(authenticated)/lobby/` → `app/(authed)/lobby/`. No backend reducer, view, table, or behavior change. Acceptance scenarios and edge cases in this contract remain valid as-is | Phase 16 execution | 2026-04-18 |
 
 ---
 
-*Last updated: 2026-04-09*
-*Feature owner: Phase 10*
+*Last updated: 2026-04-18*
+*Feature owner: Phase 10 / Phase 16*
