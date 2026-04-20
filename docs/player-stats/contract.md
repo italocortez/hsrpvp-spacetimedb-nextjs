@@ -2,6 +2,73 @@
 
 **Architecture:** [architecture.md](architecture.md)
 
+## Feature Overview
+
+Player stats are computed automatically during match finalization — there are no user-callable reducers for directly modifying stats. The finalization pipeline (`runFinalization`) writes to `PlayerStat`, `PlayerRelationship`, `PlayerCharacterStat`, `BanStat`, `FacedStat`, and global character stats using a composite-PK delete+insert upsert pattern. Stats are partitioned by `(userId, gameMode, draftMode, seasonId, matchType, teamSize)`. Clients read aggregate stats via views (`view_player_stats`, `view_player_character_stats`) rather than raw tables.
+
+## Stat Computation
+
+### When Stats Are Written
+
+Stats are written during match finalization. Finalization is triggered:
+1. **Casual matches:** Automatically inline during `submit_match_result` (D-37)
+2. **Ranked matches:** Explicitly via `finalize_match_result` after result is Validated
+3. **Admin force-finalize:** Via `admin_force_finalize` for stuck AwaitingResult matches
+4. **Tournament batch MMR:** Via `process_tournament_mmr` for unprocessed tournament matches
+
+### PlayerStat Increment
+
+Called once per participant (not coaches or spectators) after finalization. Composite PK: `(userId, gameMode, draftMode, seasonId, matchType, teamSize)`.
+
+| Field | How Computed |
+|-------|-------------|
+| `matchesPlayed` | +1 always |
+| `wins` | +1 if participant's team side matches `winnerTeamSide` |
+| `losses` | +1 if participant lost (not win, not draw) |
+| `draws` | +1 if `matchEndReason=Draw` |
+| `matchesSpectated` | Preserved (not incremented on participant path) |
+
+Upsert pattern: if a row exists for the PK tuple, delete then insert with updated counters; otherwise insert fresh.
+
+### PlayerRelationship Increment
+
+Called for every directional pair `(A, B)` among participants — both ally pairs and opponent pairs — giving bidirectional tracking. Each direction is a separate row.
+
+| Field | How Computed |
+|-------|-------------|
+| `matchesWith` | +1 if both on same side (isAlly=true) |
+| `matchesVs` | +1 if on opposing sides (isAlly=false) |
+| `winsWith` | +1 if allies and won |
+| `winsVs` | +1 if opponents and caller won |
+
+### PlayerCharacterStat Increment
+
+Called once per character pick per participant. Composite PK: `(userId, characterName, gameMode, draftMode, seasonId, matchType, teamSize)`. Tracks `picked`, `wins`, `losses`, `draws`.
+
+### BanStat Increment
+
+Called once per ban action. Composite PK: `(userId, characterName, gameMode, draftMode, seasonId, matchType, teamSize)`. Tracks `banned` count.
+
+### FacedStat Increment
+
+Called once per character facing (characters picked by the opposing team). Tracks how often a player faces a specific character. Composite PK: `(userId, characterName, gameMode, draftMode, seasonId, matchType, teamSize)`.
+
+### Global Character Stat Increment
+
+Aggregates character picks across all players into `GlobalCharacterStat` rows per `(characterName, gameMode, draftMode, seasonId, matchType, teamSize)`. Tracks `totalPicked`, `totalWins`, `totalLosses`, `totalDraws`, `totalBanned`.
+
+### Composite PK Partition Key
+
+All stat tables share the same partition dimensions:
+
+| Dimension | Values |
+|-----------|--------|
+| `gameMode` | MemoryOfChaos, ApocalypticShadow, AnomalyArbitration |
+| `draftMode` | Classic, Snake |
+| `seasonId` | Active season ID at time of finalization (0 if no active season) |
+| `matchType` | Casual, Ranked |
+| `teamSize` | 1, 2, or 3 |
+
 ## Acceptance Scenarios
 
 ### Player Win/Loss Tracking
@@ -60,6 +127,16 @@
 
 All flat structured rows, zero JSON blobs (D-55). Self-contained for replay rendering with zero lookups.
 
+### Create Season (Admin)
+**Given:** Admin user
+**When:** `create_season(name="Patch 3.0", startDate, endDate)`
+**Then:** Season row inserted with isActive=false. Season is inert until explicitly activated.
+
+### Set Active Season (Single-Active Guarantee)
+**Given:** Season #1 is active (isActive=true), Season #2 exists (isActive=false)
+**When:** Admin calls `set_active_season(seasonId=2)`
+**Then:** Season #1.isActive set to false, Season #2.isActive set to true. Only one season active at any time.
+
 ### Casual Auto-Finalize (D-37)
 **Given:** MatchResultRecord with matchType=Casual, all captains confirmed
 **When:** `submit_match_result(matchResultId, winnerUserId)` called
@@ -77,6 +154,9 @@ All flat structured rows, zero JSON blobs (D-55). Self-contained for replay rend
 | Spectator identities not in history | matchesSpectated incremented on PlayerStat, but no MatchParticipantHistory row for spectators (D-31) |
 | Pre-season match | seasonId=0 used when no active Season exists (D-45) |
 | No active season at finalization | seasonId defaults to 0, stats still written (D-45) |
+| create_season by non-admin | Throws permission error (ensureAdmin) |
+| set_active_season with invalid seasonId | Throws "Season #X not found." |
+| set_active_season on already-active season | No-op on deactivation (season is in active list, gets deactivated then reactivated). Result: same season remains active. |
 | PlayerRelationship self-reference | Never created -- userId and otherUserId are always different participants |
 | Ban stat semantics differ per table | PlayerCharacterStat.timesBannedInMatch = personal experience; GlobalCharacterStat.timesBanned = community meta (D-29) |
 
@@ -134,9 +214,11 @@ All flat structured rows, zero JSON blobs (D-55). Self-contained for replay rend
 | History tables denormalize display names for self-containment (D-53) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Finalization reads MatchSessionStep for both stats and archival (D-54) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Four history tables, all flat rows, zero JSON (D-55) | Phase 6 CONTEXT.md | 2026-03-21 |
-| 18-step finalization pipeline (D-56) | Phase 6 CONTEXT.md | 2026-03-21 |
+| 19-step finalization pipeline (D-56) | Phase 6 CONTEXT.md | 2026-03-21 |
 | Update 38 existing tests for new PK shapes (D-65) | Phase 6 CONTEXT.md | 2026-03-21 |
+| create_season creates inactive season; set_active_season enforces single-active guarantee | Phase 9 execution | 2026-03-29 |
+| Full hydration from codebase; Feature Overview and Stat Computation section added | Phase 13 normalization | 2026-04-09 |
 
 ---
 
-*Last updated: 2026-03-22*
+*Last updated: 2026-04-09*

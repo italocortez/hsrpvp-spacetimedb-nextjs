@@ -17,6 +17,7 @@ Read `references/api-guide.md` when you need detailed syntax for any of:
 - Table definitions, column types, index configuration
 - Reducer/procedure definitions and patterns
 - Client-side React integration (useTable, subscriptions, provider setup)
+- Subscription semantics, cache guarantees, query builder operators (eq/ne/lt/gt/lte/gte, and/or/not), semijoins
 - Views (procedural and query-builder)
 - Scheduled tables and timestamps
 - Common mistakes table (server-side and client-side)
@@ -110,23 +111,98 @@ If you genuinely need immediate response data (rare once you adopt the pattern),
 2. **Event tables** — reducer inserts into an event table, client gets it via onInsert. Event tables auto-delete after delivery (insert + delete), acting as ephemeral response channels. This project uses this pattern with `LobbyCursorEvent`.
 
 ### High latency? Disable confirmed reads
-If reducer round-trips feel slow (200ms+ even locally), the likely cause is confirmed reads — the default in SpacetimeDB 2.0. Add `.withConfirmedReads(false)` to the connection builder for games and real-time apps. This applies to both local dev and maincloud. See `references/how-to-guides.md` § Confirmed Reads for the full trade-off.
+If reducer round-trips feel slow (200ms+ even locally), the likely cause is confirmed reads. As of v2.1.0, the TypeScript SDK defaults to confirmed reads enabled (previously opt-in on the client side). Add `.withConfirmedReads(false)` to the connection builder for games and real-time apps. This applies to both local dev and maincloud. See `references/how-to-guides.md` § Confirmed Reads for the full trade-off.
 
 ### Reconnection workaround (temporary)
 SpacetimeDB's reconnect API is being improved. For the current workaround (unmount/remount provider via key prop), see `references/how-to-guides.md` § Reconnection.
 
 ### Data access in React
+**v2.1.0 fix:** `useTable`'s `isReady` previously could revert to `false` after initial sync due to a stale closure in `useSyncExternalStore`. Fixed in v2.1.0 — no code changes needed on your side.
 ```typescript
 const [rows, isReady] = useTable(tables.myTable);  // Tuple!
 
-// With query builder filter
+// With query builder filter (operators: eq, ne, lt, gt, lte, gte)
 const [online, isReady] = useTable(tables.user.where(r => r.online.eq(true)));
+const [highLevel, isReady] = useTable(tables.user.where(r => r.level.gte(10).and(r.online.eq(true))));
 
 // With callbacks
 const [users, isReady] = useTable(tables.user, {
   onInsert: (row) => toast(`${row.name} joined`),
 });
 ```
+
+**Client-side index-first rule:** The same index-first principle from the server applies on the client. Use `conn.db.Table.pk.find()` / `conn.db.Table.idx.filter()` before falling back to `[...table.iter()].filter()`. Test files use `iter().filter()` as a convenience on small datasets — don't copy that pattern into production code.
+
+### Subscription SQL restrictions
+
+Subscription queries are a **strict subset** of SpacetimeDB SQL. Because they're evaluated in real-time on every transaction, additional restrictions apply:
+
+| Rule | Detail |
+|------|--------|
+| **`SELECT *` only** | No individual column projections (`SELECT name FROM ...` is invalid) |
+| **Max 2 tables** | JOINs support at most 2 tables — no 3+ table joins |
+| **JOIN columns must be qualified** | `ON o.product_id = product.id`, not `ON product_id = id` |
+| **Both JOIN columns need indexes** | Define btree indexes on both sides of the ON clause |
+| **No arithmetic** | `WHERE price * 2 > 100` is invalid |
+| **No aggregation** | COUNT, SUM, etc. are not supported in subscriptions |
+| **No subqueries** | Only simple SELECT...FROM...WHERE...JOIN |
+| **Supported WHERE ops** | `=`, `<`, `>`, `<=`, `>=`, `!=`, `<>`, `AND`, `OR` |
+| **Supported literals** | INTEGER, STRING, HEX, TRUE, FALSE |
+
+The ad-hoc query language (`spacetime sql`, HTTP API) is a strict superset — it allows column projections, `COUNT(*)`, unlimited joins, and `LIMIT`.
+
+### No event-driven post-reducer sync
+
+The TypeScript SDK has no `awaitNextUpdate()` API. After calling a reducer, there's no way to wait for the corresponding subscription update to arrive — you either use `_then()` for the reducer callback (confirms commit, but cache may still be updating) or sleep. This project's test harness uses tiered sleep values:
+
+| Operation type | Sleep (ms) | Example |
+|---|---|---|
+| Simple action (pick, ban, leave) | 300 | `await h.sync(300)` |
+| Default / single reducer | 500 | `await h.sync()` |
+| State transition (start_draft, advance_stage) | 1500 | `await h.sync(1500)` |
+| Initial connection (subscribeToAllTables) | 2000 | `setTimeout(resolve, 2000)` |
+
+In production, prefer reactive patterns (`useTable`, `onInsert`, `onUpdate`) over sleeping.
+
+### Subscription swap best practice
+
+When changing subscriptions (e.g. user navigates to a different view), **subscribe to the new set first, then unsubscribe from the old**. This avoids unnecessary deserialization/reserialization of rows that appear in both the old and new query sets.
+
+### Subscription pitfalls
+
+**Combined `subscribe([...])` vs separate subscriptions:** When subscribing to multiple queries, `subscribe(['SELECT * FROM a', 'SELECT * FROM b'])` fires `onApplied` when the subscription message is acknowledged — NOT when all table data has arrived. If your `onApplied` callback reads from table B, the data may not be there yet. (Note: official docs state `on_applied` fires after all rows are cached atomically — see api-guide.md § 7 "Subscription semantics". This project's test harness uses a 2s sleep instead of `onApplied`, suggesting the behavior may differ in practice with combined multi-query subscriptions.)
+
+Use separate subscriptions with individual `onApplied` callbacks when you need to read from specific tables:
+```typescript
+// ✅ CORRECT — each table has its own onApplied
+conn.subscriptionBuilder()
+    .onApplied(() => { /* view_my_profile data is ready */ })
+    .subscribe('SELECT * FROM view_my_profile');
+
+conn.subscriptionBuilder()
+    .onApplied(() => { /* user data is ready — safe to read conn.db.User */ })
+    .subscribe('SELECT * FROM user');
+
+// ❌ WRONG — onApplied fires but conn.db.User may be empty
+conn.subscriptionBuilder()
+    .onApplied(() => { const users = [...conn.db.User.iter()]; /* may be 0! */ })
+    .subscribe(['SELECT * FROM view_my_profile', 'SELECT * FROM user']);
+```
+
+**Overlapping queries hurt performance:** Subscribing to datasets that overlap (e.g. `tables.user` AND `tables.user.where(r => r.id.ne(5))`) forces the server to serialize nearly all rows twice. Keep subscription queries disjoint. Subscribing to the *same* query more than once is fine — it's zero-copy with no additional processing overhead.
+
+**Views require export to register (CRITICAL):** Views must be **exported** from the module entry point — just like reducers. `spacetimedb.view()` returns a function with a `[registerExport]` symbol; the runtime only calls it when walking module exports. A side-effect import (`import './views/myViews'`) executes the code but discards the return value — the view never registers, `st_view` stays empty, and `spacetime generate` produces no bindings.
+
+```typescript
+// ❌ WRONG — view defined but never exported, [registerExport] never fires
+spacetimedb.view({ name: 'view_my_profile', public: true }, ret, fn);
+
+// ✅ CORRECT — exported, runtime finds and registers it
+export const view_my_profile = spacetimedb.view({ name: 'view_my_profile', public: true }, ret, fn);
+// Then in index.ts: export { view_my_profile } from './views/securityViews';
+```
+
+Once exported, `spacetime generate` creates typed view bindings (e.g. `view_my_profile_table.ts`). Views appear in `tablesSchema` alongside tables, accessible via `conn.db.view_my_profile` with `.count()`, `.iter()`, and row callbacks. View accessors use snake_case (matching the view name), not PascalCase like tables.
 
 ### Handling reducer errors on the client
 Reducers don't return data, so errors surface via callbacks. Use `_then()` to detect failures from a specific call, and `ctx.event.status` to read the `SenderError` message:
@@ -192,6 +268,26 @@ Each column declaration type produces a different accessor with a different API.
 
 Single-column btree with `.filter([val])` (one-element array) auto-coerces to scalar and works, but prefer `.filter(scalar)` for clarity.
 
+**Multi-column `primaryKey: [...]` declarations are a no-op (verified 2026-04-14, v2.1.0):**
+
+Declaring composite PK at the `table()` options level produces **no engine enforcement and no accessor**:
+```typescript
+// ❌ Decorative only — NOT engine-enforced
+table({ name: 't', primaryKey: ['a', 'b'] }, { a: t.string(), b: t.string(), v: t.u32() });
+```
+Live probe: published such a table, inserted `(x,y,1)` then `(x,y,2)` — both rows persisted. Generated bindings showed `indexes: [ ]` and `constraints: [ ]`. No `.pk` accessor (calling it at runtime panics).
+
+**Real engine-enforced uniqueness requires single-column declarations:**
+- `t.xxx().primaryKey()` on one column → generates `constraint: 'unique'` in bindings
+- `t.xxx().unique()` on one column → generates `constraint: 'unique'` in bindings
+
+**For tuple uniqueness across multiple columns:**
+1. Add a multi-column btree index for fast O(log n) lookup via `.filter([val1, val2, ...])`.
+2. Enforce uniqueness in the reducer itself (tuple-match-before-insert pattern) — the engine will not do it.
+3. Optionally keep an autoInc `id: t.u32().primaryKey().autoInc()` as a real unique cursor for `.id.find/update/delete`, separate from the logical tuple key.
+
+**How to verify in future:** Grep `src/module_bindings/index.ts` for the `constraints: [...]` array on any table. If empty, tuple uniqueness is not engine-enforced regardless of what `table()` options declared. The `primaryKey: [...]` option on `table()` is **documentation-only** — it can stay in source as a reader hint, but the real guarantee is in reducer code + the matching btree index.
+
 **Multi-column btree index definition and usage:**
 ```typescript
 // Table definition with multi-column btree index
@@ -225,10 +321,47 @@ if (!item) throw new SenderError('Item not found.');
 ### BigInt — all u64/i64 fields
 Use `0n`, `1n`, `100n` — never plain numbers for ID/u64 fields. JavaScript `number` loses precision above 2^53, so SpacetimeDB maps 64-bit integers to BigInt. Mixing `number` and `BigInt` (e.g. `row.id === 5`) silently returns `false` — no error, just wrong behavior.
 
-### Timestamps on client
+### Timestamps — server-side construction (CRITICAL)
+**Never construct timestamps as plain objects on the server.** The SDK serializer reads the internal `__timestamp_micros_since_unix_epoch__` property, not `microsSinceUnixEpoch`. A plain object `{ microsSinceUnixEpoch: BigInt }` causes a PANIC: "Cannot convert undefined to a BigInt".
+```typescript
+// ❌ WRONG — causes PANIC during insert/update serialization
+startAt: { microsSinceUnixEpoch: BigInt(param) }
+
+// ✅ CORRECT — use the Timestamp constructor
+import { Timestamp } from 'spacetimedb';
+startAt: new Timestamp(BigInt(param))
+
+// ✅ CORRECT — ctx.timestamp is already a proper Timestamp object
+createdDate: ctx.timestamp
+```
+
+**Reducer timestamp param pattern** (this project): Timestamps are passed as `t.string()` params (BigInt micros serialized as string) to avoid u64 encoding issues. Convert in the reducer body:
+```typescript
+const startMicros = BigInt(startAt);  // string → BigInt
+new Timestamp(startMicros)            // BigInt → Timestamp
+```
+
+**Optional timestamps:** For optional table columns, `undefined` writes `none` — this works. For optional fields **inside structs** (`t.u8().optional()`, `t.timestamp().optional()` in a `t.object()`), `null`/`undefined`/omission all PANIC during serialization. Use sentinel values instead:
+```typescript
+// ❌ PANIC — SDK can't serialize null/undefined for optional struct fields
+recurrenceRule = { ..., dayOfWeek: null, endDate: undefined };
+
+// ✅ Use sentinels for optional struct fields
+recurrenceRule = { ..., dayOfWeek: 255, endDate: new Timestamp(0n) };
+```
+
+### Timestamps on client (reading)
 ```typescript
 const date = new Date(Number(row.createdAt.microsSinceUnixEpoch / 1000n));
 ```
+
+### Timestamps — full flow
+```
+Frontend:  new Date() → BigInt(date.getTime()) * 1000n → .toString() → reducer string param
+Backend:   BigInt(param) → new Timestamp(BigInt(param)) → insert into t.timestamp() column
+Client:    row.field.microsSinceUnixEpoch → new Date(Number(micros / 1000n)) → display in local TZ
+```
+All timestamps are stored as UTC microseconds. Frontend converts to/from local timezone for display only.
 
 ## Multiplayer sync patterns (summary)
 
@@ -282,6 +415,10 @@ These are APIs that don't exist — LLMs hallucinate them frequently:
 | `ctx.db.Table.singleColIdx.filter([val1, val2])` (array on single-col) | `.filter(scalar)` — passing an array to a single-column btree index silently returns 0 rows |
 | `ctx.db.Table.btreeIdx.find(val)` | `[...ctx.db.Table.btreeIdx.filter(val)]` — btree indexes only have `.filter()`, not `.find()` (TypeError) |
 | `ctx.db.Table.pkCol.filter(val)` | `ctx.db.Table.pkCol.find(val)` — PK/unique columns only have `.find()`, not `.filter()` (TypeError) |
+| `{ microsSinceUnixEpoch: BigInt }` in server insert/update | `new Timestamp(BigInt)` — plain objects lack the internal `__timestamp_micros_since_unix_epoch__` property, causing PANIC |
+| `null` / `undefined` for optional struct fields | Use sentinel values (e.g. `255` for u8, `new Timestamp(0n)` for timestamp) — optional inside `t.object()` can't serialize null/undefined |
+| `conn.db.ViewMyProfile.iter()` (PascalCase view accessor) | View accessors use snake_case matching the view name: `conn.db.view_my_profile.iter()`. Views must be exported from the module for bindings to generate |
+| `subscribe([...]).onApplied(() => read all tables)` | Combined array subscribe fires `onApplied` before all table data arrives — use separate subscriptions with individual `onApplied` callbacks per table |
 
 ## Feature implementation checklist
 
@@ -337,6 +474,10 @@ spacetime call <name> <reducer_name> [args...]     # Call a reducer
 | `teamId` | `team_id` |
 
 **When in doubt, use `SELECT * FROM table LIMIT 1`** to see the actual column names before writing filtered queries.
+
+### `spacetime sql` string comparison gotcha
+
+The CLI displays string values with double quotes (e.g., `"identity"`), but SQL WHERE clauses must use **single quotes only**: `WHERE gc_type = 'identity'`. Using `WHERE gc_type = '"identity"'` matches nothing — it looks for a string literally containing double quotes.
 
 ## Project structure (this repo)
 
@@ -445,10 +586,17 @@ lastModifiedDate: t.timestamp(),
 | Multi-column lookup (multi-col btree) | `[...ctx.db.Table.by_col1_and_col2.filter([val1, val2])]` | `.filter({col1, col2})` (object arg silently returns 0 rows!) |
 | Multi-column lookup (single-col btree fallback) | `[...ctx.db.Table.idx.filter(col1Val)].find(r => r.col2 === col2Val)` | `.filter([val1, val2])` on single-col index (silently returns 0 rows!) |
 | Composite PK lookup | Define multi-col btree index, then `[...ctx.db.Table.by_col1_and_col2.filter([val1, val2])]` | `.primaryKey.find()` (undefined at runtime — PANIC!) |
-| Identity hex string match | `.iter()` (no hex→Identity conversion exists) | N/A — iter is the only option |
+| Identity from hex string | `Identity.fromString(hex)` then `.find()` on PK/index | `.iter()` + `.toHexString()` comparison (O(n) scan) |
 | Composite key upsert (no PK accessor) | `.iter()` + match | N/A — iter is the only option |
 
-**When `.iter()` is unavoidable**, add a comment explaining why (e.g. "identity is an object, we only have the hex string").
+**`Identity` construction from hex strings:** The `Identity` class accepts hex strings directly — `new Identity(hexString)` or `Identity.fromString(hexString)`. Both throw if the input is not a valid 32-byte hex string. Use this to convert hex strings for PK/index lookups instead of iterating:
+```typescript
+import { Identity } from 'spacetimedb';
+const identity = Identity.fromString(callerIdentityHex);  // throws on invalid input
+const row = ctx.db.UserIdentity.identity.find(identity);  // O(1) PK lookup
+```
+
+**When `.iter()` is unavoidable**, add a comment explaining why (e.g. "composite key with no multi-column index defined").
 
 ## TypeScript patterns in SpacetimeDB (SDK limitations)
 
@@ -482,6 +630,11 @@ export const LobbyPassword = table({
 ```
 
 Reducers can still read/write private tables — only client subscriptions are blocked.
+
+**Bindings for private tables:** `spacetime generate` always includes type definitions for private tables (so views can reference them in return types). It does NOT generate subscription/query code for private tables by default. To include subscription code (for admin tools or testing), add `--include-private`:
+```bash
+spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb --include-private
+```
 
 ## Admin proxy reducer pattern
 
@@ -559,7 +712,7 @@ When proposing any design that adds tables, columns, or changes visibility:
 
 ## Updating docs from SpacetimeDB GitHub
 
-The skill references are currently based on **SpacetimeDB v2.0.5**. When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped past this version:
+The skill references are currently based on **SpacetimeDB v2.1.0**. When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped past this version:
 
 1. **Check the latest release** — fetch `https://github.com/clockworklabs/SpacetimeDB/releases/latest` and compare the version against what's documented in our references
 2. **Fetch upstream how-to docs** — each reference file has `<!-- Sources: ... -->` comments at the top with the exact GitHub URLs. Fetch the raw versions of those URLs (swap `github.com/.../blob/` to `raw.githubusercontent.com/.../`) and compare against our current content

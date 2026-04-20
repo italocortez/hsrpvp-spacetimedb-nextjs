@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { createVerifiedTestHarness, hasServerToken, expectReducerError, queryPrivateTable, type TestHarness } from '../../shared/connection';
 import { nextUid, resetUidCounter, characterBatch, KNOWN_CHARACTERS } from '../../shared/fixtures';
 
 describe.skipIf(!hasServerToken())('Character Batch Operations', () => {
@@ -23,11 +23,10 @@ describe.skipIf(!hasServerToken())('Character Batch Operations', () => {
     await h.sync(1000);
 
     // Filter by userId to avoid cross-user pollution (parallel test files share subscribeToAllTables cache)
-    const account = [...h.conn.db.HsrAccount.iter()].find(
-      (a) => a.uid === uid && a.userId === h.userId
-    );
+    const rows = await queryPrivateTable(`SELECT * FROM hsr_account WHERE user_id = ${h.userId}`);
+    const account = rows.find(a => a.uid.replace(/"/g, '') === uid);
     if (!account) throw new Error('Failed to create test account');
-    testAccountId = account.id;
+    testAccountId = Number(account.id);
   });
 
   afterAll(async () => {
@@ -47,13 +46,11 @@ describe.skipIf(!hasServerToken())('Character Batch Operations', () => {
       });
       await h.sync();
 
-      const myChars = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-        (c) => c.hsrAccountId === testAccountId
-      );
-      expect(myChars.length).toBeGreaterThanOrEqual(2);
+      const charRows = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${testAccountId}`);
+      expect(charRows.length).toBeGreaterThanOrEqual(2);
 
-      const char0 = myChars.find((c) => c.characterName === KNOWN_CHARACTERS[0]);
-      expect(char0?.eidolonLevel).toBe(2);
+      const char0 = charRows.find((c) => c.character_name.replace(/"/g, '') === KNOWN_CHARACTERS[0]);
+      expect(char0 ? Number(char0.eidolon_level) : undefined).toBe(2);
     });
 
     it('upserts existing characters (updates eidolon level)', async () => {
@@ -65,11 +62,9 @@ describe.skipIf(!hasServerToken())('Character Batch Operations', () => {
       });
       await h.sync();
 
-      const myChars = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-        (c) => c.hsrAccountId === testAccountId
-      );
-      const updated = myChars.find((c) => c.characterName === KNOWN_CHARACTERS[0]);
-      expect(updated?.eidolonLevel).toBe(6);
+      const charRows = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${testAccountId}`);
+      const updated = charRows.find((c) => c.character_name.replace(/"/g, '') === KNOWN_CHARACTERS[0]);
+      expect(updated ? Number(updated.eidolon_level) : undefined).toBe(6);
     });
 
     it('rejects batch with invalid character name (all-or-nothing)', async () => {
@@ -86,10 +81,9 @@ describe.skipIf(!hasServerToken())('Character Batch Operations', () => {
 
       // KNOWN_CHARACTERS[2] should NOT have been inserted (atomic rollback)
       await h.sync(300);
-      const leaked = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-        (c) => c.hsrAccountId === testAccountId && c.characterName === KNOWN_CHARACTERS[2]
-      );
-      expect(leaked).toHaveLength(0);
+      const leaked = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${testAccountId}`);
+      const leakedChar = leaked.filter((c) => c.character_name.replace(/"/g, '') === KNOWN_CHARACTERS[2]);
+      expect(leakedChar).toHaveLength(0);
     });
 
     it('rejects invalid eidolon level (>6)', async () => {
@@ -132,9 +126,8 @@ describe.skipIf(!hasServerToken())('Character Batch Operations', () => {
       });
       await h.sync();
 
-      const remaining = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-        (c) => c.hsrAccountId === testAccountId && c.characterName === KNOWN_CHARACTERS[1]
-      );
+      const remainingRows = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${testAccountId}`);
+      const remaining = remainingRows.filter((c) => c.character_name.replace(/"/g, '') === KNOWN_CHARACTERS[1]);
       expect(remaining).toHaveLength(0);
     });
 
@@ -149,9 +142,8 @@ describe.skipIf(!hasServerToken())('Character Batch Operations', () => {
 
       // KNOWN_CHARACTERS[0] should still exist (no partial deletion)
       await h.sync(300);
-      const stillExists = [...h.conn.db.HsrAccountCharacter.iter()].filter(
-        (c) => c.hsrAccountId === testAccountId && c.characterName === KNOWN_CHARACTERS[0]
-      );
+      const existRows = await queryPrivateTable(`SELECT * FROM hsr_account_character WHERE hsr_account_id = ${testAccountId}`);
+      const stillExists = existRows.filter((c) => c.character_name.replace(/"/g, '') === KNOWN_CHARACTERS[0]);
       expect(stillExists.length).toBeGreaterThanOrEqual(1);
     });
   });

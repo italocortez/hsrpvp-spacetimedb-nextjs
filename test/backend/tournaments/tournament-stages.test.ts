@@ -13,53 +13,16 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createVerifiedTestHarness, hasServerToken, expectReducerError, type TestHarness } from '../../shared/connection';
+import { promoteToRole } from '../../shared/helpers/promoteUser';
+import { cleanupTournament } from '../../shared/helpers/tournaments';
 
 describe.skipIf(!hasServerToken())('Tournament Stages', () => {
   let host: TestHarness;
   let player1: TestHarness;
   let player2: TestHarness;
+  const openedTournamentIds: number[] = [];
 
   const hostTournaments = () => [...host.conn.db.Tournament.iter()].filter(t => t.organizerId === host.userId);
-
-  /** Helper to promote a harness user to a role via server connection */
-  async function promoteToRole(h: TestHarness, roleTag: string) {
-    const user = [...h.conn.db.User.iter()].find(u => u.id === h.userId);
-    if (!user) throw new Error(`User ${h.userId} not found in cache`);
-    const username = user.username;
-
-    const { DbConnection } = await import('@/src/module_bindings');
-    const serverToken = process.env.SPACETIMEDB_SERVER_TOKEN || '';
-    const uri = process.env.SPACETIMEDB_URI || 'wss://maincloud.spacetimedb.com';
-    const db = process.env.SPACETIMEDB_DB || 'hsrpvp-spacetimedb-nextjs-test1';
-
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Server promote timeout')), 10000);
-      DbConnection.builder()
-        .withUri(uri)
-        .withDatabaseName(db)
-        .withToken(serverToken)
-        .onConnect(async (serverConn) => {
-          try {
-            await serverConn.reducers.serverSetRole({ username, roleTag });
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            setTimeout(resolve, 500);
-          } catch (err) {
-            clearTimeout(timeout);
-            serverConn.disconnect();
-            reject(err);
-          }
-        })
-        .onConnectError((_ctx: any, err: any) => {
-          clearTimeout(timeout);
-          reject(new Error(`Server connection failed: ${err}`));
-        })
-        .onDisconnect(() => {})
-        .build();
-    });
-
-    await h.sync(1000);
-  }
 
   /** Helper to create a standard tournament and return its id */
   async function createStandardTournament(name: string): Promise<number> {
@@ -73,7 +36,7 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
       maxParticipants: 8,
       rosterVisibility: 'OpenRoster',
       isAnonymousDefault: false,
-      disconnectPolicy: 'Pause',
+      disconnectPolicy: 'Deferred',
       costSetId: 0,
       defaultBestOf: 3,
       groupSize: 4,
@@ -81,6 +44,7 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
       autoAdvanceBracket: true,
       countTowardsMmr: false,
       winnerAdvantage: 0,
+      requireOwnership: false,
       requireVerified: false,
       requireRoster: false,
       minimumMmr: 0,
@@ -88,12 +52,15 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
       waitlistEnabled: false,
       scheduledStartAt: '',
       registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
     });
     await host.sync();
 
     const mine = hostTournaments();
     expect(mine.length).toBe(countBefore + 1);
-    return mine[mine.length - 1].id;
+    const tid = mine[mine.length - 1].id;
+    openedTournamentIds.push(tid);
+    return tid;
   }
 
   beforeAll(async () => {
@@ -105,6 +72,10 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
   }, 30000);
 
   afterAll(async () => {
+    // D-03: strict cleanup per resource opened
+    for (const tid of openedTournamentIds) {
+      await cleanupTournament(host, tid);
+    }
     await host?.disconnect();
     await player1?.disconnect();
     await player2?.disconnect();
@@ -131,14 +102,14 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
     await host.sync();
 
     // Register 2 players
-    await player1.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await player1.call.registerForTournament({ tournamentId: tid });
     await player1.sync();
-    await player2.call.registerForTournament({ tournamentId: tid, teamGroupId: 0 });
+    await player2.call.registerForTournament({ tournamentId: tid });
     await player2.sync();
 
     // Verify participants exist
     await host.sync();
-    const participants = [...host.conn.db.TournamentParticipant.iter()].filter(
+    const participants = [...host.conn.db.TournamentEnrolled.iter()].filter(
       p => p.tournamentId === tid && !p.isWaitlisted && p.status.tag !== 'Withdrawn'
     );
     expect(participants.length).toBeGreaterThanOrEqual(2);
@@ -213,5 +184,118 @@ describe.skipIf(!hasServerToken())('Tournament Stages', () => {
       host.call.cancelTournament({ tournamentId: tid })
     );
     expect(msg.toLowerCase()).toMatch(/cancel|already/);
+  });
+
+  // ── Cancel cascade deletes infrastructure rows ──
+  it('cancel cascade deletes teams, assistants, TPA; preserves participants', async () => {
+    // Create a team tournament with infrastructure
+    await host.call.createTournament({
+      name: 'Stage Test: Cancel Cascade',
+      description: 'Cascade cleanup test',
+      format: 'SingleElimination',
+      teamSize: 3,
+      defaultGameMode: 'MemoryOfChaos',
+      maxParticipants: 16,
+      rosterVisibility: 'OpenRoster',
+      isAnonymousDefault: false,
+      disconnectPolicy: 'Deferred',
+      costSetId: 0,
+      defaultBestOf: 3,
+      groupSize: 4,
+      has3RdPlaceMatch: false,
+      autoAdvanceBracket: true,
+      countTowardsMmr: false,
+      winnerAdvantage: 0,
+      requireOwnership: false,
+      requireVerified: false,
+      requireRoster: false,
+      minimumMmr: 0,
+      requireApproval: false,
+      waitlistEnabled: false,
+      scheduledStartAt: '',
+      registrationDeadline: '',
+      maxAccountsPerPlayer: 1,
+    });
+    await host.sync();
+
+    const mine = hostTournaments();
+    const tid = mine[mine.length - 1].id;
+    openedTournamentIds.push(tid);
+
+    // Advance to Registration
+    await host.call.advanceTournamentStage({ tournamentId: tid, nextStage: 'Registration' });
+    await host.sync();
+
+    // Register all 3 users
+    await host.call.registerForTournament({ tournamentId: tid });
+    await host.sync();
+    await player1.call.registerForTournament({ tournamentId: tid });
+    await player1.sync();
+    await player2.call.registerForTournament({ tournamentId: tid });
+    await player2.sync();
+
+    // Host creates a team
+    await host.call.createTournamentTeam({ tournamentId: tid, teamName: 'Cascade Team' });
+    await host.sync();
+
+    // Player1 requests to join
+    const team = [...host.conn.db.TournamentTeam.iter()].find(
+      t => t.tournamentId === tid && t.captainUserId === host.userId
+    );
+    expect(team).toBeDefined();
+    await player1.call.requestJoinTeam({ teamId: team!.id });
+    await player1.sync();
+
+    // Assign player2 as assistant
+    await host.call.assignTournamentAssistant({
+      tournamentId: tid,
+      userId: player2.userId,
+      canValidateResults: true,
+      canOverrideResults: false,
+      canDqParticipants: false,
+      canManageBracket: false,
+      canAssignSeeds: false,
+    });
+    await host.sync();
+
+    // Verify infrastructure exists before cancel
+    const teamsBefore = [...host.conn.db.TournamentTeam.iter()].filter(t => t.tournamentId === tid);
+    const requestsBefore = [...host.conn.db.TournamentTeamRequest.iter()].filter(r => r.teamId === team!.id);
+    const assistantsBefore = [...host.conn.db.TournamentAssistant.iter()].filter(a => a.tournamentId === tid);
+    expect(teamsBefore.length).toBeGreaterThan(0);
+    expect(requestsBefore.length).toBeGreaterThan(0);
+    expect(assistantsBefore.length).toBeGreaterThan(0);
+
+    // Cancel tournament
+    await host.call.cancelTournament({ tournamentId: tid });
+    await host.sync();
+    await player1.sync();
+    await player2.sync();
+
+    // Verify stage is Cancelled
+    const t = hostTournaments().find(t => t.id === tid);
+    expect(t!.stage.tag).toBe('Cancelled');
+
+    // Verify cascade: teams, requests, assistants deleted
+    const teamsAfter = [...host.conn.db.TournamentTeam.iter()].filter(t => t.tournamentId === tid);
+    const requestsAfter = [...host.conn.db.TournamentTeamRequest.iter()].filter(
+      r => teamsBefore.some(t => t.id === r.teamId)
+    );
+    const assistantsAfter = [...host.conn.db.TournamentAssistant.iter()].filter(a => a.tournamentId === tid);
+    expect(teamsAfter.length).toBe(0);
+    expect(requestsAfter.length).toBe(0);
+    expect(assistantsAfter.length).toBe(0);
+
+    // Verify TPA rows deleted
+    const tpaAfter = [...host.conn.db.TournamentPlayerAccount.iter()].filter(
+      tpa => tpa.tournamentId === tid
+    );
+    expect(tpaAfter.length).toBe(0);
+
+    // Verify participants PRESERVED
+    const participants = [...host.conn.db.TournamentEnrolled.iter()].filter(
+      p => p.tournamentId === tid
+    );
+    expect(participants.length).toBeGreaterThanOrEqual(3);
   });
 });

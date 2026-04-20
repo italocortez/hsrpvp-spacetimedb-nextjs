@@ -12,7 +12,7 @@ export const hsrAccountCharacterColumns = {
 
 export const HsrAccountCharacter = table({
     name: 'hsr_account_character',
-    public: true,
+    // D-20: Intentionally NOT public — raw subscriptions replaced by server-side views
     primaryKey: ['hsrAccountId', 'characterName'],
     indexes: [
         { accessor: 'hsr_account_id', algorithm: 'btree', columns: ['hsrAccountId'] },

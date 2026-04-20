@@ -4,6 +4,8 @@ import { Providers } from "./providers";
 import "./globals.css";
 import Footer from "@/components/globals/layout/Footer";
 import { NavBar } from "@/components/globals/layout/NavBar";
+import { SafariWarning } from "@/components/globals/viewport/SafariWarning";
+import { ViewportWriter } from "@/components/globals/viewport/ViewportWriter";
 
 // 1. Configure fonts as CSS variables
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -24,8 +26,16 @@ export default function RootLayout({
 	return (
 		<html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
 			<body>
+				{/* Phase 16 Plan 05 FOUND-08: dismissible amber banner above NavBar,
+				    Safari-UA only. Client component; safe inside Server layout. */}
+				<SafariWarning />
+
 				{/* Providers wrapper for SpacetimeDB connection and context */}
 				<Providers>
+					{/* Phase 16 Plan 05 FOUND-10: null-render cookie writer.
+					    Writes vp=desktop|mobile on mount + matchMedia change. */}
+					<ViewportWriter />
+
 					<NavBar />
 
 					<main>

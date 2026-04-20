@@ -1,5 +1,5 @@
 import { table, t } from 'spacetimedb/server';
-import { DraftMode, GameMode, MatchOutcome } from '../types/enums';
+import { DraftMode, GameMode, MatchEndReason } from '../types/enums';
 import { LobbyConfigSnapshot } from '../types/structs';
 
 export const matchSessionHistoryColumns = {
@@ -15,7 +15,15 @@ export const matchSessionHistoryColumns = {
 
     snapshotConfig: LobbyConfigSnapshot, // The exact rules used (Snapshot)
 
-    outcome: MatchOutcome,
+    outcome: MatchEndReason,
+
+    // Budget analysis (per D-88):
+    teamBlueSpent: t.f32().optional(),
+    teamRedSpent: t.f32().optional(),
+    handicapApplied: t.f32().optional(),
+
+    // Tournament scouting prevention (per D-84):
+    isPubliclyVisible: t.bool(),
 
     createdById: t.u32(),
     createdDate: t.timestamp(),

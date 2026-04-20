@@ -1,5 +1,5 @@
 import { SenderError } from 'spacetimedb/server';
-import { auditUpdate } from './auditColumns';
+import { updateWithAudit } from './auditHelpers';
 
 /** Map of UID first digit to HSR region name */
 const REGION_MAP: Record<string, string> = {
@@ -45,11 +45,9 @@ export function recalcDuplicateUid(ctx: any, uid: string, actorId: number): void
     const isDuplicate = accounts.length > 1;
     for (const acc of accounts) {
         if (acc.isDuplicateUid !== isDuplicate) {
-            ctx.db.HsrAccount.id.update({
-                ...acc,
-                isDuplicateUid: isDuplicate,
-                ...auditUpdate(ctx, acc, actorId),
-            });
+            ctx.db.HsrAccount.id.update(
+                updateWithAudit(ctx, acc, { isDuplicateUid: isDuplicate }, actorId),
+            );
         }
     }
 }

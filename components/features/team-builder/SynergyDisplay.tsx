@@ -2,7 +2,7 @@
 
 import { Character, RuleSet, Synergy } from "../types/enums";
 import { ResolvedTeamMember } from "./LoadoutManager";
-import styles from "@/app/(landing-page)/teambuilder/page.module.css";
+import styles from "./SynergyDisplay.module.css";
 
 interface SynergyDisplayProps {
 	resolvedTeam: ResolvedTeamMember[];

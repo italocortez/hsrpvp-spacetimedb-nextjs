@@ -31,12 +31,12 @@ export interface IconMaps {
 function buildMap<T extends string>(items: readonly T[],folder: string,): Record<T, string> {
 	const map = {} as Record<T, string>;
 	for (const item of items) {
-		// Please don't break in the future
-		if (folder === "game_modes") {
-			map[item] = `/${folder}/${item.toLowerCase()}.png`; // Because endgame modes are for some reason capitalized :)
-		} else {
-			map[item] = `/${folder}/${item}.webp`;
-		}
+		// Enum values are PascalCase (e.g. 'Harmony', 'Dps', 'Fire') to match
+		// backend data; static asset files under public/{paths,roles,elements,game_modes}
+		// are all lowercase. Always lowercase the item when building the URL.
+		// game_modes additionally uses .png while the others use .webp.
+		const ext = folder === "game_modes" ? "png" : "webp";
+		map[item] = `/${folder}/${item.toLowerCase()}.${ext}`;
 	}
 	return map;
 }

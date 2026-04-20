@@ -17,7 +17,7 @@ export const userIdentityColumns = {
 
 export const UserIdentity = table({
     name: 'user_identity',
-    public: true,
+    public: false,    // D-14: private -- clients use view_my_identity instead
     indexes: [
         { accessor: 'user_id', algorithm: 'btree', columns: ['userId'] },
     ]

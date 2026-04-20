@@ -1,14 +1,16 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
+import { Timestamp } from 'spacetimedb';
 import { ensureTournamentHost } from '../helpers/ensurePermissions';
-import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress } from '../helpers/tournamentHelpers';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { ensureTournamentAccess, validateStageTransition, validateRegistrationToSeeding, validateSeedingToInProgress, cleanupTeamRequests, cascadeCleanupTournament, removeUncheckedInParticipants } from '../helpers/tournamentHelpers';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
+import { revealTournamentHistory } from '../helpers/finalizationHelpers';
 
 // Valid enum tag lists for runtime validation
 const VALID_TOURNAMENT_FORMATS = ['SingleElimination', 'DoubleElimination', 'GroupOnly', 'GroupIntoSingleElim', 'GroupIntoDoubleElim'];
 const VALID_GAME_MODES = ['MemoryOfChaos', 'ApocalypticShadow', 'AnomalyArbitration'];
 const VALID_ROSTER_VISIBILITIES = ['OpenRoster', 'ClosedWithRating', 'ClosedNoRating'];
-const VALID_DISCONNECT_POLICIES = ['Pause', 'TimerThenForfeit', 'NoAction'];
+const VALID_DISCONNECT_POLICIES = ['Standard', 'Deferred', 'NoAction'];
 
 function validateEnumTag(value: string, validTags: string[], fieldName: string): void {
     if (!validTags.includes(value)) {
@@ -38,6 +40,7 @@ export const create_tournament = spacetimedb.reducer(
         autoAdvanceBracket: t.bool(),
         countTowardsMmr: t.bool(),
         winnerAdvantage: t.u8(),
+        requireOwnership: t.bool(),
         requireVerified: t.bool(),
         requireRoster: t.bool(),
         minimumMmr: t.u32(),
@@ -45,6 +48,7 @@ export const create_tournament = spacetimedb.reducer(
         waitlistEnabled: t.bool(),
         scheduledStartAt: t.string(),
         registrationDeadline: t.string(),
+        maxAccountsPerPlayer: t.u8(),
     },
     (ctx, {
         name,
@@ -63,6 +67,7 @@ export const create_tournament = spacetimedb.reducer(
         autoAdvanceBracket,
         countTowardsMmr,
         winnerAdvantage,
+        requireOwnership,
         requireVerified,
         requireRoster,
         minimumMmr,
@@ -70,6 +75,7 @@ export const create_tournament = spacetimedb.reducer(
         waitlistEnabled,
         scheduledStartAt,
         registrationDeadline,
+        maxAccountsPerPlayer,
     }) => {
         const user = ensureTournamentHost(ctx);
 
@@ -102,6 +108,11 @@ export const create_tournament = spacetimedb.reducer(
         // Validate groupSize
         if (groupSize < 3) {
             throw new SenderError('groupSize must be at least 3.');
+        }
+
+        // Validate maxAccountsPerPlayer (0 = default 1)
+        if (maxAccountsPerPlayer > 10) {
+            throw new SenderError('maxAccountsPerPlayer must be 0-10.');
         }
 
         // Validate enum tags
@@ -137,7 +148,7 @@ export const create_tournament = spacetimedb.reducer(
             throw new SenderError('registrationDeadline must be before scheduledStartAt.');
         }
 
-        ctx.db.Tournament.insert({
+        ctx.db.Tournament.insert(insertWithAudit(ctx, {
             id: 0,
             name: trimmedName,
             description,
@@ -166,15 +177,16 @@ export const create_tournament = spacetimedb.reducer(
             groupSize,
             has3rdPlaceMatch,
             autoAdvanceBracket,
+            requireOwnership,
             requireVerified,
             requireRoster,
             minimumMmr: minimumMmr > 0 ? minimumMmr : undefined,
             requireApproval,
             waitlistEnabled,
-            scheduledStartAt: parsedScheduledStartAt !== undefined ? { microsSinceUnixEpoch: parsedScheduledStartAt } : undefined,
-            registrationDeadline: parsedRegistrationDeadline !== undefined ? { microsSinceUnixEpoch: parsedRegistrationDeadline } : undefined,
-            ...auditInsert(ctx, user.id),
-        } as any);
+            maxAccountsPerPlayer: maxAccountsPerPlayer > 0 ? maxAccountsPerPlayer : 1,
+            scheduledStartAt: parsedScheduledStartAt !== undefined ? new Timestamp(parsedScheduledStartAt) : undefined,
+            registrationDeadline: parsedRegistrationDeadline !== undefined ? new Timestamp(parsedRegistrationDeadline) : undefined,
+        }, user.id));
     }
 );
 
@@ -196,6 +208,7 @@ export const update_tournament = spacetimedb.reducer(
         has3rdPlaceMatch: t.bool(),
         autoAdvanceBracket: t.bool(),
         winnerAdvantage: t.u8(),
+        requireOwnership: t.bool(),
         requireVerified: t.bool(),
         requireRoster: t.bool(),
         minimumMmr: t.u32(),
@@ -203,6 +216,7 @@ export const update_tournament = spacetimedb.reducer(
         waitlistEnabled: t.bool(),
         scheduledStartAt: t.string(),
         registrationDeadline: t.string(),
+        maxAccountsPerPlayer: t.u8(),
     },
     (ctx, {
         tournamentId,
@@ -217,6 +231,7 @@ export const update_tournament = spacetimedb.reducer(
         has3rdPlaceMatch,
         autoAdvanceBracket,
         winnerAdvantage,
+        requireOwnership,
         requireVerified,
         requireRoster,
         minimumMmr,
@@ -224,6 +239,7 @@ export const update_tournament = spacetimedb.reducer(
         waitlistEnabled,
         scheduledStartAt,
         registrationDeadline,
+        maxAccountsPerPlayer,
     }) => {
         const { user, tournament } = ensureTournamentAccess(ctx, tournamentId);
 
@@ -258,6 +274,11 @@ export const update_tournament = spacetimedb.reducer(
             throw new SenderError('groupSize must be at least 3.');
         }
 
+        // Validate maxAccountsPerPlayer (0 = default 1)
+        if (maxAccountsPerPlayer > 10) {
+            throw new SenderError('maxAccountsPerPlayer must be 0-10.');
+        }
+
         // Validate enum tags
         validateEnumTag(rosterVisibility, VALID_ROSTER_VISIBILITIES, 'rosterVisibility');
         validateEnumTag(disconnectPolicy, VALID_DISCONNECT_POLICIES, 'disconnectPolicy');
@@ -289,8 +310,7 @@ export const update_tournament = spacetimedb.reducer(
             throw new SenderError('registrationDeadline must be before scheduledStartAt.');
         }
 
-        ctx.db.Tournament.id.update({
-            ...tournament,
+        ctx.db.Tournament.id.update(updateWithAudit(ctx, tournament, {
             name: trimmedName,
             description,
             rosterVisibility: { tag: rosterVisibility, value: {} } as any,
@@ -303,15 +323,16 @@ export const update_tournament = spacetimedb.reducer(
             has3rdPlaceMatch,
             autoAdvanceBracket,
             winnerAdvantage,
+            requireOwnership,
             requireVerified,
             requireRoster,
             minimumMmr: minimumMmr > 0 ? minimumMmr : undefined,
             requireApproval,
             waitlistEnabled,
-            scheduledStartAt: parsedScheduledStartAt !== undefined ? { microsSinceUnixEpoch: parsedScheduledStartAt } : undefined,
-            registrationDeadline: parsedRegistrationDeadline !== undefined ? { microsSinceUnixEpoch: parsedRegistrationDeadline } : undefined,
-            ...auditUpdate(ctx, tournament, user.id),
-        } as any);
+            maxAccountsPerPlayer: maxAccountsPerPlayer > 0 ? maxAccountsPerPlayer : 1,
+            scheduledStartAt: parsedScheduledStartAt !== undefined ? new Timestamp(parsedScheduledStartAt) : undefined,
+            registrationDeadline: parsedRegistrationDeadline !== undefined ? new Timestamp(parsedRegistrationDeadline) : undefined,
+        }, user.id));
     }
 );
 
@@ -329,18 +350,50 @@ export const advance_tournament_stage = spacetimedb.reducer(
 
         validateStageTransition(tournament.stage.tag, nextStage);
 
+        // D-37: Registration -> CheckIn (only if checkInEnabled)
+        // If checkInEnabled=false, Registration->CheckIn transition is rejected by validateStageTransition
+        // (CheckIn is in STAGE_ORDER only when enabled — validation handled in tournamentHelpers)
+
         if (tournament.stage.tag === 'Registration' && nextStage === 'Seeding') {
             validateRegistrationToSeeding(ctx, tournamentId);
+            cleanupTeamRequests(ctx, tournamentId);
         }
+
+        // D-37: CheckIn -> Seeding: auto-remove participants who did not check in
+        if (tournament.stage.tag === 'CheckIn' && nextStage === 'Seeding') {
+            removeUncheckedInParticipants(ctx, tournamentId, user.id);
+            cleanupTeamRequests(ctx, tournamentId);
+        }
+
         if (tournament.stage.tag === 'Seeding' && nextStage === 'InProgress') {
             validateSeedingToInProgress(ctx, tournamentId);
         }
 
-        ctx.db.Tournament.id.update({
-            ...tournament,
+        // D-39: Seeding -> InProgress: bulk set Active status on all eligible enrolled
+        if (tournament.stage.tag === 'Seeding' && nextStage === 'InProgress') {
+            const allEnrolled = [...ctx.db.TournamentEnrolled.tournament_id.filter(tournamentId)];
+            for (const e of allEnrolled) {
+                // Set Active for Registered or CheckedIn (non-withdrawn, non-DQ, non-waitlisted)
+                if (
+                    (e.status.tag === 'Registered' || e.status.tag === 'CheckedIn') &&
+                    !e.isWaitlisted
+                ) {
+                    ctx.db.TournamentEnrolled.by_tournament_and_user.delete([tournamentId, e.userId]);
+                    ctx.db.TournamentEnrolled.insert(updateWithAudit(ctx, e, {
+                        status: { tag: 'Active', value: {} } as any,
+                    }, user.id));
+                }
+            }
+        }
+
+        ctx.db.Tournament.id.update(updateWithAudit(ctx, tournament, {
             stage: { tag: nextStage, value: {} } as any,
-            ...auditUpdate(ctx, tournament, user.id),
-        } as any);
+        }, user.id));
+
+        // D-91: Reveal all associated match history when tournament reaches Completed
+        if (nextStage === 'Completed') {
+            revealTournamentHistory(ctx, tournamentId);
+        }
     }
 );
 
@@ -356,11 +409,13 @@ export const cancel_tournament = spacetimedb.reducer(
         const { user, tournament } = ensureTournamentAccess(ctx, tournamentId);
 
         validateStageTransition(tournament.stage.tag, 'Cancelled');
+        cascadeCleanupTournament(ctx, tournamentId);
 
-        ctx.db.Tournament.id.update({
-            ...tournament,
+        ctx.db.Tournament.id.update(updateWithAudit(ctx, tournament, {
             stage: { tag: 'Cancelled', value: {} } as any,
-            ...auditUpdate(ctx, tournament, user.id),
-        } as any);
+        }, user.id));
+
+        // D-91: Reveal all associated match history when tournament is Cancelled
+        revealTournamentHistory(ctx, tournamentId);
     }
 );

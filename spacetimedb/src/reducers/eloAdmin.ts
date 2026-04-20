@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureAdmin } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── admin_seed_elo_config ──────────────────────────────────────────────────
 // Creates the initial EloConfig row with default values (sentinel PK id=1).
@@ -18,7 +18,7 @@ export const admin_seed_elo_config = spacetimedb.reducer(
             throw new SenderError('ELO config already seeded. Use admin_update_elo_config to modify.');
         }
 
-        ctx.db.EloConfigTable.insert({
+        ctx.db.EloConfigTable.insert(insertWithAudit(ctx, {
             id: 1,
             kFactorNew: 40,
             kFactorMid: 20,
@@ -29,8 +29,7 @@ export const admin_seed_elo_config = spacetimedb.reducer(
             sizeBonus: 150,
             spreadDivisor: 2,
             maxAccountBonus: 200,
-            ...auditInsert(ctx, user.id),
-        } as any);
+        }, user.id));
 
         console.log(`[ELO] EloConfig seeded with defaults by admin #${user.id}`);
     }
@@ -79,11 +78,7 @@ export const admin_update_elo_config = spacetimedb.reducer(
             throw new SenderError('No fields provided to update.');
         }
 
-        ctx.db.EloConfigTable.id.update({
-            ...existing,
-            ...changes,
-            ...auditUpdate(ctx, existing, user.id),
-        });
+        ctx.db.EloConfigTable.id.update(updateWithAudit(ctx, existing, changes, user.id));
 
         console.log(`[ELO] EloConfig updated by admin #${user.id}: ${changedFields.join(', ')}`);
     }

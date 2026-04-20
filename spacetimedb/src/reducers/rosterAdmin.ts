@@ -2,6 +2,7 @@ import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureAdmin } from '../helpers/ensurePermissions';
 import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 import { validateUid, deriveRegion, recalcDuplicateUid } from '../helpers/rosterHelpers';
 import { updateAccountRating } from '../helpers/accountRating';
 
@@ -27,7 +28,7 @@ export const admin_create_hsr_account = spacetimedb.reducer(
         const label = displayLabel.trim() || 'Account ' + (existing.length + 1);
         const isFirst = existing.length === 0;
 
-        ctx.db.HsrAccount.insert({
+        ctx.db.HsrAccount.insert(insertWithAudit(ctx, {
             id: 0,
             userId: targetUserId,
             uid,
@@ -37,8 +38,8 @@ export const admin_create_hsr_account = spacetimedb.reducer(
             isRosterPublic: false,
             isRatingPublic: false,
             isDuplicateUid: false,
-            ...auditInsert(ctx, admin.id),
-        } as any);
+            accountRating: 0,
+        }, admin.id));
 
         recalcDuplicateUid(ctx, uid, admin.id);
     }
@@ -58,13 +59,11 @@ export const admin_update_hsr_account = spacetimedb.reducer(
         const trimmed = displayLabel.trim();
         if (!trimmed) throw new SenderError('Display label cannot be empty');
 
-        ctx.db.HsrAccount.id.update({
-            ...account,
+        ctx.db.HsrAccount.id.update(updateWithAudit(ctx, account, {
             displayLabel: trimmed,
             isRosterPublic,
             isRatingPublic,
-            ...auditUpdate(ctx, account, admin.id),
-        });
+        }, admin.id));
     }
 );
 
@@ -78,6 +77,22 @@ export const admin_delete_hsr_account = spacetimedb.reducer(
 
         const account = ctx.db.HsrAccount.id.find(hsrAccountId);
         if (!account) throw new SenderError('HSR account not found');
+
+        // D-24: Block deletion if account is currently selected in an active lobby
+        const activeLma = [...ctx.db.LobbyMemberAccount.by_account.filter(hsrAccountId)];
+        if (activeLma.length > 0) {
+            throw new SenderError('Cannot delete an account that is selected in an active lobby. Leave the lobby first.');
+        }
+
+        // D-24, D-25: Block if account is locked in an active tournament (admin blocked equally per D-25)
+        const tpaEntries = [...ctx.db.TournamentPlayerAccount.by_user.filter(account.userId)]
+            .filter((e: any) => e.hsrAccountId === hsrAccountId);
+        for (const tpa of tpaEntries) {
+            const tournament = ctx.db.Tournament.id.find(tpa.tournamentId);
+            if (tournament && tournament.stage.tag !== 'Completed' && tournament.stage.tag !== 'Cancelled') {
+                throw new SenderError('Cannot delete an account locked in an active tournament. Wait for the tournament to complete or be cancelled.');
+            }
+        }
 
         const uid = account.uid;
         const accountUserId = account.userId;
@@ -97,11 +112,9 @@ export const admin_delete_hsr_account = spacetimedb.reducer(
                 remaining.sort((a: any, b: any) =>
                     Number(a.createdDate.microsSinceUnixEpoch - b.createdDate.microsSinceUnixEpoch)
                 );
-                ctx.db.HsrAccount.id.update({
-                    ...remaining[0],
+                ctx.db.HsrAccount.id.update(updateWithAudit(ctx, remaining[0], {
                     isActive: true,
-                    ...auditUpdate(ctx, remaining[0], admin.id),
-                });
+                }, admin.id));
             }
         }
 
@@ -201,18 +214,15 @@ export const admin_upsert_archetype = spacetimedb.reducer(
 
         const existing = ctx.db.Archetype.name.find(trimmedName);
         if (existing) {
-            ctx.db.Archetype.id.update({
-                ...existing,
+            ctx.db.Archetype.id.update(updateWithAudit(ctx, existing, {
                 description,
-                ...auditUpdate(ctx, existing, admin.id),
-            } as any);
+            }, admin.id));
         } else {
-            ctx.db.Archetype.insert({
+            ctx.db.Archetype.insert(insertWithAudit(ctx, {
                 id: 0,
                 name: trimmedName,
                 description,
-                ...auditInsert(ctx, admin.id),
-            } as any);
+            }, admin.id));
         }
     }
 );
@@ -263,11 +273,10 @@ export const admin_assign_character_archetypes = spacetimedb.reducer(
         for (const archId of archetypeIds) {
             const existing = [...ctx.db.HsrCharacterArchetype.by_character_and_archetype.filter([characterName, archId])][0];
             if (!existing) {
-                ctx.db.HsrCharacterArchetype.insert({
+                ctx.db.HsrCharacterArchetype.insert(insertWithAudit(ctx, {
                     characterName,
                     archetypeId: archId,
-                    ...auditInsert(ctx, admin.id),
-                } as any);
+                }, admin.id));
             }
         }
     }

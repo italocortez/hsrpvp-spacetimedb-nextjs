@@ -1,200 +1,139 @@
-# Project Research Summary
+# Project Research Summary — v0.9 Frontend Milestone
 
-**Project:** HSRPVP Competitive Platform — Tournament, MMR, Calendar, and Screenshot Milestone
-**Domain:** Competitive gaming / esports tournament platform (Honkai: Star Rail PVP)
-**Researched:** 2026-03-15
-**Confidence:** MEDIUM (stack additions MEDIUM; architecture HIGH based on existing codebase; pitfalls MEDIUM-HIGH)
+**Project:** HSR PVP — v0.9 Frontend Milestone (phases 15–41)
+**Domain:** Competitive gaming platform — Next.js 15 App Router frontend on SpacetimeDB 2.1.0
+**Researched:** 2026-04-12
+**Confidence:** HIGH on stack + architecture + pitfalls (cross-referenced against 8 binding decisions in `notes/v09-frontend-subscription-strategy.md`); MEDIUM on dual-DOM SSR-first-visit UX and tournament-library maintenance risk.
 
 ## Executive Summary
 
-This milestone extends a working SpacetimeDB + Next.js draft/lobby platform into a full competitive tournament system. The existing stack (SpacetimeDB 2.0.3, Next.js 15, React 18, Tailwind CSS 4, HeroUI 2, NextAuth 4) is locked. The additive work requires only two new npm dependencies — `react-big-calendar` and `date-fns` for the calendar/scheduling feature. All other new logic — ELO calculation, bracket generation, achievement evaluation — belongs inside the SpacetimeDB module as pure TypeScript helper functions, because npm packages cannot be imported into a WASM-compiled SpacetimeDB module. The recommended implementation approach is: define the full schema and state machine enums first, then layer reducers on top of stable tables, and defer frontend UI until the backend is verified.
+v0.9 is a **frontend-only** milestone atop a locked v0.5 backend (67 tables, 32 views, ~156 reducers). The four research axes converge: the milestone's hard problems are not feature complexity — they are **architectural invariants** every phase must respect. The strategy doc's 8 binding decisions are the spine; research found no reason to reopen any of them.
 
-The core differentiator of this platform over generic tools (Challonge, start.gg) is HSR-native integration: roster-constrained drafting, per-game-mode MMR (MemoryOfChaos, ApocalypticShadow, AnomalyArbitration), anonymous play mode, and screenshot-based result verification via Imgur. Every generic competitor is game-agnostic; none can model character ownership, eidolon levels, or connect pick/ban directly to tournament brackets. These features form the product's identity and must be built correctly from the start because schema migrations in SpacetimeDB are costly.
+Stack additions are small and opinionated — `@esotericsoftware/spine-webgl@4.2`, `@dnd-kit/*@6.3`, `@g-loot/react-tournament-brackets`, `luxon`, plus hand-written primitives (imgur client, viewport detection, 40-LOC Service Worker). Chart.js stays. There is an explicit do-not-add list (next-pwa, react-dnd, react-device-detect, tldraw, recharts, date-fns-tz, Imgur SDK, `@esotericsoftware/spine-player`) that PR review must enforce — every rejection has a concrete reason.
 
-The most dangerous risks for this milestone are: (1) implementing ELO updates before match result verification is complete — once incorrect MMR is applied it is expensive to reverse; (2) storing tournament and bracket state without explicit enum-driven state machines — boolean flag soup produces impossible-to-audit reducer logic; and (3) enforcing anonymous play and roster visibility only at the display layer, when SpacetimeDB subscriptions are accessible to any client that connects. All three require schema-level design decisions before any reducer is written, not UI-layer fixes added later.
-
----
+Dominant risks: bandwidth (subscription at wrong layer → energy ceiling breach), GPU leaks (WebGL context accumulation across 2-hour sessions), auth/hydration flashes. Each maps to a specific phase + verification test. If Phase 15 ships `view_my_*` views and Phase 16 lands the primitives correctly, the rest is feature work against a stable substrate.
 
 ## Key Findings
 
-### Recommended Stack
+### Stack Additions to Commit
 
-The existing stack handles all new features except calendar visualization. Only `react-big-calendar@^1.14.x` and `date-fns@^3.x` are added as net-new npm dependencies; date-fns is react-big-calendar's required localizer and provides timezone-safe date arithmetic for recurring availability patterns. Custom SVG/React components are recommended for bracket visualization (not `@g-loot/react-tournament-brackets`) because HSR-specific design requirements — character images in match slots, anonymous label substitution, live SpacetimeDB subscription updates — cannot be satisfied by off-the-shelf bracket libraries without fighting their styling system. Screenshot upload uses a Next.js API route proxying to Imgur API v3 (raw `fetch`, no wrapper package) to keep the Imgur Client ID server-side. The `IMGUR_CLIENT_ID` environment variable is the only new environment variable required.
+| Package | Version | Purpose | Rationale |
+|---------|---------|---------|-----------|
+| `@esotericsoftware/spine-webgl` | `^4.2.109` | Spine pedestal WebGL runtime | Lower-level primitive required by Decision 3's layered single-canvas model |
+| `@dnd-kit/core` + `sortable` + `utilities` | `^6.3.1` / `^8.0.0` / `^3.2.2` | Team builder slot reorder (accessible) | `react-dnd` stalled; stick with 6.x stable |
+| `@g-loot/react-tournament-brackets` | `^1.0.0` | Single + double elim bracket viz | Only mainstream lib with winners/losers cross-link; MEDIUM maintenance confidence — Plan B is a custom d3 bracket (~300 LOC) |
+| `luxon` | `^3.5.0` | IANA timezone math | `Intl`-native — skips 36 KB DB penalty of date-fns-tz |
+| `@next/bundle-analyzer` | latest | Dev-only bundle regression guard | `ANALYZE=true` per milestone |
 
-**Core technologies:**
-- `react-big-calendar` + `date-fns`: Calendar grid for recurring player availability — the only valid open-source option for availability-style display (not a date picker); date-fns is the non-deprecated localizer
-- Custom SVG bracket component: Tournament bracket visualization — required for HSR-specific slot rendering, live subscription updates, and anonymous mode label substitution
-- Imgur API v3 via Next.js API route: Screenshot hosting — anonymous upload pattern keeps Client ID server-side; store both URL and `deleteHash` for dispute cleanup
-- Inline ELO implementation in `spacetimedb/src/helpers/elo.ts`: MMR calculation — npm packages cannot be imported in WASM modules; ELO is ~20 lines of deterministic arithmetic
-- Inline bracket seeding in `spacetimedb/src/helpers/bracketGenerator.ts`: Bracket generation — pure function, pre-generates all match slots with explicit FK relationships before any reducer touches the database
+**Hand-written (no dep):** Imgur upload (~20 LOC), SW (~40 LOC, asset-CDN hostname filter), viewport detection (~80 LOC), cursor overlay (~100 LOC).
 
-### Expected Features
+**Already installed:** `chart.js@^4.5.1` + `react-chartjs-2@^5.3.1` + `chartjs-plugin-datalabels` — covers all charts. Do not add recharts.
 
-**Must have (table stakes — users assume these exist):**
-- Bracket visualization (single elimination minimum) — every competitive platform shows this; absence reads as "unfinished"
-- Tournament self-registration with status enum (Draft / Registration / Active / Completed / Cancelled) — players cannot work with organizer-only enrollment
-- Dual-submission match result reporting (both players submit, auto-confirm on agreement, flag on disagreement) — mutual confirmation is the standard for screenshot-based platforms
-- Bracket auto-advancement on confirmed result — manual advancement is painful at tournament scale
-- MMR per game mode with global composite — competitive players need a skill number; per-mode is expected given multiple scoring axes in HSR
-- Leaderboard sorted by MMR — required accompaniment to any rating system
-- Seeding (manual minimum; MMR-based auto-seed once MMR exists) — top seeds avoiding each other early is a universal competitive expectation
-- Admin / TO override for match state and result disputes — without override capability, a single bad result breaks an entire bracket
-- Player profile with win/loss stats and match history — absence reads as unprofessional
+**Do-not-add list:** next-pwa, @serwist/next, workbox-webpack-plugin, react-dnd, react-device-detect, react-responsive, tldraw, recharts, date-fns-tz, moment, uploadthing (client), @esotericsoftware/spine-player, SpacetimeDB SDK in Web Worker, any second realtime-sync library, any middleware-level auth library, detect-gpu.
 
-**Should have (differentiators — this platform's competitive advantage):**
-- HSR-native draft integration per tournament match — the primary differentiator; no generic tool does this
-- Per-game-mode ELO (MoC / AS / AA) with per-mode leaderboards — generic tools collapse multi-mode skill into one number
-- Screenshot verification with referee workflow (dual submission + referee validation + dispute path) — correct model for non-API-accessible game data
-- Roster-aware drafting (owned characters + eidolon levels constrain legal picks) — requires Roster Management to be complete first
-- Anonymous play mode (identity withheld in draft and match data, enforced at data layer) — unique feature; enforced server-side or it is meaningless
-- Availability calendar with recurring slot rules and auto-overlap detection — #1 scheduling friction in grassroots tournaments; few platforms do this natively
-- Achievement / title system with admin-defined criteria and auto-award on condition
-- Step-by-step match replay viewer (data tables already exist; frontend is the remaining work)
-- Ephemeral per-match chat via SpacetimeDB event table pattern (already established in codebase)
-- Referee assignment scoped per tournament (not a global role)
-- Coach role (observer with cursor visibility, no action reducers)
+**Web Worker note:** Per user preference, **no Web Worker** for prefetch. Portrait prefetch runs on main thread via `requestIdleCallback`. Service Worker alone handles asset caching.
 
-**Defer (v2+):**
-- Season leaderboards and MMR resets — defer until MMR baseline is validated and player base is established
-- Double elimination bracket — implement after single elimination is stable and tested
-- Group stage / round-robin — highest complexity bracket type; add last
-- Automated achievement triggers — start with manual admin award
-- Roster import from HoYoverse API — undocumented, unstable; manual entry first
-- Computer vision score extraction from screenshots — maintenance burden outweighs value; human referee verification is more reliable and auditable
+Bundle impact: ~110–150 KB gzipped on draft route (Spine dominates). Public/anon tier unchanged.
 
-### Architecture Approach
+### Feature Categorization
 
-The backend follows SpacetimeDB's established pattern: enums drive all lifecycle state machines, pure helper functions in `spacetimedb/src/helpers/` contain all complex domain logic (ELO, bracket generation, achievement checking), and reducers are thin orchestrators that validate state, call helpers, and apply mutations in a single transaction. The match result verification pipeline is a critical sequence: result submitted by both players → validationStatus transitions → referee validates → ELO updated (in same transaction) → bracket advanced → achievements checked. All of these steps happen within a single reducer call to avoid partial-state race conditions. External integrations (Imgur, Discord OAuth) remain outside SpacetimeDB; Imgur URLs are stored as strings in match result tables alongside structured score and referee decision fields.
+**Table stakes (must ship v0.9):** Cost tables (M), Team builder click-to-add with cost meter + synergy (M-L), Draft pick/ban + Spine pedestal + cursor broadcast (**Largest**), Tournament brackets — 4 formats (**L**), Spectator view (M — shares draft components), Calendar + scheduling — week/month/recurring/invites (**L**), Profile stats (M), Match post-drafting — Imgur upload + MMR reveal (M-L), Leaderboards per game mode + composite (S-M).
 
-**Major components:**
-1. Tournament tables (Tournament, TournamentParticipant, TournamentReferee, BracketMatch, GroupPhaseGroup, GroupPhaseStanding) — tournament lifecycle, bracket state, participant roster
-2. Match result and verification tables (MatchResult with separate screenshotUrl, score, and referee verification columns) — decoupled from MatchSessionHistory which handles pick/ban replay
-3. Player tables (PlayerMmr with per-mode records + MmrHistory audit log, HsrAccount, RosterCharacter, RosterLightcone, PlayerAchievement) — ratings, ownership, progression
-4. Calendar tables (AvailabilitySlot as recurrence rule rows, CalendarEvent, CalendarEventInvite) — scheduling with recurring patterns; client expands rules into calendar events
-5. Infrastructure tables (LobbyChatMessage for ephemeral chat, AchievementDefinition for admin-managed criteria) — shared support systems
+**Differentiators:** In-app draft replay scrubber, live cursor broadcast, Spine pedestal, cost-set aware team builder, When2meet-style availability overlap.
 
-### Critical Pitfalls
+**Anti-features (reject):** Horizontal bracket shrink on mobile, drag-drop team builder (click-to-add beats drag/drop), 0.5× replay speed, persistent multi-line MMR chart on mobile, drag-to-create calendar on mobile, long MMR confetti animations, chat persistence, server-IP-based time SSR, embedded 3D game replay.
 
-1. **Tournament state machine via booleans instead of explicit enum** — define `TournamentStage` enum (Draft | Registration | Seeding | InProgress | Completed | Cancelled) before writing any reducer; every reducer asserts valid predecessor stage or throws
-2. **ELO applied before result is verified** — add `mmrProcessedAt: timestamp | null` to match result; ELO reducer throws if already set; a separate `verify_match_result` reducer (called by referee) is the only trigger for ELO updates
-3. **ELO K-factor frozen at one value** — use tiered K-factor (K=40 for first 20 verified matches, K=20 for 21-100, K=10 for 100+); store `matchesPlayedPerMode` counter on PlayerMmr from day one
-4. **Anonymous play enforced at display layer only** — cursor events and match events must carry `anonymousLabel` (e.g., "Blue-1") instead of `userId` at the write layer when lobby is anonymous; verify by querying SpacetimeDB table directly
-5. **Bracket state stored as JSON blob in Tournament row** — use one `BracketMatch` row per match with explicit `nextWinnerMatchId` / `nextLoserMatchId` FK columns; SpacetimeDB subscriptions operate at row granularity and JSON blobs force full tournament re-broadcast on any match update
-6. **Roster visibility enforced only on the frontend** — SpacetimeDB tables are accessible to any connected client; roster subscription must use row-level filter (`WHERE userId = :sender OR visibility = 'Public'`); client-side hiding is not sufficient
+**Critical mobile (XX.1) phases** — need own design not CSS responsive: Tournament brackets (round-by-round swipe), Draft UI (stacked + pedestal resize + cursor-send off), Calendar (day-view default).
+**Safe for responsive-only:** team builder, cost tables, leaderboards, spectator view, match post-drafting.
 
----
+### Open Phase 16 Decisions (must resolve before feature phases start)
+
+1. **Dual-DOM folder pattern** — recommend sibling `cost-table.desktop.tsx` + `cost-table.mobile.tsx` via `next/dynamic({ ssr: false })` within a `page.tsx` that uses `<ViewportGate>`.
+2. **Viewport SSR default on first-ever visit** — recommend **desktop-default**; returning visitors get correct SSR from `vp` cookie.
+3. **Middleware matcher shape** — recommend **positive list** of authed paths over negative lookahead. Must exclude `/sw.js` and `_next/*`.
+4. **`experimental.typedRoutes: true`** — enable **before** Phase 16 step 1 (rename `(landing-page)` → `(public)`, `(authenticated)` → `(authed)`) so stale `<Link>` paths fail at build.
+5. **Next.js version bump to ≥15.2.3** — required for CVE-2025-29927 middleware bypass. Current `^15.0.0` may resolve vulnerable. Land **before** middleware ships.
+
+### Top 10 Pitfalls (ranked by impact) with Phase Ownership
+
+| # | Pitfall | Phase ownership | Prevention signal |
+|---|---------|-----------------|-------------------|
+| 1 | **Subscription at wrong layer** (bandwidth ceiling) | Phase 16 + every PR | `tools/energy-model.js` ≤ 102,500; Decision 6 map grep |
+| 2 | **Spine prefetch fires twice** (Strict Mode / client nav) | Public-tier + match-zone prefetch phases | Module-level singleton (NOT `useRef`); Strict Mode regression test |
+| 3 | **Pedestal WebGL not fully disposed** (GPU leak) | Draft/pedestal phase (31) | Full Decision 3 lifecycle matrix; `MutationObserver` single-canvas invariant; 20-transition test |
+| 4 | **Historical tables subscribed above profile scope** | Phase 15 + historical phase (40-41) | `view_my_*` filter on `ctx.sender`; ESLint/grep rule |
+| 5 | **Service Worker stuck in dev** from prod test | Phase 16 SW scaffold | `/dev-unregister-sw` helper; `CACHE_NAME` versioning; Vercel preview smoke test |
+| 6 | **Auth desync** (flash of login on F5 / cross-tab) | Phase 16 + Phase 21 | Tri-state auth; `BroadcastChannel('hsr-auth')`; sign-out clears all three artifacts in order |
+| 7 | **Cursor / chat / pick-ban storm** (lobby >10 users) | Match-zone phases (28-33) | 30 Hz rAF cursor throttle + 2 px delta; `(createdAt, messageId)` sort; pending-overlay for optimistic picks |
+| 8 | **`'use client'` at a layout** (bundle bloat) | Phase 16 + ongoing | `grep` check; bundle analyzer threshold |
+| 9 | **Turbopack ↔ Webpack dev-prod drift** | Every phase closeout | `npm run build` clean + Vercel preview mandatory |
+| 10 | **Dual-DOM hydration mismatch** | Phase 16 + every XX.1 | `useSyncExternalStore` for matchMedia; `vp` cookie SSR hint |
+
+Plus: **Next 15 async `params`** — every dynamic route (`/lobby/[id]`, `/draft/[matchId]`, `/profile/[userId]`) must be `async function Page({ params }: { params: Promise<{ id: string }> })` + `await params`. Affects every Phase 16 route migration.
+
+### Phase Sizing Signals
+
+- **Large (plan for spillover):** Draft UI + Spine pedestal (31), Tournament brackets (35), Calendar (27), Team builder (20)
+- **Medium:** Cost tables (18), profile stats viz (39), match post-drafting (33), replay playback (41), spectator view
+- **Small:** Leaderboards (37), MMR chart
+- **Small foundational:** Phase 15 (backend pre-work), Phase 16 (many small pieces), Phase 21 (thin authed base)
+
+### Cross-Phase Patterns Every Phase Must Know
+
+1. **Subscription placement** — name the layout file + highest-common-consumer justification in the PR. No exceptions.
+2. **Viewport consumption** — `const vp = useViewport(); if (!vp) return <Skeleton />;` then branch. Never CSS-toggle both trees.
+3. **SW hostname filter** — intercepts ONLY asset CDN hostnames (UploadThing `ufs.sh`). Never app origin. Imgur passthrough.
+4. **Next 15 async params** — every dynamic page/layout.
+5. **`'use client'` discipline** — leaves only; layouts stay Server. Sole exception: `providers.tsx`.
+6. **Reducer client patterns** — `Timestamp.now()`, `null` for optional, tagged-union enums, `.catch()` errors.
+7. **Strict Mode symmetry** — every `subscribe()` ↔ `unsubscribe()`; singletons module-level not `useRef`.
+8. **Cross-user routes subscribe to ZERO additional tables** — reject PRs that do otherwise.
 
 ## Implications for Roadmap
 
-Based on the research, the milestone naturally decomposes into 7 phases ordered by hard dependencies. Backend-first is mandatory because the frontend cannot be built against tables that do not exist, and SpacetimeDB requires publishing a module before generating client bindings.
+### Foundation phases (15, 16, 21)
 
-### Phase 1: Schema Foundation and Enums
-**Rationale:** All state machines, FK relationships, and data contracts must be settled before any reducer is written. Schema changes after reducers are in place require module re-publish and binding regeneration, breaking the frontend. This is the most critical ordering constraint in the entire milestone.
-**Delivers:** All new table definitions, new enum values (TournamentStage, TournamentFormat, MatchStatus, ValidationStatus, DisconnectPolicy, RecurrenceType, RosterVisibility, ParticipantStatus), extended `enums.ts` and `structs.ts`, and the full project file structure (`spacetimedb/src/tables/`, `reducers/`, `helpers/`)
-**Addresses:** Pitfall 1 (state machine enums defined before reducers), Pitfall 3 (matchesPlayedPerMode counter in schema from day one), Pitfall 5 (BracketMatch row-per-match with explicit FK columns), Pitfall 9 (recurrence rule struct instead of flat timestamps), Pitfall 10 (visibility field on roster rows)
-**Research flag:** Standard pattern — skip research phase. SpacetimeDB table definition patterns are well-established in the existing codebase.
+**Phase 15 — Backend pre-work.** Rationale: `view_my_*` historical views + Spine schema are prereqs; skipping is the #1 tech-debt source. Delivers `view_my_match_history / mmr_history / session_history / participant_history` filtered on `ctx.sender` + Spine URL columns on `hsr_character`. Avoids Pitfall 4.
 
-### Phase 2: Roster Management
-**Rationale:** Roster data is a prerequisite for roster-aware drafting (a tournament-phase feature). It is also the simplest new system — no inter-table dependencies beyond User — and validates the new table/reducer structure before more complex systems are built.
-**Delivers:** HsrAccount, RosterCharacter, RosterLightcone tables and reducers; roster visibility enforcement at subscription level; admin upsert variants
-**Uses:** Existing User table; `spacetime generate` pattern for binding refresh
-**Avoids:** Pitfall 10 (roster visibility must be server-enforced, not display-layer)
+**Phase 16 — Route + global foundation.** Rationale: All 5 open integration items must resolve before any feature phase. Also migrates groups, collapses `(game)/draft` under `(authed)/(match)`, trims `useAuth.ts`. Delivers route group structure, middleware.ts, ViewportGate, render-tier.ts, SafariWarning, SW scaffold (no Web Worker — main-thread prefetch), async-params migration, Next bump, typedRoutes. Avoids Pitfalls 1/8/10 + CVE-2025-29927.
 
-### Phase 3: Tournament System Foundation
-**Rationale:** Tournament, TournamentParticipant, TournamentReferee, and the full tournament lifecycle reducers must exist before bracket generation can be implemented. Depends on Roster Management (participant eligibility checks use roster data).
-**Delivers:** Tournament CRUD, registration open/close, participant signup and confirmation, referee assignment per tournament, TO authorization checks
-**Addresses:** Pitfall 1 (stage machine via TournamentStage enum, single `advance_tournament_stage` reducer), Security (TO authorization scoped to `tournament.createdById`)
-**Research flag:** Standard pattern — skip research phase. State machine implementation is well-understood.
+**Phase 21 — Authed base.** Rationale: Minimal authed base per user preference — tri-state `<AuthRequired>`, `user` sub moved to `(authed)/layout.tsx`, cross-tab `BroadcastChannel`. Avoids Pitfall 6.
 
-### Phase 4: Bracket Generation and Advancement
-**Rationale:** Depends on Tournament (Phase 3) for the tournament FK and stage transitions. Bracket generation produces BracketMatch rows and must be completed before match result submission can reference specific matches.
-**Delivers:** `bracketGenerator.ts` pure helper, `generate_bracket` reducer for single elimination, BracketMatch rows with explicit nextWinnerMatchId / nextLoserMatchId FKs, `advance_bracket` reducer triggered from match result validation
-**Addresses:** Pitfall 5 (pre-generated bracket tree with explicit slot FKs, no race condition), Anti-Pattern 3 (bracketRound and matchNumber as explicit columns, not autoInc order)
-**Research flag:** Double elimination bracket advancement mapping (round-to-losers-bracket slot table) may benefit from additional research during planning. Single elimination is standard.
+### Feature phases (17–41)
 
-### Phase 5: Match Result, Screenshot Verification, and MMR
-**Rationale:** This is the most interdependent phase. MatchResult depends on MatchSessionHistory (existing) and BracketMatch (Phase 4). ELO update depends on MatchResult reaching `Validated` status. Bracket advancement (Phase 4 reducer) is triggered from within this phase's validate reducer. These three concerns must be built together in one phase to avoid partial state.
-**Delivers:** MatchResult table with separate score/screenshot/referee columns; `submit_match_result` reducer; `validate_match_result` reducer (referee-only, triggers ELO update and bracket advancement); `elo.ts` pure helper; PlayerMmr and MmrHistory tables and update logic; Imgur upload Next.js API route; `IMGUR_CLIENT_ID` environment variable
-**Addresses:** Pitfall 2 (ELO only after `verifiedAt` is set; `mmrProcessedAt` guard), Pitfall 3 (tiered K-factor with `matchesPlayedPerMode` counter), Pitfall 6 (idempotent ELO via `mmrProcessedAt`), Pitfall 7 (structured evidence schema: separate URL / score / referee decision columns), Integration gotcha (Imgur URL validated by regex before storing)
-**Research flag:** Needs deeper research during planning — Imgur API v3 rate limits and anonymous upload behavior should be verified before implementation, as Imgur has changed these constraints before.
+Data/UX pair pattern per feature; XX.1 mobile phases opportunistic.
 
-### Phase 6: Calendar, Scheduling, and Achievements
-**Rationale:** Calendar and achievements are independent of the tournament core (they enhance it but are not required for a tournament to run). Calendar depends on User and optionally links to BracketMatch for TO scheduling. Achievements depend on PlayerMmr and MatchSessionHistory counters which are complete after Phase 5.
-**Delivers:** AvailabilitySlot (recurrence rule rows), CalendarEvent, CalendarEventInvite tables and reducers; `react-big-calendar` + `date-fns` frontend integration; AchievementDefinition and PlayerAchievement tables; `achievementChecker.ts` pure helper called from `validate_match_result` end-of-reducer
-**Uses:** `react-big-calendar@^1.14.x`, `date-fns@^3.x` (two new npm packages installed here)
-**Avoids:** Pitfall 9 (recurrence rule struct — single row change affects all future occurrences)
-**Research flag:** react-big-calendar version compatibility and date-fns localizer setup should be verified during planning (`dateFnsLocalizer` from `react-big-calendar/lib/localizers/date-fns`).
-
-### Phase 7: Disconnect Handling, Anonymous Play, and Supporting Features
-**Rationale:** These features depend on the full match/tournament system being in place. Disconnect handling extends existing LobbyStage patterns. Anonymous play requires cursor event and match event writers to be modified. Supporting features (ephemeral chat, coach role, leaderboard frontend, match replay viewer) can be added now that the data is available.
-**Delivers:** DisconnectPolicy integration in `clientDisconnected` lifecycle hook; `rejoin_match` reducer; `check_disconnect_forfeits` client-callable reducer; anonymous play enforcement at cursor event write layer (anonymousLabel substitution in LobbyCursorEvent); LobbyChatMessage table and `send_chat_message` / cleanup reducers; leaderboard frontend reading PlayerMmr; bracket visualization custom SVG component; match replay viewer (reads existing MatchSessionStepHistory)
-**Addresses:** Pitfall 4 (liveness check in every pick/ban/bid reducer before forfeit can race with queued calls), Pitfall 8 (anonymous play enforced at data write layer, not display layer)
-**Research flag:** Standard patterns for most of this phase. Custom SVG bracket component is a build task, not a research question.
-
-### Phase Ordering Rationale
-
-- Schema must precede all reducers because SpacetimeDB bindings are generated from the published module; any table change forces a regeneration and potentially breaks frontend code
-- Roster before Tournament because roster data is needed for roster-aware drafting eligibility, and it is the simplest system to validate the new patterns
-- Tournament before Bracket because bracket rows FK to Tournament and the stage machine must be in place before bracket generation can fire the correct stage transition
-- Bracket before Match Result because MatchResult rows reference BracketMatch.id; validation reducer triggers bracket advancement
-- ELO in the same phase as Match Result because they share a single reducer transaction — separating them into different phases would leave a phase with partial logic that cannot be functionally tested
-- Calendar and Achievements after core tournament/MMR because they are enhancements, not prerequisites; they also benefit from the match data that only exists after Phase 5 completes
-- Disconnect, anonymous play, and supporting UI last because they are hardening and experience layers on top of a functioning tournament core
+- **Public tier (17-20):** Cost tables + team builder — drives `(public)` group, SW portrait prefetch, first dual-DOM verification
+- **Admin + profile + calendar (22-27):** Lower-risk feature work against established patterns
+- **Core match loop (28-33):** Lobby → draft + Spine → post-drafting. Largest phases. Pitfalls 2/3/7 materialize here.
+- **Tail (34–41):** Tournament (34-35) → Leaderboards (36-37) → User/char stats (38-39) → Historical/replay (40-41). Tournament mandatory XX.1.
 
 ### Research Flags
 
-Phases needing deeper research during planning:
-- **Phase 4 (Bracket Generation):** Double elimination losers bracket slot mapping — standard round-to-losers-slot tables exist in tournament theory but the SpacetimeDB-specific pre-generated FK pattern should be planned carefully before implementation
-- **Phase 5 (Match Result + MMR):** Imgur API v3 current rate limits, anonymous upload constraints, and supported file format list should be re-verified before implementation; these have changed historically
-- **Phase 6 (Calendar):** react-big-calendar `dateFnsLocalizer` integration and version compatibility verification — install and test before committing to this library
+**Needs research-phase:** Phase 15 (view composite indexes + Spine schema), Phase 31 (scaleY workaround, pick-ban optimistic), Phase 27 (recurring slots + DST + overlap algo), Phase 35 (React 19 peer confirmation / Plan B cost).
 
-Phases with standard patterns (skip research phase):
-- **Phase 1 (Schema):** Pure SpacetimeDB table definition — patterns are fully established in existing codebase
-- **Phase 2 (Roster):** Standard CRUD with FK to User — no novel patterns
-- **Phase 3 (Tournament Foundation):** State machine enum + lifecycle reducers — well-documented in existing LobbyStage pattern
-- **Phase 7 (Disconnect + Supporting):** clientDisconnected hook pattern exists; cursor anonymization is a targeted modification
-
----
+**Standard patterns (skip research):** Phase 16 (research already covers it), Phase 21 (pattern locked), Phase 37 Leaderboards, Phase 33 Match post-drafting, spectator.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM | Existing stack (locked) is HIGH confidence. New additions: react-big-calendar/date-fns version numbers are MEDIUM (training cutoff Aug 2025; verify before install). Custom SVG bracket recommendation is HIGH confidence. Imgur API v3 pattern is MEDIUM (rate limits change). |
-| Features | MEDIUM | Competitor analysis (Challonge, start.gg, FACEIT) is MEDIUM — training data, no live verification. Feature priority relative to the HSR-specific differentiators is HIGH confidence — derived from PROJECT.md (authoritative). |
-| Architecture | HIGH | Derived directly from existing codebase patterns and SpacetimeDB determinism constraints. Table schemas, reducer patterns, and helper function structure are all grounded in working codebase evidence. |
-| Pitfalls | MEDIUM-HIGH | Codebase-specific pitfalls (state machine, ELO timing, anonymous play) are HIGH. Tournament bracket race conditions and K-factor tuning are MEDIUM — general competitive gaming patterns applied to SpacetimeDB's transaction model. |
+| Stack | HIGH | All versions verified at research date; binding decisions internal authoritative; only MEDIUM item is g-loot/react-tournament-brackets maintenance (Plan B ready) |
+| Features | MEDIUM-HIGH | Backend locked; UX patterns cross-referenced with chess.com/FACEIT/start.gg/Prydwen/Smogon |
+| Architecture | HIGH (App Router + middleware); MEDIUM (dual-DOM — no ecosystem convention, pattern is project-specific synthesis) | ViewportGate novel composition of known primitives |
+| Pitfalls | HIGH (stack-specific grounded in strategy doc + memory + Phase 12/13 incidents); MEDIUM (STDB SDK 2.1 edge behavior — young, thin docs) | P1-P3 highest impact, all have verification tests |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall: HIGH.** Locked backend + 8 committed architectural decisions + alternatives-considered tables for every stack pick. Feature-phase research is largely "execute pattern," not "discover pattern."
 
 ### Gaps to Address
 
-- **Imgur API v3 current rate limits:** Re-verify before Phase 5 implementation. Anonymous IP-based limits have changed historically. If limits are too restrictive for tournament match volume, consider signed uploads or a secondary image host as fallback.
-- **react-big-calendar version:** Verify current stable version and `dateFnsLocalizer` API signature before Phase 6. Library is actively maintained but minor API changes between 1.x versions are possible.
-- **SpacetimeDB row-level subscription filtering:** Architecture calls for server-side roster visibility filtering. Verify that SpacetimeDB 2.0.3 supports parameterized subscription filters (WHERE clause by sender identity) before designing the roster visibility implementation; if not supported, the `RosterPublicView` pattern (separate filtered table maintained by reducers) is the fallback.
-- **Double elimination grand finals reset logic:** Standard double elimination has a "grand finals reset" rule (losers bracket winner can force a bracket reset). Whether this project needs it should be a product decision made before Phase 4 bracket generation is implemented.
-- **K-factor calibration:** K=40/20/10 tiering is recommended but the thresholds (20 games / 100 games) are derived from chess.com patterns. Adjust based on expected match volume and community feedback after launch.
+- **Dual-DOM first-ever-visit UX** — Phase 16 design call
+- **`@g-loot/react-tournament-brackets` React 19 peer** — verify before Phase 34; fork-Plan-B ready
+- **Spine `skeleton.scaleY = -1`** — Phase 31 must fix camera projection OR document + test skinning
+- **FullStory 5k events/month** — sampling strategy needed (low priority)
+- **Imgur rate-limit fallback** — Discord-bot storage plan exists but not scoped; flag for Phase 32 (match post-drafting data)
+- **Vercel preview Discord OAuth** — dynamic callback URLs; `*.vercel.app` whitelist OR `returnTo` validator; flag for Phase 21
 
----
+## Ready for Requirements
 
-## Sources
-
-### Primary (HIGH confidence)
-- `spacetimedb/src/tables/`, `spacetimedb/src/reducers/`, `spacetimedb/src/helpers/` — existing codebase patterns, reducer determinism constraints, lifecycle hooks
-- `.planning/PROJECT.md` — authoritative project requirements, key decisions (Imgur, Discord OAuth, anonymous play, bracket formats)
-- `.planning/codebase/ARCHITECTURE.md` and `.planning/codebase/CONCERNS.md` — existing system boundaries and known fragile areas
-- ELO formula — Arpad Elo, "The Rating of Chessplayers, Past and Present" (1978); public domain deterministic math
-
-### Secondary (MEDIUM confidence)
-- react-big-calendar documentation (jquense.github.io/react-big-calendar) — React 18 compatibility and date-fns localizer pattern; version numbers as of Aug 2025 training cutoff
-- Imgur API v3 documentation (apidocs.imgur.com) — anonymous upload, Client-ID pattern, rate limits; rate limits should be re-verified before implementation
-- Training-data knowledge of Challonge, start.gg, FACEIT, chess.com, lichess.org — competitor feature analysis for table stakes and differentiator identification
-- SpacetimeDB 2.x transaction model and subscription filter behavior — training knowledge; verify against current SpacetimeDB docs for row-level filter support
-
-### Tertiary (LOW confidence)
-- `@g-loot/react-tournament-brackets` capability and styling limitations — training knowledge; library exists but suitability assessment is inference from general React library patterns
-
----
-
-*Research completed: 2026-03-15*
-*Ready for roadmap: yes*
+Synthesis complete. Orchestrator can proceed to requirements definition. The five Phase 16 integration items (dual-DOM folder pattern, viewport SSR default, middleware matcher, typedRoutes enablement, Next 15.2.3 bump) should be explicitly called out as "must resolve in Phase 16" during roadmap phase definition so the roadmapper scopes them into the phase rather than scattering them across feature phases.

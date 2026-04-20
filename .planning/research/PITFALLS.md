@@ -1,367 +1,494 @@
 # Pitfalls Research
 
-**Domain:** Competitive gaming platform — tournament brackets, MMR/ELO, real-time match management on SpacetimeDB
-**Researched:** 2026-03-15
-**Confidence:** MEDIUM-HIGH (codebase evidence: HIGH; tournament/ELO patterns: MEDIUM from training knowledge; SpacetimeDB-specific: HIGH from existing code)
+**Domain:** Competitive gaming frontend — SpacetimeDB 2.1.0 + Next.js 15 App Router + React 19 + Spine WebGL 4.2 + dual-DOM (desktop/mobile)
+**Researched:** 2026-04-12
+**Confidence:** HIGH for stack-specific pitfalls (grounded in repo's own v0.9 strategy doc, memory feedback, Phase 12/13 incidents); MEDIUM for SDK-edge-behavior pitfalls (SpacetimeDB SDK 2.1 is young, docs are thin, some inferred from SDK source).
+
+## Top 5 highest-impact pitfalls (ranked)
+
+1. **Subscription-at-wrong-layer bandwidth leak** (bandwidth-budget killer; one bad placement eats the 102,500 energy/month ceiling — see P1)
+2. **`(match)` layout prefetch double-fires under Strict Mode + client navigation** (kicks off an 80–100 MB Spine download twice — see P2)
+3. **Pedestal WebGL disposal incomplete on draft end / route change / context loss** (GPU leak that accumulates across a play session — see P3)
+4. **Historical tables subscribed above profile page scope** (unbounded growth, cross-user leak, violates Decision 8 — see P4)
+5. **Service Worker intercepting app-origin or stale-URL assets in dev** (stuck SW after a production test breaks HMR for hours — see P5)
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Tournament State Machine Without Explicit State Enum
+### P1 — Subscription placed at the wrong layout layer
 
 **What goes wrong:**
-The tournament progresses through states (Registration → Seeding → Round 1 → ... → Final → Closed) but the states are inferred from boolean flags, null checks, or a count of completed matches rather than an explicit `TournamentStage` enum. This causes reducers to disagree on whether the tournament is "in progress," allowing matches to be submitted after the bracket closes, sign-ups after seeding runs, or bracket generation to be triggered twice.
+A subscription that only matters inside the `(match)` zone (e.g., `lobby_member`, `match_session_step`) gets placed in `(authed)/layout.tsx` or worse, `providers.tsx`. Now every authed user — including people who only visit profile, schedule, costs, or admin — pays egress for match data they never open. Symmetric mistake: a subscription that every authed page needs (e.g., `user`, `player_stats`) placed on `(match)/layout.tsx` resubscribes on every match-zone entry, multiplying initial-state bursts.
 
 **Why it happens:**
-Developers start with "is the bracket generated yet?" as a boolean, then add "are sign-ups open?" as another boolean, and the combination of flags grows into an implicit state machine that no single reducer understands fully. The existing codebase has `LobbyStage` as a proper enum — but the lobby lifecycle is simpler (3 states). A tournament has 6–8 states and the temptation is to reuse the lobby pattern without extending it.
+- Drag-and-drop from v0.5 `useAuth.ts` (which currently owns `user` — see Decision 6, line 417) without re-evaluating placement.
+- Copy-paste from a neighboring page-level hook without asking "where does the *highest* common consumer live?"
+- Conflating "needed by this page" with "needed throughout this zone."
 
 **How to avoid:**
-Define a `TournamentStage` enum on the `Tournament` table before writing any reducer that reads or writes tournament state. Every reducer that mutates a tournament must validate the current stage and throw if the transition is invalid. Use a single `advance_tournament_stage` reducer as the only legal way to move between states; all other reducers check stage but never change it except by calling this one.
-
-Example stages: `Draft | Registration | Seeding | InProgress | Completed | Cancelled`
+- Enforce Decision 6's placement map as a contract — every new subscription's PR must name the exact layout file (`providers.tsx`, `(public)/layout.tsx`, `(authed)/layout.tsx`, `(authed)/(match)/layout.tsx`) or the page file, and justify why that layer is the highest common consumer.
+- Before adding a subscription, run `node tools/energy-model.js --scenario growth` with the new row's estimate.
+- Never subscribe at `providers.tsx` except: STDB connection, `view_my_profile`, and the six public reference tables (Decision 1 + Decision 6).
+- Historical tables (`match_result*`, `mmr_history`, `match_*_history`) are **always** profile-page-scoped via `view_my_*` (Decision 8). Never subscribe these at any layout.
 
 **Warning signs:**
-- Reducer code contains `if (tournament.bracketGenerated && !tournament.completed)` style guards
-- Multiple reducers each set different fields to signal "done"
-- A match result can be submitted when the tournament is in Registration stage (no guard)
-- `spacetime logs` shows the same bracket-generation reducer being called twice
+- Energy-model output jumps >20% after a subscription addition.
+- A subscription's `consumer` list in its PR crosses zone boundaries.
+- Any non-profile page reads from a historical table.
+- `grep` for `match_result\|match_session_step` outside `(match)` zone or profile page returns hits.
 
 **Phase to address:**
-Tournament system foundation phase — design the state machine before any match or bracket reducer is written.
+Phase 2 (route migration) locks in `(authed)/layout.tsx` as the owner of the `user` table. Phase 4 (authed tier) and Phase 5 (match zone) must each PR-review against Decision 6's placement map. Every subsequent phase inherits the discipline.
 
 ---
 
-### Pitfall 2: ELO Applied to Tournament Matches That Are Not Yet Verified
+### P2 — Spine prefetch fires twice under React 19 Strict Mode + client navigation
 
 **What goes wrong:**
-MMR updates fire when a match result is recorded, but for tournament matches the result requires referee or admin validation. If ELO is applied at record time, then a player can submit a false result, receive MMR, and the correction (when a referee overrides) causes negative MMR delta that looks like punishment to the innocent party.
+`ensureSpinePrefetchStarted()` is called from `(match)/layout.tsx`'s `useEffect`. In dev, Strict Mode runs the effect twice (mount → cleanup → mount). Two Web Workers spawn. Each fetches the full 80–100 MB Spine asset set. In prod, fast client-side navigation (`/lobby/5` → `/draft/20` — both under `(match)`, but if the user bounces through a parent, e.g. `/lobby/5 → /profile → /lobby/7`, the layout unmounts and remounts) restarts the prefetch. Users on modest connections see network saturation mid-draft.
 
 **Why it happens:**
-The `MatchSessionHistory` already stores a `result: MatchResult` field. It is natural to trigger ELO recalculation as an on-insert side effect on that table. The distinction between "result recorded" and "result verified" is not represented in the schema.
+- Developers write the effect body assuming single invocation.
+- The singleton guard is implemented per-instance (`useRef`) instead of module-level.
+- Abort logic on cleanup is missing, so the first worker keeps fetching even after the remount started a second one.
 
 **How to avoid:**
-Add a `verificationStatus` field to the match result record (enum: `Pending | VerifiedByRef | VerifiedByAdmin | Disputed`). ELO update reducers must check `verificationStatus` and only process `Verified*` rows. A separate `verify_match_result` reducer owned by referees/admins triggers ELO recalculation. For casual matches with mutual confirmation, mutual confirmation counts as verification.
+- `ensureSpinePrefetchStarted()` must be a **module-level** idempotent singleton (per Decision 2, line 132 — "module-level singleton"). State lives outside React's lifecycle. First call starts the worker; subsequent calls return immediately. Do not use `useRef` / component state for the guard.
+- Guard order (Decision 2): `isRunning || isComplete` → `getRenderTier() === 'image-only'` → storage-quota check → `saveData` check → spawn.
+- The worker itself must be idempotent on duplicate URL lists (dedup before `fetch`).
+- Cleanup should **not** abort an in-flight prefetch — the SW cache is the destination regardless of which component started the download.
 
 **Warning signs:**
-- The match result table has no `verifiedBy` or `verifiedAt` column
-- ELO is updated inside the same reducer that accepts a screenshot URL
-- No reducer exists that a referee calls to confirm a result
-- Screenshot URL stored but no "accepted" toggle
+- DevTools Network tab shows Spine assets requested twice on a single navigation.
+- Worker count in `chrome://inspect` > 1 for the asset preloader.
+- `navigator.storage.estimate()` usage grows faster than expected on dev.
+- Console warnings about "singleton already initialized" appearing repeatedly.
 
 **Phase to address:**
-Match result verification phase — verification status must be schema-level, not UI-level.
+Phase 3 (public tier — portrait prefetch sets the singleton pattern). Phase 5 (match zone — Spine prefetch trigger) inherits it. Both phases must include a Strict Mode double-mount regression test. Risk callout in strategy doc line 826 makes this explicit.
 
 ---
 
-### Pitfall 3: ELO K-Factor Frozen at One Value Across All Players
+### P3 — Pedestal WebGL context / AssetManager not disposed on every unmount path
 
 **What goes wrong:**
-New players with 5 matches have the same K-factor as veterans with 500 matches. A new player who beats a high-MMR veteran gains only 16 points while losing 16 points for each loss — the system converges too slowly and feels punishing for new competitive players. Simultaneously, a smurf (high-skill, low-MMR) rockets through the ladder in a few games distorting others' ratings.
+Draft pedestal holds a live WebGL context, an RAF loop, and a Spine `AssetManager`. If any unmount path fails to dispose, the GPU resources leak. Paths that commonly miss disposal: route change via `router.push`, browser back button, draft-end `matchSession.stage` transition, tab close without beforeunload, WebGL context loss event, and — subtly — Strict Mode's first-mount cleanup. Over a 2-hour tournament session, a leak of one context every 10 picks (Spine re-init without disposing the old one) burns through WebGL's ~16 context browser limit → subsequent canvases fail to initialize → pedestal goes blank.
 
 **Why it happens:**
-Standard ELO tutorials show K=32. Developers copy it directly. K-factor tuning is treated as a post-launch concern, but once thousands of games have been recorded with a bad K value, recalculating all historical ELO from scratch is expensive and invalidates the leaderboard.
+- `useEffect` cleanup only handles "component unmount" but draft-end is a **state change**, not unmount. Pedestal keeps rendering on stale data or holds resources for a canvas that's no longer visible.
+- `assetManager.removeAll()` is called but `assetManager` reference is retained (closure keeps it alive), so Spine's internal GPU buffers stay bound.
+- Decision 3's single-canvas layering is violated: a developer adds a second canvas for "just this one transition effect," doubling the context count.
+- `webglcontextlost` handler exists but `webglcontextrestored` doesn't re-init cleanly, leaving a zombie canvas.
+- The `skeleton.scaleY = -1` hack (noted as a known issue in Decision 3, line 283) masks a deeper camera-projection bug that can cause GPU state corruption on certain driver versions.
 
 **How to avoid:**
-Use a provisional-games system: K=40 for the first 20 verified matches, K=20 for matches 21–100, K=10 for 100+. Store `matchesPlayedPerMode` on the MMR record (not just the rating). This also enables MMR decay for inactive players later without a schema change. The K-factor tiers should be constants in a single location (not magic numbers inside reducer logic).
+- Lifecycle matrix from Decision 3, line 266 is the spec — implement **every row** (mount, update, unmount, hidden, visible, contextlost, contextrestored) with a disposal test.
+- Single-canvas invariant: assert exactly one `canvas.spine-canvas` per document via `MutationObserver` in dev; fail loud if two appear.
+- Dispose order: (1) cancel RAF, (2) `assetManager.removeAll()`, (3) null out references, (4) lose context deliberately via `WEBGL_lose_context.loseContext()` on unmount (releases GPU resources faster than GC).
+- Do not retain the `AssetManager` instance across pick transitions — create a fresh one per character.
+- `skeleton.scaleY = -1` is a known-bad workaround. Phase 6 discussion must either fix the camera projection or document why the flip is acceptable and test complex animations (skinning) explicitly.
+- Add an integration test that mounts pedestal → simulates 20 pick transitions → unmounts → asserts WebGL context count returned to zero.
 
 **Warning signs:**
-- MMR schema has only `rating` with no `provisionalGamesRemaining` or `matchesPlayed` counter
-- K-factor is a literal number inside an arithmetic expression in the reducer
-- No distinction between provisional and established ratings in the leaderboard query
+- `performance.memory.usedJSHeapSize` grows monotonically during a draft session (GC doesn't reclaim).
+- "WARNING: Too many active WebGL contexts" in browser console.
+- Pedestal renders correctly the first N picks then fails silently.
+- `chrome://gpu` shows rising "WebGL contexts" count per tab.
+- Black / white flashes on pick transitions that weren't there at the start of the session.
 
 **Phase to address:**
-MMR system phase — schema and K-factor rules must be locked before the first real match is rated.
+Phase 6 (draft and pedestal). Risk callout in strategy doc line 827 explicitly flags this: "Disposal must be complete on every unmount path... to avoid GPU resource leaks across a session."
 
 ---
 
-### Pitfall 4: Disconnect Handler Allowing Match State Mutation After Forfeit
+### P4 — Historical tables subscribed at a layout layer or cross-user
 
 **What goes wrong:**
-A player disconnects during a draft pick. The disconnect timer counts down and the match is forfeited. Meanwhile, the disconnected client reconnects 2 seconds after the forfeit is written and their client fires the queued `submit_pick` reducer call that was buffered during the reconnect. The reducer succeeds because it checks `is player a member` and `is it their turn` — but does not check `is the match still in a live state`. The pick lands on a forfeited match, corrupting the history record.
+A developer adds match history to the profile page quickly via `(authed)/layout.tsx` "because it's convenient to have everywhere." Suddenly every authed user is paying for `match_result`, `match_result_game`, `match_result_participant`, `mmr_history`, `match_session_history`, `match_session_step_history` — tables that grow unbounded over platform lifetime. At ~5k users × 500 lifetime matches × ~6 related rows per match × cross-user visibility, the authed-tier payload blows past the 102,500 energy ceiling. Secondary failure: cross-user profile accidentally subscribes to target user's history, violating Decision 8's privacy rule.
 
 **Why it happens:**
-The `MatchSession` does not store a `liveStatus` flag — liveness is inferred by the lobby's `stage: Drafting` field. The disconnect forfeit reducer transitions the lobby to `Finished` but the client's queued reducer call arrived between the lobby stage write and when the subscription update reached the reconnecting client.
+- Decision 8 is a privacy + bandwidth rule simultaneously; developers who only read the bandwidth part skip the "self-scoped via `view_my_*`" requirement.
+- The `view_my_match_history` view (backend pre-req) is not yet implemented when the frontend phase starts, so a shortcut subscribes to the raw table "temporarily" and it sticks.
+- "Cross-user profile" route (`[userId]/page.tsx`) naively reuses the owner profile's subscription code.
 
 **How to avoid:**
-Every pick/ban/bid reducer must begin with an atomic check: `if (lobby.stage !== LobbyStage.Drafting) throw`. This check already needs to exist for correctness in the non-disconnect flow, but the disconnect case makes it critical. The existing `LobbyStage` enum makes this straightforward. Additionally, add a `disconnectForfeited: boolean` field to `MatchSession` that is set atomically in the forfeit reducer, and check it in all mutation reducers before the stage check (it is the tighter condition).
+- Historical tables are `public: false` server-side and **only** exposed through `view_my_*` views filtered by `ctx.sender` (Decision 8, line 724). Raw table subscriptions from the client must be impossible — verify in Phase 1 (backend pre-work) that the tables stay private.
+- `(authed)/profile/page.tsx` is the only file allowed to subscribe to `view_my_match_history` / `view_my_mmr_history` / `view_my_session_history` / `view_my_participant_history`. Enforce via ESLint rule or a grep check in CI.
+- Cross-user profile (`[userId]/page.tsx`, Decision 8 line 742) subscribes to **zero** additional tables — it reads already-subscribed authed-tier data filtered by URL param. PR review: if `[userId]/page.tsx` has a `subscribe()` call, reject.
+- `view_my_*` backend views must explicitly filter on `ctx.sender`. Add a test that spoofs a different identity and asserts zero rows returned.
 
 **Warning signs:**
-- Pick/ban reducers validate team membership and turn order but not match liveness
-- The disconnect forfeit reducer does not set any flag on `MatchSession` itself, only on `Lobby`
-- No reducer test covers "submit pick after forfeit" scenario
+- Authed-tier initial-state payload > 1 MB (profile-scoped data leaking up).
+- Energy model shows historical tables consuming > 10% of budget.
+- A second user's matches appear in your client cache when you visit their profile.
+- `docs/views/` does not include all four `view_my_*` historical views.
 
 **Phase to address:**
-Disconnect/rejoin handling phase — the liveness guard belongs in every action reducer, not just the disconnect reducer.
+Phase 1 (backend pre-work — implement `view_my_*` views with `ctx.sender` filter + tests). Phase 4 (authed tier — profile page scope). Phase 7 (polish — cross-user profile, must not regress).
 
 ---
 
-### Pitfall 5: Bracket Seeding Race Condition in Double Elimination
+### P5 — Service Worker stuck from a production test, stale CDN cache, or registration race
 
 **What goes wrong:**
-Double elimination requires a losers bracket that is populated as players lose in the winners bracket. If the bracket tree is generated as a flat list of match slots at tournament start, the seeding of future losers bracket matches depends on which round the player lost in. If two losers bracket matches complete at the same moment (two concurrent `submit_result` calls), both reducers read the bracket state before either write completes, and both advance the same match slot — producing a match with one player slot populated by two different losers.
+Three related failure modes:
+(a) Developer runs `NEXT_PUBLIC_ENABLE_SW=true npm run dev` to test SW caching, forgets to unregister, opens `localhost:3000` next morning in normal `npm run dev` → SW still alive, intercepting asset requests, serving stale bundles, HMR broken.
+(b) Asset CDN URL on a character changes (UploadThing regenerates URL). SW cache key is the URL — stale asset serves forever because `fetch` hits cache first. Reference data updates via STDB subscription but assets don't.
+(c) SW registration is async and not awaited on first navigation. First page load fetches assets directly from CDN (fine). Second load: SW now registered, but a `fetch()` raced between registration and interception returns the uncached response while SW expected to handle it, causing a double-fetch.
 
 **Why it happens:**
-SpacetimeDB reducers are individually transactional, but developers expect that "last write wins" resolves concurrent updates cleanly. For tree-structured bracket advancement, the write order matters: round 3 loser must go to a specific losers bracket slot that depends on round 2 results, not just "next available slot."
+- Gating via `NEXT_PUBLIC_ENABLE_SW` (Decision 2 line 200) opts in but doesn't opt out — the SW lingers until explicitly unregistered or cache cleared.
+- Decision 2's cache strategy is cache-first forever (`Cache-Control: immutable`), which is correct for content-addressed CDN URLs but assumes URLs never reuse for different content. UploadThing URLs include content hashes, but Imgur-style URLs don't — confirm hosting guarantees.
+- SW registration doesn't block first navigation by design; developers assume it does.
+- Mobile Safari (out of scope per strategy doc line 55) has its own SW quirks — defensive gating keeps it out.
 
 **How to avoid:**
-Pre-generate the entire bracket tree at seeding time with explicit match IDs and slot assignments. Each bracket match record stores `slot_index`, `source_winners_match_id`, and `source_losers_match_id`. The advancement reducer looks up the specific target slot by match ID — never by "find next empty slot." SpacetimeDB's per-reducer transaction isolation prevents the exact same slot being written simultaneously, but the slot lookup must be deterministic and ID-based.
+- Add a dev-mode `unregister-sw.html` page at `/dev-unregister-sw` that calls `navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()))`. Document it in `README` under "SW stuck? visit this URL."
+- On mismatch between `NODE_ENV` and an active SW (prod SW running in dev context), proactively unregister on provider mount.
+- CDN must use content-addressed URLs (UploadThing does via `ufs.sh` paths). If a character's asset changes, the URL changes, the cache key changes, no stale serve.
+- Bump `CACHE_NAME` (`hsr-assets-v1 → v2`) on any URL-correction event — forces eviction on next activate (Decision 2 line 196).
+- On SW registration, `await navigator.serviceWorker.ready` before triggering the portrait prefetch — eliminates the race.
+- Verify on Vercel preview deploys (Open Question #4 reminder, strategy doc line 790) that SW actually registers in prod.
+- Asset-host allowlist in `sw.js` (`ASSET_HOSTS`) must only match asset CDN hostnames — never app origin. Prevents stuck-bundle issues entirely.
 
 **Warning signs:**
-- Bracket advancement reducer does `find first match where winner is null`
-- Losers bracket slots are created reactively as players lose (not pre-generated)
-- No explicit relationship between a winners bracket match and its corresponding losers bracket destination
+- HMR stops working in dev; `console.log` edits don't appear.
+- `Application > Service Workers` in DevTools shows an SW from a different port or origin than current tab.
+- Character portrait shows an old image after an admin edit.
+- First-load network waterfall shows duplicate asset requests.
+- `chrome://serviceworker-internals/` lists multiple SWs for `localhost:3000`.
 
 **Phase to address:**
-Tournament bracket generation phase — the data model for pre-generated bracket trees must be designed before any advancement reducer is written.
+Phase 3 (public tier — SW and Web Worker implementation). Must include: dev unregister path, `CACHE_NAME` versioning doc, preview-deploy smoke test. Phase 5 (match zone — Spine tier) reuses the same SW; must not add its own SW.
 
 ---
 
-### Pitfall 6: MMR Recalculation Not Idempotent
+### P6 — Token refresh / auth desync on page refresh and cross-tab
 
 **What goes wrong:**
-A referee corrects a match result. The system needs to subtract the MMR from the old result and apply the new result. If the MMR update reducer is not idempotent (i.e., calling it twice produces a different outcome than calling it once), a network retry, a client reconnect, or a TO clicking "confirm" twice can double-apply the MMR delta.
+User refreshes mid-session: STDB token in `localStorage` is replayed, WebSocket reconnects, subscriptions re-establish — but there's a window where `view_my_profile` has 0 rows (still authenticating) and `<AuthRequired>` redirects to login. User is bounced mid-draft. Secondary: user links Discord in Tab A while Tab B has the lobby open; Tab B's cached display name is stale, cursor broadcasts under old identity. Tertiary: `stdb_session` cookie and the STDB token go out of sync (cookie set, token cleared, or vice versa) — NavBar shows logged-in name while WebSocket is unauthenticated.
 
 **Why it happens:**
-ELO update reducers are written as `new_rating = current_rating + delta`. If the reducer runs twice, the delta applies twice. There is no guard checking whether this specific match has already been rated.
+- Auth resolution in the current app depends on `view_my_profile` returning a row (strategy doc line 402) — but there's no explicit "authenticating" intermediate state separate from "logged out."
+- `<AuthRequired>` fires its redirect before the subscription's first callback lands.
+- Cookie is set on login, cleared on logout, but is not kept in sync with the token on refresh — if `localStorage` is cleared out-of-band (dev tools, browser storage clear), the cookie survives and lies about auth state.
+- No `BroadcastChannel` coordination across tabs. Discord-link success in Tab A doesn't tell Tab B "re-read your identity."
 
 **How to avoid:**
-Store a `mmrProcessedAt: timestamp | null` on the match result record. The ELO reducer checks: if `mmrProcessedAt` is already set, throw or no-op. Only one reducer call can set it (first-writer wins by transaction isolation). When overriding a result, a separate `undo_mmr_for_match` reducer clears `mmrProcessedAt` and reverses the stored delta before re-applying.
+- Tri-state auth in `useAuth.ts`: `'connecting' | 'authed' | 'anon'`. `<AuthRequired>` must wait on `'connecting'` with a fallback UI (skeleton, NOT a redirect).
+- Use the `hadSessionCookie` ref pattern from the memory feedback (`feedback_session_cookie_pattern.md`) — suppresses LOGIN button during connect.
+- On every STDB connection event, reconcile: if token present but no `view_my_profile` row after N seconds + M retries, treat as anon, clear cookie.
+- On logout, clear cookie AND localStorage token AND call `conn.disconnect()` before navigating. Order matters — if you redirect first, the next page mounts against a stale connection.
+- Add a `BroadcastChannel('hsr-auth')` in `providers.tsx` so Discord link / logout events propagate across tabs. Minimal scope: reload the page on `logout` or `identity-changed` events.
+- Middleware cookie check (Open Question #2, strategy doc line 786) is a UX optimization, not a trust boundary — real auth is at the reducer level.
 
 **Warning signs:**
-- Match result table has no "was MMR already applied?" field
-- ELO update is triggered client-side (e.g., called from a React event handler, not from the verify reducer)
-- No audit trail of MMR changes with match reference
+- "Flash of login page" on F5 while authed.
+- Stale display name persists after Discord link in a second tab until manual refresh.
+- Dev-tools: clear `localStorage`, refresh → cookie-backed NavBar shows old user; WebSocket shows unauthenticated.
+- `<AuthRequired>` redirects log ever-increasing "redirect loop suspected" warnings.
 
 **Phase to address:**
-MMR system phase — idempotency guard must be part of the initial MMR schema, not retrofitted.
+Phase 2 (route migration — `useAuth.ts` changes, move `user` subscription out). Phase 4 (authed tier — tri-state handling, `<AuthRequired>` fallback UI, Discord link cross-tab). Open Question #2 resolution happens in Phase 4 discussion per strategy doc line 786.
 
 ---
 
-### Pitfall 7: Imgur URL Accepted as Match Proof Without Validation
+### P7 — Cursor / chat / pick-ban broadcast storm or desync
 
 **What goes wrong:**
-Both players upload Imgur screenshots and submit scores. A player submits a URL pointing to a valid Imgur image that is not their actual score — it could be a different score, a previous match, or a fabricated image. The referee sees two image URLs and a score number. If the referee workflow does not enforce comparing the image to the submitted score, and there is no checksum or timestamp metadata on the image, the result can be disputed without resolution.
+Cursor broadcast reducer is called on every mouse-move (60Hz × 20 users = 1,200 events/sec in a busy lobby). Reducer calls are cheap on egress compared to subscription bursts, but 1,200/s chokes the single-threaded STDB connection, delays pick/ban state updates, causes visible jitter. Secondary: chat messages arrive out-of-order because each message is a separate subscription event delivered per-row; the client must use `createdAt` for ordering, which breaks if multiple messages land in the same transaction (identical timestamp). Tertiary: pick/ban "draft" state — optimistic UI shows pick immediately, server rejects (e.g., character already banned), client has to roll back, user sees a ghost.
 
 **Why it happens:**
-"Upload to Imgur and paste URL" is the simplest path. The implicit assumption is that referees visually verify screenshots. Under tournament stress (multiple concurrent matches), referees may confirm without careful review. There is also no protection against reusing a screenshot from a different match.
+- Cursor coordinates are broadcast unthrottled. No `requestAnimationFrame`-paced batching.
+- Chat renderer sorts by `createdAt` only; ties are undefined order.
+- Optimistic updates are stored in local React state without a "server-confirmed" marker. When server state diverges, the reconciliation logic is ad hoc.
+- Disconnect / reconnect: subscription re-fetches initial state but local optimistic overlay persists, causing duplicate rows briefly.
 
 **How to avoid:**
-Store both the Imgur URL and the player-stated score separately in the match result record. Add a `submittedAt` timestamp. Require the referee to explicitly check both players' screenshots against the stated score in the UI before the confirm button is enabled. Add a `disputeReason` field to match results so referees can flag inconsistencies without aborting the tournament flow. This is a UX responsibility — the schema needs `screenshotUrlBlue`, `screenshotUrlRed`, `scoreBlue`, `scoreRed`, `refVerifiedAt`, `refVerifiedById` as separate fields, not a single JSON blob.
+- Cursor reducer invocation: throttle at the client to ~30 Hz (Decision-doc-level choice — confirm during Phase 5). Consider `requestAnimationFrame` pacing with position delta threshold (skip if moved < 2 px).
+- Chat ordering: sort by `(createdAt, messageId)` — `messageId` breaks ties deterministically. Backend already assigns IDs.
+- Pick/ban: treat server state as source of truth. Render "pending" overlay on optimistic pick; roll back clears overlay without jank. Use `match_session_step` table's row appearance as the commit signal — don't inject local rows into subscription cache.
+- On reconnect: drop all local optimistic state before re-subscribing. The subscription's initial-state burst will re-populate correctly.
+- Disconnect handling per lobby config (existing Phase 10 backend) — UI shows "disconnected, T seconds to forfeit" banner, driven by server timestamps only (never `Date.now()` — could drift).
 
 **Warning signs:**
-- Screenshot URL and score are stored in the same string field
-- No `refVerifiedAt` or `refVerifiedById` column in the match result schema
-- Referee confirmation UI does not display both screenshots side-by-side
+- Picks feel laggy in lobbies with >10 people.
+- Chat messages appear in wrong order (rare but noticeable during pick/ban bursts).
+- "Ghost picks" that appear then disappear.
+- Reconnect shows duplicate rows briefly.
 
 **Phase to address:**
-Match result verification phase — schema must separate image evidence from stated score from referee decision.
+Phase 5 (match zone — lobby list, cursor foundation) for cursor throttle. Phase 6 (draft and pedestal) for pick/ban optimistic handling. Phase 7 polish revisits chat ordering if issues surface.
 
 ---
 
-### Pitfall 8: Anonymous Play Leaking Real Identity Through Cursor Tracking
+### P8 — Next.js 15 Server / Client Component boundary crossed with SpacetimeDB
 
 **What goes wrong:**
-Anonymous play mode hides player names. But the existing cursor broadcasting system (`LobbyCursorEvent`) broadcasts the cursor by identity. If the cursor event includes a `userId` or `displayName` in the payload, and that payload is visible to spectators, the anonymization is defeated. Even if the user ID is not in the event, a spectator who watched the same player's cursor in a previous non-anonymous match can correlate cursor behavior patterns.
+A developer adds SpacetimeDB SDK import or `useSpacetimeDB` hook to a page that is (correctly for Next.js 15 defaults) a Server Component. Build fails. Developer "fixes" by slapping `'use client'` on the top-level layout, which propagates to the entire tree — now NavBar, landing page, cost tables all bundle client-side, `use client` bundle bloats, Vercel bundle size warning triggers. Secondary: developer tries to pre-fetch data in a Server Component via the REST-ish SpacetimeDB HTTP API and caches it, then passes to Client Component — violating Decision 1's "SpacetimeDB is the single data source" and creating a second data plane.
 
 **Why it happens:**
-The cursor system was designed before anonymous mode existed. The `userId` on the event is there for rendering (which cursor label to show). Anonymization is applied at the display layer (show "Player A" instead of real name) but the raw event data in the SpacetimeDB table still contains the real identity.
+- Next.js 15 defaults to Server Components; every stateful SDK consumer must opt in.
+- Developers new to App Router don't distinguish between "page-level `use client`" (just this leaf) and "layout `use client`" (whole subtree).
+- The temptation to cache reference data server-side on revalidate looks rational until you realize STDB subscriptions already propagate changes (Decision 1 rationale).
 
 **How to avoid:**
-Anonymous mode must be enforced at the data layer, not the display layer. When a lobby is in anonymous mode, cursor events must carry an `anonymousLabel` (e.g., `"Blue-1"`) instead of any user identifier. The reducer generating cursor events should substitute the label at write time based on the lobby's `anonymousPlay` setting. The SpacetimeDB `LobbyCursorEvent` table should be redesigned so that the `userId` field is nullable — null when anonymous, real ID when not.
+- Only `use client` at the narrowest leaf that needs SDK access. Layouts stay Server Components by default.
+- The STDB connection lives in `providers.tsx`, which **must** be `'use client'`. Every component that reads STDB data renders inside `<Providers>` via the client tree.
+- Hard rule (Decision 1): no SSR data fetching of STDB data. No `fetch()` to a STDB HTTP endpoint in `page.tsx`. No `revalidateTag`. If you need data, subscribe.
+- Bundle analyzer (`ANALYZE=true npm run build`) in CI; fail if client bundle > N KB threshold.
+- Next.js 15's `params` and `searchParams` are now async (Next 15 App Router change). Update every `export default function Page({ params })` to `async function Page({ params }: { params: Promise<{ id: string }> })` and `await params`. Affects every dynamic route — `/lobby/[id]`, `/draft/[matchId]`, `/profile/[userId]`.
 
 **Warning signs:**
-- `LobbyCursorEvent` table always stores `userId` regardless of lobby anonymous setting
-- Anonymous mode is implemented as a CSS class or display-layer transform on the frontend only
-- Spectators can query raw cursor events and see user IDs for anonymous lobbies
+- Build error: "You're importing a component that needs `useState`. It only works in a Client Component."
+- `'use client'` appears at a layout rather than a leaf.
+- Vercel warns about client bundle size growth.
+- `params` accessed synchronously in a page component triggers a Next 15 warning.
 
 **Phase to address:**
-Anonymous play implementation phase — must be enforced in the cursor-writing reducer, not the cursor-reading UI.
+Phase 2 (route migration — every new layout and page gets the correct directive). Phase 3 onward must follow. Add a `grep` CI check: `'use client'` in a `layout.tsx` file triggers a warning review.
 
 ---
 
-### Pitfall 9: Calendar Availability Stored as Absolute Timestamps Instead of Recurrence Rules
+### P9 — Turbopack vs Webpack dev-prod behavior drift
 
 **What goes wrong:**
-A player sets "available every Saturday 8–10 PM." If this is stored as a list of individual timestamp pairs (one per week for the next 52 weeks), the table grows unboundedly, requires batch cleanup, and breaks when the player's availability changes — because all 52 rows must be updated atomically. If stored as a recurrence rule (day-of-week + time-of-day + timezone), a single row update changes the entire future schedule.
+Next.js 15 ships with Turbopack (stable for dev, beta for build). Developer runs `next dev --turbo`, everything works, ships to Vercel which builds with Webpack (or Turbopack build — depends on config). Subtle differences in module resolution (ESM vs CJS), `'use client'` detection, SW registration timing, or dynamic import boundaries cause prod-only bugs. Spine library, for instance, is ESM-only in recent versions — Turbopack handles it natively; a CommonJS-oriented setup may fail.
 
 **Why it happens:**
-The simplest data model for "available at time X" is a timestamp range. Recurrence feels like over-engineering at the start. But the PROJECT.md explicitly calls out "recurring availability (daily, weekly, monthly with Feb handling)" which signals the complexity is required from day one.
+- Turbopack's dev server is newer and doesn't mirror Webpack's quirks perfectly.
+- Dev uses hot reload; prod uses minified bundles — tree-shaking can eliminate code paths that dev keeps.
+- Turbopack's `server-only` / `client-only` enforcement is stricter than Webpack's.
 
 **How to avoid:**
-Store availability as a recurrence rule struct: `{ dayOfWeek: u8, startTimeUtcMinutes: u32, durationMinutes: u32, recurrenceType: Weekly|Monthly|Daily, effectiveFrom: timestamp, effectiveUntil: timestamp | null }`. The calendar query logic materializes concrete time slots from these rules client-side (or via a scheduled reducer that pre-generates slots weekly). Do not store individual timestamps. Handle February and month-boundary edge cases in the materialization logic, not the schema.
+- Mandate Vercel preview deploys for every PR — catches prod-only bugs before main merge.
+- Run `npm run build` locally at least once before submitting any phase SUMMARY.
+- If a library fails only in prod, check its `package.json` `"exports"` field — ensure both `import` and `require` paths exist, or pin to ESM-only consumer.
+- Pin Next.js and Turbopack versions explicitly in `package.json`. Avoid auto-updates mid-milestone.
 
 **Warning signs:**
-- Calendar availability table has `startAt: timestamp` and `endAt: timestamp` as its primary columns (no recurrence rule)
-- Rows for the same recurring slot have sequential IDs, one per occurrence
-- No `recurrenceType` or `dayOfWeek` field in the schema
+- Works in `npm run dev`, fails in `npm run build`.
+- Works on dev, fails on Vercel preview.
+- Spine / SDK module import error only in production build.
+- `'use client'` warnings in prod build not seen in dev.
 
 **Phase to address:**
-Calendar and scheduling phase — recurrence schema must be settled before any availability UI is built, as migrating from flat timestamps to recurrence rules requires a full table migration.
+Phase 2 (route migration — first build after structural change must pass). Every phase closeout (`/gsd-transition`) should verify `npm run build` clean.
 
 ---
 
-### Pitfall 10: Roster Visibility Settings Overridable by Client Without Server Enforcement
+### P10 — Dual-DOM hydration mismatch (SSR default vs client-detected viewport)
 
 **What goes wrong:**
-A tournament is configured as "closed roster" (only the player sees their own roster during the draft). The frontend hides the opponent's roster. But the SpacetimeDB subscription for the roster table is `public: true`, meaning any client that knows the user ID can query the full roster directly via SpacetimeDB. The "closed roster" is cosmetic.
+Project intent: separate desktop-DOM and mobile-DOM trees (per v0.9 scope — each UX phase has a deferred `XX.1` mobile counterpart). Server has no way to know viewport width at SSR time. Server defaults to desktop-DOM, client detects `matchMedia('(max-width: 768px)')` and swaps to mobile-DOM → hydration mismatch warning, flash of wrong DOM, lost scroll position, interaction handlers re-bound twice. Secondary: bundle ships both DOMs to every client (desktop users download mobile code and vice versa). Tertiary: mid-session rotation of tablet from portrait to landscape triggers a re-render between DOMs, losing all unsaved form state.
 
 **Why it happens:**
-The existing tables are declared `public: true` for simplicity. Most data in the app is non-sensitive game data. Roster privacy was added as a product requirement after the data model was set. The assumption is "the frontend won't show it" — but SpacetimeDB subscriptions are accessible to any client that connects.
+- No server-side viewport detection (UA sniffing is unreliable, `Sec-CH-UA-Mobile` client hint is not universally supported).
+- Dual-DOM is implemented as two component trees rendered conditionally based on `useMediaQuery` — which returns `undefined` on first render (SSR default) and the actual value after hydration.
+- Route segments don't distinguish desktop / mobile (single set of routes rendering either DOM), so there's no natural code-splitting boundary.
 
 **How to avoid:**
-Roster rows must be tagged with a `visibility` field and filtered server-side. SpacetimeDB supports row-level filtering via subscription queries — use `WHERE userId = :sender OR visibility = 'Public'` style constraints. This requires the Roster table to not be globally public. Alternatively, use a separate `RosterPublicView` table that only contains rows the requesting user is allowed to see (requires a more complex update pattern). Document the explicit decision: "Roster is not public by default; the server controls what each client can subscribe to."
+- Decision point that needs to land in the milestone: **dual-DOM architecture is a major commitment**. Before Phase 3, decide:
+  (a) Dual-DOM via `matchMedia` + `suppressHydrationWarning` + `next/dynamic` `{ ssr: false }` for whichever DOM shouldn't render on server (simplest, ships both bundles).
+  (b) Responsive single-DOM via Tailwind breakpoints (smallest bundle, most CSS complexity).
+  (c) Dual route groups — `(desktop)` and `(mobile)` — with middleware-based redirect on viewport (cleanest code-split, breaks deep links).
+  Strategy doc does not pick one — it's implicit that this is a design task during Phase 3 discussion. The milestone prompt explicitly notes this as a pitfall to call out.
+- If going with (a): use `suppressHydrationWarning` only on the outer wrapper, not every child; use `useSyncExternalStore` for media queries (React 18+ pattern that avoids the hydration mismatch entirely); defer the mobile tree behind `next/dynamic(() => import('./Mobile'), { ssr: false })` to avoid server rendering it.
+- Viewport rotation mid-session: persist form state to `sessionStorage` on every debounced change. Re-hydrate on DOM swap. Better: render both DOMs and toggle visibility via CSS (no unmount, no state loss) — but doubles DOM weight.
+- Bundle duplication: accept it for phases 3-14 (v0.9 UX phases); revisit if bundle size becomes a user-visible problem.
 
 **Warning signs:**
-- Roster table is declared `public: true` with no row filter
-- Roster visibility check is only in the React component render logic
-- An admin or developer can query all rosters by opening SpacetimeDB console
+- React warning: "Hydration failed because the initial UI does not match what was rendered on the server."
+- First paint is desktop, then flicks to mobile on a phone.
+- Form state clears when user rotates tablet.
+- Bundle analyzer shows `Mobile*` and `Desktop*` components in the same chunk.
+- Lighthouse mobile score drops due to desktop-only imports loading on mobile.
 
 **Phase to address:**
-Roster management phase — table visibility must be architecture-level, not a display layer concern.
+Phase 2 route-migration discussion must nominate the dual-DOM approach; Phase 3 (public tier) is where the first dual-DOM page ships (cost table has a mobile `.1` counterpart). Every `XX.1` mobile phase re-verifies the approach.
 
 ---
 
 ## Technical Debt Patterns
 
-Shortcuts that seem reasonable but create long-term problems.
-
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Store ELO delta at match end with no match reference | Simple, one reducer | Cannot reverse/replay ratings after result correction | Never — always link MMR delta to match ID |
-| `public: true` on all tables | No subscription complexity | Any client can read any user's sensitive data (roster, MMR, etc.) | Only for genuinely public game data (characters, lightcones) |
-| Single global MMR value instead of per-mode | One number to show | Cannot surface "best MoC player" leaderboard; per-mode skill invisible | Acceptable for MVP only if schema already has per-mode field |
-| Tournament bracket as a flat match list without explicit slot IDs | Easy to generate | Cannot deterministically advance double-elim without race conditions | Never for double elimination; acceptable for single elimination only |
-| `rosterBlue`/`rosterRed` as JSON string blobs | No schema migration | Cannot query "which characters won most often" without parsing strings | Acceptable for match history archival; never for live match data |
-| Re-using `LobbyStage` enum for tournament state | Reuses existing type | Tournament has 2x more states; enum becomes ambiguous | Never — define `TournamentStage` as a separate enum |
-| Applying ELO in the same reducer that records the result | One round-trip | Makes verification/override impossible without re-architecting the system | Never for tournament matches; acceptable only for casual unranked matches |
-| Hard-coding K=32 without provisioning games counter | Zero config | Smurf and new-player ratings are inaccurate; correcting requires historical replay | Never — add provisioning counter from day one even if K factor is not tuned yet |
+| Subscribe-to-full-table "until we write the view" | Unblocks frontend phase when backend view isn't ready | Egress leak; sticks in code; violates Decision 1/8 | Never. Block the frontend phase on backend pre-work (Phase 1) instead. |
+| `useRef`-based prefetch singleton instead of module-level | Works in isolated component tests | Breaks under Strict Mode + fast nav (P2) | Never. Module-level singleton only. |
+| `skeleton.scaleY = -1` Y-flip | Quick visual fix for Spine pedestal | Masks camera projection bug; breaks skinning / lighting (Decision 3 line 283) | MVP only — must be tracked as a Phase 6 TODO and fixed before leaderboard / tournament polish. |
+| Double-buffer Spine canvas for crossfade | "Hides" pick transition | Two live WebGL contexts (Decision 3 rejected this explicitly); GPU resource doubling; accelerates P3 | Never. Layered single-canvas model is the contract. |
+| Cursor broadcast without throttle | Pixel-perfect cursor on dev laptop | Burns reducer call budget; causes pick/ban lag at lobby scale (P7) | Never. 30Hz throttle minimum. |
+| `<AuthRequired>` redirect-on-zero-rows | Simple `if (!profile) redirect('/login')` | Flash-of-login-page on refresh (P6) | Never. Tri-state auth is required. |
+| Synchronous `params` access in dynamic routes | Works until Next 15.1+ | Next.js 15 warning, future breaking change | Never. Migrate every page to async params. |
+| Cross-user profile reuse of owner profile subscription code | Fast implementation | Subscribes to target user's history (privacy breach + bandwidth — P4) | Never. Decision 8 forbids. |
 
 ---
 
 ## Integration Gotchas
 
-Common mistakes when connecting to external services.
-
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Imgur screenshot upload | Storing the Imgur URL as the verification itself | Store URL + player-stated score + referee acceptance as three separate fields; URL is evidence, not proof |
-| Imgur screenshot upload | Accepting any `i.imgur.com` URL without format check | Validate URL format in the reducer (regex check for `^https://i\.imgur\.com/[A-Za-z0-9]+\.(png|jpg|jpeg|gif)$`) before storing |
-| Discord OAuth for roster import | Assuming Discord identity = HSR account | Discord ID ties to platform identity, not HSR account; players with multiple HSR accounts need a separate account selector |
-| SpacetimeDB client reconnect | Assuming queued reducer calls are dropped on disconnect | SpacetimeDB client retries buffered calls on reconnect; reducers must be idempotent or check liveness before acting |
-| SpacetimeDB scheduled reducers | Using `ScheduleAt` for countdown timers in competitive matches | Scheduled reducers are not guaranteed exact-second precision; use stored `timerStartAt` timestamps and calculate elapsed time in the action reducer, not scheduled callbacks |
-| SpacetimeDB bindings after schema change | Calling old reducer signatures after publishing new schema | Always regenerate bindings (`spacetime generate`) after publishing; old frontend calling new reducer will throw at runtime with no TypeScript error |
+| SpacetimeDB SDK 2.1 `subscribe()` | Not calling `unsubscribe()` or relying on GC; assuming sync removal | `unsubscribe()` is async; use `unsubscribeThen(cb)` when you need to act after removal; tie every `subscribe` to a `useEffect` cleanup. |
+| SpacetimeDB reducer timestamps | Passing `BigInt(Date.now() * 1000)` | Use `Timestamp.now()` or `Timestamp.fromDate(new Date(...))` (per memory `reference_reducer_client_patterns.md`). |
+| SpacetimeDB optional fields | Passing `undefined` | Pass `null`. `undefined` throws "Cannot convert undefined to a BigInt" on timestamps. |
+| SpacetimeDB enum reducer params | Passing `'Admin'` for tagged union types | Check the generated binding: `__t.string()` takes a string; enum-typed params take `{ tag: 'Admin', value: {} }`. |
+| SpacetimeDB reducer error pattern | Old `_then()` callback | `.catch()` pattern (Phase 12.2 SDK upgrade). Strategy doc line 129 + key-decision-table. |
+| Discord OAuth via NextAuth | Expecting callback URL to Just Work on Vercel preview | Preview URLs are dynamic; whitelist `*.vercel.app` in Discord app OR use a middleware-based `returnTo` that validates against a known prefix. |
+| Imgur uploads | Direct hot-link with no backoff | Imgur rate-limits; implement exponential backoff, fallback to Discord-bot storage (strategy doc line 285 plan). |
+| UploadThing CDN | Assuming URLs are permanent | URLs include content hashes; confirm before relying on SW cache-forever headers. |
+| `next/image` with UploadThing / Imgur | `<img>` everywhere | Use `next/image` with `remotePatterns` in `next.config.ts` for both `ufs.sh` and `i.imgur.com`. |
+| FullStory Free tier | Firing events on every frame | 5,000 server-side events/month quota (strategy line 788). Sample deliberately. |
+| `navigator.connection` | Trusting it in Firefox | Firefox has partial/variable support. Treat absence as "assume fine" (strategy doc line 520). |
 
 ---
 
 ## Performance Traps
 
-Patterns that work at small scale but fail as usage grows.
-
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Full-scan `iter()` to find all tournament matches for a player | Bracket page load slows down as match history grows | Add compound index on `(tournamentId, participantId)` to tournament match table | ~5,000 total tournament matches |
-| Subscribing to entire `MatchSessionHistory` table client-side | Initial load slow; memory grows with every archived match | Use filtered subscriptions: `WHERE playedAt > [cutoff]` or paginate; never subscribe to all history | ~1,000 archived matches |
-| Per-player cursor events stored in a persistent table | `LobbyCursorEvent` table grows unboundedly during a long draft | Keep cursor events as ephemeral event table (not retained); existing `LobbyCursorEvent` pattern is correct — do not accidentally make it persistent when adding chat | N/A — design issue, not scale issue |
-| Recalculating leaderboard ranking on every MMR update | Leaderboard query slows as player count grows | Maintain a `rank` field on the MMR table, updated only by a scheduled reducer that runs periodically | ~500 players with frequent matches |
-| Full roster scan to compute "account rating" on every profile view | Profile page load is slow | Cache computed `accountRating` on the Roster or User record; recompute only when roster changes | ~200 characters in a roster |
-| O(n) bracket advancement (iterate all matches to find next round) | Tournament progression slows as bracket grows | Pre-compute `nextMatchId` foreign keys at bracket generation time | 64+ participant brackets |
+| Subscription at wrong layer (P1) | Energy model jumps on PR; initial state bursts on unrelated page mounts | Decision 6 placement map as PR contract | Immediately at ~100 concurrent |
+| Spine prefetch storm (P2) | Double network download of 80-100 MB | Module-level singleton | Anyone with Strict Mode dev, anyone navigating fast in prod |
+| WebGL context leak (P3) | `usedJSHeapSize` growing monotonically; "too many contexts" warning | Full lifecycle matrix + single-canvas invariant | Long tournament sessions (2+ hours) |
+| Historical table creep (P4) | Profile data appearing in non-profile subscriptions | `view_my_*` enforcement + ESLint rule | Budget breach at ~500 active users × 500 matches each |
+| Unthrottled cursor broadcast (P7) | Pick/ban lag in busy lobby | 30Hz rAF-paced throttle + delta threshold | Lobbies with > 10 participants |
+| Rendering full subscription results in React list without virtualization | Frame drops at > 500 rows | `@tanstack/react-virtual` for leaderboard, match history list | Any list > ~500 rows |
+| Reducer called from effect on every render | Reducer call storm; energy drain | `useCallback` + proper dep array; or move to event handler | Dev catches early but slips through in unfamiliar hooks |
+| `user` table full replication at scale | 750 KB initial burst per client | Accepted (Decision 6 line 411 — required by design) | ~5k users is OK; at ~50k, revisit |
+| Synchronous JSON parse of large subscription snapshots on main thread | UI jank on connect | Accept for v0.9; defer SDK-in-Web-Worker optimization (strategy doc line 767 explicitly out of scope) | At > 100 KB initial state per subscription |
 
 ---
 
 ## Security Mistakes
 
-Domain-specific security issues beyond general web security.
-
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Trusting `teamLabel` argument in pick/ban reducers | Player submits a pick for the opponent's team | Always derive team membership from the database (`LobbyMember` lookup by `ctx.sender`), never from caller-supplied `teamLabel` parameter |
-| Referee role scoped globally instead of per-tournament | A referee assigned to Tournament A can validate results in Tournament B | Store referee assignment as `(tournamentId, userId)` tuple — not a global role flag on the User row |
-| TO role auto-grants ability to modify any tournament | Malicious TO modifies another TO's bracket | Every tournament-mutation reducer must check `tournament.createdById === caller.id OR caller.role === Admin` |
-| Anonymous play enforced only at display layer | Spectator inspects SpacetimeDB subscription and gets real user IDs | Enforce anonymization at the reducer/event-write layer; cursor events and match events must carry the label, not the ID |
-| MMR manipulation via result submission timing | Player submits result before opponent, gets favorable processing | Use the dual-submission model: both players submit independently; result only becomes official when both match (or referee overrides) |
-| Guest account playing rated matches | Guests accumulate MMR that cannot be linked to a real account | Rated matches must require authenticated (Discord-linked) accounts; guest play is unrated only |
+| Trusting client-declared identity in reducer args | Impersonation; any user takes any action | `ctx.sender` is the only trusted principal (backend rule, always-in-context) |
+| Subscribing to raw `user_private` / historical tables from the client | Data leak of private fields / cross-user history | Tables stay `public: false`; `view_my_*` filtered by `ctx.sender` (Decision 8 + Phase 12) |
+| `stdb_session` cookie as auth trust boundary | Fake cookie grants access to UI that shouldn't render | Cookie is **display-only** (strategy doc line 420); real auth at reducer layer |
+| Middleware redirect as security gate | Bypassed by API direct hits; not a trust boundary | Middleware is UX optimization (strategy doc line 786); STDB enforces reducer-level auth |
+| Storing Discord OAuth tokens in localStorage | XSS → account takeover | NextAuth handles session; don't expose raw tokens to client JS |
+| Admin reducers without role check | Any user deletes cost table rows | Role check via `ctx.sender` → `user_role` table at reducer entry (existing pattern — don't regress) |
+| Tournament host trust | Host fakes match results | Per existing backend: results validated at reducer, not client claim |
+| Chat content XSS | Injecting HTML via chat | Render chat as text, never `dangerouslySetInnerHTML`; strip / escape |
+| Imgur URL validation | User pastes a phishing link as match screenshot | Validate URL pattern matches `imgur.com/...` image extensions; CSP allows imgur img-src only |
+| CSP headers | No CSP → any injection is effective | Set strict CSP: `default-src 'self'`; explicit allowlist for `ufs.sh`, `imgur.com`, WebSocket origin |
+| Service Worker origin scope | SW intercepts app-origin requests → stale JS | Scope SW to asset hostnames only (strategy doc line 200) |
+| Error messages leaking data | Reducer errors echo PII | Error messages generic on reducer rejection; detailed logs server-side |
 
 ---
 
 ## UX Pitfalls
 
-Common user experience mistakes in this domain.
-
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Showing MMR change immediately on submit (before referee verification) | Players feel cheated when MMR is later reversed after a result override | Show MMR as "Pending" with a lock icon until `verificationStatus` is confirmed; animate the final change only after verification |
-| Disconnect timer showing server-side countdown reconstructed from `timerStartAt` | Timer display stutters or shows wrong value if client clock drifts | Calculate remaining time from `timerStartAt` + elapsed using server-authoritative timestamp, but display locally with `requestAnimationFrame` interpolation |
-| Bracket visualization built from live table subscriptions only | If a player reloads mid-tournament, bracket does not appear until all subscriptions hydrate | Cache bracket structure client-side and optimistically render from cache while subscriptions load |
-| Single screenshot required for 2-boss game modes | Player has to combine two screenshots manually | Support separate screenshot upload per boss when game mode is `ApocalypticShadow`; the schema decision from PROJECT.md to support "per boss or combined" must be reflected in the result schema |
-| Calendar showing all times in UTC | International players schedule incorrectly | Store availability in UTC internally; display in the user's detected timezone with explicit UTC conversion shown |
-| "Roster closed" mode with no indication during draft | Players do not know roster is hidden; assume it is a bug | Show a permanent "Roster Hidden" banner in the draft UI when `closedRoster` is active; never silently hide data without signaling why |
+| Flash of wrong DOM on first paint (P10) | Jarring; breaks deep links on mobile share | Decide dual-DOM approach before Phase 3; use `useSyncExternalStore` for media queries |
+| Flash of login page on F5 (P6) | Appearing-logged-out on refresh | Tri-state auth (`connecting` | `authed` | `anon`) + skeleton fallback |
+| Loading spinner during Spine asset fetch | Feels slow | Decision 3: portrait always underneath, acts as built-in loading state (line 279) |
+| Pick/ban optimistic then rollback | "Ghost pick" confuses user | Render pending overlay explicitly; commit on server row arrival |
+| Disconnect without explanation | User thinks app crashed | Banner: "reconnecting... T seconds" using server timestamps |
+| Navbar showing login button during WebSocket connect | Logged-in user sees "Login" briefly | `hadSessionCookie` ref + `isWaitingForData` flag (memory feedback `feedback_session_cookie_pattern.md`) |
+| Large initial subscription payload | "App frozen" on first load | Show layout skeleton; subscriptions fill in asynchronously |
+| Safari user hits Spine feature | Broken draft experience | Image-only tier + dismissible warning banner (Decision 7) |
+| Mid-rotation form state loss (P10) | Tablet user loses unsaved team | `sessionStorage` debounced persist, restore on DOM swap |
+| Out-of-order chat messages (P7) | Confusing conversation flow | Sort by `(createdAt, messageId)` composite |
+| Historical data showing for 0-match users | Empty state looks broken | Explicit "No matches yet — play your first match" empty state on profile |
+| Bracket updates visible before match actually starts | Spoiler / confusing | Match zone subscription strategy: only active sessions, bracket visible per tournament phase |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-Things that appear complete but are missing critical pieces.
-
-- [ ] **Tournament bracket generation:** Looks complete when matches are created — verify that losers bracket slots have explicit source-match references, not just "round N" placeholders.
-- [ ] **ELO/MMR system:** Looks complete when rating updates after a match — verify that `mmrProcessedAt` is set on the match record and that calling the reducer twice produces no second delta.
-- [ ] **Match result verification:** Looks complete when screenshot URL is stored — verify that `refVerifiedAt`, `refVerifiedById`, and `verificationStatus` are separate schema fields and that ELO does not update until all three are populated.
-- [ ] **Disconnect handling:** Looks complete when forfeit is applied after countdown — verify that pick/ban reducers check match liveness independently and throw if the match is in a non-live state, regardless of how the forfeit was applied.
-- [ ] **Anonymous play:** Looks complete when player names are hidden in the UI — verify by querying the SpacetimeDB table directly that cursor events and match events contain labels, not real user IDs.
-- [ ] **Roster visibility:** Looks complete when the opponent's roster is hidden in the draft UI — verify that the SpacetimeDB subscription for the roster table is filtered server-side and a raw subscription reveals no hidden data.
-- [ ] **Calendar recurrence:** Looks complete when a recurring slot appears on the calendar — verify that changing the recurrence rule affects all future occurrences and that no orphaned individual-timestamp rows exist.
-- [ ] **Per-game-mode MMR:** Looks complete when three MMR values exist on the player record — verify that each game mode's MMR is updated only by matches of that game mode and that the global composite recalculates correctly when any one mode updates.
-- [ ] **Referee assignment:** Looks complete when a referee is assigned to a tournament — verify that the referee's permissions are scoped to that tournament only, and that they cannot validate results in tournaments they are not assigned to.
-- [ ] **Chat ephemerality:** Looks complete when chat messages appear during the match — verify that after the match is archived, the chat event table rows are deleted or have no foreign key into the persistent history tables.
+- [ ] **Subscription lifecycle:** Mounted at correct layer per Decision 6 — verify with grep of every `conn.subscriptionBuilder()` call against the placement map.
+- [ ] **Subscription cleanup:** Every `subscribe()` has a matching `unsubscribe()` in cleanup — no `unsubscribe` count lower than `subscribe` count after full route tour.
+- [ ] **Strict Mode double-mount:** Component behaves correctly with `<StrictMode>` wrapping — no double prefetch, no doubled WebGL contexts, no doubled reducer calls.
+- [ ] **Pedestal disposal matrix (Decision 3 line 266):** Every row implemented and tested — mount, update, unmount, hidden, visible, contextlost, contextrestored.
+- [ ] **Historical view filter:** `view_my_*` returns zero rows for another identity (test with two identities).
+- [ ] **Cross-user profile isolation:** `[userId]/page.tsx` subscribes to ZERO additional tables; verified by grep.
+- [ ] **Next 15 async params:** Every dynamic route has `async function Page({ params })` + `await params`.
+- [ ] **`'use client'` narrowness:** No `layout.tsx` has `'use client'` (except `providers.tsx`, which is the designated client-root).
+- [ ] **Tri-state auth:** `<AuthRequired>` handles `'connecting'` state with skeleton, not redirect.
+- [ ] **SW scope:** `sw.js` ASSET_HOSTS doesn't include app origin.
+- [ ] **SW unregister path:** `/dev-unregister-sw` exists and documented in README.
+- [ ] **Energy model updated:** `tools/energy-model.js` run with current subscription topology; ≤ 102,500/month projection.
+- [ ] **Dual-DOM decision logged:** Approach chosen, applied uniformly from Phase 3 onward.
+- [ ] **Render tier cache versioning:** `VERSION` constant in `lib/render-tier.ts`; override key separate.
+- [ ] **CSP + CORS:** Set for asset CDN, Imgur, WebSocket origin — audited before launch.
+- [ ] **Cursor throttle:** 30Hz + delta threshold verified in busy-lobby test.
+- [ ] **Build passes locally:** `npm run build` clean before closing any phase.
+- [ ] **Vercel preview parity:** Feature verified on preview URL, not just localhost.
+- [ ] **Cross-tab auth sync:** `BroadcastChannel` or equivalent tested (logout in tab A → tab B updates).
+- [ ] **Spine scaleY fix tracked:** Either camera projection corrected or Phase 6 TODO open with acceptance criteria.
 
 ---
 
 ## Recovery Strategies
 
-When pitfalls occur despite prevention, how to recover.
-
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| ELO applied before result verified (result later overridden) | HIGH | Write an admin reducer that: (1) reads the stored delta from the match record, (2) reverses it from both players' MMR, (3) reprocesses with correct result, (4) clears and re-sets `mmrProcessedAt`. Requires stored delta field from day one. |
-| Tournament state stuck in wrong stage (corrupted state machine) | MEDIUM | Admin reducer `force_set_tournament_stage` that overrides stage with explicit audit log entry; dangerous but necessary recovery valve. |
-| Bracket slot populated by wrong player (race condition) | HIGH | Admin reducer to manually reassign bracket slot + invalidate the match played in the wrong slot. Tournament may need to be restarted if multiple rounds advanced. |
-| Anonymous play identity leaked in event table | HIGH | Cannot un-leak already-emitted events. Mitigation: delete the affected event rows, issue a community notice. Prevention is the only real solution. |
-| Calendar availability stored as flat timestamps (schema migration needed) | MEDIUM | Write a migration reducer that reads all flat timestamp availability rows, converts to recurrence rules, inserts into new table, deletes old rows. Run once via admin trigger. |
-| Imgur URL submitted for wrong match (screenshot reuse fraud) | LOW | Referee disputes the result via `disputeReason` field; TO or admin overrides with correct result. No schema migration needed if dispute fields exist. |
+| Subscription at wrong layer (P1) | LOW | Move subscribe call to correct layout file; re-test energy model; single PR. |
+| Spine prefetch storm (P2) | LOW | Convert guard to module-level singleton; dedup worker URL list; add Strict Mode regression test. |
+| WebGL leak (P3) | MEDIUM | Audit full disposal matrix; add integration test that simulates 20+ pick transitions; potentially refactor AssetManager ownership. |
+| Historical table creep (P4) | MEDIUM | Implement missing `view_my_*` backend views (adds a phase); remove frontend raw-table subscriptions; re-verify privacy. |
+| SW stuck in dev (P5) | LOW | Visit `/dev-unregister-sw` (if implemented) or clear site data in DevTools. Bump `CACHE_NAME` if stale assets persist. |
+| Auth desync (P6) | MEDIUM | Implement tri-state `useAuth`; add `<AuthRequired>` skeleton fallback; add `BroadcastChannel`. |
+| Cursor broadcast storm (P7) | LOW | Add rAF throttle + delta threshold; verify at 20-user lobby. |
+| `'use client'` at layout (P8) | LOW | Move directive to leaf component; re-run bundle analyzer. |
+| Turbopack-only behavior (P9) | LOW-MEDIUM | Pin versions; verify via Vercel preview; fall back to Webpack if library incompatibility. |
+| Dual-DOM hydration mismatch (P10) | HIGH | Depends on chosen architecture — switching approach post-Phase 3 means revisiting every UX phase. Decide **before** Phase 3 starts. |
+| Full GPU context loss (catastrophic) | HIGH | `webglcontextrestored` handler re-inits Spine; if handler missing, user must reload. Portrait stays visible underneath — graceful degradation (Decision 3). |
 
 ---
 
 ## Pitfall-to-Phase Mapping
 
-How roadmap phases should address these pitfalls.
-
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Tournament state machine without enum | Tournament foundation (tables/schema) | Every tournament reducer begins with a stage assertion; no reducer sets stage fields except `advance_tournament_stage` |
-| ELO applied before result verified | MMR system + match result verification | `mmrProcessedAt` column exists; ELO reducer throws if called twice on same match |
-| ELO K-factor frozen at one value | MMR system foundation | `provisionalGamesPlayed` counter exists on MMR record; K-factor is computed, not hardcoded |
-| Disconnect handler allowing post-forfeit mutation | Disconnect/rejoin phase | Pick/ban/bid reducers all contain a liveness check that throws for non-Drafting or forfeited sessions |
-| Bracket seeding race condition | Tournament bracket generation | Losers bracket slots have pre-computed `sourceMatchId` foreign keys; advancement reducer uses ID lookup, not search |
-| MMR recalculation not idempotent | MMR system phase | Admin applies ELO twice on a test match; second call is a no-op |
-| Imgur accepted without structured evidence | Match result schema phase | `screenshotUrlBlue`, `screenshotUrlRed`, `scoreBlue`, `scoreRed`, `refVerifiedAt`, `refVerifiedById` are separate columns |
-| Anonymous play leaking identity | Anonymous play phase | Raw SpacetimeDB query of cursor/event tables shows only labels for anonymous lobbies |
-| Calendar as flat timestamps | Calendar/scheduling phase | Recurrence rule struct exists in schema; no `startAt: timestamp` column on availability table |
-| Roster visibility client-side only | Roster management phase | SpacetimeDB subscription for roster uses row-level filter; raw subscription from non-owner returns no hidden rows |
-| Referee role scoped globally | Tournament referee phase | Referee permission check queries `(tournamentId, userId)` table, not `user.role` |
-| Guest play in rated matches | MMR system phase | `create_rated_match` reducer checks `user.discordId !== null` before allowing match creation |
+| P1 — Wrong-layer subscription | Phase 1 (backend pre-work — views exist); Phase 2 (migration); every subsequent phase PR review | `tools/energy-model.js` projection ≤ 102,500; grep of subscribe calls against placement map |
+| P2 — Spine prefetch storm | Phase 3 (portrait prefetch pattern); Phase 5 (Spine prefetch) | Strict Mode regression test; worker count = 1 in `chrome://inspect` |
+| P3 — Pedestal WebGL leak | Phase 6 (draft and pedestal) | Simulated 20-transition test; WebGL context count returns to zero on unmount |
+| P4 — Historical table scope | Phase 1 (backend views); Phase 4 (authed tier / profile page); Phase 7 (cross-user profile polish) | Two-identity isolation test; grep `[userId]/page.tsx` for `subscribe` calls |
+| P5 — Service Worker issues | Phase 3 (SW implementation) | Dev unregister path exists; Vercel preview SW smoke test; `CACHE_NAME` versioning documented |
+| P6 — Auth desync | Phase 2 (useAuth migration); Phase 4 (authed tier tri-state + cross-tab) | F5 test doesn't flash login; two-tab Discord-link test |
+| P7 — Broadcast storm / desync | Phase 5 (cursor throttle); Phase 6 (pick-ban optimistic); Phase 7 (chat ordering) | 20-user lobby test; pick-ban rapid input test; reconnect dedup test |
+| P8 — RSC boundary mistakes | Phase 2 (migration); ongoing | `grep "'use client'" app/**/layout.tsx` returns only `providers.tsx`; bundle analyzer under threshold |
+| P9 — Turbopack drift | Phase 2 onward; every phase closeout | `npm run build` clean; Vercel preview passes |
+| P10 — Dual-DOM hydration | Phase 2 / Phase 3 discussion (decide approach); Phase 3 onward (apply) | No React hydration warnings; rotation test preserves form state |
+| Render capability cache staleness | Phase 5 (`lib/render-tier.ts` with VERSION) | Bump VERSION test — cache invalidates |
+| `skeleton.scaleY = -1` workaround | Phase 6 (pedestal) — either fix or track | Complex-animation test (skinning character); TODO tracked in phase ledger |
+| Discord OAuth preview URL | Phase 4 (authed tier) | Preview deploy auth flow passes |
+| CSP / CORS | Phase 3 (public tier baseline); re-verify Phase 6 (pedestal external assets) | Lighthouse best-practices score; manual CSP violation test |
+| Large list rendering | Phase 7 (leaderboards, match history) | > 500-row render stays smooth |
 
 ---
 
 ## Sources
 
-- Codebase evidence: `spacetimedb/src/tables/matchSession.ts`, `types/enums.ts`, `types/structs.ts`, `tables/lobby.ts`, `tables/matchSessionHistory.ts`, `helpers/ensurePermissions.ts` — HIGH confidence
-- Project context: `.planning/PROJECT.md` — HIGH confidence (authoritative project scope)
-- Known issues: `.planning/codebase/CONCERNS.md` — HIGH confidence (identifies existing fragile areas)
-- SpacetimeDB reducer transaction model: training knowledge (SpacetimeDB 2.x) — MEDIUM confidence; verify against current SpacetimeDB docs before implementing scheduled reducers and subscription filters
-- ELO K-factor tiering: industry-standard competitive gaming pattern (Chess.com, FIDE) — MEDIUM confidence
-- Tournament bracket race conditions: general distributed system patterns applied to SpacetimeDB's transaction model — MEDIUM confidence
+**Repo artifacts (HIGH confidence — project-specific):**
+- `D:/GitsWork/hsrpvp-spacetimedb-nextjs/.planning/PROJECT.md` — v0.9 milestone scope, validated requirements, key decisions
+- `D:/GitsWork/hsrpvp-spacetimedb-nextjs/notes/v09-frontend-subscription-strategy.md` — 8 binding decisions, risk callouts at lines 823-827 directly informed P1-P3
+- `D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/CLAUDE.md` — SpacetimeDB core rules, always-in-context rules
+- Memory `feedback_security_bandwidth_priority.md` — bandwidth/energy architectural priority (P1, P4)
+- Memory `feedback_session_cookie_pattern.md` — SSR-safe auth, `hadSessionCookie` ref pattern (P6)
+- Memory `reference_reducer_client_patterns.md` — Timestamp / optional / enum pitfalls (integration gotchas)
+- Memory `feedback_worktree_safety.md` — Phase 12 / 12.1 / 13 incidents (not a runtime pitfall but artifact-persistence pitfall)
+- Memory `feedback_transactional_tables.md` — status-column anti-pattern (architecture-level, backend)
+- Memory `project_data_scale.md` — target scale and energy breakdown
+
+**External references (MEDIUM confidence — stack-specific):**
+- [React StrictMode docs](https://react.dev/reference/react/StrictMode) — double-mount cleanup semantics (P2, P3)
+- [SpacetimeDB Subscriptions docs](https://spacetimedb.com/docs/clients/subscriptions/) — `unsubscribe()` async behavior, `unsubscribeThen`, `isActive`/`isEnded`
+- [SpacetimeDB TypeScript Reference](https://spacetimedb.com/docs/clients/typescript/)
+- [WebGL HandlingContextLost wiki (Khronos)](https://www.khronos.org/webgl/wiki/HandlingContextLost) — context loss / restore pattern (P3)
+- [Spine forum — ts-webgl context lost](http://en.esotericsoftware.com/forum/ts-webgl-Handling-Context-Lost-6861) — Spine AssetManager disposal
+- [MDN WEBGL_lose_context](https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_lose_context/loseContext) — deliberate context release
+
+**Sources (MEDIUM-LOW confidence — community discussion of specific failure modes):**
+- [DEV — React 19 Strict Mode useEffect double-call](https://dev.to/pockit_tools/why-is-useeffect-running-twice-the-complete-guide-to-react-19-strict-mode-and-effect-cleanup-1n60)
+- [React issue #30835 — StrictMode cleanup-for-second-mount bug](https://github.com/facebook/react/issues/30835)
+- [WebSocket.org — WebSockets in React: Hooks, Lifecycle, Pitfalls](https://websocket.org/guides/frameworks/react/)
 
 ---
 
-*Pitfalls research for: HSRPVP competitive gaming platform — tournament, MMR, real-time features*
-*Researched: 2026-03-15*
+*Pitfalls research for: competitive gaming frontend on SpacetimeDB + Next.js 15 + React 19 + Spine WebGL + dual-DOM*
+*Researched: 2026-04-12*

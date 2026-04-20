@@ -28,9 +28,11 @@ export default defineConfig({
       '@/': path.resolve(__dirname, '../') + '/',
     },
 
-    // Integration tests need more time (network, SpacetimeDB round-trips)
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    // Integration tests need more time (network, SpacetimeDB round-trips).
+    // Hooks often create multiple verified harnesses which compound latency
+    // against maincloud — 120s gives headroom for up to 6 harnesses + setup.
+    testTimeout: 60000,
+    hookTimeout: 120000,
 
     // Run sequentially — tests share SpacetimeDB state and WebSocket connections to maincloud
     // fileParallelism: false prevents parallel file execution (avoids connection saturation)
@@ -38,6 +40,13 @@ export default defineConfig({
       concurrent: false,
     },
     fileParallelism: false,
+
+    // Clear + reseed the maincloud test database once before the suite.
+    // Tests leak state that has no auto-cleanup path (AwaitingResult lobbies per
+    // D-48, User/UserPrivate rows with no delete reducer). Without this, state
+    // accumulates across runs and later tests hit timeout ceilings as tables grow.
+    // Opt out per invocation with SKIP_DB_CLEAR=1. See test/global-setup.ts.
+    globalSetup: ['./test/global-setup.ts'],
   },
   resolve: {
     alias: {

@@ -63,6 +63,7 @@ console.log(`Connecting to ${host} / ${dbName} ...`);
 const _conn = DbConnection.builder()
     .withUri(host)
     .withDatabaseName(dbName)
+    .withConfirmedReads(false)
     // No token — get a fresh identity
     .onConnect((connection, identity, token) => {
         console.log(`\nConnected with identity: ${identity.toHexString()}`);

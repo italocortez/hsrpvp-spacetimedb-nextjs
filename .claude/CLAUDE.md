@@ -1,10 +1,66 @@
 # Git Rules
 
-- **Do NOT auto-commit code changes.** Leave all file changes unstaged so the user can review diffs in VS Code before committing. Only commit when the user explicitly asks.
-- Planning/docs files (.planning/) may be committed by GSD workflows, but code files (spacetimedb/, src/, app/, components/) must NEVER be committed without user review.
-- You are to NEVER delete .env.local
-- You are to NEVER commit .env.local
-- If you need to edit .evn.local, ask for permission
+- Worktrees spawn from the last commit — uncommitted changes are invisible to them and cause merge conflicts. Revert with `git reset --soft HEAD~1` if needed.
+- NEVER delete or commit `.env.local` or `.env`. These files are only edited by `post-publish.ts` after `--clear-database`.
+
+---
+
+# Autonomous Execution (applies ONLY during `/gsd-execute-phase` and inline sub-workflows)
+
+This repo runs `mode: yolo` in `.planning/config.json`. During execution workflows — and ONLY during execution — operate autonomously. Structural gates (gitignore pre-audit, post-commit stat verification, hooks, `files_modified` frontmatter) provide the safety payoff. Extra "proceed?" prompts are pure friction.
+
+**Does NOT apply during** `/gsd-discuss-phase`, `/gsd-plan-phase`, `/gsd-verify-work`, `/gsd-code-review`, architectural discussions, or any conversational phase — there, asking IS the design.
+
+## During execution, never pause for:
+- git commits on the current branch (gsd-tools, direct, amending unpushed)
+- Approach-selection decisions reversible within the session (sequential vs parallel, wave ordering)
+- Branch creation on the current feature branch
+- Routine reads (`git log/diff/show/status/blame/check-ignore`)
+- File writes inside the plan's `files_modified` frontmatter
+- Running tests, builds, seed scripts
+
+## During execution, DO pause for:
+- File / branch / worktree deletion
+- Force operations (`git push --force`, destructive `git reset --hard`, `--no-verify` bypass)
+- Cross-boundary actions (pushes to remote, PRs, external APIs, deploys)
+- Real problems (stranger paths in commits, hook rejections, unexpected test failures, merge conflicts)
+- Plan-level `human-action` checkpoints baked into PLAN.md (D-11/D-12 gates, etc.)
+
+---
+
+# Gitignore Guardrail (applies during execution commits only)
+
+NEVER commit anything under `test/data/`, `tmp/`, or `.env*`. The rule is about the ACTION:
+
+- No `git add -f` / `git add --force`, ever, for any reason
+- Plan `files_modified` frontmatter must not contain gitignored paths — pre-execution audit catches this
+- Data-transform scripts for gitignored files are local-only: described as "user runs `tmp/migrate.ts` locally", never committed
+- If verification needs a gitignored file, verification is wrong — use a fixture under `test/data-templates/` (whitelist path)
+
+**Scope note:** this rule is absolute about force-adding gitignored paths during an execution commit. It does NOT imply extra caution on adjacent decisions — the structural pre-execution gate already prices in the risk.
+
+Recovery procedure (if it happens anyway): see `memory/feedback_never_force_add_gitignored.md`.
+
+---
+
+# Frontend Self-Check (Playwright CLI)
+
+Any UI edit that changes rendered output MUST be followed by a Playwright CLI screenshot + Read before reporting the task as complete. Code typechecks prove syntax; screenshots prove the user actually sees what the task intended.
+
+Tool: `rtk proxy playwright-cli` (installed globally, `.playwright/cli.config.json` sets msedge default).
+
+Loop:
+1. Ensure `npm run dev` is running (foreground or background).
+2. `rtk proxy playwright-cli open http://localhost:3000/<route>` (once per session).
+3. After UI edit: `rtk proxy playwright-cli screenshot --filename tmp/pw/<name>.png`.
+4. `Read tmp/pw/<name>.png`. Compare to UI-SPEC.md (if exists) or task intent.
+5. Iterate if wrong. `rtk proxy playwright-cli close` at end of session.
+
+Path rules: `tmp/pw/` is ephemeral (gitignored). Durable audit screenshots written by `/gsd-ui-review` land under `.planning/phases/{N}/screenshots/` and ARE committed.
+
+Pattern for embedding screenshots in plan `<acceptance_criteria>`: see `.claude/get-shit-done/references/playwright-cli-verify.md`.
+
+Exception: backend-only edits, pure refactors with no visual delta, utility/hook/type changes below the component level. Use judgment — if a grep can prove it, skip the screenshot.
 
 ---
 
@@ -67,10 +123,12 @@ All backend feature documentation lives in `docs/{feature}/`:
 - **Update after every phase discussion** with new workflow decisions
 - See `docs/tournament/contract.md` for the reference example
 - Use the template from `.claude/skills/uat/references/workflow-doc-template.md`
-- **Never modify behavior specs (`docs/*/contract.md`) during execution.** After execution completes, update the contract with any additions — tag every new entry with `Phase X execution` in the Phase History table so the user can distinguish their decisions from Claude's. The user reviews execution-sourced entries during `/gsd:verify-work`.
+- **Never modify behavior specs (`docs/*/contract.md`) during execution.** After execution completes, update the contract with any additions — tag every new entry with `Phase X execution` in the Phase History table so the user can distinguish their decisions from Claude's. The user reviews execution-sourced entries during `/gsd-verify-work`.
 - **Test files (`test/`) are the verification layer.** Do not create, edit, or delete test files without an explicit task. Test failures are diagnostic — report them, never auto-fix.
 
 Architecture docs cross-reference behavior specs. No duplication between them.
+
+**Enforcement:** The `/gsd-verify-work` workflow includes a mandatory doc-update checkpoint (step `doc_update_checkpoint`) that runs after UAT passes and before the phase is marked complete. It detects which `docs/{feature}/` directories the phase touched via git diff and prompts per-feature for architecture.md / contract.md / both / skip (with reason). Phase completion is blocked until every touched feature is answered. This is the structural enforcement of the two "update" rules above — it is not a replacement for them, and automated (AST/timestamp) staleness checkers are explicitly out of scope (see `memory/feedback_doc_updates_human_gated.md`).
 
 ## Editing Behavior
 
@@ -90,7 +148,7 @@ Architecture docs cross-reference behavior specs. No duplication between them.
 
 ## UAT Verify-Work Format
 
-During `/gsd:verify-work`, present ONE test at a time using this exact format:
+During `/gsd-verify-work`, present ONE test at a time using this exact format:
 
 ```
 **STEP N: {who} does {what} on {whom}**
@@ -109,9 +167,3 @@ During `/gsd:verify-work`, present ONE test at a time using this exact format:
 - After all steps: show checkpoint box, wait for user response
 - Do NOT batch multiple tests — one test per checkpoint, one response before the next
 
-## Debugging Checklist
-
-1. Is the module published to maincloud? (`spacetime publish`) — this is a maincloud project, there is no local server
-2. Are client bindings generated? (`spacetime generate`)
-3. Check server logs for errors (`spacetime logs <db-name>`)
-4. **Is the reducer actually being called from the client?**

@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { ensureAdmin } from '../helpers/ensurePermissions';
-import { auditInsert, auditUpdate } from '../helpers/auditColumns';
+import { insertWithAudit, updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── create_season ──────────────────────────────────────────────────────────
 // Creates a new Season row. Defaults to inactive.
@@ -16,14 +16,13 @@ export const create_season = spacetimedb.reducer(
     (ctx, { name, startDate, endDate }) => {
         const admin = ensureAdmin(ctx);
 
-        ctx.db.Season.insert({
+        ctx.db.Season.insert(insertWithAudit(ctx, {
             id: 0, // autoInc
             name,
             startDate,
             endDate,
             isActive: false,
-            ...auditInsert(ctx, admin.id),
-        } as any);
+        }, admin.id));
 
         console.log(`[SEASON] Season "${name}" created by admin #${admin.id}`);
     }
@@ -49,21 +48,17 @@ export const set_active_season = spacetimedb.reducer(
         // Deactivate all currently active seasons
         const activeSeasons = [...ctx.db.Season.is_active.filter(true)];
         for (const row of activeSeasons) {
-            ctx.db.Season.id.update({
-                ...row,
+            ctx.db.Season.id.update(updateWithAudit(ctx, row, {
                 isActive: false,
-                ...auditUpdate(ctx, row, admin.id),
-            });
+            }, admin.id));
         }
 
         // Activate the target season
         // Re-read in case it was in the active list and just got deactivated
         const freshSeason = ctx.db.Season.id.find(seasonId)!;
-        ctx.db.Season.id.update({
-            ...freshSeason,
+        ctx.db.Season.id.update(updateWithAudit(ctx, freshSeason, {
             isActive: true,
-            ...auditUpdate(ctx, freshSeason, admin.id),
-        });
+        }, admin.id));
 
         console.log(`[SEASON] Season #${seasonId} set as active by admin #${admin.id}`);
     }

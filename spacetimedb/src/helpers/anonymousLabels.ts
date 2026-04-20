@@ -1,3 +1,5 @@
+import { slotTeam, slotIsCoach, slotSameTeam } from './lobbyHelpers';
+
 /**
  * Computes anonymous label for a lobby member based on team side and join order.
  * Labels: "Blue-1", "Blue-2", "Red-1", "Red-2", "Spectator-1", "Coach-Blue", "Coach-Red"
@@ -9,21 +11,27 @@ export function computeAnonymousLabel(ctx: any, lobbyId: number, userId: number)
     if (!member) return 'Unknown';
 
     // Coaches get a special label: "Coach-Blue", "Coach-Red"
-    if (member.isCoach) {
-        return `Coach-${member.teamSlot.tag}`;
+    if (slotIsCoach(member.lobbySlot)) {
+        return `Coach-${slotTeam(member.lobbySlot)}`;
     }
 
-    // Get all non-coach members on the same team in this lobby
-    const sameTeamMembers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
-        .filter((m: any) => m.teamSlot.tag === member.teamSlot.tag && !m.isCoach);
+    // Spectators: label among other spectators
+    const isSpectator = member.lobbySlot.tag === 'Spectator';
+
+    // Get peers: same-team non-coach players, or fellow spectators
+    const peers = [...ctx.db.LobbyMember.lobby_id.filter(lobbyId)]
+        .filter((m: any) => isSpectator
+            ? m.lobbySlot.tag === 'Spectator'
+            : slotSameTeam(m.lobbySlot, member.lobbySlot) && !slotIsCoach(m.lobbySlot));
 
     // Sort by createdDate ascending (join order -- earlier = lower number)
-    sameTeamMembers.sort((a: any, b: any) => {
+    peers.sort((a: any, b: any) => {
         return Number(a.createdDate.microsSinceUnixEpoch / 1000n) - Number(b.createdDate.microsSinceUnixEpoch / 1000n);
     });
 
     // Find the index of the target userId in the sorted list
-    const index = sameTeamMembers.findIndex((m: any) => m.userId === userId);
+    const index = peers.findIndex((m: any) => m.userId === userId);
+    const prefix = isSpectator ? 'Spectator' : slotTeam(member.lobbySlot);
 
-    return `${member.teamSlot.tag}-${index + 1}`;
+    return `${prefix}-${index + 1}`;
 }

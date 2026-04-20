@@ -4,7 +4,10 @@ import { USER_ROLE_VARIANTS } from '../types/enums';
 // Derived from the shared enum variants — stays in sync automatically
 export type UserRole = { tag: typeof USER_ROLE_VARIANTS[number] };
 
-// Mirrors spacetimedb/tables/user.ts (id-based, not identity-based)
+// Mirrors the view_my_profile merge of User + UserPrivate
+// Public fields come from the User table (visible to all).
+// Private fields (discordId, discordUsername) come from UserPrivate — only populated
+// when reading via view_my_profile (the current user's own profile).
 export interface User {
     id: number;
     username: string;
@@ -12,16 +15,12 @@ export interface User {
     isGuest: boolean;
     lastLoginAt: Timestamp;
     role: UserRole;
-    discordId?: string;
+    hasDiscordLinked: boolean;
     avatarCharacterName: string;
     deletedAt?: Timestamp; // Set when admin soft-deletes; hard-delete follows after 5s
-}
-
-// Mirrors spacetimedb/tables/userIdentity.ts
-export interface UserIdentityRow {
-    identity: Identity;
-    userId: number;
-    lastSeenAt: Timestamp;
+    // Private fields from view_my_profile merge (only available to the user themselves)
+    discordId?: string;
+    discordUsername?: string;
 }
 
 export interface AuthState {

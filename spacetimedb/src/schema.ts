@@ -1,5 +1,8 @@
 import { schema } from 'spacetimedb/server';
 import { User } from './tables/user';
+import { UserPrivate } from './tables/userPrivate';
+import { DeletedUser } from './tables/deletedUser';
+import { BanRecord } from './tables/banRecord';
 import { UserIdentity } from './tables/userIdentity';
 import { ServerIdentity } from './tables/serverIdentity';
 import { HsrCharacter } from './tables/hsrCharacter';
@@ -11,16 +14,15 @@ import { HsrSynergyCost } from './tables/hsrSynergyCost';
 // Roster Management
 import { HsrAccount } from './tables/hsrAccount';
 import { HsrAccountCharacter } from './tables/hsrAccountCharacter';
-import { HsrAccountLightcone } from './tables/hsrAccountLightcone';
-
 // Archetypes
 import { Archetype } from './tables/archetype';
 import { HsrCharacterArchetype } from './tables/hsrCharacterArchetype';
 
 // Tournament System
 import { Tournament } from './tables/tournament';
-import { TournamentParticipant } from './tables/tournamentParticipant';
+import { TournamentEnrolled } from './tables/tournamentEnrolled';
 import { TournamentAssistant } from './tables/tournamentAssistant';
+import { TournamentStandIn } from './tables/tournamentStandIn';
 
 // Cost Set Management
 import { CostSet } from './tables/costSet';
@@ -30,16 +32,12 @@ import { CostSetDraftSynergy } from './tables/costSetDraftSynergy';
 
 // Tournament Teams
 import { TournamentTeam } from './tables/tournamentTeam';
+import { TournamentTeamMember } from './tables/tournamentTeamMember';
 import { TournamentTeamRequest } from './tables/tournamentTeamRequest';
-
-// Teams
-import { Team } from './tables/team';
-import { TeamMember } from './tables/teamMember';
-import { TeamInvite } from './tables/teamInvite';
 
 // Bracket & Group
 import { BracketMatch } from './tables/bracketMatch';
-import { GroupStanding } from './tables/groupStanding';
+import { GroupPhaseRecord } from './tables/groupPhaseRecord';
 
 // Match Results
 import { MatchResultRecord } from './tables/matchResult';
@@ -56,6 +54,9 @@ import { MmrHistory } from './tables/mmrHistory';
 import { EloConfigTable } from './tables/eloConfig';
 import { Leaderboard } from './tables/leaderboard';
 
+// Account Rating Config
+import { AccountRatingConfig } from './tables/accountRatingConfig';
+
 // Player Stats
 import { PlayerStat } from './tables/playerStats';
 import { PlayerCharacterStat } from './tables/characterStats';
@@ -63,6 +64,7 @@ import { PlayerCharacterStat } from './tables/characterStats';
 // Achievements
 import { Achievement } from './tables/achievement';
 import { UserAchievement } from './tables/userAchievement';
+import { AchievementCriteria } from './tables/achievementCriteria';
 
 // Calendar
 import { AvailabilitySlot } from './tables/availabilitySlot';
@@ -76,7 +78,10 @@ import { ChatMessage } from './tables/chatMessage';
 // Lobby System
 import { Lobby } from './tables/lobby';
 import { LobbyMember } from './tables/lobbyMember';
+import { LobbyBan } from './tables/lobbyBan';
+import { LobbyPreset } from './tables/lobbyPreset';
 import { LobbyPassword } from './tables/lobbyPassword';
+import { LobbyMemberAccount } from './tables/lobbyMemberAccount';
 import { LobbyCursorEvent } from './tables/lobbyCursorEvent';
 
 // Active Game
@@ -99,12 +104,20 @@ import { TournamentPlayerAccount } from './tables/tournamentPlayerAccount';
 // Match Result Game History
 import { MatchResultGameHistory } from './tables/matchResultGameHistory';
 
+// GC Audit
+import { GcResult } from './tables/gcResult';
+
 // Scheduled Jobs
 import { UserDeletionJob } from './tables/userDeletionJob';
+import { LobbyGcJob } from './tables/lobbyGcJob';
+import { IdentityGcJob } from './tables/identityGcJob';
 
 const spacetimedb = schema({
     // User / Auth
     User,
+    UserPrivate,
+    DeletedUser,
+    BanRecord,
     UserIdentity,
     ServerIdentity,
 
@@ -120,16 +133,15 @@ const spacetimedb = schema({
     // Roster Management
     HsrAccount,
     HsrAccountCharacter,
-    HsrAccountLightcone,
-
     // Archetypes
     Archetype,
     HsrCharacterArchetype,
 
     // Tournament System
     Tournament,
-    TournamentParticipant,
+    TournamentEnrolled,
     TournamentAssistant,
+    TournamentStandIn,
 
     // Cost Set Management
     CostSet,
@@ -139,16 +151,12 @@ const spacetimedb = schema({
 
     // Tournament Teams
     TournamentTeam,
+    TournamentTeamMember,
     TournamentTeamRequest,
-
-    // Teams
-    Team,
-    TeamMember,
-    TeamInvite,
 
     // Bracket & Group
     BracketMatch,
-    GroupStanding,
+    GroupPhaseRecord,
 
     // Match Results
     MatchResultRecord,
@@ -164,6 +172,9 @@ const spacetimedb = schema({
     EloConfigTable,
     Leaderboard,
 
+    // Account Rating Config
+    AccountRatingConfig,
+
     // Player Stats
     PlayerStat,
     PlayerCharacterStat,
@@ -171,6 +182,7 @@ const spacetimedb = schema({
     // Achievements
     Achievement,
     UserAchievement,
+    AchievementCriteria,
 
     // Calendar
     AvailabilitySlot,
@@ -184,7 +196,10 @@ const spacetimedb = schema({
     // Lobby System
     Lobby,
     LobbyMember,
+    LobbyBan,
+    LobbyPreset,
     LobbyPassword,
+    LobbyMemberAccount,
     LobbyCursorEvent,
 
     // Active Game
@@ -206,8 +221,13 @@ const spacetimedb = schema({
     // Tournament Player Accounts
     TournamentPlayerAccount,
 
+    // GC Audit
+    GcResult,
+
     // Scheduled Jobs
     UserDeletionJob,
+    LobbyGcJob,
+    IdentityGcJob,
 });
 
 export default spacetimedb;

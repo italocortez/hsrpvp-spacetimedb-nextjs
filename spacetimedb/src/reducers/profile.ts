@@ -1,6 +1,6 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 
 /**
  * Helper: resolve ctx.sender → UserIdentity → User.
@@ -59,11 +59,9 @@ export const update_display_name = spacetimedb.reducer({
         throw new SenderError('User not found — login first');
     }
 
-    ctx.db.User.id.update({
-        ...resolved.user,
+    ctx.db.User.id.update(updateWithAudit(ctx, resolved.user, {
         displayName: trimmed,
-        ...auditUpdate(ctx, resolved.user, resolved.user.id),
-    });
+    }, resolved.user.id));
 
     // Lazy sync: update TournamentTeam.name for active solo non-anonymous tournaments
     // A solo player's team name = their displayName (invisible team for bracket purposes)
@@ -75,12 +73,9 @@ export const update_display_name = spacetimedb.reducer({
         const isSolo = tournament.teamSize === 1;
         const isNotAnonymous = !tournament.isAnonymousDefault;
         if (isActive && isSolo && isNotAnonymous) {
-            ctx.db.TournamentTeam.id.update({
-                ...team,
+            ctx.db.TournamentTeam.id.update(updateWithAudit(ctx, team, {
                 name: trimmed,
-                lastModifiedById: resolved.user.id,
-                lastModifiedDate: ctx.timestamp,
-            } as any);
+            }, resolved.user.id));
         }
     }
 });
@@ -109,11 +104,9 @@ export const update_username = spacetimedb.reducer({
         throw new SenderError('Guest users cannot change their username. Link your Discord account first.');
     }
 
-    ctx.db.User.id.update({
-        ...resolved.user,
+    ctx.db.User.id.update(updateWithAudit(ctx, resolved.user, {
         username: trimmed,
-        ...auditUpdate(ctx, resolved.user, resolved.user.id),
-    });
+    }, resolved.user.id));
 });
 
 /**
@@ -134,9 +127,7 @@ export const update_avatar = spacetimedb.reducer({
         throw new SenderError(`Character "${characterName}" not found. Please select a valid character.`);
     }
 
-    ctx.db.User.id.update({
-        ...resolved.user,
+    ctx.db.User.id.update(updateWithAudit(ctx, resolved.user, {
         avatarCharacterName: characterName,
-        ...auditUpdate(ctx, resolved.user, resolved.user.id),
-    });
+    }, resolved.user.id));
 });

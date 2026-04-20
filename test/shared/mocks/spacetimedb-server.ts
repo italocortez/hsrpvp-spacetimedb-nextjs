@@ -13,7 +13,13 @@ export class SenderError extends Error {
 }
 
 // schema(), table(), t — only needed if unit-testing table definitions
-export function schema(...args: any[]) { return {}; }
+// schema() must return an object with .reducer() so module-level
+// scheduled reducer definitions (e.g. lobbyGc.ts) don't crash on import.
+export function schema(...args: any[]) {
+  return {
+    reducer: (_config: any, handler: any) => handler,
+  };
+}
 export function table(...args: any[]) { return {}; }
 
 // Fully recursive proxy — any property access or function call returns another proxy

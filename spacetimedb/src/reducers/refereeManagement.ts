@@ -1,7 +1,7 @@
 import spacetimedb from '../schema';
 import { t, SenderError } from 'spacetimedb/server';
 import { getAuthenticatedUser } from '../helpers/ensurePermissions';
-import { auditUpdate } from '../helpers/auditColumns';
+import { updateWithAudit } from '../helpers/auditHelpers';
 
 // ─── transfer_referee ─────────────────────────────────────────────────────────
 // Transfers the referee flag from the caller to another lobby member.
@@ -28,7 +28,7 @@ export const transfer_referee = spacetimedb.reducer(
 
         // Validate target is different from caller
         if (targetUserId === user.id) {
-            throw new SenderError('Cannot transfer referee to yourself.');
+            throw new SenderError('You are already the referee.');
         }
 
         // Find target's LobbyMember row
@@ -39,19 +39,11 @@ export const transfer_referee = spacetimedb.reducer(
 
         // Remove referee flag from caller
         ctx.db.LobbyMember.delete(senderMember);
-        ctx.db.LobbyMember.insert({
-            ...senderMember,
-            isReferee: false,
-            ...auditUpdate(ctx, senderMember, user.id),
-        } as any);
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, senderMember, { isReferee: false }, user.id));
 
         // Add referee flag to target
         ctx.db.LobbyMember.delete(targetMember);
-        ctx.db.LobbyMember.insert({
-            ...targetMember,
-            isReferee: true,
-            ...auditUpdate(ctx, targetMember, user.id),
-        } as any);
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, targetMember, { isReferee: true }, user.id));
 
         console.log(`[LOBBY] Referee transferred from user #${user.id} to user #${targetUserId} in lobby #${lobbyId}`);
     }
@@ -96,105 +88,18 @@ export const reclaim_referee = spacetimedb.reducer(
 
         // Remove referee flag from current holder
         ctx.db.LobbyMember.delete(currentReferee);
-        ctx.db.LobbyMember.insert({
-            ...currentReferee,
-            isReferee: false,
-            ...auditUpdate(ctx, currentReferee, user.id),
-        } as any);
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, currentReferee, { isReferee: false }, user.id));
 
         // Add referee flag to host
         ctx.db.LobbyMember.delete(hostMember);
-        ctx.db.LobbyMember.insert({
-            ...hostMember,
-            isReferee: true,
-            ...auditUpdate(ctx, hostMember, user.id),
-        } as any);
+        ctx.db.LobbyMember.insert(updateWithAudit(ctx, hostMember, { isReferee: true }, user.id));
 
         console.log(`[LOBBY] Referee reclaimed by host #${user.id} from user #${currentReferee.userId} in lobby #${lobbyId}`);
     }
 );
 
 // --- Coach Role Management --------------------------------------------------------
-// Assigns or removes the isCoach flag on a LobbyMember.
-// Permission: lobby host or current referee.
-// NOTE: Pick/ban guard enforcement (coach cannot pick) is Phase 9 scope.
-
-export const set_coach = spacetimedb.reducer(
-    {
-        lobbyId: t.u32(),
-        targetUserId: t.u32(),
-    },
-    (ctx, { lobbyId, targetUserId }) => {
-        const user = getAuthenticatedUser(ctx);
-
-        // Validate caller is the lobby host OR the current referee
-        const lobby = ctx.db.Lobby.id.find(lobbyId);
-        if (!lobby) throw new SenderError('Lobby not found.');
-
-        const callerMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
-        if (!callerMember) throw new SenderError('You are not a member of this lobby.');
-
-        const isHost = lobby.hostUserId === user.id;
-        const isRef = callerMember.isReferee === true;
-        if (!isHost && !isRef) {
-            throw new SenderError('Only the lobby host or referee can assign the coach role.');
-        }
-
-        // Find target member
-        const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
-        if (!targetMember) throw new SenderError('Target user is not a member of this lobby.');
-
-        // Already a coach — no-op
-        if (targetMember.isCoach) return;
-
-        // Update: delete + insert with isCoach = true
-        ctx.db.LobbyMember.delete(targetMember);
-        ctx.db.LobbyMember.insert({
-            ...targetMember,
-            isCoach: true,
-            ...auditUpdate(ctx, targetMember, user.id),
-        } as any);
-
-        console.log(`[LOBBY] Coach role assigned to user #${targetUserId} in lobby #${lobbyId} by user #${user.id}`);
-    }
-);
-
-export const remove_coach = spacetimedb.reducer(
-    {
-        lobbyId: t.u32(),
-        targetUserId: t.u32(),
-    },
-    (ctx, { lobbyId, targetUserId }) => {
-        const user = getAuthenticatedUser(ctx);
-
-        // Validate caller is the lobby host OR the current referee
-        const lobby = ctx.db.Lobby.id.find(lobbyId);
-        if (!lobby) throw new SenderError('Lobby not found.');
-
-        const callerMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, user.id])][0];
-        if (!callerMember) throw new SenderError('You are not a member of this lobby.');
-
-        const isHost = lobby.hostUserId === user.id;
-        const isRef = callerMember.isReferee === true;
-        if (!isHost && !isRef) {
-            throw new SenderError('Only the lobby host or referee can remove the coach role.');
-        }
-
-        // Find target member
-        const targetMember = [...ctx.db.LobbyMember.by_lobby_and_user.filter([lobbyId, targetUserId])][0];
-        if (!targetMember) throw new SenderError('Target user is not a member of this lobby.');
-
-        // Not a coach — no-op
-        if (!targetMember.isCoach) return;
-
-        // Update: delete + insert with isCoach = false
-        ctx.db.LobbyMember.delete(targetMember);
-        ctx.db.LobbyMember.insert({
-            ...targetMember,
-            isCoach: false,
-            ...auditUpdate(ctx, targetMember, user.id),
-        } as any);
-
-        console.log(`[LOBBY] Coach role removed from user #${targetUserId} in lobby #${lobbyId} by user #${user.id}`);
-    }
-);
+// ELIMINATED: set_coach and remove_coach are no longer needed.
+// Coach assignment is now handled via set_team_slot (lobbySettings.ts) with the
+// unified LobbySlot enum (BlueCoach/RedCoach). The coach transition guard in
+// set_team_slot ensures only host/referee can assign coach slots.

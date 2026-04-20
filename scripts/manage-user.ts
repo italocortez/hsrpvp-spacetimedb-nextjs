@@ -87,6 +87,7 @@ const _conn = DbConnection.builder()
     .withUri(host)
     .withDatabaseName(dbName)
     .withToken(serverToken)
+    .withConfirmedReads(false)
     .onConnect((connection, identity) => {
         console.log(`Connected as server identity: ${identity.toHexString()}`);
 

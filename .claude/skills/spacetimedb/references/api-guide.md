@@ -1,6 +1,6 @@
 <!-- Sources:
   - SpacetimeDB TypeScript SDK docs: https://spacetimedb.com/docs
-  - SpacetimeDB v2.0.5 release: https://github.com/clockworklabs/SpacetimeDB/releases/tag/v2.0.5
+  - SpacetimeDB v2.1.0 release: https://github.com/clockworklabs/SpacetimeDB/releases/tag/v2.1.0
 -->
 
 # SpacetimeDB Rules (All Languages)
@@ -17,12 +17,11 @@
 | 4 | [Reducers](#4-reducers) | Definition syntax, update/delete patterns, lifecycle hooks |
 | 5 | [Scheduled Tables](#5-scheduled-tables) | Scheduled reducers, ScheduleAt |
 | 6 | [Timestamps](#6-timestamps) | Server and client timestamp handling |
-| 7 | [Data Visibility & Subscriptions](#7-data-visibility--subscriptions) | Public/private tables, views, query builder, subscription handles |
+| 7 | [Data Visibility & Subscriptions](#7-data-visibility--subscriptions) | Public/private tables, views, query builder, subscription handles, semantics & cache guarantees |
 | 8 | [React Integration](#8-react-integration) | Provider, useTable, useReducer, callbacks, event tables |
 | 9 | [Procedures (Beta)](#9-procedures-beta) | HTTP/side effects, ctx.withTx(), timeouts |
-| 10 | [Project Structure](#10-project-structure) | Server + client layout, circular import avoidance |
-| 11 | [Commands](#11-commands) | CLI reference |
-| 12 | [Hard Requirements](#12-hard-requirements) | 12 TypeScript-specific rules |
+| 10 | [Project Structure & Commands](#10-project-structure--commands) | Defers to SKILL.md (always in context) |
+| 11 | [Hard Requirements](#11-hard-requirements) | 12 TypeScript-specific rules |
 
 ---
 
@@ -59,50 +58,9 @@ You can add explicit indexes on non-unique columns for query performance.
 
 ---
 
-## Commands
+## Commands, Deployment, Debugging
 
-```bash
-# Login to allow remote database deployment e.g. to maincloud
-spacetime login
-
-# Start local SpacetimeDB
-spacetime start
-
-# Publish module
-spacetime publish <db-name> --module-path <module-path>
-
-# Clear and republish
-spacetime publish <db-name> --clear-database -y --module-path <module-path>
-
-# Generate client bindings
-spacetime generate --lang <lang> --out-dir <out> --module-path <module-path>
-
-# View logs
-spacetime logs <db-name>
-```
-
----
-
-## Deployment
-
-- Maincloud is the spacetimedb hosted cloud and the default location for module publishing
-- The default server marked by *** in `spacetime server list` should be used when publishing
-- If the default server is maincloud you should publish to maincloud
-- Publishing to maincloud is free of charge
-- When publishing to maincloud the database dashboard will be at the url: https://spacetimedb.com/@<username>/<database-name>
-- The database owner can view utilization and performance metrics on the dashboard
-
----
-
-## Debugging Checklist
-
-1. Is SpacetimeDB server running? (`spacetime start`)
-2. Is the module published? (`spacetime publish`)
-3. Are client bindings generated? (`spacetime generate`)
-4. Check server logs for errors (`spacetime logs <db-name>`)
-5. **Is the reducer actually being called from the client?**
-
----
+See SKILL.md for CLI commands, deployment rules, and debugging checklist — those are project-specific (this is a **maincloud-only** project, no local server).
 
 ## Editing Behavior
 
@@ -197,6 +155,8 @@ These cause the most wasted time in this project. If you're working with reducer
 | `(ctx.db.Table as any).primaryKey.find({...})` | Define multi-col btree index, then `.filter([val1, val2])` | `.primaryKey` is undefined at runtime — PANIC |
 | `JSON.stringify({ id: row.id })` | Convert BigInt first: `{ id: row.id.toString() }` | "Do not know how to serialize a BigInt" |
 | `ScheduleAt.Time(timestamp)` | `ScheduleAt.time(timestamp)` (lowercase) | "ScheduleAt.Time is not a function" |
+| `{ microsSinceUnixEpoch: BigInt }` in insert/update | `new Timestamp(BigInt)` from `import { Timestamp } from 'spacetimedb'` | PANIC: "Cannot convert undefined to a BigInt" — SDK reads `__timestamp_micros_since_unix_epoch__` internally |
+| `null`/`undefined` for optional struct fields | Use sentinel values (e.g. `255` for u8, `new Timestamp(0n)` for timestamp) | PANIC — optional fields inside `t.object()` can't serialize null/undefined |
 | `ctx.db.foo.myIndexName.filter()` | Use exact name: `ctx.db.foo.my_index_name.filter()` | "Cannot read properties of undefined" |
 | `.iter()` in views | Use index lookups | Severe performance issues (re-evaluates on any change) |
 | `ctx.db` in procedures | `ctx.withTx(tx => tx.db...)` | Procedures need explicit transactions |
@@ -637,6 +597,33 @@ conn.subscriptionBuilder().subscribe(
 );
 conn.subscriptionBuilder().subscribe([tables.user, tables.message]);
 
+// Query builder filter operators: eq, ne, lt, gt, lte, gte
+conn.subscriptionBuilder().subscribe(
+  tables.user.where(r => r.level.gte(10).and(r.online.eq(true)))
+);
+
+// Composing filters — chainable methods or standalone imports
+import { and, or, not } from './module_bindings';
+tables.user.where(r => r.age.gte(18).and(r.age.lt(65)))   // chainable
+tables.user.where(r => and(r.age.gte(18), r.age.lt(65)))   // standalone
+tables.user.where(r => r.online.eq(true).or(r.name.eq('Admin')))
+tables.user.where(r => r.online.eq(true).not())
+
+// Semijoins — typed cross-table subscriptions (max 2 tables, join columns must be indexed)
+// leftSemijoin: returns rows from the LEFT table matching at least one row on the right
+conn.subscriptionBuilder().subscribe(
+  tables.player
+    .where(p => p.score.gte(1000))                                        // pre-join filter
+    .leftSemijoin(tables.playerLevel, (p, pl) => p.id.eq(pl.playerId))   // join predicate
+    .where(p => p.online.eq(true))                                        // post-join filter
+);
+// rightSemijoin: returns rows from the RIGHT table
+conn.subscriptionBuilder().subscribe(
+  tables.player
+    .rightSemijoin(tables.playerLevel, (p, pl) => p.id.eq(pl.playerId))
+    .where(pl => pl.level.gte(10))
+);
+
 // Handle subscription lifecycle
 conn.subscriptionBuilder()
   .onApplied(() => console.log('Initial data loaded'))
@@ -656,6 +643,26 @@ handle.unsubscribeThen((ctx) => {
   console.log('Unsubscribe confirmed');
 });
 ```
+
+### Subscription semantics (from official docs)
+
+**Ordering guarantees:**
+- Responses to client requests are sent back in the **same order** the requests were received
+- Each database transaction produces **exactly 0 or 1** update message per client
+- Updates reflect the exact committed transaction order
+
+**Atomic subscription initialization:**
+- Client receives exactly one `SubscribeApplied` message containing **all** initially matching rows from a consistent database state snapshot taken between two transactions
+- SDK locks the cache, inserts all rows atomically, then fires callbacks: `on_insert` per row, then `on_applied`
+
+**Cache consistency during callbacks:**
+- Callbacks are **deferred** until cache updates complete — they always observe fully consistent state
+- During callback execution, the client cache reflects the database state immediately **after** the triggering transaction
+- Cache reads are effectively free (local data)
+
+**Multiple active subscriptions:**
+- Updates across all active subscription sets are bundled into a single `TransactionUpdate` message
+- No duplicate row deliveries across overlapping subscriptions
 
 ### Private table + view pattern (RECOMMENDED)
 
@@ -682,22 +689,29 @@ export const PrivateData = table(
   }
 );
 
-// ❌ BAD — .iter() causes performance issues (re-evaluates on ANY row change)
-spacetimedb.view(
-  { name: 'my_data_slow', public: true },
-  t.array(PrivateData.rowType),
-  (ctx) => [...ctx.db.privateData.iter()]  // Works but VERY slow at scale
-);
-
-// ✅ GOOD — index lookup enables targeted invalidation (returns multiple rows)
+// ❌ BAD — not exported, view never registers (st_view empty, no client bindings)
 spacetimedb.view(
   { name: 'my_data', public: true },
   t.array(PrivateData.rowType),
   (ctx) => [...ctx.db.privateData.owner_id.filter(ctx.sender)]
 );
 
+// ❌ BAD — .iter() causes performance issues (re-evaluates on ANY row change)
+export const my_data_slow = spacetimedb.view(
+  { name: 'my_data_slow', public: true },
+  t.array(PrivateData.rowType),
+  (ctx) => [...ctx.db.privateData.iter()]  // Works but VERY slow at scale
+);
+
+// ✅ GOOD — exported + index lookup enables targeted invalidation
+export const my_data = spacetimedb.view(
+  { name: 'my_data', public: true },
+  t.array(PrivateData.rowType),
+  (ctx) => [...ctx.db.privateData.owner_id.filter(ctx.sender)]
+);
+
 // ✅ GOOD — t.option() for at-most-one row (e.g. "get my player")
-spacetimedb.view(
+export const my_player = spacetimedb.view(
   { name: 'my_player', public: true },
   t.option(Player.rowType),
   (ctx) => {
@@ -705,6 +719,7 @@ spacetimedb.view(
     return row ?? undefined;
   }
 );
+// Then in index.ts: export { my_data, my_player } from './views/myViews';
 ```
 
 ### Query builder view pattern (can scan)
@@ -712,7 +727,8 @@ spacetimedb.view(
 ```typescript
 // Query-builder views return a query; the SQL engine maintains the result incrementally.
 // This can scan the whole table if needed (e.g. leaderboard-style queries).
-spacetimedb.anonymousView(
+// MUST be exported — same rule as procedural views.
+export const top_players = spacetimedb.anonymousView(
   { name: 'top_players', public: true },
   t.array(Player.rowType),
   (ctx) =>
@@ -730,13 +746,14 @@ spacetimedb.anonymousView(
 ### ViewContext vs AnonymousViewContext
 ```typescript
 // ViewContext — has ctx.sender, result varies per user (computed separately per subscriber)
-spacetimedb.view({ name: 'my_items', public: true }, t.array(Item.rowType), (ctx) => {
+// MUST be exported + re-exported from index.ts
+export const my_items = spacetimedb.view({ name: 'my_items', public: true }, t.array(Item.rowType), (ctx) => {
   return [...ctx.db.item.owner_id.filter(ctx.sender)];
 });
 
 // AnonymousViewContext — no ctx.sender, same result for everyone
 // SpacetimeDB materializes the view ONCE and serves that result to all subscribers (much better perf)
-spacetimedb.anonymousView({ name: 'leaderboard', public: true }, t.array(LeaderboardRow), (ctx) => {
+export const leaderboard = spacetimedb.anonymousView({ name: 'leaderboard', public: true }, t.array(LeaderboardRow), (ctx) => {
   return [...ctx.db.player.by_score.filter(/* top scores */)];
 });
 ```
@@ -830,9 +847,18 @@ const {
 const conn = getConnection();
 ```
 
-### Identity comparison
+### Identity comparison and construction
 ```typescript
-const isOwner = row.ownerId.toHexString() === myIdentity.toHexString();
+// Compare two Identity objects
+const isOwner = row.ownerId.isEqual(myIdentity);
+
+// Construct Identity from hex string (server or client)
+import { Identity } from 'spacetimedb';
+const identity = Identity.fromString(hexString);  // throws if invalid (not 32 bytes)
+const identity2 = new Identity(hexString);         // equivalent
+
+// Use constructed Identity for PK/index lookups instead of iter scanning
+const mapping = ctx.db.UserIdentity.identity.find(identity);  // O(1)
 ```
 
 ### Table row callbacks (client-side)
@@ -995,19 +1021,9 @@ Default timeout: **30s**. Maximum ceiling: **180s** (3 minutes). These limits ap
 
 ---
 
-## 10) Project Structure
+## 10) Project Structure & Commands
 
-### Server (`spacetimedb/`)
-```
-src/schema.ts   → Imports all tables, exports spacetimedb via schema({...})
-src/index.ts    → Imports all reducers, lifecycle hooks (clientConnected/Disconnected)
-src/tables/     → One file per table (e.g. user.ts, lobby.ts)
-src/reducers/   → One file per domain (e.g. auth.ts, admin.ts)
-src/helpers/    → Shared utilities (e.g. ensurePermissions.ts, auditColumns.ts)
-src/types/      → enums.ts, structs.ts
-package.json    → { "type": "module", "dependencies": { "spacetimedb": "^2.0.0" } }
-tsconfig.json   → Standard config
-```
+See SKILL.md for project structure, CLI commands, and naming conventions — those are project-specific and always in context.
 
 ### Avoiding circular imports
 ```
@@ -1015,38 +1031,9 @@ schema.ts → defines tables AND exports spacetimedb
 index.ts  → imports spacetimedb from ./schema, defines reducers
 ```
 
-### Client (Next.js)
-```
-src/module_bindings/ → Generated (spacetime generate — don't edit!)
-app/                 → Next.js App Router pages
-components/features/ → Feature-based component organization
-lib/                 → Shared utilities and configuration
-```
-
 ---
 
-## 11) Commands
-
-```bash
-# Start local server
-spacetime start
-
-# Publish module
-spacetime publish <module-name> --module-path <backend-dir>
-
-# Clear database and republish
-spacetime publish <module-name> --clear-database -y --module-path <backend-dir>
-
-# Generate bindings
-spacetime generate --lang typescript --out-dir <client>/src/module_bindings --module-path <backend-dir>
-
-# View logs
-spacetime logs <module-name>
-```
-
----
-
-## 12) Hard Requirements
+## 11) Hard Requirements
 
 **TypeScript-specific:**
 

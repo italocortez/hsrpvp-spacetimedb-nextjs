@@ -20,7 +20,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/gsd-check-update.js"
+            "command": "node -e \"require(require('path').join(require('child_process').execSync('git rev-parse --show-toplevel',{encoding:'utf8'}).trim(),'.claude/hooks/gsd-check-update.js'))\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-session-state.sh"
           }
         ]
       }
@@ -31,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/security-pretool.js"
+            "command": "node -e \"require(require('path').join(require('child_process').execSync('git rev-parse --show-toplevel',{encoding:'utf8'}).trim(),'.claude/hooks/security-pretool.js'))\""
           }
         ]
       },
@@ -40,7 +48,37 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/gsd-prompt-guard.js",
+            "command": "node -e \"require(require('path').join(require('child_process').execSync('git rev-parse --show-toplevel',{encoding:'utf8'}).trim(),'.claude/hooks/gsd-prompt-guard.js'))\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-read-guard.js",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-workflow-guard.js",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-validate-commit.sh",
             "timeout": 5
           }
         ]
@@ -52,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/gsd-context-monitor.js",
+            "command": "node -e \"require(require('path').join(require('child_process').execSync('git rev-parse --show-toplevel',{encoding:'utf8'}).trim(),'.claude/hooks/gsd-context-monitor.js'))\"",
             "timeout": 10
           }
         ]
@@ -61,7 +99,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/post-test-index-reminder.js"
+            "command": "node -e \"require(require('path').join(require('child_process').execSync('git rev-parse --show-toplevel',{encoding:'utf8'}).trim(),'.claude/hooks/post-test-index-reminder.js'))\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gsd-phase-boundary.sh",
+            "timeout": 5
           }
         ]
       }
@@ -71,7 +119,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/security-stop.js"
+            "command": "node -e \"require(require('path').join(require('child_process').execSync('git rev-parse --show-toplevel',{encoding:'utf8'}).trim(),'.claude/hooks/security-stop.js'))\""
           }
         ]
       }

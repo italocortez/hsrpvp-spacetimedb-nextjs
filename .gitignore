@@ -16,6 +16,7 @@ test/data/
 # next.js
 /.next/
 /out/
+spacetimedb/.next/
 
 # production
 /build
@@ -23,6 +24,7 @@ test/data/
 # misc
 .DS_Store
 *.pem
+*.log
 
 # debug
 npm-debug.log*
@@ -42,8 +44,19 @@ next-env.d.ts
 
 #claude context
 .claude/settings.local.json
+.mcp.json
+excalidraw.log
+.claude/gsd-local-patches/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
 notes
 notes/
+/notes
+.next-call-count
 
 #quell
 quell.exe
+
+# playwright-cli (dev-env local: config is per-user, session artifacts are ephemeral)
+.playwright/
+.playwright-cli/
