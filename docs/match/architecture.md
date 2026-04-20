@@ -102,10 +102,11 @@ MatchResultGameHistory (id: u32 autoInc PK)
 | All 5 views public: true with server-side ctx.sender gating (matches 23 existing view_my_* conventions) (D-15) | Phase 15 execution | 2026-04-13 |
 | ROADMAP.md + REQUIREMENTS.md FOUND-02 canonicalised from 4 abbreviated names to 5 backing-table-aligned names (D-14) | Phase 15 execution | 2026-04-13 |
 | Cross-user isolation regression guard: test/backend/views/matchHistoryViews/isolation.test.ts with 18 assertions covering invariants I1 (userId match), I2 (subset of backing-table SQL), I3 (fresh user sees empty), I4 (no cross-user leakage) (D-20, FOUND-02 #4) | Phase 15 execution | 2026-04-13 |
+| Phase 16 route-group restructure (frontend-only — no view / table / reducer change): `(authenticated)/(game)/draft/[matchId]/` collapsed into `(authed)/(match)/draft/[matchId]/`. The `(match)` route-group nested under `(authed)` isolates match-scoped layouts from sibling authed routes; the public URL `/draft/{matchId}` is unchanged (route groups are URL-transparent). None of the `view_my_match_*` views, their backing tables, or their ctx.sender gating are affected — this doc's scope is backend views/tables only, and the route rename is cross-referenced here solely for the `Feature owner` line to reflect Phase 16's frontend touch | Phase 16 execution | 2026-04-18 |
 
 ---
 
-*Last updated: 2026-04-13*
-*Feature owner: Phase 15*
+*Last updated: 2026-04-18*
+*Feature owner: Phase 15 / Phase 16 (frontend route restructure only)*
 
 **Behavior specification** (acceptance scenarios, edge cases, phase history): See [contract.md](contract.md) -- to be authored post-execution per project rule.
