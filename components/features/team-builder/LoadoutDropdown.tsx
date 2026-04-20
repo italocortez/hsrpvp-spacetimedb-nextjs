@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import styles from "@/app/(public)/teambuilder/page.module.css";
+import styles from "./LoadoutDropdown.module.css";
 import { Loadout, TEAM_SIZE, TeamMember } from "./LoadoutManager";
 import { Character } from "../types/enums";
 import { DropdownIcon } from "@/components/globals/icons";
