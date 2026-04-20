@@ -1,0 +1,149 @@
+/* ═══════════════════════════════════════════════════════════════════
+   LoadoutDropdown — CSS Module
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rosters {
+  /* wrapper for select + dropdown */
+}
+
+.selectButton {
+  width: 100%;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.375rem;
+  color: rgb(159, 176, 195);
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 0.25rem;
+  background-color: rgb(55, 65, 81);
+  box-shadow: 1px 1px 4px 2px rgba(0, 0, 0, 0.16);
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+.selectButton:hover { background-color: rgb(51, 70, 94); }
+
+.rostersList {
+  position: absolute;
+  top: auto;
+  left: 0;
+  z-index: 100;
+  width: 100%;
+  max-width: 36rem;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  background-color: rgba(31, 31, 31, 0.8);
+  backdrop-filter: blur(0.375rem);
+  box-shadow: 1px 1px 4px 2px rgba(0, 0, 0, 0.33);
+}
+.rostersList::before {
+  content: '';
+  position: absolute;
+  top: -1rem;
+  left: 5rem;
+  z-index: 101;
+  width: 0;
+  height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-bottom: 16px solid rgb(31, 31, 31);
+}
+
+.dropdownHeader {
+  display: flex;
+  align-items: center;
+  padding: 1rem 2rem 0.5rem 2rem;
+}
+.dropdownHeader::before,
+.dropdownHeader::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background-color: rgb(75, 85, 99);
+}
+.dropdownTitle {
+  padding-inline: 1rem;
+  color: rgb(209, 213, 219);
+  font-size: 1.125rem;
+}
+
+.teamOption {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 3px solid rgba(155, 159, 170, 0.8);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition: all 300ms;
+}
+.teamOption:not(:disabled):hover {
+  background-color: rgba(75, 85, 99, 0.5);
+  border-color: rgb(203, 206, 211);
+  box-shadow: 0px 0px 4px 2px rgba(255, 255, 255, 0.66);
+}
+.teamOption:disabled {
+  filter: opacity(0.66) brightness(0.9);
+  cursor: default;
+}
+.teamOptionTitle {
+  padding-inline: 0.25rem;
+  margin-bottom: 0.5rem;
+  text-align: start;
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: bold;
+  user-select: none;
+}
+
+/* ── Mini-grid inside loadout dropdown ────────────────────────────── */
+.miniGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.miniSlot {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+.miniEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: rgb(107, 114, 128);
+  border: 2px dashed rgb(75, 85, 99);
+  background-color: rgb(55, 65, 81);
+  user-select: none;
+}
+.miniPortrait {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 200%;
+  width: 200%;
+  transform: translateY(-10%);
+  pointer-events: none;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+.miniElement {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  z-index: 10;
+  height: clamp(1.375rem, 2.4vw, 1.75rem);
+  width: clamp(1.375rem, 2.4vw, 1.75rem);
+  filter: drop-shadow(1px 1px 2px black);
+}
