@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import styles from "@/app/(public)/teambuilder/page.module.css";
+import styles from "./TeamRoster.module.css";
 import { Loadout, ResolvedTeamMember, TEAM_SIZE, TeamMember } from "./LoadoutManager";
 import { Character, Lightcone, RuleSet, Synergy } from "../types/enums";
 import { TeamSlot } from "./Teamslot";
@@ -32,6 +32,7 @@ export function TeamRoster({
 }: TeamRosterProps) {
 	const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 	const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+	const [isRosterHovered, setIsRosterHovered] = useState(false);
 
 	const handleDragStart = useCallback((index: number, e: React.DragEvent) => {
 		setDraggedIndex(index);
@@ -70,7 +71,11 @@ export function TeamRoster({
 	);
 
 	return (
-		<div className={`${styles.roster} Box`}>
+		<div
+			className={`${styles.roster} Box`}
+			onMouseEnter={() => setIsRosterHovered(true)}
+			onMouseLeave={() => setIsRosterHovered(false)}
+		>
 			<div className={styles.charactersContainer}>
 				{Array.from({ length: TEAM_SIZE }, (_, index) => {
 					const member = resolvedTeam[index];
@@ -100,7 +105,7 @@ export function TeamRoster({
 							onDragLeave={handleDragLeave}
 							onDragEnd={handleDragEnd}
 							onDrop={handleDrop}
-							isRosterHovered={false}
+							isRosterHovered={isRosterHovered}
 						/>
 					);
 				})}
