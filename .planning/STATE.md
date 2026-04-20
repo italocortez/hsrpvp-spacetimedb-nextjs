@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 16 (VERIFIED + SECURED — closed 2026-04-19)
-current_plan: 6 (ALL Phase 16 plans 01–06 complete)
+current_phase: 16.1
+current_plan: 2
 status: executing
-stopped_at: Phase 16.1 context gathered
-last_updated: "2026-04-20T01:41:31.895Z"
+stopped_at: Phase 16.1 Plan 01 complete (Teamslot co-located, D-11 approved)
+last_updated: "2026-04-20T03:20:00.000Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 33
   completed_phases: 7
   total_plans: 53
-  completed_plans: 46
-  percent: 87
+  completed_plans: 47
+  percent: 89
 ---
 
 # Session State
@@ -23,17 +23,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 16 — route-global-foundation
+**Current focus:** Phase 16.1 — css-module-hygiene
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 16 (VERIFIED + SECURED — closed 2026-04-19)
-**Current plan:** 6 (ALL Phase 16 plans 01–06 complete)
-**Status:** Ready to execute
+**Current phase:** 16.1
+**Current plan:** 2
+**Status:** Executing Phase 16.1
 **Last activity:** 2026-04-20
 
-Progress: [██████████] 46/46 plans (Phase 16 Plans 01 + 02 + 03 + 04 + 05 + 06 COMPLETE; Phase 16 DONE)
+Progress: [█████████░] 47/53 plans (89%) — Phase 16.1 Plan 01 complete (Teamslot co-located); next: Plan 02 TeamRoster
 
 ## Previous Milestone
 
@@ -152,6 +152,10 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase ?]: [Phase 16-06]: docs/frontend/component-hygiene.md ships with 5 R8 rules + Good/Bad examples (315 LOC). Rule 3 intentionally tool-agnostic per D-25 — CSS Modules AND Tailwind examples both shown. Zero PR-template infrastructure (D-24). Phase History signed Phase 16 execution. Commit f4f999e.
 - [Phase ?]: [Phase 16-06]: docs/auth/architecture.md Subscription Lifecycle expanded to 3-gate privacy model (projection + subscription + route-group-mount). Stage 1 → AuthProvider (D-03); Stage 2 → (authed)/layout.tsx (D-07). Middleware UX-only, NOT an auth trust boundary. Regression Guard subsection added. Phase History append-only. Commit 93da7ca.
 - [Phase ?]: [Phase 16-06]: Pattern — Tool-agnostic R8 rule framing. When a rule names a specific tool (Tailwind), rewriting it mechanism-neutral and showing examples in BOTH the current tool AND the alternative (CSS Modules) is the structural hedge against future tool swaps. Discipline survives the stack change.
+- [Phase 16.1-01]: Teamslot CSS co-located into sibling `components/features/team-builder/Teamslot.module.css` (183 LOC); `@keyframes fade-in` moved with its `.imposition` consumer (D-03); responsive `@media` blocks split per component ownership (D-04); new `.clearButtonVisible` class + `isRosterHovered: boolean` non-optional prop replace the removed `.roster:hover .clearButton` cross-file cascade (D-06). TeamRoster.tsx stubbed with `isRosterHovered={false}` until Plan 02 wires the real hover state. page.module.css thinned by 170 lines. 2 atomic commits: 218a031 (create sibling module) + ef4fbec (swap import + thin page module). D-11 visual verification approved. Zero deviations.
+- [Phase 16.1-01]: Pattern — atomic "create sibling → swap import + delete from page.module.css" in two commits, not three. Task 2 bundles the page.module.css rule deletion with the import swap so there is no intermediate commit where Teamslot.tsx references classes still alive in two files (double-specificity risk). The sibling module exists on its own in Commit 1; Commit 2 is a cutover that leaves no redundant rules behind.
+- [Phase 16.1-01]: Pattern — keyframe co-location is a correctness requirement, not a style preference. CSS Modules scope `@keyframes` names per file; an animation reference from `Teamslot.module.css` to a keyframe defined in `page.module.css` resolves silently to "no animation" with no build-time warning. Always keep `@keyframes X` in the same module as its consumer.
+- [Phase 16.1-01]: Pattern — non-optional prop for cross-file-cascade replacement. When removing a `.parent:hover .child {}` cascade and replacing with a JS-driven className, the replacement prop (here `isRosterHovered: boolean`) must be non-optional so TypeScript forces every call site to pass it. A default value would let future call sites drift out of compliance silently and re-introduce the "clearButton never shows on roster hover" class of bug.
 
 ### Roadmap Evolution
 
@@ -188,7 +192,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-04-20T00:46:37.549Z
-Stopped at: Phase 16.1 context gathered
-Resume file: .planning/phases/16.1-css-module-hygiene/16.1-CONTEXT.md
-Next action: Start Phase 16.1 (CSS module hygiene) — retroactive R8 enforcement surfaced during Phase 16 UAT Test 7. Run `/gsd-discuss-phase 16.1` or `/gsd-plan-phase 16.1`. Plan 16.1 unblocks Phase 17 (Cost tables — data).
+Last session: 2026-04-20T03:20:00.000Z
+Stopped at: Phase 16.1 Plan 01 complete (Teamslot co-located, D-11 approved)
+Resume file: .planning/phases/16.1-css-module-hygiene/16.1-02-PLAN.md
+Next action: Execute Phase 16.1 Plan 02 — TeamRoster CSS co-location + wire real `isRosterHovered` state via `onMouseEnter`/`onMouseLeave` (replaces the Plan 01 `isRosterHovered={false}` stub).

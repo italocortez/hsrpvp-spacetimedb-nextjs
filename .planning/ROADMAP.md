@@ -262,7 +262,7 @@ Plans:
   3. `npm run build` produces no new warnings; bundle size stays within ±5% of Phase 16 baseline.
   4. Navigating to `/costs` and `/teambuilder` in a prod build (`npm run start`) produces no "preload … not used" warning in the console.
 **Plans**: 7 plans
-- [ ] 16.1-01-PLAN.md — Co-locate Teamslot styles + @keyframes fade-in + isRosterHovered prop stub (Wave 1)
+- [x] 16.1-01-PLAN.md — Co-locate Teamslot styles + @keyframes fade-in + isRosterHovered prop stub (Wave 1)
 - [ ] 16.1-02-PLAN.md — Co-locate TeamRoster styles + wire onMouseEnter/Leave hover state (Wave 2)
 - [ ] 16.1-03-PLAN.md — Co-locate SynergyDisplay styles (Wave 3)
 - [ ] 16.1-04-PLAN.md — Co-locate LoadoutDropdown styles (Wave 4)
@@ -582,7 +582,7 @@ Plans:
 | 15.4. Cost-table draftMode restructure | 6/6 | Complete | 2026-04-14 |
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
-| 16.1. CSS module hygiene | 0/7 | Not started | - |
+| 16.1. CSS module hygiene | 1/7 | In Progress|  |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |
