@@ -45,6 +45,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 - [x] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views (completed 2026-04-13)
 - [x] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes (completed 2026-04-19)
 - [x] **Phase 16.1: CSS module hygiene (Plans 01-07 co-location + Plan 08 Link prefetch policy)** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement) (completed 2026-04-20)
+- [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
 - [ ] **Phase 19: Team builder — data** — Team composition state, cost budget, synergy compute, `team_builder_draft` backend + reducers
@@ -271,6 +272,16 @@ Plans:
 - [x] 16.1-07-PLAN.md — Sweep dead rules from page.module.css + R8 Rule 6 doc + bundle gate (Wave 7)
 - [x] 16.1-08 (improvised during D-11 verify, no PLAN.md) — Disable Next.js <Link> prefetch on heavy NavBar routes via consolidated NAV_ITEMS object; closes ROADMAP success criterion 4 (Firefox preload warning on /)
 **UI hint**: no (pure refactor, no visual change)
+
+### Phase 16.2: Home / Landing Page (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16.2 to break down)
 
 ### Phase 17: Cost tables — data
 **Goal**: Cost tables page renders character/lightcone/synergy cost rows sourced from the global public subscriptions; portrait assets warm in cache before the user interacts.
