@@ -14,21 +14,29 @@ interface NavBarProps {
   className?: string;
 }
 
-// Phase 16.1 Plan 08: single source of truth for routes whose CSS/JS
-// chunks are too large to warm on every homepage load. The staged SpacetimeDB
-// subscription already gates render on Stage 2, so the ~100ms first-nav fetch
-// is absorbed into the existing loading window. Routes NOT in this set keep
-// Next.js's default prefetch behavior (light chunks, quick back-and-forth).
-const HEAVY_ROUTES = new Set<string>(['/teambuilder', '/costs', '/profile', '/admin-view']);
-const prefetchFor = (href: string) => (HEAVY_ROUTES.has(href) ? false : undefined);
-
-const NAV_ITEMS = [
-  { label: 'LOBBIES', href: '/lobby' },
-  { label: 'TEAM BUILDER', href: '/teambuilder' },
-  { label: 'COST TABLES', href: '/costs' },
-  { label: 'TOURNAMENTS', href: null },   // placeholder per D-11
-  { label: 'EVENTS', href: null },         // placeholder per D-11
-] as const;
+// Phase 16.1 Plan 08: every route the NavBar knows about, with prefetch
+// weight. `heavy: true` disables Next.js <Link> prefetch so the homepage
+// doesn't warm large CSS/JS chunks on first paint; the staged SpacetimeDB
+// Stage 2 subscription absorbs the ~100ms first-nav fetch.
+const NAV_ITEMS = {
+  // Static NavBar-owned tabs (rendered in the center scroll row).
+  // Dynamic lobby tabs (e.g. /lobby/[id]) are appended at render time
+  // from useLobbies() once lobby joining lands — they carry a close
+  // affordance and share the `lobbyInstance` prefetch policy below.
+  staticTabs: [
+    { label: 'LOBBIES',      href: '/lobby',       heavy: false },
+    { label: 'TEAM BUILDER', href: '/teambuilder', heavy: true  },
+    { label: 'COST TABLES',  href: '/costs',       heavy: true  },
+    { label: 'TOURNAMENTS',  href: null,           heavy: false }, // placeholder per D-11
+    { label: 'EVENTS',       href: null,           heavy: false }, // placeholder per D-11
+  ],
+  // Right-section auth-gated Links.
+  profile:       { href: '/profile',    heavy: true },
+  adminView:     { href: '/admin-view', heavy: true },
+  // Prefetch policy shared by all runtime lobby tabs (/lobby/[id]).
+  // Consumed by the dynamic-tab render path once lobbies are implemented.
+  lobbyInstance: { heavy: true },
+} as const;
 
 export const NavBar = ({ className }: NavBarProps) => {
   const pathname = usePathname();
@@ -104,14 +112,14 @@ export const NavBar = ({ className }: NavBarProps) => {
 
       {/* Center: Scrollable nav items */}
       <div className={styles.centerNav} ref={scrollRef}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.staticTabs.map((item) => {
           const isSelected = item.href ? pathname.startsWith(item.href) : false;
           if (item.href) {
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                prefetch={prefetchFor(item.href)}
+                prefetch={item.heavy ? false : undefined}
                 className={`${styles.navItem}${isSelected ? ` ${styles.selected}` : ''}`}
               >
                 <span className={styles.navItemBorder} />
@@ -149,7 +157,7 @@ export const NavBar = ({ className }: NavBarProps) => {
       <div className={styles.rightSection}>
         {/* Profile link for authenticated users */}
         {isAuthenticated && (
-          <Link href="/profile" prefetch={prefetchFor('/profile')} className={styles.iconButton} title="View Profile">
+          <Link href="/profile" prefetch={NAV_ITEMS.profile.heavy ? false : undefined} className={styles.iconButton} title="View Profile">
             <svg
               width={20}
               height={20}
@@ -168,19 +176,19 @@ export const NavBar = ({ className }: NavBarProps) => {
 
         {/* Admin link */}
         {isAdmin && (
-          <Link href="/admin-view" prefetch={prefetchFor('/admin-view')} className={styles.iconButton} title="Admin Panel">
+          <Link href="/admin-view" prefetch={NAV_ITEMS.adminView.heavy ? false : undefined} className={styles.iconButton} title="Admin Panel">
             <GearIcon size={20} color="currentColor" />
           </Link>
         )}
 
         {/* Admin panel link */}
-        <Link href="/admin-view" prefetch={prefetchFor('/admin-view')} className={`${styles.iconButton} ${styles.gearButton}`} aria-label="Admin Panel">
+        <Link href="/admin-view" prefetch={NAV_ITEMS.adminView.heavy ? false : undefined} className={`${styles.iconButton} ${styles.gearButton}`} aria-label="Admin Panel">
           <GearIcon size={20} color="currentColor" />
         </Link>
 
         {/* Auth: user display, loading, or login CTA */}
         {isAuthenticated ? (
-          <Link href="/profile" prefetch={prefetchFor('/profile')} className={styles.userInfo}>
+          <Link href="/profile" prefetch={NAV_ITEMS.profile.heavy ? false : undefined} className={styles.userInfo}>
             {user?.displayName}
           </Link>
         ) : (isLoadingData || isConnecting) ? (
