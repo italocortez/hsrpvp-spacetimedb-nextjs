@@ -157,7 +157,7 @@ export const NavBar = ({ className }: NavBarProps) => {
       <div className={styles.rightSection}>
         {/* Profile link for authenticated users */}
         {isAuthenticated && (
-          <Link href="/profile" prefetch={NAV_ITEMS.profile.heavy ? false : undefined} className={styles.iconButton} title="View Profile">
+          <Link href={NAV_ITEMS.profile.href} prefetch={NAV_ITEMS.profile.heavy ? false : undefined} className={styles.iconButton} title="View Profile">
             <svg
               width={20}
               height={20}
@@ -176,19 +176,19 @@ export const NavBar = ({ className }: NavBarProps) => {
 
         {/* Admin link */}
         {isAdmin && (
-          <Link href="/admin-view" prefetch={NAV_ITEMS.adminView.heavy ? false : undefined} className={styles.iconButton} title="Admin Panel">
+          <Link href={NAV_ITEMS.adminView.href} prefetch={NAV_ITEMS.adminView.heavy ? false : undefined} className={styles.iconButton} title="Admin Panel">
             <GearIcon size={20} color="currentColor" />
           </Link>
         )}
 
         {/* Admin panel link */}
-        <Link href="/admin-view" prefetch={NAV_ITEMS.adminView.heavy ? false : undefined} className={`${styles.iconButton} ${styles.gearButton}`} aria-label="Admin Panel">
+        <Link href={NAV_ITEMS.adminView.href} prefetch={NAV_ITEMS.adminView.heavy ? false : undefined} className={`${styles.iconButton} ${styles.gearButton}`} aria-label="Admin Panel">
           <GearIcon size={20} color="currentColor" />
         </Link>
 
         {/* Auth: user display, loading, or login CTA */}
         {isAuthenticated ? (
-          <Link href="/profile" prefetch={NAV_ITEMS.profile.heavy ? false : undefined} className={styles.userInfo}>
+          <Link href={NAV_ITEMS.profile.href} prefetch={NAV_ITEMS.profile.heavy ? false : undefined} className={styles.userInfo}>
             {user?.displayName}
           </Link>
         ) : (isLoadingData || isConnecting) ? (
