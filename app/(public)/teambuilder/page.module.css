@@ -1,8 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════
    TeamBuilder — CSS Module
-   
-   Converted from TeamTest.css.
-   Removed: cost-breakdown chart, notes box, commented-out code.
+
+   Page-layout-only module. Component-level styles live in co-located
+   sibling modules under components/features/team-builder/.
+   Phase 16.1 swept: only rules applied in page.tsx itself remain.
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Root ─────────────────────────────────────────────────────────── */
@@ -10,95 +11,4 @@
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-}
-.main {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   Confirmation Modal
-   ═══════════════════════════════════════════════════════════════════ */
-
-.confirmationOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.66);
-  backdrop-filter: blur(0.375rem);
-}
-.confirmationModal {
-  width: min(90%, 30rem);
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.5rem;
-  background-color: rgb(31, 41, 55);
-  border: 1px solid rgb(55, 65, 81);
-  border-radius: 0.5rem;
-  box-shadow: 1px 1px 4px 2px rgba(0, 0, 0, 0.5);
-  animation: grow-fade-in 300ms ease;
-}
-.confirmationTitle {
-  font-size: 1.375rem;
-  font-weight: bold;
-}
-.confirmationMessage {
-  color: rgb(209, 213, 219);
-}
-.confirmationActions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-}
-.confirmationCancel,
-.confirmationConfirm {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  font-weight: 500;
-  border: none;
-  border-radius: 0.25rem;
-  box-shadow: 1px 1px 4px 2px rgba(0, 0, 0, 0.16);
-  cursor: pointer;
-  color: inherit;
-  transition: all 200ms ease;
-}
-.confirmationCancel {
-  background-color: rgb(60, 70, 86);
-}
-.confirmationCancel:hover { background-color: rgb(75, 85, 99); }
-.confirmationConfirm {
-  background-color: rgb(8, 145, 178);
-}
-.confirmationConfirm:hover { background-color: rgb(6, 126, 154); }
-.dangerous {
-  background-color: rgb(220, 38, 38) !important;
-}
-.dangerous:hover { background-color: rgb(185, 28, 28) !important; }
-
-/* ═══════════════════════════════════════════════════════════════════
-   Keyframes
-   ═══════════════════════════════════════════════════════════════════ */
-
-@keyframes grow-fade-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
