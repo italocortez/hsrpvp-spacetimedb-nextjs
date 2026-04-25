@@ -137,7 +137,7 @@ Task(
   prompt="You are the gsd-intel-updater agent. Your job is to analyze this codebase and write/update intelligence files in .planning/intel/.
 
 Project root: ${CWD}
-Prefer: node .claude/get-shit-done/bin/gsd-sdk.cjs query <subcommand> (installed gsd-sdk on PATH). Legacy: node D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/bin/gsd-tools.cjs
+Prefer: node .claude/get-shit-done/bin/gsd-sdk.cjs query <subcommand> (installed node .claude/get-shit-done/bin/gsd-sdk.cjs on PATH). Legacy: node D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/bin/gsd-tools.cjs
 
 Instructions:
 1. Analyze the codebase structure, dependencies, APIs, and architecture

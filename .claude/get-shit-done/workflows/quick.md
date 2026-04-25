@@ -125,8 +125,8 @@ If `$VALIDATE_MODE` only:
 **Step 2: Initialize**
 
 ```bash
-if ! command -v gsd-sdk &>/dev/null; then
-  echo "⚠ gsd-sdk not found in PATH — /gsd-quick requires it."
+if ! command -v node .claude/get-shit-done/bin/gsd-sdk.cjs &>/dev/null; then
+  echo "⚠ node .claude/get-shit-done/bin/gsd-sdk.cjs not found in PATH — /gsd-quick requires it."
   echo ""
   echo "Install the GSD SDK:"
   echo "  npm install -g @gsd-build/sdk"

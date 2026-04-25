@@ -1,7 +1,7 @@
 <purpose>
 Orchestrate the full developer profiling flow: consent, session analysis (or questionnaire fallback), profile generation, result display, and artifact creation.
 
-This workflow wires Phase 1 (session pipeline) and Phase 2 (profiling engine) into a cohesive user-facing experience. All heavy lifting is done by existing `gsd-sdk query` handlers (with legacy `gsd-tools.cjs` parity where needed) and the gsd-user-profiler agent -- this workflow orchestrates the sequence, handles branching, and provides the UX.
+This workflow wires Phase 1 (session pipeline) and Phase 2 (profiling engine) into a cohesive user-facing experience. All heavy lifting is done by existing `node .claude/get-shit-done/bin/gsd-sdk.cjs query` handlers (with legacy `gsd-tools.cjs` parity where needed) and the gsd-user-profiler agent -- this workflow orchestrates the sequence, handles branching, and provides the UX.
 </purpose>
 
 <required_reading>
@@ -371,7 +371,7 @@ node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-claude-profile --analy
 
 Display: "✓ Added profile section to D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/CLAUDE.md"
 
-**Error handling:** If any `gsd-sdk query` or gsd-tools.cjs call fails, display the error message and use AskUserQuestion to offer "Retry" or "Skip this artifact". On retry, re-run the command. On skip, continue to next artifact.
+**Error handling:** If any `node .claude/get-shit-done/bin/gsd-sdk.cjs query` or gsd-tools.cjs call fails, display the error message and use AskUserQuestion to offer "Retry" or "Skip this artifact". On retry, re-run the command. On skip, continue to next artifact.
 
 ---
 

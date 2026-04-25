@@ -872,7 +872,7 @@ Query the graph for phase-relevant dependency context (single query per D-06):
 node "D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/bin/gsd-tools.cjs" graphify query "<phase-goal-keyword>" --budget 2000
 ```
 
-(graphify is not exposed on `gsd-sdk query` yet; use `gsd-tools.cjs` for graphify only.)
+(graphify is not exposed on `node .claude/get-shit-done/bin/gsd-sdk.cjs query` yet; use `gsd-tools.cjs` for graphify only.)
 
 Use the keyword that best captures the phase goal. Examples:
 - Phase "User Authentication" -> query term "auth"
@@ -1080,7 +1080,7 @@ Include all frontmatter fields.
 </step>
 
 <step name="validate_plan">
-Validate each created PLAN.md using `gsd-sdk query`:
+Validate each created PLAN.md using `node .claude/get-shit-done/bin/gsd-sdk.cjs query`:
 
 ```bash
 VALID=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query frontmatter.validate "$PLAN_PATH" --schema plan)

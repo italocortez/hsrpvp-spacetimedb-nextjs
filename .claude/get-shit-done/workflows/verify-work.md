@@ -463,7 +463,7 @@ All tests passed. Phase {phase} marked complete.
 <step name="scan_phase_artifacts">
 Run phase artifact scan to surface any open items before marking phase verified:
 
-`audit-open` is CJS-only until registered on `gsd-sdk query`:
+`audit-open` is CJS-only until registered on `node .claude/get-shit-done/bin/gsd-sdk.cjs query`:
 
 ```bash
 node "D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/bin/gsd-tools.cjs" audit-open --json 2>/dev/null
@@ -545,9 +545,9 @@ Fall through to transition.md. Do NOT block.
 **4. If TOUCHED_FEATURES is non-empty, loop over each feature and present:**
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  GSD ► DOC UPDATE CHECKPOINT — {feature}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Phase {PHASE} touched these paths mapped to `docs/{feature}/`:
   {list of matched CHANGED_PATHS, max 15, "…" if more}

@@ -53,7 +53,7 @@ Extract **phase goal** from ROADMAP.md (the outcome to verify, not tasks), **req
 <step name="establish_must_haves">
 **Option A: Must-haves in PLAN frontmatter**
 
-Use `gsd-sdk query` verify handlers (or legacy gsd-tools) to extract must_haves from each PLAN:
+Use `node .claude/get-shit-done/bin/gsd-sdk.cjs query` verify handlers (or legacy gsd-tools) to extract must_haves from each PLAN:
 
 ```bash
 for plan in "$PHASE_DIR"/*-PLAN.md; do

@@ -200,7 +200,7 @@ overrides:
 
 ## Step 4: Verify Artifacts (Three Levels)
 
-Use `gsd-sdk query` for artifact verification against must_haves in PLAN frontmatter:
+Use `node .claude/get-shit-done/bin/gsd-sdk.cjs query` for artifact verification against must_haves in PLAN frontmatter:
 
 ```bash
 ARTIFACT_RESULT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query verify.artifacts "$PLAN_PATH")
@@ -306,7 +306,7 @@ grep -r -A 3 "<${COMPONENT_NAME}" "${search_path:-src/}" --include="*.tsx" 2>/de
 
 Key links are critical connections. If broken, the goal fails even with all artifacts present.
 
-Use `gsd-sdk query` for key link verification against must_haves in PLAN frontmatter:
+Use `node .claude/get-shit-done/bin/gsd-sdk.cjs query` for key link verification against must_haves in PLAN frontmatter:
 
 ```bash
 LINKS_RESULT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query verify.key-links "$PLAN_PATH")

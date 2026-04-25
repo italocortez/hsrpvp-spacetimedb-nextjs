@@ -40,7 +40,7 @@ When a milestone completes:
 <step name="pre_close_artifact_audit">
 Before proceeding with milestone close, run the comprehensive open artifact audit.
 
-`audit-open` is not registered on `gsd-sdk query` yet; use the installed CJS CLI:
+`audit-open` is not registered on `node .claude/get-shit-done/bin/gsd-sdk.cjs query` yet; use the installed CJS CLI:
 
 ```bash
 node "D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/bin/gsd-tools.cjs" audit-open 2>/dev/null

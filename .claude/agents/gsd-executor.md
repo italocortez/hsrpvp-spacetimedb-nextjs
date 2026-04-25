@@ -509,7 +509,7 @@ Do NOT skip. Do NOT proceed to state updates if self-check fails.
 </self_check>
 
 <state_updates>
-After SUMMARY.md, update STATE.md using `gsd-sdk query` state handlers (positional args; see `sdk/src/query/QUERY-HANDLERS.md`):
+After SUMMARY.md, update STATE.md using `node .claude/get-shit-done/bin/gsd-sdk.cjs query` state handlers (positional args; see `sdk/src/query/QUERY-HANDLERS.md`):
 
 ```bash
 # Advance plan counter (handles edge cases automatically)

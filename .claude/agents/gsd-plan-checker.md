@@ -650,7 +650,7 @@ ls "$phase_dir"/*-BRIEF.md 2>/dev/null
 
 ## Step 2: Load All Plans
 
-Use `gsd-sdk query` to validate plan structure:
+Use `node .claude/get-shit-done/bin/gsd-sdk.cjs query` to validate plan structure:
 
 ```bash
 for plan in "$PHASE_DIR"/*-PLAN.md; do
@@ -670,7 +670,7 @@ Map errors/warnings to verification dimensions:
 
 ## Step 3: Parse must_haves
 
-Extract must_haves from each plan using `gsd-sdk query`:
+Extract must_haves from each plan using `node .claude/get-shit-done/bin/gsd-sdk.cjs query`:
 
 ```bash
 MUST_HAVES=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query frontmatter.get "$PLAN_PATH" must_haves)
