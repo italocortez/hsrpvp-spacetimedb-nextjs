@@ -125,8 +125,8 @@ If `$VALIDATE_MODE` only:
 **Step 2: Initialize**
 
 ```bash
-if ! command -v node .claude/get-shit-done/bin/gsd-sdk.cjs &>/dev/null; then
-  echo "⚠ node .claude/get-shit-done/bin/gsd-sdk.cjs not found in PATH — /gsd-quick requires it."
+if ! command -v gsd-sdk &>/dev/null; then
+  echo "⚠ gsd-sdk not found in PATH — /gsd-quick requires it."
   echo ""
   echo "Install the GSD SDK:"
   echo "  npm install -g @gsd-build/sdk"
@@ -140,10 +140,10 @@ fi
 ```bash
 INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.quick "$DESCRIPTION")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
-AGENT_SKILLS_PLANNER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-planner 2>/dev/null)
-AGENT_SKILLS_EXECUTOR=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-executor 2>/dev/null)
-AGENT_SKILLS_CHECKER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-checker 2>/dev/null)
-AGENT_SKILLS_VERIFIER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-verifier 2>/dev/null)
+AGENT_SKILLS_PLANNER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-planner)
+AGENT_SKILLS_EXECUTOR=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-executor)
+AGENT_SKILLS_CHECKER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-plan-checker)
+AGENT_SKILLS_VERIFIER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-verifier)
 ```
 
 Parse JSON for: `planner_model`, `executor_model`, `checker_model`, `verifier_model`, `commit_docs`, `branch_name`, `quick_id`, `slug`, `date`, `timestamp`, `quick_dir`, `task_dir`, `roadmap_exists`, `planning_exists`.
@@ -567,6 +567,24 @@ Offer: 1) Force proceed, 2) Abort
 
 ---
 
+**Step 5.6: Pre-dispatch plan commit (worktree mode only)**
+
+When `USE_WORKTREES !== "false"`, commit PLAN.md to the current branch **before** spawning the executor. This ensures the worktree inherits PLAN.md at its branch HEAD so the executor can read it via a worktree-rooted path — avoiding the main-repo path priming that triggers CC #36182 path-resolution drift.
+
+Skip this step entirely if `USE_WORKTREES === "false"` (non-worktree mode: PLAN.md is committed in Step 8 as usual).
+
+```bash
+if [ "${USE_WORKTREES}" != "false" ]; then
+  COMMIT_DOCS=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get commit_docs 2>/dev/null || echo "true")
+  if [ "$COMMIT_DOCS" != "false" ]; then
+    git add "${QUICK_DIR}/${quick_id}-PLAN.md"
+    git commit --no-verify -m "docs(${quick_id}): pre-dispatch plan for ${DESCRIPTION}" -- "${QUICK_DIR}/${quick_id}-PLAN.md" || true
+  fi
+fi
+```
+
+---
+
 **Step 6: Spawn executor**
 
 Capture current HEAD before spawning (used for worktree branch check):
@@ -682,7 +700,19 @@ After executor returns:
          git merge "$WT_BRANCH" --no-edit -m "chore: merge rescued SUMMARY.md from executor worktree ($WT_BRANCH)" 2>/dev/null || true
        fi
 
-       git worktree remove "$WT" --force 2>/dev/null || true
+       if ! git worktree remove "$WT" --force; then
+         WT_NAME=$(basename "$WT")
+         if [ -f ".git/worktrees/${WT_NAME}/locked" ]; then
+           echo "⚠ Worktree $WT is locked — attempting to unlock and retry"
+           git worktree unlock "$WT" 2>/dev/null || true
+           if ! git worktree remove "$WT" --force; then
+             echo "⚠ Residual worktree at $WT — manual cleanup required after session exits:"
+             echo "    git worktree unlock \"$WT\" && git worktree remove \"$WT\" --force && git branch -D \"$WT_BRANCH\""
+           fi
+         else
+           echo "⚠ Residual worktree at $WT (remove failed) — investigate manually"
+         fi
+       fi
        git branch -D "$WT_BRANCH" 2>/dev/null || true
      fi
    done
@@ -862,6 +892,7 @@ Build file list:
 - If `$DISCUSS_MODE` and context file exists: `${QUICK_DIR}/${quick_id}-CONTEXT.md`
 - If `$RESEARCH_MODE` and research file exists: `${QUICK_DIR}/${quick_id}-RESEARCH.md`
 - If `$VALIDATE_MODE` and verification file exists: `${QUICK_DIR}/${quick_id}-VERIFICATION.md`
+- If `${QUICK_DIR}/${quick_id}-deferred-items.md` exists: `${QUICK_DIR}/${quick_id}-deferred-items.md`
 
 ```bash
 # Explicitly stage all artifacts before commit — PLAN.md may be untracked

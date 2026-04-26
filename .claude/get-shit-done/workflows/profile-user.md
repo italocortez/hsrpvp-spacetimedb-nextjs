@@ -9,7 +9,7 @@ Read all files referenced by the invoking prompt's execution_context before star
 
 Key references:
 - @D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/references/ui-brand.md (display patterns)
-- @D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/agents/gsd-user-profiler.md (profiler agent definition)
+- @D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/agents/gsd-user-profiler.md (profiler agent definition)
 - @D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/references/user-profiling.md (profiling reference doc)
 </required_reading>
 
@@ -271,7 +271,7 @@ Write updated analysis JSON back to `$ANALYSIS_PATH`.
 Display: "◆ Writing profile..."
 
 ```bash
-node .claude/get-shit-done/bin/gsd-sdk.cjs query write-profile --input "$ANALYSIS_PATH" --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query write-profile --input "$ANALYSIS_PATH" --json
 ```
 
 Display: "✓ Profile written to D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/USER-PROFILE.md"
@@ -350,7 +350,7 @@ Generate selected artifacts sequentially (file I/O is fast, no benefit from para
 **For /gsd-dev-preferences (if selected):**
 
 ```bash
-node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-dev-preferences --analysis "$ANALYSIS_PATH" --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-dev-preferences --analysis "$ANALYSIS_PATH" --json
 ```
 
 Display: "✓ Generated /gsd-dev-preferences at D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/commands/gsd/dev-preferences.md"
@@ -358,7 +358,7 @@ Display: "✓ Generated /gsd-dev-preferences at D:/GitsWork/hsrpvp-spacetimedb-n
 **For CLAUDE.md profile section (if selected):**
 
 ```bash
-node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-claude-profile --analysis "$ANALYSIS_PATH" --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-claude-profile --analysis "$ANALYSIS_PATH" --json
 ```
 
 Display: "✓ Added profile section to CLAUDE.md"
@@ -366,7 +366,7 @@ Display: "✓ Added profile section to CLAUDE.md"
 **For Global CLAUDE.md (if selected):**
 
 ```bash
-node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-claude-profile --analysis "$ANALYSIS_PATH" --global --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query generate-claude-profile --analysis "$ANALYSIS_PATH" --global --json
 ```
 
 Display: "✓ Added profile section to D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/CLAUDE.md"

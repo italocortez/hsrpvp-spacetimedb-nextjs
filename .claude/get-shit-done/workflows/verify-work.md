@@ -32,8 +32,8 @@ If $ARGUMENTS contains a phase number, load context:
 ```bash
 INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.verify-work "${PHASE_ARG}")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
-AGENT_SKILLS_PLANNER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-planner 2>/dev/null)
-AGENT_SKILLS_CHECKER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-checker 2>/dev/null)
+AGENT_SKILLS_PLANNER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-planner)
+AGENT_SKILLS_CHECKER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-plan-checker)
 ```
 
 Parse JSON for: `planner_model`, `checker_model`, `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `has_verification`, `uat_path`.
@@ -466,7 +466,7 @@ Run phase artifact scan to surface any open items before marking phase verified:
 `audit-open` is CJS-only until registered on `node .claude/get-shit-done/bin/gsd-sdk.cjs query`:
 
 ```bash
-node "D:/GitsWork/hsrpvp-spacetimedb-nextjs/.claude/get-shit-done/bin/gsd-tools.cjs" audit-open --json 2>/dev/null
+node .claude/get-shit-done/bin/gsd-sdk.cjs query audit-open --json
 ```
 
 Parse the JSON output. For the CURRENT PHASE ONLY, surface:
@@ -545,9 +545,9 @@ Fall through to transition.md. Do NOT block.
 **4. If TOUCHED_FEATURES is non-empty, loop over each feature and present:**
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  GSD ► DOC UPDATE CHECKPOINT — {feature}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Phase {PHASE} touched these paths mapped to `docs/{feature}/`:
   {list of matched CHANGED_PATHS, max 15, "…" if more}
@@ -573,7 +573,7 @@ Use AskUserQuestion when available. When `TEXT_MODE=true` (set if `--text` flag 
 - For `contract.md` specifically: tag every new entry with `Phase ${PHASE} execution` in the Phase History table (per CLAUDE.md rule)
 - Commit via:
   ```bash
-  node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "docs(phase-${PHASE}): sync ${feature}" --files "docs/${feature}/architecture.md" "docs/${feature}/contract.md"
+  node .claude/get-shit-done/bin/gsd-tools.cjs commit "docs(phase-${PHASE}): sync ${feature}" --files docs/${feature}/architecture.md docs/${feature}/contract.md
   ```
   Include only the files actually edited in `--files`.
 
@@ -589,7 +589,7 @@ Use AskUserQuestion when available. When `TEXT_MODE=true` (set if `--text` flag 
   ```
 - Commit via:
   ```bash
-  node .claude/get-shit-done/bin/gsd-sdk.cjs query commit "test(${PHASE}): record doc skip — ${feature}" --files "{uat_path}"
+  node .claude/get-shit-done/bin/gsd-tools.cjs commit "test(${PHASE}): record doc skip — ${feature}" --files {uat_path}
   ```
   Use UAT.md because VERIFICATION.md may not exist for all phases; UAT.md is always present in the zero-issues branch.
 
