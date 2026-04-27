@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo, useMemo } from "react";
 import styles from "./TeamRoster.module.css";
-import { Loadout, ResolvedTeamMember, TEAM_SIZE, TeamMember } from "./LoadoutManager";
-import { Character, Lightcone, RuleSet, Synergy } from "../types/enums";
-import { TeamSlot } from "./Teamslot";
-import { SynergyDisplay } from "./SynergyDisplay";
+import { Character, Lightcone, RuleSet, Synergy } from "../../types/enums";
+import { SynergyDisplay } from "../synergy-display/SynergyDisplay";
+import { TeamSlot } from "../team-slot/Teamslot";
+import { Loadout, ResolvedTeamMember, TEAM_SIZE, TeamMember } from "../LoadoutManager";
 
 interface TeamRosterProps {
 	currentLoadout: Loadout;
@@ -19,7 +19,7 @@ interface TeamRosterProps {
 	onReorderTeam: (team: TeamMember[]) => void;
 }
 
-export function TeamRoster({
+export const TeamRoster = memo(function TeamRoster({
 	currentLoadout,
 	resolvedTeam,
 	characters,
@@ -32,7 +32,6 @@ export function TeamRoster({
 }: TeamRosterProps) {
 	const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 	const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-	const [isRosterHovered, setIsRosterHovered] = useState(false);
 
 	const handleDragStart = useCallback((index: number, e: React.DragEvent) => {
 		setDraggedIndex(index);
@@ -70,45 +69,61 @@ export function TeamRoster({
 		[draggedIndex, currentLoadout.team, onReorderTeam],
 	);
 
-	return (
-		<div
-			className={`${styles.roster} Box`}
-			onMouseEnter={() => setIsRosterHovered(true)}
-			onMouseLeave={() => setIsRosterHovered(false)}
-		>
-			<div className={styles.charactersContainer}>
-				{Array.from({ length: TEAM_SIZE }, (_, index) => {
-					const member = resolvedTeam[index];
-					const character = member ? characters.find((c) => c.name === member.characterName) : undefined;
+	// Memoize the team slots to prevent unnecessary re-renders
+	const teamSlots = useMemo(() => 
+		Array.from({ length: TEAM_SIZE }, (_, index) => {
+			const member = resolvedTeam[index];
+			const character = member ? characters.find((c) => c.name === member.characterName) : undefined;
 
-					return (
-						<TeamSlot
-							key={index}
-							index={index}
-							member={member}
-							character={character}
-							lightcones={lightcones}
-							synergies={synergies}
-							resolvedTeam={resolvedTeam}
-							characters={characters}
-							hasRawEntry={!!currentLoadout.team[index]}
-							onUpdate={onUpdateMember}
-							onRemove={onRemoveMember}
-							isDragging={draggedIndex === index}
-							isDropTarget={
-								dragOverIndex === index &&
-								draggedIndex !== null &&
-								draggedIndex !== index
-							}
-							onDragStart={handleDragStart}
-							onDragOver={handleDragOver}
-							onDragLeave={handleDragLeave}
-							onDragEnd={handleDragEnd}
-							onDrop={handleDrop}
-							isRosterHovered={isRosterHovered}
-						/>
-					);
-				})}
+			return (
+				<TeamSlot
+					key={index}
+					index={index}
+					member={member}
+					character={character}
+					lightcones={lightcones}
+					synergies={synergies}
+					resolvedTeam={resolvedTeam}
+					characters={characters}
+					hasRawEntry={!!currentLoadout.team[index]}
+					onUpdate={onUpdateMember}
+					onRemove={onRemoveMember}
+					isDragging={draggedIndex === index}
+					isDropTarget={
+						dragOverIndex === index &&
+						draggedIndex !== null &&
+						draggedIndex !== index
+					}
+					onDragStart={handleDragStart}
+					onDragOver={handleDragOver}
+					onDragLeave={handleDragLeave}
+					onDragEnd={handleDragEnd}
+					onDrop={handleDrop}
+				/>
+			);
+		}),
+		[
+			resolvedTeam,
+			characters,
+			lightcones,
+			synergies,
+			currentLoadout.team,
+			onUpdateMember,
+			onRemoveMember,
+			draggedIndex,
+			dragOverIndex,
+			handleDragStart,
+			handleDragOver,
+			handleDragLeave,
+			handleDragEnd,
+			handleDrop,
+		]
+	);
+
+	return (
+		<div className={`${styles.roster} Box`}>
+			<div className={styles.charactersContainer}>
+				{teamSlots}
 			</div>
 
 			<SynergyDisplay
@@ -119,4 +134,4 @@ export function TeamRoster({
 			/>
 		</div>
 	);
-}
+});

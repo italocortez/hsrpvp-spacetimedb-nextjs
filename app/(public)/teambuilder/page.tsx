@@ -6,42 +6,79 @@ import { useLoadouts } from "@/components/features/hooks/useLoadouts";
 import { useGameData } from "@/components/features/game-data/components/GameDataProvider";
 import { useAuth } from "@/components/features/auth/hooks/useAuth";
 import { Character, CharacterRank, SelectedCharacter } from "@/components/features/types/enums";
-import { TEAM_SIZE, TeamMember } from "@/components/features/team-builder/LoadoutManager";
-import { useCallback } from "react";
-import { TeamRoster } from "@/components/features/team-builder/TeamRoster";
-import { LoadoutControls } from "@/components/features/team-builder/LoadoutControls";
+import { useCallback, useMemo, memo } from "react";
+import { LoadingSpinner } from "@/components/globals/icons";
 import { CostBreakdownChart } from "@/components/features/team-builder/cost-breakdown-chart/CostBreakdownChart";
+import { TEAM_SIZE, TeamMember } from "@/components/features/team-builder/LoadoutManager";
+import { TeamRoster } from "@/components/features/team-builder/team-roster/TeamRoster";
+import { LoadoutControls } from "@/components/features/team-builder/loadout-controls/LoadoutControls";
 
-export default function TeamBuilder() {
+const getDefaultRank = (character: Character): CharacterRank => {
+    if (character.rarity !== 5 || character.displayName.startsWith("MC ")) return "E6";
+    return "E0";
+};
+
+const TeamBuilder = memo(function TeamBuilder() {
     const { isAuthenticated, user } = useAuth();
     // ! ! ! UNCOMMENT WHEN DB TEAMS ARE IMPLEMENTED ! ! !
     const useDbLoadouts: boolean = false /* isAuthenticated && user?.discordId !== null */;
 
     const { charactersData, lightconesData, synergiesData } = useGameData();
     const loadouts = useLoadouts(charactersData, lightconesData, useDbLoadouts);
-    
+    const isReadyToRender = loadouts.isHydrated; // Only render once loadouts are ready
+
     const handleCharacterSelect = useCallback(
         (character: Character) => {
-        if (
-            loadouts.resolvedTeam.some(m => m.characterName === character.name) ||
-            loadouts.resolvedTeam.length >= TEAM_SIZE
-        ) {
-            return;
-        }
+            if (
+                loadouts.currentLoadout.team.some(m => m.characterName === character.name) ||
+                loadouts.currentLoadout.team.length >= TEAM_SIZE
+            ) {
+                return;
+            }
 
-        const newMember: TeamMember = {
-            characterName: character.name,
-            rank: getDefaultRank(character),
-        };
+            const newMember: TeamMember = {
+                characterName: character.name,
+                rank: getDefaultRank(character),
+            };
 
-        loadouts.updateCurrentTeam([...loadouts.currentLoadout.team, newMember]);
+            loadouts.updateCurrentTeam([...loadouts.currentLoadout.team, newMember]);
         },
         [loadouts],
     );
 
-    const getDefaultRank = (character: Character): CharacterRank => {
-        if (character.rarity !== 5 || character.displayName.startsWith("MC ")) return "E6";
-        return "E0";
+    // Memoize computed values that are passed as props
+    const selectedCharacters = useMemo(
+        () => loadouts.currentLoadout.team.map((m): SelectedCharacter => ({ characterName: m.characterName, action: "Pick" })),
+        [loadouts.currentLoadout.team],
+    );
+
+    const isDraftComplete = useMemo(
+        () => loadouts.currentLoadout.team.length >= TEAM_SIZE,
+        [loadouts.currentLoadout.team.length],
+    );
+
+    const hasRawEntries = useMemo(
+        () => loadouts.currentLoadout.team.length > 0,
+        [loadouts.currentLoadout.team.length],
+    );
+
+    const handleToggleRuleSet = useCallback(
+        () => loadouts.setRuleSet(loadouts.ruleSet === "MemoryOfChaos" ? "ApocalypticShadow" : "MemoryOfChaos"),
+        [loadouts],
+    );
+
+    const handleClearTeam = useCallback(
+        () => loadouts.updateCurrentTeam([]),
+        [loadouts],
+    );
+
+
+    if (!isReadyToRender) {
+        return (
+            <div className={styles.teamBuilderLoading}>
+                <LoadingSpinner />
+            </div>
+        );
     }
 
     return (
@@ -66,8 +103,8 @@ export default function TeamBuilder() {
                 lightcones={lightconesData}
                 synergies={synergiesData}
                 ruleSet={loadouts.ruleSet}
-                onToggleRuleSet={() => loadouts.setRuleSet(loadouts.ruleSet === "MemoryOfChaos" ? "ApocalypticShadow" : "MemoryOfChaos")}
-                hasRawEntries={loadouts.currentLoadout.team.length > 0}
+                onToggleRuleSet={handleToggleRuleSet}
+                hasRawEntries={hasRawEntries}
             />
 
             <LoadoutControls
@@ -76,18 +113,20 @@ export default function TeamBuilder() {
                 currentLoadout={loadouts.currentLoadout}
                 characters={charactersData}
                 onSelectIndex={loadouts.setLoadoutIndex}
-                onClearTeam={() => loadouts.updateCurrentTeam([])}
+                onClearTeam={handleClearTeam}
                 onRenameCurrent={loadouts.updateCurrentName}
             />
 
             <CharacterPool
                 characters={charactersData}
-                selectedCharacters={loadouts.resolvedTeam.map((m): SelectedCharacter => ({ characterName: m.characterName, action: "Pick" }))}
-                isDraftComplete={loadouts.resolvedTeam.length >= TEAM_SIZE}
+                selectedCharacters={selectedCharacters}
+                isDraftComplete={isDraftComplete}
                 isDraftStarted={true}
                 onCharacterSelect={handleCharacterSelect}
                 currentPhase={{ team: "Spectator", action: "Pick" }}
             />
         </div>
     );
-}
+});
+
+export default TeamBuilder;

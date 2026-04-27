@@ -10,91 +10,112 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Root ─────────────────────────────────────────────────────────── */
-.root {
-  /* positioned relative so the dropdown can anchor against it */
+.lightconeSelector {
+    /* positioned relative so the dropdown can anchor against it */
 }
+
+/* Remove small bar when hovering over search bar */
+:global([class*="slot"]:hover) .inputWrapper,
+.inputWrapper:focus-within {
+    padding-block: 0 !important;
+}
+
+/* Show the LC search bar when hovering over it - medium and large */
+:global([class*="slot"]:hover) .lightconeSelector[data-size="medium"] .searchBar,
+.lightconeSelector[data-size="medium"] .inputWrapper:focus-within .searchBar {
+    max-height: 1.875rem !important;
+}
+:global([class*="slot"]:hover) .lightconeSelector[data-size="large"] .searchBar,
+.lightconeSelector[data-size="large"] .inputWrapper:focus-within .searchBar {
+    max-height: 2.5rem !important;
+}
+
+/* Hide the LC slot when search bar is visible or focused */
+:global([class*="slot"]:hover) .lightconeSlot,
+.inputWrapper:focus-within ~ .lightconeSlot {
+    /* '~' is the sibling combinator. applies the styles only if .input-wrapper comes before .lightcone-slot in the DOM  */
+    filter: blur(0.25rem);
+    opacity: 0;
+}
+
 
 /* ── Input wrapper (search bar + LC cost) ─────────────────────────── */
 .inputWrapper {
-  position: relative;
-  z-index: 20;
-  display: flex;
-  align-items: center;
+    position: relative;
+    z-index: 20;
+    display: flex;
+    align-items: center;
 
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-  background-color: rgba(0, 0, 0, 0.75);
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.75);
 
-  padding-block: 0.375rem;
-  transition: all 200ms ease;
+    padding-block: 0.375rem;
+    transition: all 200ms ease;
+}
+.lightconeSelector[data-size="large"] .inputWrapper {
+    padding-inline: 0.25rem;
+}
+.lightconeSelector[data-size="medium"] .inputWrapper {
+    padding-block: 0.25rem;
 }
 
 /* ── Search bar ───────────────────────────────────────────────────── */
 .searchBar {
-  width: 100%;
-  height: 1.875rem;
-  padding-inline: 0.125rem;
+    width: 100%;
+    height: 1.875rem;
+    padding-inline: 0.125rem;
 
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 
-  font-size: 0.875rem;
-  background-color: transparent;
-  border: none;
-  outline: none;
-  color: inherit;
+    font-size: 0.875rem;
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: inherit;
 
-  max-height: 0;
-  transition: all 250ms ease;
+    max-height: 0;
+    transition: all 250ms ease;
 }
-
-/*
-  Expand the search bar when the parent slot signals hover / focus.
-  Parent TeamSlot adds `data-slot-hover="true"` on the wrapper.
-  We use :global so this selector isn't hashed by CSS modules.
-*/
-:global([data-slot-hover="true"]) .searchBar,
-.inputWrapper:focus-within .searchBar {
-  max-height: 2.5rem;
-}
-:global([data-slot-hover="true"]) .inputWrapper,
-.inputWrapper:focus-within {
-  padding-block: 0 !important;
-}
-
-/* Hide the LC slot when search bar is visible */
-:global([data-slot-hover="true"]) .lightconeSlot,
-.inputWrapper:focus-within ~ .lightconeSlot {
-  filter: blur(0.25rem);
-  opacity: 0;
+.lightconeSelector[data-size="large"] .searchBar {
+    height: clamp(1.875rem, 3.2vw, 2.5rem);
+    font-size: clamp(0.813rem, 1.5vw, 1.125rem);
 }
 
 /* ── Lightcone art slot ───────────────────────────────────────────── */
 .lightconeSlot {
-  position: absolute;
-  bottom: 0.75rem;
-  left: 0;
-  width: 100%;
-  height: 50%;
-  z-index: 10;
-  overflow: hidden;
-  pointer-events: none;
+    position: absolute;
+    bottom: 0.75rem;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    z-index: 10;
+    overflow: hidden;
+    pointer-events: none;
 
-  clip-path: polygon(100% 0, 100% 100%, 40% 100%, 40% 70%);
-  transition: all 250ms ease;
+    clip-path: polygon(100% 0, 100% 100%, 40% 100%, 40% 70%);
+    transition: all 250ms ease;
 }
-
-.loading {
-  position: absolute;
-  bottom: 2rem;
-  right: 2rem;
-  z-index: 20;
+.lightconeSelector[data-size="medium"] .lightconeSlot {
+    bottom: 0.5rem;
+    clip-path: polygon(100% 0, 100% 100%, 45% 100%, 45% 50%);
 }
 
 .divider {
   background-color: rgb(42, 42, 42);
   clip-path: polygon(100% 0, 100% 100%, 38.5% 100%, 38.5% 70%, 98.5% 0);
+}
+.lightconeSelector[data-size="medium"] .divider {
+    clip-path: polygon(100% 0, 100% 100%, 43.5% 100%, 43.5% 48.5%, 98.5% 0);
+}
+
+.loading {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 20;
 }
 
 /* ── Empty LC placeholder icon ────────────────────────────────────── */
@@ -107,6 +128,16 @@
   z-index: 20;
   padding: clamp(1rem, 2.1vw, 1.75rem);
   background-color: rgba(46, 46, 46, 0.75);
+}
+.lightconeSelector[data-size="medium"] .lcEmpty {
+    height: clamp(4.5rem, 6vw, 5rem);
+    width: clamp(4.5rem, 6vw, 5rem);
+
+    /* Empty icon is bigger in TeamArea, takes up overall less space */
+    padding: 1.25rem;
+    padding-left: 1rem;
+    margin-right: -0.25rem;
+    margin-bottom: -0.375rem;
 }
 
 /* ── LC art image ─────────────────────────────────────────────────── */

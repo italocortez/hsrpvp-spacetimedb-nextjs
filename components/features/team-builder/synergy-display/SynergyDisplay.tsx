@@ -1,7 +1,7 @@
 "use client";
 
-import { Character, RuleSet, Synergy } from "../types/enums";
-import { ResolvedTeamMember } from "./LoadoutManager";
+import { Character, RuleSet, Synergy } from "../../types/enums";
+import { ResolvedTeamMember } from "../LoadoutManager";
 import styles from "./SynergyDisplay.module.css";
 
 interface SynergyDisplayProps {

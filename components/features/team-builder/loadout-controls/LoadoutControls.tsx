@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import styles from "./LoadoutControls.module.css";
-import { Loadout } from "./LoadoutManager";
 import { ClearIcon, EditIcon } from "@/components/globals/icons";
-import { LoadoutDropdown } from "./LoadoutDropdown";
-import { Character } from "../types/enums";
+import { Loadout } from "../LoadoutManager";
+import { Character } from "../../types/enums";
+import { LoadoutDropdown } from "../loadout-dropdown/LoadoutDropdown";
 
 interface LoadoutControlsProps {
 	loadouts: Loadout[];

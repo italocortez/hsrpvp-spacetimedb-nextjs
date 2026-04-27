@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState, memo, useCallback, useMemo } from "react";
 import { Character, DEFAULT_LIGHTCONE_ANCHOR, DraftMode, LightconeAnchor, Lightcone, LightconeRank } from "@/components/features/types/enums";
 import { LoadingSpinner } from "@/components/globals/icons";
 import styles from "./LightconeSelector.module.css";
@@ -34,15 +34,18 @@ interface LightconeSelectorProps {
 	onLightconeChange: (lightconeName?: string, rank?: LightconeRank) => void;
 	equippingCharacter?: Character;
 	draftMode?: DraftMode;
+
+    size?: "medium" | "large";
 }
 
-export function LightconeSelector({
+export const LightconeSelector = memo(function LightconeSelector({
 	lightcones,
 	selectedLightconeName,
 	selectedRank,
 	onLightconeChange,
 	equippingCharacter,
 	draftMode = "Classic",
+    size = "medium",
 }: LightconeSelectorProps) {
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const [isLightconeImageLoaded, setIsLightconeImageLoaded] = useState<boolean>(false);
@@ -53,7 +56,10 @@ export function LightconeSelector({
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filteredLightcones, setFilteredLightcones] = useState<Lightcone[]>([]);
 
-	const selectedLightcone = selectedLightconeName ? lightcones.find((l) => l.name === selectedLightconeName) : undefined;
+	const selectedLightcone = useMemo(() => 
+		selectedLightconeName ? lightcones.find((l) => l.name === selectedLightconeName) : undefined,
+		[selectedLightconeName, lightcones]
+	);
 
 	// ── Close on outside click ──────────────────────────────────────────
 	useEffect(() => {
@@ -113,27 +119,27 @@ export function LightconeSelector({
 	}, [equippingCharacter, lightcones]);
 
 	// ── Image load tracking ─────────────────────────────────────────────
-	const handleImageRef = (img: HTMLImageElement | null) => {
+	const handleImageRef = useCallback((img: HTMLImageElement | null) => {
 		if (img?.complete && img.naturalHeight > 0) setIsLightconeImageLoaded(true);
-	};
+	}, []);
 	useEffect(() => setIsLightconeImageLoaded(false), [selectedLightconeName]);
 
 	// ── Handlers ────────────────────────────────────────────────────────
-	const handleChangeInput = (e: ChangeEvent<HTMLInputElement>) => {
+	const handleChangeInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
 		setSearchTerm(e.target.value);
 		setIsOpen(true);
 		setIsSearching(true);
-	};
+	}, []);
 
-	const handleFocusInput = () => {
+	const handleFocusInput = useCallback(() => {
 		if (selectedLightcone && !isSearching) {
 			setIsSearching(true);
 			setSearchTerm("");
 		}
 		setIsOpen(true);
-	};
+	}, [selectedLightcone, isSearching]);
 
-	const handleSelectLightcone = (lc: Lightcone) => {
+	const handleSelectLightcone = useCallback((lc: Lightcone) => {
 		// Limited = S1 default, shop/free = S5
 		const isLimited = lc.rarity === 5 && !lc.aliases.some((a) => a.toLowerCase() === "shop");
 
@@ -141,47 +147,57 @@ export function LightconeSelector({
 		setSearchTerm("");
 		setIsOpen(false);
 		setIsSearching(false);
-	};
+	}, [onLightconeChange]);
 
-	const handleClearLightcone = () => {
+	const handleClearLightcone = useCallback(() => {
 		onLightconeChange(undefined, undefined);
 		setSearchTerm("");
 		setIsOpen(false);
 		setIsSearching(false);
-	};
+	}, [onLightconeChange]);
 
 	// ── Render ──────────────────────────────────────────────────────────
-	const anchor: LightconeAnchor = selectedLightcone?.anchor ?? DEFAULT_LIGHTCONE_ANCHOR;
+	const anchor: LightconeAnchor = useMemo(() => 
+		selectedLightcone?.anchor ?? DEFAULT_LIGHTCONE_ANCHOR,
+		[selectedLightcone]
+	);
+
+	const inputValue = useMemo(() => 
+		isSearching || !selectedLightcone
+			? searchTerm
+			: selectedLightcone.displayName,
+		[isSearching, selectedLightcone, searchTerm]
+	);
+
+	const inputStyle = useMemo(() => ({
+		color: selectedLightcone && !isSearching
+			? `var(--lc-${selectedLightcone.rarity}star)`
+			: undefined,
+	}), [selectedLightcone, isSearching]);
+
+	const title = useMemo(() => 
+		selectedLightcone
+			? `${selectedRank ?? "S1"} ${selectedLightcone.displayName}`
+			: undefined,
+		[selectedLightcone, selectedRank]
+	);
 
 	return (
-		<div className={styles.root} ref={dropdownRef}>
+		<div className={styles.lightconeSelector} data-component="lightconeSelector" data-size={size} ref={dropdownRef}>
 			{/* Search input */}
 			<div
 				className={styles.inputWrapper}
-				title={
-					selectedLightcone
-						? `${selectedRank ?? "S1"} ${selectedLightcone.displayName}`
-						: undefined
-				}
+				title={title}
 			>
 				<input
 					className={styles.searchBar}
-					value={
-						isSearching || !selectedLightcone
-							? searchTerm
-							: selectedLightcone.displayName
-					}
+					value={inputValue}
 					onChange={handleChangeInput}
 					onFocus={handleFocusInput}
 					placeholder={selectedLightcone?.displayName || "Select Lightcone"}
 					name="lightcone"
 					autoComplete="off"
-					style={{
-						color:
-							selectedLightcone && !isSearching
-								? `var(--lc-${selectedLightcone.rarity}star)`
-								: undefined,
-					}}
+					style={inputStyle}
 				/>
 			</div>
 
@@ -272,4 +288,4 @@ export function LightconeSelector({
 			)}
 		</div>
 	);
-}
+});
