@@ -76,3 +76,39 @@ export function LoadingSpinner({ className }: { className?: string }) {
     />
   );
 }
+
+export function SortIcon({ direction, isActive }: { direction: 'ascending' | 'descending'; isActive: boolean }) {
+  const activeColor = 'rgb(34, 211, 238)';
+  const inactiveColor = 'rgb(156, 163, 175)';
+  const upActive = isActive && direction === 'ascending';
+  const downActive = isActive && direction === 'descending';
+
+  return (
+    <span style={{ display: 'inline-flex', flexDirection: 'column', marginLeft: '0.25rem', opacity: 0.6 }}>
+      <svg
+        style={{ width: '0.75rem', height: '0.75rem', color: upActive ? activeColor : inactiveColor, transition: 'color 200ms, transform 200ms', transform: upActive ? 'scale(1.1)' : undefined, opacity: upActive ? 1 : undefined }}
+        fill="currentColor" viewBox="0 0 20 20"
+      >
+        <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+      </svg>
+      <svg
+        style={{ width: '0.75rem', height: '0.75rem', color: downActive ? activeColor : inactiveColor, transition: 'color 200ms, transform 200ms', transform: downActive ? 'scale(1.1)' : undefined, opacity: downActive ? 1 : undefined, marginTop: '-0.25rem' }}
+        fill="currentColor" viewBox="0 0 20 20"
+      >
+        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+      </svg>
+    </span>
+  );
+}
+
+export function ExpanderIcon({ isExpanded }: { isExpanded: boolean }) {
+  return (
+    <svg
+      width="1rem" height="1rem" viewBox="0 0 16 16"
+      fill="none" xmlns="http://www.w3.org/2000/svg"
+      style={{ transition: 'transform 200ms', transform: isExpanded ? 'rotate(90deg)' : undefined }}
+    >
+      <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Character, SelectedCharacter } from "@/components/features/types/enums";
 import styles from "./CharacterPool.module.css";
 
@@ -10,7 +11,7 @@ interface CharacterCardProps {
 	onSelect: (character: Character) => void;
 }
 
-export function CharacterCard({
+export const CharacterCard = memo(function CharacterCard({
 	character,
 	selection,
 	isSelectable,
@@ -49,4 +50,4 @@ export function CharacterCard({
 			<h3 className={styles.name}>{character.displayName}</h3>
 		</button>
 	);
-}
+});

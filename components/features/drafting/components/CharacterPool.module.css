@@ -105,7 +105,7 @@
   align-items: center;
   gap: 0.5rem;
 
-  color: rgb(159, 176, 195);
+  color: var(--color-ash);
   font-weight: 500;
   background: transparent;
   border: none;
@@ -127,7 +127,7 @@
 
 /* Selected state */
 .selected {
-  color: var(--color-light, #f0f0f0);
+  color: var(--color-light) !important;
   background-color: rgb(31, 164, 169) !important;
 }
 

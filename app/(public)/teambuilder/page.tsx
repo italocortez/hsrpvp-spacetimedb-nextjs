@@ -13,6 +13,9 @@ import { TEAM_SIZE, TeamMember } from "@/components/features/team-builder/Loadou
 import { TeamRoster } from "@/components/features/team-builder/team-roster/TeamRoster";
 import { LoadoutControls } from "@/components/features/team-builder/loadout-controls/LoadoutControls";
 
+// Hardcoded phase for TeamBuilder logic since it's not a real draft.
+const DUMMY_PHASE = { team: "Spectator", action: "Pick" } as const;
+
 const getDefaultRank = (character: Character): CharacterRank => {
     if (character.rarity !== 5 || character.displayName.startsWith("MC ")) return "E6";
     return "E0";
@@ -80,7 +83,6 @@ const TeamBuilder = memo(function TeamBuilder() {
             </div>
         );
     }
-
     return (
         <div className={styles.teamBuilder}>
             {/* Team roster (4 slots + synergies) */}
@@ -123,7 +125,7 @@ const TeamBuilder = memo(function TeamBuilder() {
                 isDraftComplete={isDraftComplete}
                 isDraftStarted={true}
                 onCharacterSelect={handleCharacterSelect}
-                currentPhase={{ team: "Spectator", action: "Pick" }}
+                currentPhase={DUMMY_PHASE}
             />
         </div>
     );
