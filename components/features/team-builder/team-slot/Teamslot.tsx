@@ -131,6 +131,9 @@ export const TeamSlot = memo(function TeamSlot({
 				src={character.imageUrl || ""}
 				className={styles.portrait}
 				alt={character.displayName}
+
+                // data-portrait="" Not here. Since we want the path to appear in between background and character, which doesn't 
+                // look great if the background is declared on the character portrait itself
 			/>
 
 			{/* Remove button */}

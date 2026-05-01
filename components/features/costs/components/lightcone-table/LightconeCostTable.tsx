@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useLightconeCostTable, LightconeCostRow, SortDescriptor } from '../../hooks/useLightconeCostTable';
-import { LightconeFilterBar } from '@/components/features/drafting/components/LightconeFilterBar';
+import { LightconeFilterBar } from '@/components/features/drafting/components/filter-bar-lightcone/LightconeFilterBar';
 import { useLightconeFilters } from '@/components/features/hooks/useLightconeFilters';
 import { DraftMode } from '@/components/features/types/enums';
 import { useGameData } from '@/components/features/game-data/components/GameDataProvider';

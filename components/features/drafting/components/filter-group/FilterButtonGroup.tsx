@@ -1,9 +1,8 @@
 "use client";
 
-import styles from "./CharacterPool.module.css";
+import styles from "./FilterButtonGroup.module.css";
 
 interface FilterButtonGroupProps<T extends string> {
-	/** CSS class for the group container (e.g. styles.roles, styles.elements) */
 	className?: string;
 	items: readonly T[];
 	selected: T[];
@@ -16,9 +15,6 @@ interface FilterButtonGroupProps<T extends string> {
 	iconSize?: string;
 }
 
-/**
- * Generic grouped toggle-button strip used for role, element, and path filters.
- */
 export function FilterButtonGroup<T extends string>({
 	className,
 	items,
@@ -29,7 +25,7 @@ export function FilterButtonGroup<T extends string>({
 	iconSize = "1.25rem",
 }: FilterButtonGroupProps<T>) {
 	return (
-		<div className={className}>
+		<div className={`${styles.group}${className ? ` ${className}` : ''}`}>
 			{items.map((item) => {
 				const isSelected = selected.includes(item);
 				const iconUrl = iconMap[item];
@@ -49,7 +45,7 @@ export function FilterButtonGroup<T extends string>({
 							/>
 						)}
 						{renderMode === "icon-and-label" && (
-							<span className={styles.capitalize}>{item}</span>
+							<span style={{ textTransform: 'capitalize' }}>{item}</span>
 						)}
 					</button>
 				);

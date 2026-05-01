@@ -1,8 +1,8 @@
 "use client";
 
 import { CHAR_ROLE_VARIANTS, ELEMENT_VARIANTS, PATH_VARIANTS } from "@/components/features/types/enums";
-import { FilterButtonGroup } from "./FilterButtonGroup";
-import styles from "./CharacterPool.module.css";
+import { FilterButtonGroup } from "../filter-group/FilterButtonGroup";
+import styles from "./CharacterFilterBar.module.css";
 import { ClearIcon } from "@/components/globals/icons";
 import { CharacterFilterActions, CharacterFilterState } from "@/components/features/hooks/useCharacterFilters";
 import { iconMaps } from "@/components/features/hooks/useIconMaps";

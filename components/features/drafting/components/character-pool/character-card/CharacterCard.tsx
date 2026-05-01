@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { Character, SelectedCharacter } from "@/components/features/types/enums";
-import styles from "./CharacterPool.module.css";
+import styles from "./CharacterCard.module.css";
 
 interface CharacterCardProps {
 	character: Character;
@@ -43,8 +43,9 @@ export const CharacterCard = memo(function CharacterCard({
 
 			<img
 				src={character.imageUrl || ""}
-				className={`${styles.portrait} portrait`} // twice because of global styles. styles.portrait gives a randomly generated string, which doesn't work
+				className={styles.portrait}
 				alt={character.displayName}
+				data-portrait // For globals.css portrait styling to be able to target this element
 			/>
 
 			<h3 className={styles.name}>{character.displayName}</h3>

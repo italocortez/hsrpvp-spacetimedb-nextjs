@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useCallback } from 'react';
 import { useCharacterCostTable, CharacterCostRow, SortDescriptor } from '../../hooks/useCharacterCostTable';
-import { CharacterFilterBar } from '@/components/features/drafting/components/CharacterFilterBar';
+import { CharacterFilterBar } from '@/components/features/drafting/components/filter-bar-character/CharacterFilterBar';
 import { useCharacterFilters } from '@/components/features/hooks/useCharacterFilters';
 import type { RuleSet, DraftMode } from '@/components/features/types/enums';
 import styles from './CharacterCostTable.module.css';

@@ -1,6 +1,6 @@
 'use client';
 
-import { CharacterPool } from "@/components/features/drafting/components/CharacterPool";
+import { CharacterPool } from "@/components/features/drafting/components/character-pool/CharacterPool";
 import styles from "./page.module.css"
 import { useLoadouts } from "@/components/features/hooks/useLoadouts";
 import { useGameData } from "@/components/features/game-data/components/GameDataProvider";

@@ -1,8 +1,8 @@
 "use client";
 
 import { PATH_VARIANTS } from "@/components/features/types/enums";
-import { FilterButtonGroup } from "./FilterButtonGroup";
-import styles from "./CharacterPool.module.css";
+import { FilterButtonGroup } from "../filter-group/FilterButtonGroup";
+import styles from "./LightconeFilterBar.module.css";
 import { ClearIcon } from "@/components/globals/icons";
 import { LightconeFilterActions, LightconeFilterState } from "@/components/features/hooks/useLightconeFilters";
 import { iconMaps } from "@/components/features/hooks/useIconMaps";
@@ -20,7 +20,7 @@ export function LightconeFilterBar({ filterState, actions }: LightconeFilterBarP
 		<div className={styles.filters}>
 			{/* Paths */}
 			<FilterButtonGroup
-				className={styles.paths}
+                className={styles.paths}
 				items={PATH_VARIANTS}
 				selected={selectedPaths}
 				onToggle={togglePath}
