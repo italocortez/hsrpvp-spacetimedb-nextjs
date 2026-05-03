@@ -183,3 +183,46 @@ SpacetimeDB's SQL surface is a subset of standard SQL. Workarounds:
 **Filed for:** SKILL.md addendum candidate (`### spacetime sql column name gotcha` already exists; could extend with operator limitations). Not blocking; documented for future readers.
 
 **Severity:** Low (documentation only).
+
+---
+
+## D-3 through D-12: Code-review findings deferred for UAT evaluation
+
+**Discovered:** `/gsd-code-review 16.4` (commit `09a31f5` — `16.4-REVIEW.md`)
+
+**Status:** **DEFERRED — to be evaluated during phase verification UAT.** Phase 16.4 fixed only items it strictly introduced (commits `88f217b`, `dfdefee`). The remaining 10 findings are pre-existing in the codebase or judgment calls about whether to fix in scope. The user will decide during `/gsd-verify-work` UAT whether each item needs a follow-up plan / quick-task / phase 16.5.
+
+### What 16.4 fixed
+
+| ID | Severity | File | Commit | What it fixed |
+|----|----------|------|--------|---------------|
+| WR-04 | warning | `tools/capture-ws-frames.ts:267` | `88f217b` | `loginAsGuest({})` → `loginAsGuest()` (matches Plan 06's new SKILL no-arg rule) |
+| WR-05 | warning | `tools/capture-ws-frames.ts:60-68` | `88f217b` | Token-equality guard now warns + continues if `SPACETIMEDB_SERVER_TOKEN` is unset (no longer fails open silently) |
+| WR-08 | warning | `TableExplorer.tsx:83`, `UserManager.tsx:36` | `dfdefee` | Destructure `[rows, isReady]` tuple; render Loading state during `enabled` flip resync (restores v2.1.0 SDK fix #4580) |
+
+### What 16.4 deferred (UAT to evaluate)
+
+| ID | Severity | File | Origin | Issue |
+|----|----------|------|--------|-------|
+| BL-01 | blocker | `TableExplorer.tsx:45` + `admin.ts:229-241` | Pre-existing | HsrLightconeCost delete throws SyntaxError — PK builder sends raw string but reducer JSON.parses; also 2-of-4 composite-key match |
+| BL-02 | blocker | `TableExplorer.tsx:47` + `admin.ts:294-301` | Pre-existing | MatchSessionStepHistory delete sends `row.matchId` (field doesn't exist; real field is `matchHistoryId`); JSON.parse(undefined) throws; also 2-tuple sent vs 3-tuple PK expected |
+| BL-03 | blocker | `TableExplorer.tsx:38-39` + `admin.ts:216-227` | Pre-existing | HsrCharacterCost delete silently targets wrong row — 2-of-4 composite-key match (characterName + gameMode only); breaks for non-default cost sets / non-Classic draft modes |
+| BL-04 | blocker | `ProfileCard.tsx:40-63` | Pre-existing (Plan 06 was right time to fix) | "Profile updated!" toast fires synchronously before async reducer completes — violates SKILL.md fire-and-forget rule |
+| WR-01 | warning | `useAuth.ts:62-68` | Pre-existing | Production `console.log` per render (9 consumers cascade) |
+| WR-02 | warning | `useAuth.ts:285-288` | Pre-existing | Dead code path in Discord linking effect (`!needsSync` unreachable) |
+| WR-03 | warning | `identityGc.ts:78` | Pre-existing | Misleading "Ns" log unit at 90-day-TTL scale (~7.7M seconds; should log days) |
+| WR-06 | warning | `BulkUpsert.tsx:171-184` | Pre-existing | Silent on non-JSON file load — falls through to raw text, user only sees generic downstream error |
+| WR-07 | warning | `server.ts:283-289, 299-305` | Pre-existing | `server_set_datetime` hand-rolls audit columns instead of using `auditUpdate` helper — divergence will rot if audit schema changes |
+| WR-09 | warning | `TableExplorer.tsx:140-164` | Pre-existing | `renderCell` rebuilt on every `selectedTable` change — large tables (5000-row HsrCharacterCost) re-render fully on each search keystroke |
+
+**Fix paths if UAT decides any are blocking:**
+
+- **BL-01/02/03** (TableExplorer admin-delete) — Coordinated client + server fix: extend client PK builders to full composite keys + extend `admin.ts` delete reducer predicates. Should be a single phase 16.5 plan since they share the `admin_delete_row` contract.
+- **BL-04** (ProfileCard sync success) — Surgical inline fix per `16.4-REVIEW.md` §BL-04 (chain `.then()` after `Promise.all` of the reducer calls). Quick task / `/gsd-fast` candidate.
+- **WR-01..09** — Most are quick-task material. WR-08 was already fixed; WR-09 may want measurement (perf) before paying down. WR-03/WR-07 are doc/style pickups.
+
+**Severity:** BL-01/02 throw on every attempt (admin delete unusable for those tables); BL-03 silently corrupts data on non-default cost sets; BL-04 misleads admin UX. Warnings range Low → Medium.
+
+---
+
+_Updated: 2026-05-03 by Phase 16.4 code-review-fix scope decision (user-authorized: "fix what this phase introduced right now and say that we will evaluate if the others need fix during the verification phase UAT")._
