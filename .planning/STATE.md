@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.4
-current_plan: Not started
+current_plan: 1
 status: executing
 stopped_at: Phase 16.4 context gathered
-last_updated: "2026-05-03T13:00:42.503Z"
+last_updated: "2026-05-03T13:22:38.646Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 36
   completed_phases: 9
   total_plans: 64
-  completed_plans: 58
-  percent: 91
+  completed_plans: 59
+  percent: 92
 ---
 
 # Session State
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 16.3 — spacetimedb-v2-1-0-realign-v2-2-0-upgrade-inserted
+**Current focus:** Phase 16.4 — spacetimedb-v2-2-0-refactor-pass
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.4
-**Current plan:** Not started
-**Status:** Ready to execute
+**Current plan:** 1
+**Status:** Executing Phase 16.4
 **Last activity:** 2026-05-03
 
 Progress: [██████████] 54/54 plans (100%) — Phase 16.1 Plan 08 complete (improvised-during-verify Next.js <Link> prefetch disable on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits; ROADMAP success criterion 4 closed by user out-of-band); Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1
@@ -181,6 +181,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.1-08]: Pattern — Next.js <Link> prefetch policy is the canonical lever for "preloaded but not used" Firefox warnings on heavy routes. CSS co-location (Phases 16.1 Plans 01-07) reduces chunk size; prefetch policy controls whether the chunk is fetched at all. They are orthogonal. `prefetch={false}` opts out of the default viewport-preload behavior. Rule-of-thumb for future NavBar additions: any route with non-trivial CSS/JS chunks the user may not navigate to in a session gets heavy: true in NAV_ITEMS. Light routes (homepage, /lobby) keep default prefetch for snappy back-and-forth.
 - [Phase 16.1-08]: Pattern — single-config-object NavBar with forward-compat slots. NAV_ITEMS = { staticTabs[], profile, adminView, lobbyInstance } collapses all route knowledge into one object. staticTabs[] is iterable for center row render; profile + adminView are named flat entries for right-section conditional render; lobbyInstance is a structure-only slot for dynamic /lobby/[id] tabs that Phase 28+ useLobbies() will render. Adding a new NavBar entry is a one-line edit at NAV_ITEMS. Route rename, prefetch policy change, and heavy-flag toggle all touch the same shape. Replaces prior HEAVY_ROUTES Set + prefetchFor() helper (intermediate step) with zero behavior change.
 - [Phase 16.1-08]: Pattern — improvised-during-verify plans are legitimate phase members. No PLAN.md needed when the fix is single-file + single-behavior + root-cause-obvious from DevTools. Atomic commits land directly on the feature branch per autonomous-execution rules; retrospective SUMMARY + STATE + ROADMAP update is the documentation layer. Phase 16.1 ledger counts 8 plans (Plans 01-08) plus 1 Plan 06 refinement commit. `/gsd-verify-work` invariant ("every commit accounted for in a SUMMARY") is satisfied by the SUMMARY's task-commit table.
+- [Phase 16.4-01]: Plan 01 complete — refactored server_nuke_test_data: 50 cleared sites via ctx.db.X.clear() (49 nuke() replacements + 1 inline DeletedUser block; original had 49 nuke() calls per git show, plan's 41+1=42 was a miscount but the >=42 acceptance threshold passed); nuke() helper deleted; 3 SYSTEM-filter blocks (UserPrivate/UserIdentity/User) preserved verbatim with username='SYSTEM' lookup; final log line reworded; SKILL.md gains Whole-table wipes rule between CRUD operations and Accessor types per topical ordering. Statement form (no return-value capture) preferred over capturing clear()'s bigint return — uniformity across all 50 sites. SC#1 closed. Zero deviations. Typecheck clean. Plan-cited integration test 'server-nuke' does not exist; behavioral verification deferred to Plan 07 maincloud republish + admin_gc_lobbies smoke per CONTEXT.md D-08.
 
 ### Roadmap Evolution
 
@@ -218,7 +219,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-05-03T11:44:52.207Z
+Last session: 2026-05-03T13:22:16.443Z
 Stopped at: Phase 16.4 context gathered
-Resume file: .planning/phases/16.4-spacetimedb-v2-2-0-refactor-pass/16.4-CONTEXT.md
+Resume file: None
 Next action: Run `/gsd-verify-work` on Phase 16.1 to close out the phase — verify all 8 plans' commits (Plans 01-07 CSS co-location + Plan 08 Link prefetch policy + Plan 06 refinement commit 7d1745f), confirm docs/frontend/component-hygiene.md Rule 6 codified, and prompt for any `docs/{feature}/` architecture or contract updates. After verification: Phase 17 (Cost tables — data) unblocked.
