@@ -346,7 +346,7 @@ Plans:
 - [x] 16.4-03-PLAN.md — spacetime:publish:migrate sibling script + docs/smoke note (SC#3) + SKILL rule
 - [x] 16.4-04-PLAN.md — tools/capture-ws-frames.ts + transport-evidence/ baseline (SC#4)
 - [x] 16.4-05-PLAN.md — useTable({ enabled }) at UserManager + TableExplorer (SC#5) + Decision 9 + SKILL rule
-- [ ] 16.4-06-PLAN.md — useReducer(reducers.X) at 5 React component sites (SC#6) + Decision 10 + SKILL rule
+- [x] 16.4-06-PLAN.md — useReducer(reducers.X) at 5 React component sites (SC#6) + Decision 10 + SKILL rule
 - [ ] 16.4-07-PLAN.md — Cross-cutting verify wave 2 (SC#7-9) + maincloud republish + smoke probes
 
 **UI hint**: no (refactor only — no rendered output change)
