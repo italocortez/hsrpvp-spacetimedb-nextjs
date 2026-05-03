@@ -389,12 +389,16 @@ import { SenderError } from 'spacetimedb/server';
 if (!item) throw new SenderError('Item not found.');
 ```
 
-### AuthCtx applicability + isInternal hardening for scheduled reducers
+### AuthCtx applicability + scheduled-reducer external-invocation defense (v2.2.0)
 
-`ctx.senderAuth.isInternal` (v2.2.0+, PR #4649) is the engine's own flag for "this reducer was scheduler-dispatched, not called by an external client." Use it to harden scheduled reducers (`run_*` reducers wired into `setRunXxxReducer(...)`) against forged external invocations.
+**TL;DR:** Do NOT add `if (!ctx.senderAuth.isInternal) throw` guards to scheduled reducers on SpacetimeDB v2.2.0. The SDK's `senderAuth` accessor ALWAYS returns `isInternal: false`, including for engine-dispatched scheduler invocations — the guard rejects legitimate dispatch and breaks the reducer. The actual external-invocation defense is engine-level: SpacetimeDB v2.2.0 returns `"no such reducer"` for external WS callers attempting to invoke scheduled reducer names BEFORE any application code runs.
+
+#### Why the guard pattern doesn't work in v2.2.0
+
+Plan 02 (Phase 16.4) initially added the guard pattern below to 3 scheduled reducers (`run_user_deletion`, `run_lobby_gc`, `run_identity_gc`) as defense-in-depth:
 
 ```typescript
-// Pattern: first statement in a scheduled reducer body
+// ❌ DO NOT ADD THIS — rejects legitimate engine dispatch in v2.2.0
 if (!ctx.senderAuth.isInternal) {
     throw new SenderError(
         'Forbidden: scheduled reducer; cannot be invoked externally.'
@@ -402,19 +406,34 @@ if (!ctx.senderAuth.isInternal) {
 }
 ```
 
-`ctx.senderAuth` (NOT `ctx.auth`) is the field name — verified at `spacetimedb/node_modules/spacetimedb/dist/lib/reducers.d.ts:85`.
+Plan 07's diagnostic (2026-05-03) proved this assumption wrong via SDK source-level analysis (`spacetimedb/node_modules/spacetimedb/dist/server/index.mjs:6383-6442`):
 
-**NOT a substitute for the project's existing auth gates.**
+- `AuthCtxImpl.internal()` is the only constructor that sets `isInternal: true` — and it is **unreachable** from any path that produces `ctx.senderAuth`.
+- `ReducerCtxImpl.senderAuth` (the only path that populates the field) calls `AuthCtxImpl.fromSystemTables(...)`, which always sets `isInternal: false`.
+- Therefore `ctx.senderAuth.isInternal` is always `false` in v2.2.0 — the guard rejects 100% of invocations including legitimate engine-dispatched scheduler calls.
+
+The guards were removed in Plan 07 hotfix; see `.planning/phases/16.4-spacetimedb-v2-2-0-refactor-pass/16.4-AUDIT-NOTES.md` (the "v0.6 Update — Plan 07 Diagnostic Reversal" section) for the full diagnostic and reversal record.
+
+#### What IS the external-invocation defense
+
+The SpacetimeDB v2.2.0 engine itself rejects external WebSocket calls to scheduled-reducer names with `"no such reducer"` BEFORE any application code runs. Verified:
+
+- The 3 scheduled reducers (`run_user_deletion`, `run_lobby_gc`, `run_identity_gc`) are intentionally absent from the generated client bindings (`src/module_bindings/index.ts`).
+- The regression sensor at `test/backend/scheduled-reducer-isInternal-rejection.test.ts` constructs a low-level `connection.callReducer(name, argsBuffer)` call — exactly what an attacker would do — and confirms the engine returns `"no such reducer"` for all 3 names.
+
+**Therefore: do NOT add application-level guards to scheduled reducers in v2.2.0.** The engine is the correct defense layer. If a future SDK version exposes scheduled-reducer names to external callers, revisit this rule and find a working internal-dispatch signal before re-adding any guard.
+
+#### `AuthCtx` is still NOT a substitute for project auth gates
 
 | Project gate | Concept | Replace with `AuthCtx`? |
 |---|---|---|
-| `requireServer(ctx)` | "Identity matches registered SERVER_TOKEN row" | NO — `post-publish.ts` is an external WebSocket client (`isInternal: false`); replacing would lock out the bootstrap. |
+| `requireServer(ctx)` | "Identity matches registered SERVER_TOKEN row" | NO — `post-publish.ts` is an external WebSocket client; `AuthCtx.isInternal` would always be `false` for it (and is broken in v2.2.0 anyway). The SERVER_TOKEN/`ServerIdentity` row check is orthogonal. |
 | `getAuthenticatedUser(ctx)` | "Resolve `ctx.sender → UserIdentity → User → role.tag`" | NO — project auth model is not JWT-claims-based; `AuthCtx.jwt` is for native OIDC, which the project intentionally does not use (guest-play UX, see `notes/v09-frontend-subscription-strategy.md`). |
 | `ensureModerator/Admin(ctx)` | Role-tag-based admin gates | NO — same reason as above. |
 
-Use `AuthCtx.isInternal` for the orthogonal "engine-only" check on scheduled reducers (and ONLY scheduled reducers). Use `requireServer` / `getAuthenticatedUser` / `ensureXxx` for everything else.
+Use `requireServer` / `getAuthenticatedUser` / `ensureXxx` for ALL application-level gating. Do not use `ctx.senderAuth.isInternal` until/unless a future SDK release fixes the unreachable-factory bug; the engine's "no such reducer" rejection is the operational defense for scheduled reducers in the meantime.
 
-Reference: Phase 16.4 Plan 02 — 3 hardened sites (`run_user_deletion`, `run_lobby_gc`, `run_identity_gc`); audit notes at `.planning/phases/16.4-spacetimedb-v2-2-0-refactor-pass/16.4-AUDIT-NOTES.md`.
+Reference: Phase 16.4 Plan 02 + Plan 07 hotfix — `.planning/phases/16.4-spacetimedb-v2-2-0-refactor-pass/16.4-AUDIT-NOTES.md` (audit + v0.6 reversal record); regression sensor at `test/backend/scheduled-reducer-isInternal-rejection.test.ts`.
 
 ### BigInt — all u64/i64 fields
 Use `0n`, `1n`, `100n` — never plain numbers for ID/u64 fields. JavaScript `number` loses precision above 2^53, so SpacetimeDB maps 64-bit integers to BigInt. Mixing `number` and `BigInt` (e.g. `row.id === 5`) silently returns `false` — no error, just wrong behavior.
