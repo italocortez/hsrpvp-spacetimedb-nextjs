@@ -57,7 +57,11 @@ if (!fixtureToken) {
     console.error('  4. Add to .env.local: CAPTURE_WS_FIXTURE_TOKEN=<paste>');
     process.exit(1);
 }
-if (fixtureToken === process.env.SPACETIMEDB_SERVER_TOKEN) {
+if (!process.env.SPACETIMEDB_SERVER_TOKEN) {
+    console.warn(
+        '[CAPTURE] SPACETIMEDB_SERVER_TOKEN not set in environment — cannot verify CAPTURE_WS_FIXTURE_TOKEN is not the admin token. Continuing on caller responsibility.',
+    );
+} else if (fixtureToken === process.env.SPACETIMEDB_SERVER_TOKEN) {
     console.error(
         'CAPTURE_WS_FIXTURE_TOKEN must NOT equal SPACETIMEDB_SERVER_TOKEN.',
     );
@@ -264,7 +268,7 @@ DbConnection.builder()
         //    already-authed guest token; produces a small request/response pair
         //    that exercises the v3 batching boundary).
         try {
-            await conn.reducers.loginAsGuest({});
+            await conn.reducers.loginAsGuest();
             console.log('[CAPTURE] No-op reducer call complete.');
         } catch (err) {
             console.warn(
