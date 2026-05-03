@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.4
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Phase 16.4 Plan 04 complete; ready for Plan 05
-last_updated: "2026-05-03T14:17:00.000Z"
+stopped_at: Phase 16.4 Plan 05 complete; ready for Plan 06
+last_updated: "2026-05-03T14:45:05.949Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 36
   completed_phases: 9
   total_plans: 64
-  completed_plans: 63
-  percent: 98
+  completed_plans: 64
+  percent: 100
 ---
 
 # Session State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.4
-**Current plan:** 5
-**Status:** Executing Phase 16.4 (Plans 01-04 complete; Plan 05 next)
+**Current plan:** 6
+**Status:** Executing Phase 16.4 (Plans 01-05 complete; Plan 06 next)
 **Last activity:** 2026-05-03
 
 Progress: [██████████] 54/54 plans (100%) — Phase 16.1 Plan 08 complete (improvised-during-verify Next.js <Link> prefetch disable on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits; ROADMAP success criterion 4 closed by user out-of-band); Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1
@@ -192,6 +192,9 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.4-04]: Pattern — `npx tsx <script>` invocation under the project RTK hook is rewritten into a broken `npm run tsx` form. Wrap with `rtk proxy "npx tsx <script>"` to bypass — same workaround as `npx -y <pkg>@<ver>` per `~/.claude/RTK.md` "Known limitation". Documented in summary.md reproduction section so future runners do not re-discover. Generalizes to any first-run npx invocation in this repo from an executor agent.
 - [Phase 16.4-04]: Pattern — WebSocket factory adapter shape per `dist/sdk/ws.d.ts` `WebSocketAdapter` interface: `{ get protocol, send(Uint8Array), close(), onopen/onmessage/onclose/onerror }`. Re-implementable in ~130 LOC (URL construction + ws-package WebSocket + adapter wrapping + frame logging). Signature distinguishes from the older `(url, protocols) => WebSocketLike` shape RESEARCH sketched — v2.2.0's withWSFn passes parsed args (URL, protocols, nameOrAddress, authToken, compression, lightMode, confirmedReads) so the factory builds the URL itself. Egress-dominant ratio (796:1 inbound/outbound bytes per layer-0 sync session) confirmed structurally; matches `memory/project_data_scale.md` profile.
 - [Phase 16.4-04]: Pattern — Truncate-then-append capture-log idiom: `writeFileSync(path, '')` at process start ensures each session is fresh; `appendFileSync(path, line + '\n')` per frame. Crash-safe (no buffering); makes `wc -l <log>` a direct frame count and `head -1 <log>` a schema-check anchor.
+- [Phase 16.4-05]: Plan 05 complete — adopted v2.2.0 `useTable({ enabled })` (PR #4721) at 2 admin-route panels. AdminViewPage threads `isActive` prop based on `activeTab`: passes `isActive={activeTab === 'tables'}` to TableExplorer and `isActive={activeTab === 'users'}` to UserManager. Both components accept `{ isActive }: { isActive: boolean }` and gate their `useTable` call via the 2nd-arg callback object `{ enabled: isActive }` (verified placement at `dist/react/useTable.d.ts:1-10`). BulkUpsert untouched (no useTable; Plan 06 owns its useReducer adoption). GameDataProvider's 7 layer-0 subs UNCHANGED across all 3 commits — `git diff HEAD~3 HEAD --stat` confirms zero-byte diff (D-05 hard constraint upheld; service worker portrait/Spine prefetch + anon hydration depend on always-on layer-0). 2 commits: 9905409 (refactor admin-view files) + 646eabd (docs SKILL.md rule). SC#5 closed. Typecheck exit 0; lint pre-existing interactive-prompt issue out of scope. Frontend self-check: dev server started cleanly (HTTP 200), but `/admin-view` redirects unauthenticated users to landing (route under `(authed)` group); per CLAUDE.md "pure refactors with no visual delta" exception applies — when `isActive===true` (only state where panel is visible), `useTable(t, { enabled: true })` behaves identically to pre-refactor `useTable(t)`. One Rule-3/Gitignore-Guardrail deviation: `notes/v09-frontend-subscription-strategy.md` is gitignored (`.gitignore:54:/notes`); plan's files_modified frontmatter included it but pre-execution audit missed the gitignore entry. Per CLAUDE.md no-`git add -f` rule, Decision 9 was applied on disk only (verified via 7 acceptance greps including `## Decision 9 — Layer-0 subscriptions are always-on`, `first frame missing portraits` rationale, `useTable.d.ts:1-10` SDK citation) and NOT committed. SKILL.md cross-reference to Decision 9 IS committed in 646eabd, providing tracked breadcrumb.
+- [Phase 16.4-05]: Pattern — Gitignore guardrail beats plan-frontmatter when they conflict. The plan's `files_modified` listed `notes/v09-frontend-subscription-strategy.md` as a deliverable, but `notes/` has been gitignored since pre-Phase-13 (line 52-54 of .gitignore). Per CLAUDE.md "Gitignore Guardrail" the only valid resolution is disk-only edit + deviation documentation in SUMMARY — never `git add -f`. The pre-execution gitignore audit that should have caught this (per CLAUDE.md "Plan files_modified frontmatter must not contain gitignored paths — pre-execution audit catches this") missed the entry; the structural gate fired at execution time as the secondary defense. Verify-work or future plan-phase work should decide whether to (a) accept the disk-only edit as-is (notes/ is intentional design — local working strategy reference), (b) re-track notes/ by removing it from .gitignore (separate hygiene task), or (c) move the decision text to a tracked location.
+- [Phase 16.4-05]: Pattern — `isActive: boolean` non-optional prop is the canonical convention for visibility-gated useTable panels. Threading from a tab-state parent (here AdminViewPage's activeTab) keeps the gate signal flowing top-down; the panel does NOT read parent state via context. Future gated panels in 17+ phases inherit the same shape: take `isActive: boolean`, pass `{ enabled: isActive }` as the 2nd arg to `useTable`. Layer-0 reference data subs (GameDataProvider's 7 always-on subs) explicitly do NOT take `enabled` — gating them would reintroduce the "first frame missing portraits" hydration bug. Codified in SKILL.md `### Subscription gating: layer-0 always-on, gated panels use useTable enabled` rule + v09 strategy doc Decision 9 (disk-only).
 
 ### Roadmap Evolution
 
@@ -229,7 +232,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-05-03T14:17:00.000Z
-Stopped at: Phase 16.4 Plan 04 complete; ready for Plan 05
+Last session: 2026-05-03T14:42:30.000Z
+Stopped at: Phase 16.4 Plan 05 complete; ready for Plan 06
 Resume file: None
 Next action: Continue Phase 16.4 with Plan 05 (`useTable({ enabled })` for admin tabs + GameDataProvider not-touched documented + skill rule + v09-frontend-subscription-strategy.md D-09 entry). Plans 06-07 follow sequentially; Plan 07 includes maincloud republish + smoke gate (per D-08).

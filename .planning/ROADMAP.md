@@ -345,7 +345,7 @@ Plans:
 - [x] 16.4-02-PLAN.md — AuthCtx AUDIT-NOTES + isInternal hardening on 3 scheduled reducers (SC#2) + SKILL rule
 - [x] 16.4-03-PLAN.md — spacetime:publish:migrate sibling script + docs/smoke note (SC#3) + SKILL rule
 - [x] 16.4-04-PLAN.md — tools/capture-ws-frames.ts + transport-evidence/ baseline (SC#4)
-- [ ] 16.4-05-PLAN.md — useTable({ enabled }) at UserManager + TableExplorer (SC#5) + Decision 9 + SKILL rule
+- [x] 16.4-05-PLAN.md — useTable({ enabled }) at UserManager + TableExplorer (SC#5) + Decision 9 + SKILL rule
 - [ ] 16.4-06-PLAN.md — useReducer(reducers.X) at 5 React component sites (SC#6) + Decision 10 + SKILL rule
 - [ ] 16.4-07-PLAN.md — Cross-cutting verify wave 2 (SC#7-9) + maincloud republish + smoke probes
 
@@ -665,7 +665,7 @@ Plans:
 | 16.1. CSS module hygiene | 8/7 | Complete    | 2026-04-20 |
 | 16.2. Home / Landing Page | 0/TBD | Not started (deferred behind 16.4) | - |
 | 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 4/4 | Complete    | 2026-05-03 |
-| 16.4. SpacetimeDB v2.2.0 refactor pass | 4/7 | In Progress|  |
+| 16.4. SpacetimeDB v2.2.0 refactor pass | 5/7 | In Progress|  |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |
