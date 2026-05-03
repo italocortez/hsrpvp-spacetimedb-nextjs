@@ -10,9 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-import {
-  LobbySlot,
-} from "./types";
+import { LobbySlot } from "./types";
 
 export default {
   lobbyId: __t.u32(),

@@ -18,7 +18,6 @@ import {
   GroupAssignmentMode,
 } from "./types";
 
-
 export default __t.row({
   id: __t.u32(),
   name: __t.string(),
@@ -68,7 +67,9 @@ export default __t.row({
   requireApproval: __t.bool().name("require_approval"),
   waitlistEnabled: __t.bool().name("waitlist_enabled"),
   scheduledStartAt: __t.option(__t.timestamp()).name("scheduled_start_at"),
-  registrationDeadline: __t.option(__t.timestamp()).name("registration_deadline"),
+  registrationDeadline: __t
+    .option(__t.timestamp())
+    .name("registration_deadline"),
   createdById: __t.u32().name("created_by_id"),
   createdDate: __t.timestamp().name("created_date"),
   lastModifiedById: __t.u32().name("last_modified_by_id"),

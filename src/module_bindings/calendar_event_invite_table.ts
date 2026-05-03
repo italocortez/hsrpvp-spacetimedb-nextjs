@@ -9,10 +9,7 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  InviteStatus,
-} from "./types";
-
+import { InviteStatus } from "./types";
 
 export default __t.row({
   eventId: __t.u32().name("event_id"),
