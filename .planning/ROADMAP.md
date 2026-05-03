@@ -655,7 +655,7 @@ Plans:
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
 | 16.1. CSS module hygiene | 8/7 | Complete    | 2026-04-20 |
 | 16.2. Home / Landing Page | 0/TBD | Not started (deferred behind 16.4) | - |
-| 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 4/4 | Complete   | 2026-05-03 |
+| 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 4/4 | Complete    | 2026-05-03 |
 | 16.4. SpacetimeDB v2.2.0 refactor pass | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
