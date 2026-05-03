@@ -249,6 +249,22 @@ ctx.db.myTable.id.delete(itemId);
 // See "Accessor types" section below for the 3 declaration types and their APIs
 ```
 
+### Whole-table wipes — use Table.clear()
+
+For unfiltered "delete everything in this table" operations, call `ctx.db.X.clear()` instead of iter+delete. Single ABI call (v2.2.0+, PR #4729) — faster than the iter+delete round-trip and uses fewer lines.
+
+```typescript
+// GOOD — whole-table wipe
+ctx.db.LobbyMember.clear();
+
+// BAD — iter+delete loop for an unfiltered wipe
+for (const m of [...ctx.db.LobbyMember.iter()]) ctx.db.LobbyMember.delete(m);
+```
+
+Predicate filters (e.g. preserving the `username='SYSTEM'` row) MUST keep iter+filter+delete — `clear()` cannot skip rows. TS declarations do NOT surface a row count from `clear()`; use it as a statement, not as `const n = ctx.db.X.clear()` (n would be untyped).
+
+Reference: `spacetimedb/src/reducers/server.ts → server_nuke_test_data` (Phase 16.4 Plan 01) — 42 cleared sites + 3 SYSTEM-preserving filter blocks demonstrate both patterns.
+
 ### Accessor types — verified runtime behavior (2026-03-18)
 
 Each column declaration type produces a different accessor with a different API. Mixing them up causes TypeErrors or silent data loss. A column can be functionally unique (e.g., `discordId`) but declared as a btree index — in that case it only has `.filter()`, not `.find()`.
