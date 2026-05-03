@@ -204,6 +204,33 @@ export const view_my_profile = spacetimedb.view({ name: 'view_my_profile', publi
 
 Once exported, `spacetime generate` creates typed view bindings (e.g. `view_my_profile_table.ts`). Views appear in `tablesSchema` alongside tables, accessible via `conn.db.view_my_profile` with `.count()`, `.iter()`, and row callbacks. View accessors use snake_case (matching the view name), not PascalCase like tables.
 
+### Subscription gating: layer-0 always-on, gated panels use useTable enabled
+
+`useTable(tables.X, { enabled: <boolean> })` (v2.2.0+, PR #4721) skips establishing the subscription while `enabled === false`. The SDK tears down the sub on `true → false` and re-establishes on `false → true` — no consumer remount needed.
+
+```typescript
+// GOOD — gated panel
+function AdminPanel({ isActive }: { isActive: boolean }) {
+    const [rows] = useTable(tables.User, { enabled: isActive });
+    // ...
+}
+
+// GOOD — layer-0 reference data: ALWAYS-ON, no enabled prop
+const [characters] = useTable(tables.HsrCharacter);
+
+// BAD — never gate layer-0 reference data
+const [characters] = useTable(tables.HsrCharacter, { enabled: someCondition });
+// ↑ would reintroduce "first frame missing portraits" hydration bug
+```
+
+`enabled` lives in the 2nd-arg callback object alongside `onInsert/onDelete/onUpdate` — NOT a third arg, NOT a separate options bag.
+
+**Layer-0 vs gated:**
+- **Layer-0** (GameDataProvider's 7 reference-data subs): always-on, no `enabled`. Service worker prefetch + anonymous-page hydration depend on this.
+- **Gated panels** (admin tabs, modals, conditionally-visible panels): `enabled` derived from the visibility/active-state. Recovers egress when the panel isn't visible.
+
+Reference: Phase 16.4 Plan 05; `notes/v09-frontend-subscription-strategy.md` Decision 9.
+
 ### Handling reducer errors on the client
 Reducers don't return data, so errors surface via callbacks. Use `_then()` to detect failures from a specific call, and `ctx.event.status` to read the `SenderError` message:
 ```typescript
