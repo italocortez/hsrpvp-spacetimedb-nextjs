@@ -4,9 +4,9 @@
 
 ---
 
-## D-1: `test/backend/auth/user-deletion.test.ts` — D-17 cascade tests fail because of Plan 02 `isInternal` regression on SDK v2.2.0 [REFUTED → ESCALATED → ROOT CAUSE FOUND]
+## D-1: `test/backend/auth/user-deletion.test.ts` — D-17 cascade tests fail because of Plan 02 `isInternal` regression on SDK v2.2.0 [REFUTED → ESCALATED → ROOT CAUSE FOUND → **RESOLVED IN PLAN 07**]
 
-**Status:** Theory of "test-infra state accumulation" was REFUTED via isolation rerun on 2026-05-03 16:48 UTC. Root cause is a real regression: **Plan 02's `isInternal` guard rejects engine-dispatched scheduled reducers because the SDK v2.2.0 `senderAuth` accessor never returns `isInternal: true` for scheduled dispatch.** This blocks Phase 16.4 sign-off until the guard is reworked or removed. Returned to user as a human-action checkpoint.
+**Status:** **RESOLVED IN PLAN 07** (2026-05-03) by hotfix commits `9c634bc`, `f24fd86`, `ead065d`, `6515a59`. Theory of "test-infra state accumulation" was REFUTED via isolation rerun on 2026-05-03 16:48 UTC. Root cause is a real regression: **Plan 02's `isInternal` guard rejects engine-dispatched scheduled reducers because the SDK v2.2.0 `senderAuth` accessor never returns `isInternal: true` for scheduled dispatch.** User authorized resolution within Plan 07 hotfix scope (no new phase): the 3 guards were reverted; the regression sensor test was updated to document engine-level "no such reducer" rejection as the actual defense; SKILL.md rule was rewritten; AUDIT-NOTES.md was amended with the v0.6 Update reversal record. Post-hotfix isolation rerun: 5/5 PASS (cascade restored). Plan 02 regression sensor still 3/3 PASS.
 
 **Discovered:** Plan 07 Task 1 (`npm run test:integration` full-suite run, 2026-05-03)
 
@@ -132,6 +132,34 @@ Recommended: option 1 (revert). Preserves Plan 02's audit + SKILL rule (the prim
 Phase 16.4 verdict: **BLOCKED** pending resolution decision.
 
 The earlier "test-infra state-accumulation" analysis (kept above for record) was incorrect — root cause is in production code (Plan 02), not test setup.
+
+### RESOLVED — 2026-05-03 (Plan 07 hotfix)
+
+User authorized resolution within Plan 07's scope on the current `feature_nath_claude` branch (no new phase). Selected resolution path: **Option 1 — Revert Plan 02's `isInternal` guards.**
+
+**Hotfix commits (in order):**
+
+| Commit | Type | Subject |
+|---|---|---|
+| `9c634bc` | `fix(16.4-07)` | Revert Plan 02 isInternal guards (v2.2.0 SDK never sets isInternal=true; engine 'no such reducer' rejection is the actual defense) |
+| `f24fd86` | `test(16.4-07)` | Update Plan 02 regression sensor to reflect v2.2.0 engine-level defense (not isInternal guard) |
+| `ead065d` | `docs(16.4-07)` | Correct SKILL.md scheduled-reducer rule to reflect v2.2.0 engine-level defense |
+| `6515a59` | `docs(16.4-07)` | Amend 16.4-AUDIT-NOTES.md with v2.2.0 internal-dispatch finding and reversal record |
+
+**Post-hotfix verification:**
+- `npm run test:integration -- --run test/backend/auth/user-deletion.test.ts` → **5/5 PASS** (was 3/5 pre-hotfix; cascade restored)
+- `npm run test:integration -- --run test/backend/scheduled-reducer-isInternal-rejection.test.ts` → **3/3 PASS** (engine-level "no such reducer" defense path still rejects external WS callers)
+- Smoke probes 1 + 2 (st_table schema check + gc_result count) confirm no schema delta + table queryable
+
+**What was preserved:**
+- Plan 02 AUDIT applicability findings (a)/(b)/(c) (`AuthCtx` not a substitute for `requireServer` / `getAuthenticatedUser` / `ensureXxx`) remain valid.
+- The regression sensor test stays in tree (text-only update; assertion logic unchanged; still rejects external WS callers via the engine-level path).
+- SKILL.md rule is rewritten (not deleted) — now documents the v2.2.0 internal-dispatch limitation + engine-level defense as the operational truth.
+- AUDIT-NOTES.md is appended (not overwritten) — original content preserved as audit trail.
+
+**Operational defense layer (post-hotfix):** SpacetimeDB v2.2.0 engine returns `"no such reducer"` for external WS calls to scheduled-reducer names BEFORE any application code runs. Verified live by the regression sensor test. Future-revisit conditions are documented in AUDIT-NOTES.md "v0.6 Update — Plan 07 Diagnostic Reversal".
+
+Phase 16.4 verdict: **PASS**.
 
 ---
 

@@ -47,7 +47,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 - [x] **Phase 16.1: CSS module hygiene (Plans 01-07 co-location + Plan 08 Link prefetch policy)** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement) (completed 2026-04-20)
 - [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20; **DEFERRED behind 16.4** as of 2026-05-02 — execution order is 16.3 → 16.4 → 16.2 so the landing page is built against upgraded bindings + v3 transport)
 - [x] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02; **NEXT UP after 16.1**) (completed 2026-05-03)
-- [ ] **Phase 16.4: SpacetimeDB v2.2.0 refactor pass** — Server: `Table.clear()` in GC reducers, `AuthCtx`/`JwtClaims` typed auth helpers, `--yes=migrate` granular publish. Client: verify v3 WebSocket transport negotiation (bandwidth win), adopt `useTable({enabled})` for gated panels, adopt `useProcedure` for typed reducer hooks (INSERTED 2026-05-02)
+- [x] **Phase 16.4: SpacetimeDB v2.2.0 refactor pass** — Server: `Table.clear()` in `server_nuke_test_data` (Plan 01), `AuthCtx` audit + `isInternal` hardening on 3 scheduled reducers (Plan 02 — REVERTED by Plan 07 hotfix after diagnostic refutation; engine-level "no such reducer" rejection is the actual defense in v2.2.0), `:migrate` script (Plan 03). Client: v3 WebSocket transport baseline (Plan 04), `useTable({enabled})` for admin panels (Plan 05), `useReducer` adoption at 5 React component sites (Plan 06). Cross-cut verify gate (Plan 07): SC#7-9 closed; D-1 resolved within Plan 07 hotfix scope (INSERTED 2026-05-02; completed 2026-05-03)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
 - [ ] **Phase 19: Team builder — data** — Team composition state, cost budget, synergy compute, `team_builder_draft` backend + reducers
@@ -347,7 +347,7 @@ Plans:
 - [x] 16.4-04-PLAN.md — tools/capture-ws-frames.ts + transport-evidence/ baseline (SC#4)
 - [x] 16.4-05-PLAN.md — useTable({ enabled }) at UserManager + TableExplorer (SC#5) + Decision 9 + SKILL rule
 - [x] 16.4-06-PLAN.md — useReducer(reducers.X) at 5 React component sites (SC#6) + Decision 10 + SKILL rule
-- [ ] 16.4-07-PLAN.md — Cross-cutting verify wave 2 (SC#7-9) + maincloud republish + smoke probes
+- [x] 16.4-07-PLAN.md — Cross-cutting verify wave 2 (SC#7-9) + maincloud republish + smoke probes (verdict: PASS; D-1 Plan 02 isInternal regression resolved via 4-commit hotfix within Plan 07 scope — see 16.4-AUDIT-NOTES.md "v0.6 Update" + deferred-items.md D-1 RESOLVED record)
 
 **UI hint**: no (refactor only — no rendered output change)
 
@@ -665,7 +665,7 @@ Plans:
 | 16.1. CSS module hygiene | 8/7 | Complete    | 2026-04-20 |
 | 16.2. Home / Landing Page | 0/TBD | Not started (deferred behind 16.4) | - |
 | 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 4/4 | Complete    | 2026-05-03 |
-| 16.4. SpacetimeDB v2.2.0 refactor pass | 5/7 | In Progress|  |
+| 16.4. SpacetimeDB v2.2.0 refactor pass | 7/7 | Complete    | 2026-05-03 |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |
