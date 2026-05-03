@@ -505,6 +505,23 @@ spacetime sql <name> "SELECT * FROM table_name"    # Query tables via SQL
 spacetime call <name> <reducer_name> [args...]     # Call a reducer
 ```
 
+### Publishing: use :migrate for reviewed schema deltas
+
+`npm run spacetime:publish` stays interactive — the destructive-migration confirm dialog is a safety feature, not friction. Use `npm run spacetime:publish:migrate` (v2.2.0+, PR #4885) when you have already reviewed the schema delta in a prior diff.
+
+```bash
+npm run spacetime:publish           # Interactive: confirms destructive migrations.
+npm run spacetime:publish:migrate   # Auto-confirms ONLY the migration prompt (--yes=migrate).
+```
+
+The `--yes=migrate` value must attach with `=` (per `spacetime publish --help`). Other `--yes` values (`break-clients`, `delete-data`, `remote`, `skip-login`) remain interactive in this script — opt them in explicitly only when the situation warrants.
+
+Related v2.2.0 informational notes:
+- `.withCompression('brotli')` exists on `DbConnection.builder()` as an alternative to gzip; project has not adopted it (browser-support floor too high for current users; realistic ratio gain on BSATN binary frames is 5-15% — not worth the failure mode on older browsers).
+- v2.2.0 also allows dropping empty tables during auto-migration (PR #4593) — relevant when refactoring schemas; no project-side action needed.
+
+Reference: Phase 16.4 Plan 03; `package.json` script line; `docs/smoke/contract.md` operational note.
+
 ### `spacetime sql` column name gotcha
 
 `spacetime sql` auto-converts camelCase column definitions to snake_case, but the conversion splits at every case boundary including before digits. This produces non-obvious names:
