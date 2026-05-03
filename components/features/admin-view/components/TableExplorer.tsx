@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { useTable, useSpacetimeDB } from 'spacetimedb/react';
-import { tables } from '@/src/module_bindings';
+import { useTable, useReducer } from 'spacetimedb/react';
+import { tables, reducers } from '@/src/module_bindings';
 import { useAuthContext } from '@/components/features/auth/components/AuthProvider';
 import { PUBLIC_TABLES, PublicTableName } from '../types';
 import DeleteConfirmModal from '@/components/globals/modals/DeleteConfirmModal';
@@ -73,8 +73,8 @@ function formatCellValue(value: any): string {
 }
 
 export default function TableExplorer({ isActive }: { isActive: boolean }) {
-    const { getConnection } = useSpacetimeDB();
     const { user: currentUser } = useAuthContext();
+    const adminDeleteRow = useReducer(reducers.adminDeleteRow);
     const [selectedTable, setSelectedTable] = useState<PublicTableName>('User');
     const [searchQuery, setSearchQuery] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<{ tableName: PublicTableName; pkJson: string; label: string } | null>(null);
@@ -126,22 +126,16 @@ export default function TableExplorer({ isActive }: { isActive: boolean }) {
 
     const confirmDelete = useCallback(() => {
         if (!deleteConfirm) return;
-        const conn = getConnection();
-        if (!conn) {
-            setMessage({ type: 'error', text: 'Not connected to SpacetimeDB' });
-            return;
-        }
-        try {
-            (conn.reducers as any).adminDeleteRow({
-                tableName: deleteConfirm.tableName,
-                primaryKeyJson: deleteConfirm.pkJson,
-            });
+        adminDeleteRow({
+            tableName: deleteConfirm.tableName,
+            primaryKeyJson: deleteConfirm.pkJson,
+        }).then(() => {
             setMessage({ type: 'success', text: `Delete requested for ${deleteConfirm.tableName} row` });
-        } catch (e: any) {
-            setMessage({ type: 'error', text: `Delete failed: ${e.message || e}` });
-        }
+        }).catch((err: any) => {
+            setMessage({ type: 'error', text: `Delete failed: ${err.message || err}` });
+        });
         setDeleteConfirm(null);
-    }, [deleteConfirm, getConnection]);
+    }, [deleteConfirm, adminDeleteRow]);
 
     const renderCell = useCallback((row: any, columnKey: React.Key) => {
         if (columnKey === '_actions') {

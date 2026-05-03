@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { useTable, useSpacetimeDB } from 'spacetimedb/react';
-import { tables } from '@/src/module_bindings';
+import { useTable, useSpacetimeDB, useReducer } from 'spacetimedb/react';
+import { tables, reducers } from '@/src/module_bindings';
 import { USER_ROLE_VARIANTS } from '../../types/enums';
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/table';
 import { Input } from '@heroui/input';
@@ -33,8 +33,8 @@ const ROLE_COLOR_MAP: Record<string, 'danger' | 'warning' | 'default'> = {
 };
 
 export default function UserManager({ isActive }: { isActive: boolean }) {
-    const { getConnection } = useSpacetimeDB();
     const [userRows] = useTable(tables.User, { enabled: isActive });
+    const adminUpdateUser = useReducer(reducers.adminUpdateUser);
     const allUsers = (userRows || []) as any[];
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -80,25 +80,18 @@ export default function UserManager({ isActive }: { isActive: boolean }) {
             setMessage({ type: 'error', text: 'Cannot demote an Admin user.' });
             return;
         }
-        const conn = getConnection();
-        if (!conn) {
-            setMessage({ type: 'error', text: 'Not connected to SpacetimeDB' });
-            return;
-        }
-
-        try {
-            (conn.reducers as any).adminUpdateUser({
-                userId: editState.userId,
-                displayName: editState.displayName.trim(),
-                username: editState.username.trim(),
-                roleTag: editState.roleTag,
-            });
+        adminUpdateUser({
+            userId: editState.userId,
+            displayName: editState.displayName.trim(),
+            username: editState.username.trim(),
+            roleTag: editState.roleTag,
+        }).then(() => {
             setMessage({ type: 'success', text: `User #${editState.userId} updated` });
             setEditState(null);
-        } catch (e: any) {
-            setMessage({ type: 'error', text: `Update failed: ${e.message || e}` });
-        }
-    }, [editState, getConnection]);
+        }).catch((err: any) => {
+            setMessage({ type: 'error', text: `Update failed: ${err.message || err}` });
+        });
+    }, [editState, editingUserOriginalRole, adminUpdateUser]);
 
     const isEditing = (userId: number) => editState?.userId === userId;
 
