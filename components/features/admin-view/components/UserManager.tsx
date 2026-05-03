@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { useTable, useSpacetimeDB, useReducer } from 'spacetimedb/react';
+import { useTable, useReducer } from 'spacetimedb/react';
 import { tables, reducers } from '@/src/module_bindings';
 import { USER_ROLE_VARIANTS } from '../../types/enums';
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@heroui/table';
