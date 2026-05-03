@@ -149,4 +149,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-18 after Phase 15.3 maincloud publish. Backend refactor complete (audit spread type helper, ~228 `as any` eliminated); Phase 16 Route + global foundation is next.*
+*Last updated: 2026-05-03 after Phase 16.3 SpacetimeDB v2.1.0 realign + v2.2.0 upgrade. SDK floor bumped to ^2.2.0 across both module + client manifests; bindings regenerated with CLI 2.2.0 stamp; maincloud republished and probe-verified for #4902 (autoinc) + #4666 (PK migration) engine fixes. Atomic commit boundary preserved (drift fix + v2.2.0 upgrade as separate commits). Phase 16.4 (v2.2.0 refactor pass) is next.*
