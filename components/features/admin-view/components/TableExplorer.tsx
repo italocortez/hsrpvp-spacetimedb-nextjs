@@ -72,7 +72,7 @@ function formatCellValue(value: any): string {
     return String(value);
 }
 
-export default function TableExplorer() {
+export default function TableExplorer({ isActive }: { isActive: boolean }) {
     const { getConnection } = useSpacetimeDB();
     const { user: currentUser } = useAuthContext();
     const [selectedTable, setSelectedTable] = useState<PublicTableName>('User');
@@ -80,7 +80,7 @@ export default function TableExplorer() {
     const [deleteConfirm, setDeleteConfirm] = useState<{ tableName: PublicTableName; pkJson: string; label: string } | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const [rows] = useTable(TABLE_MAP[selectedTable]);
+    const [rows] = useTable(TABLE_MAP[selectedTable], { enabled: isActive });
     const allRows = (rows || []) as any[];
 
     // Get column names from the first row

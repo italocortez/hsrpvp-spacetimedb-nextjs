@@ -14,13 +14,13 @@ export default function AdminViewPage() {
         <>
             <AdminTabs activeTab={activeTab} onTabChange={setActiveTab} />
             <div style={{ display: activeTab === 'tables' ? 'block' : 'none' }}>
-                <TableExplorer />
+                <TableExplorer isActive={activeTab === 'tables'} />
             </div>
             <div style={{ display: activeTab === 'bulk-upsert' ? 'block' : 'none' }}>
                 <BulkUpsert />
             </div>
             <div style={{ display: activeTab === 'users' ? 'block' : 'none' }}>
-                <UserManager />
+                <UserManager isActive={activeTab === 'users'} />
             </div>
         </>
     );

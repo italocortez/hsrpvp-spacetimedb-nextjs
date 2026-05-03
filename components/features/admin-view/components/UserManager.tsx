@@ -32,9 +32,9 @@ const ROLE_COLOR_MAP: Record<string, 'danger' | 'warning' | 'default'> = {
     User: 'default',
 };
 
-export default function UserManager() {
+export default function UserManager({ isActive }: { isActive: boolean }) {
     const { getConnection } = useSpacetimeDB();
-    const [userRows] = useTable(tables.User);
+    const [userRows] = useTable(tables.User, { enabled: isActive });
     const allUsers = (userRows || []) as any[];
 
     const [searchQuery, setSearchQuery] = useState('');
