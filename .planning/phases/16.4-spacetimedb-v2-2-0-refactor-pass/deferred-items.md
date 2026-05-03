@@ -4,7 +4,9 @@
 
 ---
 
-## D-1: `test/backend/auth/user-deletion.test.ts` — D-17 cascade tests fail on state-accumulation conditions
+## D-1: `test/backend/auth/user-deletion.test.ts` — D-17 cascade tests fail because of Plan 02 `isInternal` regression on SDK v2.2.0 [REFUTED → ESCALATED → ROOT CAUSE FOUND]
+
+**Status:** Theory of "test-infra state accumulation" was REFUTED via isolation rerun on 2026-05-03 16:48 UTC. Root cause is a real regression: **Plan 02's `isInternal` guard rejects engine-dispatched scheduled reducers because the SDK v2.2.0 `senderAuth` accessor never returns `isInternal: true` for scheduled dispatch.** This blocks Phase 16.4 sign-off until the guard is reworked or removed. Returned to user as a human-action checkpoint.
 
 **Discovered:** Plan 07 Task 1 (`npm run test:integration` full-suite run, 2026-05-03)
 
@@ -43,10 +45,74 @@ Live SQL probe of test DB at the time of failure showed:
 
 The test DB accumulates state across the full integration suite. Earlier tests in the suite create lobbies and match-step rows referencing the verified harness users that `user-deletion.test.ts` then tries to delete. The blocker checks fire; the cascade never starts.
 
-**NOT a Plan 02 regression.** Plan 02 added an `isInternal` guard to `run_user_deletion`, but:
+**Original (incorrect) theory — "NOT a Plan 02 regression":** Plan 02 added an `isInternal` guard to `run_user_deletion`, but:
 1. `run_user_deletion` is only invoked by SpacetimeDB's internal scheduler dispatch when the `UserDeletionJob` row's `scheduledAt` time arrives. Engine-dispatched scheduled reducers receive `ctx.senderAuth.isInternal === true` per SDK contract (`reducers.d.ts:47-54`).
 2. Plan 02's regression test (`test/backend/scheduled-reducer-isInternal-rejection.test.ts`) confirmed external WS callers cannot invoke `run_user_deletion` at all — engine returns `"no such reducer"` (audit finding documented in Plan 02 SUMMARY). Internal dispatch is unaffected.
 3. `user-deletion.test.ts` failures occur BEFORE the cascade is even queued: `user_deletion_job` is empty in the live DB. The job was never inserted because `admin_delete_row` threw on a precondition.
+
+**REFUTATION (2026-05-03 16:48 UTC, isolation rerun on clean DB):**
+
+Ran `npm run test:integration -- --run test/backend/auth/user-deletion.test.ts` after the vitest globalSetup auto-republished maincloud with `--clear-database`. Only the user-deletion tests ran — no other suite contributed accumulated state.
+
+**Result: 2/5 tests STILL FAILED with identical assertion errors** (`expected 1 to be 0`, both at `userAfter.length`). Captured in `tmp/16.4-07/isolation-rerun.log`.
+
+Live SQL probe of test DB POST-failure (before any other run):
+- `user`: 5 rows (#1 SYSTEM, #2 verified-deleted-pending, #3 admin1, #4 guest-deleted-pending, #5 admin2)
+- User #2: `is_guest=false`, `deleted_at=2026-05-03T16:49:00.271771+00:00` (set by admin_delete_row)
+- User #4: `is_guest=true`, `deleted_at=2026-05-03T16:49:17.037625+00:00` (set by admin_delete_row)
+- `user_deletion_job`: 0 rows (jobs auto-delete after dispatch attempt)
+- `deleted_user`: 0 rows (cascade never archived)
+
+The soft-delete (`deletedAt` set) succeeded — proving precondition checks PASSED, contradicting the original test-infra theory. The `UserDeletionJob` was inserted (transactional with `deletedAt` update — both succeed or both roll back).
+
+**SMOKING-GUN maincloud logs** (`spacetime logs hsrpvp-spacetimedb-nextjs-test1`, captured to `tmp/16.4-07/maincloud-cascade-evidence.log`):
+
+```
+2026-05-03T16:49:00.273286Z INFO:  admin_delete_row: [ADMIN] User #2 marked for deletion. Cascade scheduled in 5s.
+2026-05-03T16:49:05.272509Z ERROR: run_user_deletion: Forbidden: scheduled reducer; cannot be invoked externally.
+2026-05-03T16:49:17.038847Z INFO:  admin_delete_row: [ADMIN] User #4 marked for deletion. Cascade scheduled in 5s.
+2026-05-03T16:49:22.038610Z ERROR: run_user_deletion: Forbidden: scheduled reducer; cannot be invoked externally.
+2026-05-03T17:03:49.434643Z ERROR: run_lobby_gc:        Forbidden: scheduled reducer; cannot be invoked externally.
+```
+
+Plan 02's `if (!ctx.senderAuth.isInternal) throw ...` guard is firing on **engine-dispatched scheduled reducer invocations**, which contradicts the SDK contract Plan 02 was written against. The `run_lobby_gc` ERROR at 17:03:49 is a separate scheduled-reducer (LobbyGcJob, seeded by post-publish.ts to fire 15 minutes after publish) — confirms this affects ALL 3 of Plan 02's hardening sites (`run_user_deletion`, `run_lobby_gc`, `run_identity_gc`), not just user-deletion.
+
+**SDK source-level analysis** (`spacetimedb/node_modules/spacetimedb/dist/server/index.mjs`, v2.2.0):
+
+```js
+// AuthCtxImpl: only ONE path sets isInternal=true
+static internal() {
+  return new _AuthCtxImpl({ isInternal: true, ... });   // line 6383-6388
+}
+
+// fromSystemTables: ALWAYS sets isInternal=false regardless of connectionId
+static fromSystemTables(connectionId, sender) {
+  if (connectionId === null) {
+    return new _AuthCtxImpl({ isInternal: false, ... });  // line 6394
+  }
+  return new _AuthCtxImpl({ isInternal: false, ... });    // line 6400
+}
+
+// ReducerCtxImpl.senderAuth ONLY calls fromSystemTables — never internal()
+get senderAuth() {
+  return this.#senderAuth ??= AuthCtxImpl.fromSystemTables(this.connectionId, this.sender);
+}
+```
+
+`AuthCtxImpl.internal()` is unreachable from any path that produces `ctx.senderAuth`. **`ctx.senderAuth.isInternal` is ALWAYS `false` in v2.2.0.** Plan 02's contract assumption was wrong — the regression test (`scheduled-reducer-isInternal-rejection.test.ts`) only passes because external WS callers can't invoke scheduled reducers at all (engine returns "no such reducer" before our guard runs), giving false confidence in the guard's correctness for the internal-dispatch path.
+
+**Severity:** HIGH — production cascade paths broken on the live test DB. Affects:
+- `run_user_deletion`: user-deletion cascade never completes; soft-deleted users remain forever.
+- `run_lobby_gc`: lobby garbage collection never runs; expired lobbies + AwaitingResult leaks accumulate.
+- `run_identity_gc`: identity GC never runs; orphan UserIdentity rows accumulate over 7-day cycles.
+
+**Resolution options (for user decision):**
+
+1. **Revert Plan 02's `isInternal` guards** — remove the 3 guards in `userDeletion.ts:13`, `lobbyGc.ts:163`, `identityGc.ts:89`. The defense-in-depth is unnecessary: the engine already returns "no such reducer" for external WS callers (Plan 02 SUMMARY line: "external WS callers receive 'no such reducer' from the engine BEFORE our guard fires — the guard is defense-in-depth"). Plan 02's primary value (audit + SKILL rule) is preserved.
+2. **Replace the guard with a different signal** — e.g., check `ctx.connectionId === null` (engine-dispatched scheduled reducers should have null connectionId per SDK comment at `index.mjs:6391`). Requires verification that this distinguishes scheduled from external calls correctly.
+3. **Wait for upstream fix** — file an issue against SpacetimeDB about `senderAuth.isInternal` always being false; revert Plan 02 in the meantime; re-add when SDK is fixed.
+
+Recommended: option 1 (revert). Preserves Plan 02's audit + SKILL rule (the primary deliverable per Plan 02 SUMMARY), removes broken guard, restores cascade. Add a note to SKILL.md flagging the v2.2.0 SDK limitation and the engine-level "no such reducer" rejection as the actual defense.
 
 **Phase history:**
 - 2026-04-15 (Phase 15.2 close): `npm run test:integration -- test/backend/auth/` reported 34/34 PASS. Test suite was smaller then; less accumulated state by the time `user-deletion.test.ts` ran.
@@ -59,12 +125,13 @@ The test DB accumulates state across the full integration suite. Earlier tests i
 3. **Defensive admin_delete_row:** Could add a `force=true` flag to admin_delete_row that cascades through active references. Larger surface change; not appropriate as a test fix.
 4. **Test isolation via .test-only nuke:** Run `nuke_test_data` (Phase 16.4 Plan 01's refactored reducer) before each user-deletion test to wipe accumulated state. Heavy but safe.
 
-**Filed for:** Phase 17+ test-hygiene quick task or `/gsd-fast` candidate. Not in scope for 16.4.
+**Filed for:** Phase 16.4 BLOCKING issue — must be resolved before phase sign-off (returned to user as a Plan 07 human-action checkpoint, 2026-05-03 16:55 UTC).
 
-**Severity:** Medium (test infra; production code path is correct — cascade has been verified working manually via `admin_delete_row` end-to-end on staging in earlier phases). Does NOT block 16.4 verification gate because:
-- The 2 failures are infrastructure-only, not behavior changes introduced by 16.4
-- 100% of Plan 02's `isInternal` regression test (`scheduled-reducer-isInternal-rejection.test.ts`) passes
-- All 9 success criteria for 16.4 (SC#1-9) are about SDK-surface adoption and skill-rule documentation, none of which depend on user-deletion eviction working
+**Severity:** HIGH — Plan 02 introduced a real production regression on SpacetimeDB v2.2.0. The 3 `isInternal` guards in scheduled reducers (`run_user_deletion`, `run_lobby_gc`, `run_identity_gc`) reject ALL invocations including legitimate engine dispatch. SC#7 ("no behavioral regressions") explicitly fails. The 16.4 verification gate **CANNOT** PASS in current state.
+
+Phase 16.4 verdict: **BLOCKED** pending resolution decision.
+
+The earlier "test-infra state-accumulation" analysis (kept above for record) was incorrect — root cause is in production code (Plan 02), not test setup.
 
 ---
 
