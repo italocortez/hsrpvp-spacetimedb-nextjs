@@ -160,6 +160,11 @@ function performLobbyGc(ctx: any): { lobbiesScanned: number; lobbiesDeleted: num
 export const run_lobby_gc = spacetimedb.reducer(
     { arg: LobbyGcJob.rowType },
     (ctx, { arg }) => {
+        if (!ctx.senderAuth.isInternal) {
+            throw new SenderError(
+                'Forbidden: scheduled reducer; cannot be invoked externally.'
+            );
+        }
         const result = performLobbyGc(ctx);
 
         // D-14: Write GcResult audit row only when something was deleted

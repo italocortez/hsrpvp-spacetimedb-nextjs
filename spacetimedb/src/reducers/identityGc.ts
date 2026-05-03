@@ -86,6 +86,11 @@ function performIdentityGc(ctx: any): { itemsScanned: number; itemsDeleted: numb
 export const run_identity_gc = spacetimedb.reducer(
     { arg: IdentityGcJob.rowType },
     (ctx, { arg }) => {
+        if (!ctx.senderAuth.isInternal) {
+            throw new SenderError(
+                'Forbidden: scheduled reducer; cannot be invoked externally.'
+            );
+        }
         console.log('[IDENTITY_GC] Scheduled run starting...');
 
         const result = performIdentityGc(ctx);
