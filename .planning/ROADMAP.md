@@ -279,7 +279,7 @@ Plans:
 
 **Goal:** [Urgent work - to be planned]
 **Requirements**: TBD
-**Depends on:** Phase 16
+**Depends on:** Phase 16.4 (deferred behind v2.2.0 SDK upgrade so the landing page is built against the upgraded module bindings + v3 transport from day one)
 **Plans:** 0 plans
 
 Plans:
@@ -289,7 +289,7 @@ Plans:
 
 **Goal**: Module manifest reflects installed reality (2.1.0 minimum), then both module and client cleanly upgraded to v2.2.0; regenerated bindings pass typecheck; maincloud republish verified clean against v2.2.0 engine fixes (autoinc, PK migration). Drift fix and version bump land as separate atomic commits so the audit trail distinguishes "fix what was wrong" from "do the planned upgrade".
 
-**Depends on:** Phase 16.2
+**Depends on:** Phase 16.1 (16.2 was inserted before 16.3 numerically but deferred behind it — landing page work hadn't started, SDK upgrade is prerequisite-y for every subsequent phase including 16.2)
 
 **Requirements**: TBD (no new feature requirements; treated as infra phase)
 
