@@ -1,6 +1,7 @@
 import spacetimedb from '../schema';
 import { UserDeletionJob, setRunUserDeletionReducer } from '../tables/userDeletionJob';
 import { performUserDeletion } from '../helpers/userDeletionHelper';
+import { SenderError } from 'spacetimedb/server';
 
 // Scheduled reducer: cascades active-state data + soft-deletes (or hard-deletes guest) User.
 // Fires ~5 seconds after admin initiates deletion.
@@ -9,6 +10,11 @@ import { performUserDeletion } from '../helpers/userDeletionHelper';
 export const run_user_deletion = spacetimedb.reducer(
     { arg: UserDeletionJob.rowType },
     (ctx, { arg }) => {
+        if (!ctx.senderAuth.isInternal) {
+            throw new SenderError(
+                'Forbidden: scheduled reducer; cannot be invoked externally.'
+            );
+        }
         performUserDeletion(ctx, arg.userId, arg.createdById);
     }
 );
