@@ -231,6 +231,34 @@ const [characters] = useTable(tables.HsrCharacter, { enabled: someCondition });
 
 Reference: Phase 16.4 Plan 05; `notes/v09-frontend-subscription-strategy.md` Decision 9.
 
+### Reducer calls in React: useReducer(reducers.X), not getConnection()
+
+Inside React components or hooks, use `const callX = useReducer(reducers.X)` and call `callX(args)`. The hook (v2.2.0+, PR #4752) returns a stable typed Promise-returning callback that queues internally until the connection is ready — eliminates the per-site `getConnection()` null-check.
+
+```typescript
+import { useReducer } from 'spacetimedb/react';
+import { reducers } from '@/src/module_bindings';
+
+function MyComponent() {
+    const updateUsername = useReducer(reducers.updateUsername);
+    // ...
+    const onClick = () => {
+        updateUsername({ newUsername: 'foo' })
+            .catch((err: any) => setMessage({ type: 'error', text: err.message }));
+    };
+}
+```
+
+Empty-param reducers (no schema params) are called as `callX()`, not `callX({})` — the SDK's `ParamsType` collapses to `[]` when the reducer schema is empty (verified at `spacetimedb/node_modules/spacetimedb/dist/sdk/type_utils.d.ts:7`). Passing `{}` is a TypeScript error.
+
+Server-side Route Handlers (`getServerConnection()`) do NOT qualify — they continue calling `connection.reducers.X(...)` directly. React hooks only apply in React component / hook contexts.
+
+Use `.catch()` for errors (matches project STATE.md "v0.5 Conventions"). For try/finally lifecycle (e.g. `setIsSubmitting`), use `.then()/.catch()/.finally()` chains — the boolean toggle becomes async.
+
+The corresponding `useProcedure(procedures.X)` hook is for SpacetimeDB *procedures*; project defines zero procedures (`__procedures()` is called with no args at `src/module_bindings/index.ts:2037`), so `useProcedure` currently does not apply.
+
+Reference: Phase 16.4 Plan 06 (v2.2.0+, PR #4752) — 5 adopted sites; `notes/v09-frontend-subscription-strategy.md` Decision 10.
+
 ### Handling reducer errors on the client
 Reducers don't return data, so errors surface via callbacks. Use `_then()` to detect failures from a specific call, and `ctx.event.status` to read the `SenderError` message:
 ```typescript
