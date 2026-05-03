@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
-current_phase: 17
-current_plan: Not started
+current_phase: 16.3
+current_plan: 1
 status: executing
 stopped_at: Phase 16.3 context gathered
-last_updated: "2026-05-03T04:52:28.021Z"
+last_updated: "2026-05-03T05:16:10.232Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 36
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Core value:** Players can organize, play, and track competitive HSR matches and tournaments in one place — from drafting to scoring to leaderboards — without relying on external tools.
-**Current focus:** Phase 16.1 — css-module-hygiene
+**Current focus:** Phase 16.3 — spacetimedb-v2-1-0-realign-v2-2-0-upgrade-inserted
 
 ## Position
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
-**Current phase:** 17
-**Current plan:** Not started
-**Status:** Ready to execute
+**Current phase:** 16.3
+**Current plan:** 1
+**Status:** Executing Phase 16.3
 **Last activity:** 2026-05-03
 
 Progress: [██████████] 54/54 plans (100%) — Phase 16.1 Plan 08 complete (improvised-during-verify Next.js <Link> prefetch disable on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits; ROADMAP success criterion 4 closed by user out-of-band); Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1

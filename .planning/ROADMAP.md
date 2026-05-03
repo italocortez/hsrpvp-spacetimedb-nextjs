@@ -303,10 +303,10 @@ Plans:
   6. ~~`spacetime lock` applied to maincloud production database `hsrpvp-spacetimedb-nextjs-test1` as final operational hardening step.~~ **OBSOLETE per phase decision D-13** — user owns this manually outside the GSD workflow; will not be planned for in this phase or any subsequent phase.
   7. Note `.planning/notes/spacetimedb-version-drift.md` referenced in the phase plan and final commit message so future SDK bumps catch the same trap.
 
-**Plans:** 4 plans (3 waves; 2 atomic commits — drift fix in Plan 01, v2.2.0 bump in Plan 04)
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 16.3-01-PLAN.md — Drift fix: `spacetimedb/package.json` ^2.0.3 → ^2.1.0 + lockfile refresh (Commit A)
+- [x] 16.3-01-PLAN.md — Drift fix: `spacetimedb/package.json` ^2.0.3 → ^2.1.0 + lockfile refresh (Commit A)
 - [ ] 16.3-02-PLAN.md — v2.2.0 manifests + lockfiles + bindings + typecheck/test (Commit B core, no commit yet)
 - [ ] 16.3-03-PLAN.md — Changelog audit (D-11) + `spacetime delete --yes` doc sweep (D-12) + audit-notes file
 - [ ] 16.3-04-PLAN.md — Maincloud republish + SQL probes + human-verify push gate; finalize Commit B + push, OR D-07 rollback
@@ -655,7 +655,7 @@ Plans:
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
 | 16.1. CSS module hygiene | 8/7 | Complete    | 2026-04-20 |
 | 16.2. Home / Landing Page | 0/TBD | Not started (deferred behind 16.4) | - |
-| 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 0/TBD | Not started (next up) | - |
+| 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 1/4 | In Progress|  |
 | 16.4. SpacetimeDB v2.2.0 refactor pass | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
