@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.4
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 16.4-02 (isInternal hardening on 3 scheduled reducers); Plan 03 next
-last_updated: "2026-05-03T13:37:13Z"
+stopped_at: Phase 16.4 Plan 03 complete; ready for Plan 04
+last_updated: "2026-05-03T13:47:57.510Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 36
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.4
-**Current plan:** 3
-**Status:** Executing Phase 16.4 (Plans 01-02 complete; Plan 03 next)
+**Current plan:** 4
+**Status:** Executing Phase 16.4 (Plans 01-03 complete; Plan 04 next)
 **Last activity:** 2026-05-03
 
 Progress: [██████████] 54/54 plans (100%) — Phase 16.1 Plan 08 complete (improvised-during-verify Next.js <Link> prefetch disable on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits; ROADMAP success criterion 4 closed by user out-of-band); Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1
@@ -186,6 +186,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.4-02]: Pattern — scheduled reducer external-call protection has TWO layers in v2.2.0: (a) engine-level reducer-registry exclusion (run_* names not exposed to external WS clients — current primary mitigation, returns "no such reducer"); (b) explicit `ctx.senderAuth.isInternal` guard at reducer body top (Plan 02 — defense-in-depth, encodes 12.1 engine-only assumption as runtime check). Both layers required for full T-16.4-02-01 mitigation: layer (a) alone is implicit and could break on a future SDK upgrade; layer (b) alone is redundant against v2.2.0 but survives changes to layer (a).
 - [Phase 16.4-02]: Pattern — vitest global-setup auto-republishes maincloud on every `npm run test:integration` (per `test/global-setup.ts`). Side effect: backend source changes from any plan land on maincloud during routine test runs. Plan 07 republish gate becomes a final-state confirmation rather than a first-deployment. Use `SKIP_DB_CLEAR=1` to opt out per-invocation when iterating on a single failing file.
 - [Phase 16.4-02]: Pattern — when typed reducer accessors don't exist (scheduled reducers, internal-only reducers), the SDK's `(conn as any).callReducer(reducerName: string, argsBuffer: Uint8Array)` escape hatch (declared at `dist/sdk/db_connection_impl.d.ts:81`) is the canonical path for external-invocation testing. Empty Uint8Array(0) is acceptable when the server-side guard fires before BSATN deserialization (e.g. isInternal as the first statement). The fallback `#callReducerGeneric` path in the SDK accepts arbitrary reducer names — exactly the path a real attacker would take.
+- [Phase 16.4-03]: Plan 03 complete — added `spacetime:publish:migrate` sibling script to package.json (single-line +1/-0 insertion at line 18). Default `spacetime:publish` UNCHANGED — destructive-migration confirm dialog still fires per D-06 (safety feature). Other --yes values (break-clients, delete-data, remote, skip-login) explicitly NOT added — only :migrate opted in. `--yes=migrate` value attached with `=` per PR #4885 CLI surface (RESEARCH.md Example 5). docs/smoke/contract.md gains a single operational paragraph at line 15 noting the variant disambiguation ("skips ONLY the destructive-migration confirm prompt") under the `### scripts/post-publish.ts (Full Bootstrap)` heading; existing --clear-database text preserved. SKILL.md gains `### Publishing: use :migrate for reviewed schema deltas` rule between the CLI Common commands block and the existing spacetime sql gotcha rule (topical-order placement near other CLI/operations rules per PATTERNS.md guardrail), including v2.2.0 informational notes per D-14 (brotli compression not adopted, PR #4593 empty-table drop). 3 atomic commits: 9ffae91 (feat package.json) + 2a79b0a (docs contract.md) + cc895fa (docs SKILL.md). All acceptance-criteria greps and node-eval checks passed first time. Zero deviations. SC#3 closed.
+- [Phase 16.4-03]: Pattern — separate sibling npm script for granular CLI confirm-skip. Default `spacetime:publish` keeps full safety (all destructive prompts interactive); named sibling `spacetime:publish:migrate` opts into ONE specific prompt skip via `--yes=migrate` (=-attached per v2.2.0 PR #4885 CLI surface). Cleaner than a flag added to default publish (which would require remembering when NOT to use it) and cleaner than an env-var toggle (which leaks into shell history). Pattern generalizes: future per-prompt opt-ins land as additional siblings (`:break-clients`, `:delete-data`) only when their use case crystallizes — explicit-by-script invocation keeps the safety/friction trade-off legible at the call site.
 
 ### Roadmap Evolution
 
@@ -223,7 +225,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-05-03T13:22:16.443Z
-Stopped at: Phase 16.4 context gathered
+Last session: 2026-05-03T13:47:51.869Z
+Stopped at: Phase 16.4 Plan 03 complete; ready for Plan 04
 Resume file: None
 Next action: Run `/gsd-verify-work` on Phase 16.1 to close out the phase — verify all 8 plans' commits (Plans 01-07 CSS co-location + Plan 08 Link prefetch policy + Plan 06 refinement commit 7d1745f), confirm docs/frontend/component-hygiene.md Rule 6 codified, and prompt for any `docs/{feature}/` architecture or contract updates. After verification: Phase 17 (Cost tables — data) unblocked.
