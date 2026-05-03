@@ -45,8 +45,8 @@ Full details: `milestones/v0.5-ROADMAP.md`
 - [x] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views (completed 2026-04-13)
 - [x] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes (completed 2026-04-19)
 - [x] **Phase 16.1: CSS module hygiene (Plans 01-07 co-location + Plan 08 Link prefetch policy)** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement) (completed 2026-04-20)
-- [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20)
-- [ ] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02)
+- [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20; **DEFERRED behind 16.4** as of 2026-05-02 — execution order is 16.3 → 16.4 → 16.2 so the landing page is built against upgraded bindings + v3 transport)
+- [ ] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02; **NEXT UP after 16.1**)
 - [ ] **Phase 16.4: SpacetimeDB v2.2.0 refactor pass** — Server: `Table.clear()` in GC reducers, `AuthCtx`/`JwtClaims` typed auth helpers, `--yes=migrate` granular publish. Client: verify v3 WebSocket transport negotiation (bandwidth win), adopt `useTable({enabled})` for gated panels, adopt `useProcedure` for typed reducer hooks (INSERTED 2026-05-02)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
@@ -98,6 +98,7 @@ These apply to every phase; they are not phases themselves. Call them out in pla
 - Phase 28 blocks 30+ (lobby data must flow before draft can read from it).
 - Phase 31 blocks 40+ (replay reuses pedestal component in read-only mode — must exist first).
 - Phase 34 fork blocks Phase 35 (bracket library must be stripped and usable before UX builds on it).
+- **Phase 16.3 → 16.4 → 16.2 execution order** (out of numeric order — set 2026-05-02). 16.2 was inserted first (2026-04-20) but landing page work hadn't started; SDK upgrade (16.3) and refactor pass (16.4) are prerequisite-y for every subsequent phase, so 16.2 was deferred behind them. Strongly recommended: do not start any data-wiring phase (17+) until 16.3 ships at minimum — bindings regen affects every consumer.
 - All other phases run strictly in numeric order.
 
 ---
@@ -647,6 +648,9 @@ Plans:
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
 | 16.1. CSS module hygiene | 8/7 | Complete    | 2026-04-20 |
+| 16.2. Home / Landing Page | 0/TBD | Not started (deferred behind 16.4) | - |
+| 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 0/TBD | Not started (next up) | - |
+| 16.4. SpacetimeDB v2.2.0 refactor pass | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |
