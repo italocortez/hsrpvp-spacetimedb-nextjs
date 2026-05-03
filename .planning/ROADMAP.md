@@ -46,7 +46,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 - [x] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes (completed 2026-04-19)
 - [x] **Phase 16.1: CSS module hygiene (Plans 01-07 co-location + Plan 08 Link prefetch policy)** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement) (completed 2026-04-20)
 - [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20; **DEFERRED behind 16.4** as of 2026-05-02 — execution order is 16.3 → 16.4 → 16.2 so the landing page is built against upgraded bindings + v3 transport)
-- [ ] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02; **NEXT UP after 16.1**)
+- [x] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02; **NEXT UP after 16.1**) (completed 2026-05-03)
 - [ ] **Phase 16.4: SpacetimeDB v2.2.0 refactor pass** — Server: `Table.clear()` in GC reducers, `AuthCtx`/`JwtClaims` typed auth helpers, `--yes=migrate` granular publish. Client: verify v3 WebSocket transport negotiation (bandwidth win), adopt `useTable({enabled})` for gated panels, adopt `useProcedure` for typed reducer hooks (INSERTED 2026-05-02)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
@@ -303,13 +303,13 @@ Plans:
   6. ~~`spacetime lock` applied to maincloud production database `hsrpvp-spacetimedb-nextjs-test1` as final operational hardening step.~~ **OBSOLETE per phase decision D-13** — user owns this manually outside the GSD workflow; will not be planned for in this phase or any subsequent phase.
   7. Note `.planning/notes/spacetimedb-version-drift.md` referenced in the phase plan and final commit message so future SDK bumps catch the same trap.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 16.3-01-PLAN.md — Drift fix: `spacetimedb/package.json` ^2.0.3 → ^2.1.0 + lockfile refresh (Commit A)
 - [x] 16.3-02-PLAN.md — v2.2.0 manifests + lockfiles + bindings + typecheck/test (Commit B core, no commit yet)
 - [x] 16.3-03-PLAN.md — Changelog audit (D-11) + `spacetime delete --yes` doc sweep (D-12) + audit-notes file
-- [ ] 16.3-04-PLAN.md — Maincloud republish + SQL probes + human-verify push gate; finalize Commit B + push, OR D-07 rollback
+- [x] 16.3-04-PLAN.md — Maincloud republish + SQL probes + human-verify push gate; finalize Commit B + push, OR D-07 rollback
 
 **UI hint**: no (backend / SDK upgrade, no rendered output change)
 
@@ -655,7 +655,7 @@ Plans:
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
 | 16.1. CSS module hygiene | 8/7 | Complete    | 2026-04-20 |
 | 16.2. Home / Landing Page | 0/TBD | Not started (deferred behind 16.4) | - |
-| 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 3/4 | In Progress|  |
+| 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 4/4 | Complete   | 2026-05-03 |
 | 16.4. SpacetimeDB v2.2.0 refactor pass | 0/TBD | Not started | - |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
