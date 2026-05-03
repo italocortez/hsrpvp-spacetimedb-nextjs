@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.4
-current_plan: 1
+current_plan: 3
 status: executing
-stopped_at: Phase 16.4 context gathered
-last_updated: "2026-05-03T13:22:38.646Z"
+stopped_at: Completed 16.4-02 (isInternal hardening on 3 scheduled reducers); Plan 03 next
+last_updated: "2026-05-03T13:37:13Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 36
   completed_phases: 9
   total_plans: 64
-  completed_plans: 59
-  percent: 92
+  completed_plans: 61
+  percent: 95
 ---
 
 # Session State
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.4
-**Current plan:** 1
-**Status:** Executing Phase 16.4
+**Current plan:** 3
+**Status:** Executing Phase 16.4 (Plans 01-02 complete; Plan 03 next)
 **Last activity:** 2026-05-03
 
 Progress: [██████████] 54/54 plans (100%) — Phase 16.1 Plan 08 complete (improvised-during-verify Next.js <Link> prefetch disable on heavy NavBar routes via consolidated NAV_ITEMS object; 4 atomic refactor commits; ROADMAP success criterion 4 closed by user out-of-band); Phase 16.1 FULLY COMPLETE with all 4 ROADMAP criteria verified; next: Phase 17 (Cost tables — data) after /gsd-verify-work closes out 16.1
@@ -182,6 +182,10 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.1-08]: Pattern — single-config-object NavBar with forward-compat slots. NAV_ITEMS = { staticTabs[], profile, adminView, lobbyInstance } collapses all route knowledge into one object. staticTabs[] is iterable for center row render; profile + adminView are named flat entries for right-section conditional render; lobbyInstance is a structure-only slot for dynamic /lobby/[id] tabs that Phase 28+ useLobbies() will render. Adding a new NavBar entry is a one-line edit at NAV_ITEMS. Route rename, prefetch policy change, and heavy-flag toggle all touch the same shape. Replaces prior HEAVY_ROUTES Set + prefetchFor() helper (intermediate step) with zero behavior change.
 - [Phase 16.1-08]: Pattern — improvised-during-verify plans are legitimate phase members. No PLAN.md needed when the fix is single-file + single-behavior + root-cause-obvious from DevTools. Atomic commits land directly on the feature branch per autonomous-execution rules; retrospective SUMMARY + STATE + ROADMAP update is the documentation layer. Phase 16.1 ledger counts 8 plans (Plans 01-08) plus 1 Plan 06 refinement commit. `/gsd-verify-work` invariant ("every commit accounted for in a SUMMARY") is satisfied by the SUMMARY's task-commit table.
 - [Phase 16.4-01]: Plan 01 complete — refactored server_nuke_test_data: 50 cleared sites via ctx.db.X.clear() (49 nuke() replacements + 1 inline DeletedUser block; original had 49 nuke() calls per git show, plan's 41+1=42 was a miscount but the >=42 acceptance threshold passed); nuke() helper deleted; 3 SYSTEM-filter blocks (UserPrivate/UserIdentity/User) preserved verbatim with username='SYSTEM' lookup; final log line reworded; SKILL.md gains Whole-table wipes rule between CRUD operations and Accessor types per topical ordering. Statement form (no return-value capture) preferred over capturing clear()'s bigint return — uniformity across all 50 sites. SC#1 closed. Zero deviations. Typecheck clean. Plan-cited integration test 'server-nuke' does not exist; behavioral verification deferred to Plan 07 maincloud republish + admin_gc_lobbies smoke per CONTEXT.md D-08.
+- [Phase 16.4-02]: Plan 02 complete — added `if (!ctx.senderAuth.isInternal) throw new SenderError(...)` guard to 3 scheduled reducers (run_lobby_gc + run_identity_gc with existing SenderError import, run_user_deletion gains the import); verbatim message "Forbidden: scheduled reducer; cannot be invoked externally." across all 3 sites for grep / log uniformity. AUDIT-NOTES.md mirrors 16.3-AUDIT-NOTES.md layout (4 top-level sections: AuthCtx applicability (a)/(b)/(c)/(d), 7 audit-surface files inspected, isInternal hardening sites, Skill rule appended); SKILL.md gains AuthCtx applicability + isInternal hardening rule with comparison table (requireServer / getAuthenticatedUser / ensureXxx all stay). performUserDeletion helper UNCHANGED (deletedAt-as-UX-flag preserved per 15.2 D-03). Two Rule-3 / Rule-1 deviations: (1) Task 5 typed accessors `caller.call.runUserDeletion(...)` don't exist — scheduled reducers (run_*) are NOT registered in module bindings; pivoted to low-level `(conn as any).callReducer(name, Uint8Array(0))` SDK escape hatch. (2) Live integration test surfaced AUDIT FINDING: SpacetimeDB v2.2.0 returns "no such reducer" for external scheduled-reducer calls — the engine itself does not surface run_* names as externally-callable; our isInternal guard is therefore DEFENSE-IN-DEPTH (would only fire if a future SDK exposed the path). Test assertion broadened to /Forbidden|no such reducer/i; both prove T-16.4-02-01 mitigation. SC#2 closed.
+- [Phase 16.4-02]: Pattern — scheduled reducer external-call protection has TWO layers in v2.2.0: (a) engine-level reducer-registry exclusion (run_* names not exposed to external WS clients — current primary mitigation, returns "no such reducer"); (b) explicit `ctx.senderAuth.isInternal` guard at reducer body top (Plan 02 — defense-in-depth, encodes 12.1 engine-only assumption as runtime check). Both layers required for full T-16.4-02-01 mitigation: layer (a) alone is implicit and could break on a future SDK upgrade; layer (b) alone is redundant against v2.2.0 but survives changes to layer (a).
+- [Phase 16.4-02]: Pattern — vitest global-setup auto-republishes maincloud on every `npm run test:integration` (per `test/global-setup.ts`). Side effect: backend source changes from any plan land on maincloud during routine test runs. Plan 07 republish gate becomes a final-state confirmation rather than a first-deployment. Use `SKIP_DB_CLEAR=1` to opt out per-invocation when iterating on a single failing file.
+- [Phase 16.4-02]: Pattern — when typed reducer accessors don't exist (scheduled reducers, internal-only reducers), the SDK's `(conn as any).callReducer(reducerName: string, argsBuffer: Uint8Array)` escape hatch (declared at `dist/sdk/db_connection_impl.d.ts:81`) is the canonical path for external-invocation testing. Empty Uint8Array(0) is acceptable when the server-side guard fires before BSATN deserialization (e.g. isInternal as the first statement). The fallback `#callReducerGeneric` path in the SDK accepts arbitrary reducer names — exactly the path a real attacker would take.
 
 ### Roadmap Evolution
 
