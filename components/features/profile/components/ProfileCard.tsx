@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useSpacetimeDB } from 'spacetimedb/react';
+import { useReducer } from 'spacetimedb/react';
+import { reducers } from '@/src/module_bindings';
 import styles from './ProfileCard.module.css';
 import { User } from '@/components/features/auth/types';
 
@@ -12,7 +13,8 @@ interface ProfileCardProps {
 }
 
 export default function ProfileCard({ user, avatarImageUrl }: ProfileCardProps) {
-    const { getConnection } = useSpacetimeDB();
+    const updateUsername = useReducer(reducers.updateUsername);
+    const updateDisplayName = useReducer(reducers.updateDisplayName);
     const roleLabel = user.role.tag;
 
     const [username, setUsername] = useState(user.username);
@@ -36,34 +38,28 @@ export default function ProfileCard({ user, avatarImageUrl }: ProfileCardProps) 
     };
 
     const handleSave = () => {
-        const conn = getConnection();
-        if (!conn) return;
-
         setMessage(null);
-
-        try {
-            if (usernameChanged) {
-                const trimmed = username.trim();
-                if (!trimmed || trimmed.length > 32) {
-                    setMessage({ type: 'error', text: 'Username must be 1-32 characters.' });
-                    return;
-                }
-                conn.reducers.updateUsername({ newUsername: trimmed });
+        if (usernameChanged) {
+            const trimmed = username.trim();
+            if (!trimmed || trimmed.length > 32) {
+                setMessage({ type: 'error', text: 'Username must be 1-32 characters.' });
+                return;
             }
-
-            if (displayNameChanged) {
-                const trimmed = displayName.trim();
-                if (!trimmed || trimmed.length > 32) {
-                    setMessage({ type: 'error', text: 'Display name must be 1-32 characters.' });
-                    return;
-                }
-                conn.reducers.updateDisplayName({ newDisplayName: trimmed });
-            }
-
-            setMessage({ type: 'success', text: 'Profile updated!' });
-        } catch (e) {
-            setMessage({ type: 'error', text: 'Failed to update profile.' });
+            updateUsername({ newUsername: trimmed }).catch((err: any) =>
+                setMessage({ type: 'error', text: err?.message || 'Failed to update username.' })
+            );
         }
+        if (displayNameChanged) {
+            const trimmed = displayName.trim();
+            if (!trimmed || trimmed.length > 32) {
+                setMessage({ type: 'error', text: 'Display name must be 1-32 characters.' });
+                return;
+            }
+            updateDisplayName({ newDisplayName: trimmed }).catch((err: any) =>
+                setMessage({ type: 'error', text: err?.message || 'Failed to update display name.' })
+            );
+        }
+        setMessage({ type: 'success', text: 'Profile updated!' });
     };
 
     return (

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { useSpacetimeDB } from 'spacetimedb/react';
+import { useReducer } from 'spacetimedb/react';
+import { reducers } from '@/src/module_bindings';
 import { UPSERT_TABLES, UpsertTableName } from '../types';
 import { UPSERT_TABLE_COLUMNS, TABLE_ENUM_COLUMNS } from '../../types/tableColumns';
 import { ENUM_VALUES } from '../../types/enums';
@@ -154,7 +155,7 @@ function validateJson(jsonText: string, tableName: UpsertTableName): ValidationR
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function BulkUpsert() {
-    const { getConnection } = useSpacetimeDB();
+    const adminBulkUpsert = useReducer(reducers.adminBulkUpsert);
     const [selectedTable, setSelectedTable] = useState<UpsertTableName>('HsrCharacter');
     const [jsonText, setJsonText] = useState('');
     const [isDragging, setIsDragging] = useState(false);
@@ -194,34 +195,27 @@ export default function BulkUpsert() {
     }, [handleFileRead]);
 
     const handleSubmit = useCallback(() => {
-        const conn = getConnection();
-        if (!conn) {
-            setMessage({ type: 'error', text: 'Not connected to SpacetimeDB' });
-            return;
-        }
         if (!validation.valid) {
             setMessage({ type: 'error', text: validation.error || 'Validation failed' });
             return;
         }
-
         setIsSubmitting(true);
         setMessage(null);
-
-        try {
-            // Send the converted (camelCase) rows
-            (conn.reducers as any).adminBulkUpsert({
-                tableName: selectedTable,
-                jsonData: JSON.stringify(validation.convertedRows),
-            });
-            setMessage({ type: 'success', text: `Bulk upsert sent for ${validation.rowCount} rows into ${selectedTable}` });
-            setJsonText('');
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        } catch (e: any) {
-            setMessage({ type: 'error', text: `Upsert failed: ${e.message || e}` });
-        } finally {
-            setIsSubmitting(false);
-        }
-    }, [getConnection, selectedTable, validation]);
+        // Send the converted (camelCase) rows
+        adminBulkUpsert({
+            tableName: selectedTable,
+            jsonData: JSON.stringify(validation.convertedRows),
+        })
+            .then(() => {
+                setMessage({ type: 'success', text: `Bulk upsert sent for ${validation.rowCount} rows into ${selectedTable}` });
+                setJsonText('');
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            })
+            .catch((err: any) => {
+                setMessage({ type: 'error', text: `Upsert failed: ${err.message || err}` });
+            })
+            .finally(() => setIsSubmitting(false));
+    }, [adminBulkUpsert, selectedTable, validation]);
 
     return (
         <div className="flex flex-col gap-4 p-4">
