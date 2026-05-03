@@ -2,6 +2,13 @@ import spacetimedb from '../schema';
 import { IdentityGcJob, setRunIdentityGcReducer } from '../tables/identityGcJob';
 import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
+// External-invocation defense for `run_identity_gc`: SpacetimeDB v2.2.0 engine returns
+// "no such reducer" for external WS callers attempting to invoke scheduled reducers
+// (verified 2026-05-03 in 16.4-AUDIT-NOTES.md "v0.6 Update"). Application-level
+// `ctx.senderAuth.isInternal` guard was removed by Plan 07 hotfix because the SDK
+// v2.2.0 `senderAuth` factory always sets `isInternal: false`. `seed_identity_gc_job`
+// and `admin_gc_identities` retain their existing project-level gates (`ServerIdentity`
+// check and `ensureModerator` respectively).
 import { SYSTEM_USER_ID } from '../helpers/auditColumns';
 import { insertWithAudit } from '../helpers/auditHelpers';
 import { ensureModerator } from '../helpers/ensurePermissions';
@@ -86,11 +93,6 @@ function performIdentityGc(ctx: any): { itemsScanned: number; itemsDeleted: numb
 export const run_identity_gc = spacetimedb.reducer(
     { arg: IdentityGcJob.rowType },
     (ctx, { arg }) => {
-        if (!ctx.senderAuth.isInternal) {
-            throw new SenderError(
-                'Forbidden: scheduled reducer; cannot be invoked externally.'
-            );
-        }
         console.log('[IDENTITY_GC] Scheduled run starting...');
 
         const result = performIdentityGc(ctx);
