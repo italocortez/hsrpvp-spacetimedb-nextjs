@@ -80,7 +80,7 @@ export default function TableExplorer({ isActive }: { isActive: boolean }) {
     const [deleteConfirm, setDeleteConfirm] = useState<{ tableName: PublicTableName; pkJson: string; label: string } | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const [rows] = useTable(TABLE_MAP[selectedTable], { enabled: isActive });
+    const [rows, isReady] = useTable(TABLE_MAP[selectedTable], { enabled: isActive });
     const allRows = (rows || []) as any[];
 
     // Get column names from the first row
@@ -241,7 +241,10 @@ export default function TableExplorer({ isActive }: { isActive: boolean }) {
                         </TableColumn>
                     )}
                 </TableHeader>
-                <TableBody items={filteredRows} emptyContent={`No rows in ${selectedTable}`}>
+                <TableBody
+                    items={filteredRows}
+                    emptyContent={isActive && !isReady ? `Loading ${selectedTable}…` : `No rows in ${selectedTable}`}
+                >
                     {(row: any) => (
                         <TableRow key={getPrimaryKeyJson(selectedTable, row)}>
                             {(columnKey) => (

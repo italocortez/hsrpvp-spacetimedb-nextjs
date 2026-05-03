@@ -33,7 +33,7 @@ const ROLE_COLOR_MAP: Record<string, 'danger' | 'warning' | 'default'> = {
 };
 
 export default function UserManager({ isActive }: { isActive: boolean }) {
-    const [userRows] = useTable(tables.User, { enabled: isActive });
+    const [userRows, isReady] = useTable(tables.User, { enabled: isActive });
     const adminUpdateUser = useReducer(reducers.adminUpdateUser);
     const allUsers = (userRows || []) as any[];
 
@@ -150,7 +150,7 @@ export default function UserManager({ isActive }: { isActive: boolean }) {
                     <TableColumn>Last Login</TableColumn>
                     <TableColumn align="center">Actions</TableColumn>
                 </TableHeader>
-                <TableBody emptyContent="No users found">
+                <TableBody emptyContent={isActive && !isReady ? 'Loading users…' : 'No users found'}>
                     {sortedUsers.map((user) => (
                         <TableRow
                             key={user.id}
