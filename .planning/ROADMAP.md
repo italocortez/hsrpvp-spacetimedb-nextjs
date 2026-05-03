@@ -338,7 +338,16 @@ Plans:
   8. Energy/bandwidth deltas measured pre/post via `tools/energy-model.js` baseline — refactor must not increase energy cost; v3 transport + GC `Table.clear()` should reduce it measurably.
   9. Bytes-key B-tree indexes (#4733) considered for any String-keyed multi-column query path; adopted only where a measurable scan-cost improvement is identified (no speculative changes).
 
-**Plans**: TBD (run `/gsd-plan-phase 16.4` to break down — natural split is server plans, client plans, measurement)
+**Plans**: 7 plans
+
+Plans:
+- [ ] 16.4-01-PLAN.md — Table.clear() refactor in server_nuke_test_data (SC#1) + SKILL rule
+- [ ] 16.4-02-PLAN.md — AuthCtx AUDIT-NOTES + isInternal hardening on 3 scheduled reducers (SC#2) + SKILL rule
+- [ ] 16.4-03-PLAN.md — spacetime:publish:migrate sibling script + docs/smoke note (SC#3) + SKILL rule
+- [ ] 16.4-04-PLAN.md — tools/capture-ws-frames.ts + transport-evidence/ baseline (SC#4)
+- [ ] 16.4-05-PLAN.md — useTable({ enabled }) at UserManager + TableExplorer (SC#5) + Decision 9 + SKILL rule
+- [ ] 16.4-06-PLAN.md — useReducer(reducers.X) at 5 React component sites (SC#6) + Decision 10 + SKILL rule
+- [ ] 16.4-07-PLAN.md — Cross-cutting verify wave 2 (SC#7-9) + maincloud republish + smoke probes
 
 **UI hint**: no (refactor only — no rendered output change)
 
