@@ -175,10 +175,13 @@ export default function BulkUpsert() {
             try {
                 const parsed = JSON.parse(text);
                 setJsonText(JSON.stringify(parsed, null, 2));
-            } catch {
-                setJsonText(text);
+                setMessage(null);
+            } catch (err: any) {
+                setMessage({
+                    type: 'error',
+                    text: `File "${file.name}" is not valid JSON: ${err?.message || 'parse error'}`,
+                });
             }
-            setMessage(null);
         };
         reader.readAsText(file);
     }, []);

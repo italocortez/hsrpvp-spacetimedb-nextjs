@@ -199,6 +199,7 @@ SpacetimeDB's SQL surface is a subset of standard SQL. Workarounds:
 | WR-04 | warning | `tools/capture-ws-frames.ts:267` | `88f217b` | `loginAsGuest({})` → `loginAsGuest()` (matches Plan 06's new SKILL no-arg rule) |
 | WR-05 | warning | `tools/capture-ws-frames.ts:60-68` | `88f217b` | Token-equality guard now warns + continues if `SPACETIMEDB_SERVER_TOKEN` is unset (no longer fails open silently) |
 | WR-08 | warning | `TableExplorer.tsx:83`, `UserManager.tsx:36` | `dfdefee` | Destructure `[rows, isReady]` tuple; render Loading state during `enabled` flip resync (restores v2.1.0 SDK fix #4580) |
+| WR-06 | warning | `BulkUpsert.tsx:171-184` | (UAT-resolved 2026-05-04) | Surface clear error message when loaded file is not valid JSON; do not silently overwrite jsonText with raw text. Decided during /gsd-verify-work UAT — user said "fix it now, this is why we are doing UAT". |
 
 ### What 16.4 deferred (UAT to evaluate)
 
@@ -211,7 +212,7 @@ SpacetimeDB's SQL surface is a subset of standard SQL. Workarounds:
 | WR-01 | warning | `useAuth.ts:62-68` | Pre-existing | Production `console.log` per render (9 consumers cascade) |
 | WR-02 | warning | `useAuth.ts:285-288` | Pre-existing | Dead code path in Discord linking effect (`!needsSync` unreachable) |
 | WR-03 | warning | `identityGc.ts:78` | Pre-existing | Misleading "Ns" log unit at 90-day-TTL scale (~7.7M seconds; should log days) |
-| WR-06 | warning | `BulkUpsert.tsx:171-184` | Pre-existing | Silent on non-JSON file load — falls through to raw text, user only sees generic downstream error |
+| ~~WR-06~~ | ~~warning~~ | ~~`BulkUpsert.tsx:171-184`~~ | ~~Pre-existing~~ | ~~Silent on non-JSON file load — falls through to raw text, user only sees generic downstream error~~ — **RESOLVED 2026-05-04 in UAT** (see "What 16.4 fixed in scope" table above) |
 | WR-07 | warning | `server.ts:283-289, 299-305` | Pre-existing | `server_set_datetime` hand-rolls audit columns instead of using `auditUpdate` helper — divergence will rot if audit schema changes |
 | WR-09 | warning | `TableExplorer.tsx:140-164` | Pre-existing | `renderCell` rebuilt on every `selectedTable` change — large tables (5000-row HsrCharacterCost) re-render fully on each search keystroke |
 
