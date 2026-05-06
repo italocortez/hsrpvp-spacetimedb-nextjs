@@ -39,15 +39,15 @@ export default function ProfileCard({ user, avatarImageUrl }: ProfileCardProps) 
 
     const handleSave = () => {
         setMessage(null);
+        const tasks: Promise<unknown>[] = [];
+
         if (usernameChanged) {
             const trimmed = username.trim();
             if (!trimmed || trimmed.length > 32) {
                 setMessage({ type: 'error', text: 'Username must be 1-32 characters.' });
                 return;
             }
-            updateUsername({ newUsername: trimmed }).catch((err: any) =>
-                setMessage({ type: 'error', text: err?.message || 'Failed to update username.' })
-            );
+            tasks.push(updateUsername({ newUsername: trimmed }));
         }
         if (displayNameChanged) {
             const trimmed = displayName.trim();
@@ -55,11 +55,12 @@ export default function ProfileCard({ user, avatarImageUrl }: ProfileCardProps) 
                 setMessage({ type: 'error', text: 'Display name must be 1-32 characters.' });
                 return;
             }
-            updateDisplayName({ newDisplayName: trimmed }).catch((err: any) =>
-                setMessage({ type: 'error', text: err?.message || 'Failed to update display name.' })
-            );
+            tasks.push(updateDisplayName({ newDisplayName: trimmed }));
         }
-        setMessage({ type: 'success', text: 'Profile updated!' });
+
+        Promise.all(tasks)
+            .then(() => setMessage({ type: 'success', text: 'Profile updated!' }))
+            .catch((err: any) => setMessage({ type: 'error', text: err?.message || 'Update failed.' }));
     };
 
     return (
