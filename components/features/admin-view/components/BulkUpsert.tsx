@@ -1,11 +1,26 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { useReducer } from 'spacetimedb/react';
-import { reducers } from '@/src/module_bindings';
+import { useReducer, useTable } from 'spacetimedb/react';
+import { reducers, tables } from '@/src/module_bindings';
 import { UPSERT_TABLES, UpsertTableName } from '../types';
 import { UPSERT_TABLE_COLUMNS, TABLE_ENUM_COLUMNS } from '../../types/tableColumns';
 import { ENUM_VALUES } from '../../types/enums';
+import {
+    isFatCharacter,
+    isFatLightcone,
+    isFatPairing,
+    normalizeCharacters,
+    normalizeCharacterCosts,
+    extractArchetypeNames,
+    extractArchetypeAssignments,
+    normalizeLightcones,
+    normalizeLightconeCosts,
+    normalizePairings,
+    type RawCharacter,
+    type RawLightcone,
+    type RawPairing,
+} from '@/lib/seed-normalizers';
 import { Select, SelectItem } from '@heroui/select';
 import { Button } from '@heroui/button';
 import { Textarea } from '@heroui/input';
@@ -14,24 +29,37 @@ import { Chip } from '@heroui/chip';
 const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
     HsrCharacter: `[{
   "name": "march7th",
-  "displayName": "March 7th",
+  "display_name": "March 7th",
   "aliases": ["march"],
   "rarity": 4,
-  "path": "Preservation",
-  "element": "Ice",
-  "role": "Support",
-  "imageUrl": "https://..."
+  "path": "preservation",
+  "element": "ice",
+  "role": "support",
+  "archetype": ["Debuff"],
+  "version_released": 1.4,
+  "treat_as_version": 1.4,
+  "image_url": "https://...",
+  "skel_url": "",
+  "atlas_url": "",
+  "atlas_img_url": [],
+  "positioning": { "x": 0, "y": 0, "width": 0 },
+  "cost": {
+    "cost_set_id": 0,
+    "memory_of_chaos": { "classic": { "E0": 5, "E1": 7, "E2": 9, "E3": 11, "E4": 13, "E5": 15, "E6": 17 } }
+  }
 }]`,
     HsrLightcone: `[{
   "name": "momentofvictory",
-  "displayName": "Moment of Victory",
+  "display_name": "Moment of Victory",
   "aliases": [],
-  "path": "Preservation",
+  "path": "preservation",
   "rarity": 5,
-  "imageUrl": "https://...",
-  "posX": 0,
-  "posY": 0,
-  "width": 0
+  "image_url": "https://...",
+  "positioning": { "x": 0, "y": 0, "width": 0 },
+  "cost": {
+    "cost_set_id": 0,
+    "memory_of_chaos": { "classic": { "S1": 2, "S2": 3, "S3": 4, "S4": 5, "S5": 6 } }
+  }
 }]`,
     HsrCharacterCost: `[{
   "characterName": "march7th",
@@ -46,11 +74,12 @@ const TABLE_TEMPLATES: Record<UpsertTableName, string> = {
   "costs": { "s1": 2, "s2": 3, "s3": 4, "s4": 5, "s5": 6 }
 }]`,
     HsrSynergyCost: `[{
-  "sourceName": "cerydra",
-  "targetName": "anaxa",
-  "gameMode": "MemoryOfChaos",
-  "draftMode": "Classic",
-  "costModifier": 1.5
+  "source_name": "cerydra",
+  "target_name": "anaxa",
+  "cost": {
+    "cost_set_id": 0,
+    "memory_of_chaos": { "classic": { "modifier": 1.5 } }
+  }
 }]`,
 };
 
@@ -79,10 +108,24 @@ interface ValidationResult {
     error: string | null;
     convertedRows: any[];
     rowCount: number;
+    isFatPayload: boolean;
+    rawRows: any[];
+}
+
+// Detect whether the parsed payload is the D-22 canonical "fat" seed shape for
+// the given table. Fat shape carries cost/archetype/positioning sub-blocks and
+// expands into multiple reducer calls (auto-split mirrors scripts/seed-data.ts).
+function detectFatPayload(rawRows: any[], tableName: UpsertTableName): boolean {
+    if (!rawRows.length) return false;
+    const first = rawRows[0];
+    if (tableName === 'HsrCharacter') return isFatCharacter(first);
+    if (tableName === 'HsrLightcone') return isFatLightcone(first);
+    if (tableName === 'HsrSynergyCost') return isFatPairing(first);
+    return false;
 }
 
 function validateJson(jsonText: string, tableName: UpsertTableName): ValidationResult {
-    const empty: ValidationResult = { valid: false, error: null, convertedRows: [], rowCount: 0 };
+    const empty: ValidationResult = { valid: false, error: null, convertedRows: [], rowCount: 0, isFatPayload: false, rawRows: [] };
     if (!jsonText.trim()) return empty;
 
     let parsed: any;
@@ -94,6 +137,13 @@ function validateJson(jsonText: string, tableName: UpsertTableName): ValidationR
 
     if (!Array.isArray(parsed)) return { ...empty, error: 'JSON must be an array' };
     if (parsed.length === 0) return { ...empty, error: 'Array is empty' };
+
+    // Fat-shape branch: D-22 canonical seed format. Skip flat-key validation;
+    // normalizers from lib/seed-normalizers handle the snake_case → multi-table
+    // expansion at submit time.
+    if (detectFatPayload(parsed, tableName)) {
+        return { valid: true, error: null, convertedRows: [], rowCount: parsed.length, isFatPayload: true, rawRows: parsed };
+    }
 
     // Convert snake_case keys to camelCase
     const converted: any[] = convertKeys(parsed);
@@ -149,13 +199,17 @@ function validateJson(jsonText: string, tableName: UpsertTableName): ValidationR
         }
     }
 
-    return { valid: true, error: null, convertedRows: converted, rowCount: converted.length };
+    return { valid: true, error: null, convertedRows: converted, rowCount: converted.length, isFatPayload: false, rawRows: [] };
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function BulkUpsert() {
     const adminBulkUpsert = useReducer(reducers.adminBulkUpsert);
+    const adminAssignCharacterArchetypes = useReducer(reducers.adminAssignCharacterArchetypes);
+    // Subscribed by GameDataProvider layer-0 already; this hook reads from the cache.
+    // Used to resolve archetype name → id post-upsert when handling a fat HsrCharacter payload.
+    const [archetypeRows] = useTable(tables.Archetype);
     const [selectedTable, setSelectedTable] = useState<UpsertTableName>('HsrCharacter');
     const [jsonText, setJsonText] = useState('');
     const [isDragging, setIsDragging] = useState(false);
@@ -204,21 +258,109 @@ export default function BulkUpsert() {
         }
         setIsSubmitting(true);
         setMessage(null);
-        // Send the converted (camelCase) rows
-        adminBulkUpsert({
-            tableName: selectedTable,
-            jsonData: JSON.stringify(validation.convertedRows),
-        })
-            .then(() => {
-                setMessage({ type: 'success', text: `Bulk upsert sent for ${validation.rowCount} rows into ${selectedTable}` });
+
+        // Flat-shape: single reducer call (existing path)
+        if (!validation.isFatPayload) {
+            adminBulkUpsert({
+                tableName: selectedTable,
+                jsonData: JSON.stringify(validation.convertedRows),
+            })
+                .then(() => {
+                    setMessage({ type: 'success', text: `Bulk upsert sent for ${validation.rowCount} rows into ${selectedTable}` });
+                    setJsonText('');
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                })
+                .catch((err: any) => {
+                    setMessage({ type: 'error', text: `Upsert failed: ${err.message || err}` });
+                })
+                .finally(() => setIsSubmitting(false));
+            return;
+        }
+
+        // Fat-shape: D-22 canonical seed format. Mirror scripts/seed-data.ts ordering:
+        //   1. Primary table (HsrCharacter / HsrLightcone / HsrSynergyCost)
+        //   2. Cost rows (one per gameMode × draftMode sub-block)
+        //   3. Archetype names (HsrCharacter only)
+        //   4. Archetype assignments via admin_assign_character_archetypes (HsrCharacter only)
+        const raw = validation.rawRows;
+
+        const dispatch = async () => {
+            const summary: string[] = [];
+
+            if (selectedTable === 'HsrCharacter') {
+                const characterRows = normalizeCharacters(raw as RawCharacter[]);
+                const costRows = normalizeCharacterCosts(raw as RawCharacter[]);
+                const archetypeNames = extractArchetypeNames(raw as RawCharacter[]);
+                const assignments = extractArchetypeAssignments(raw as RawCharacter[]);
+
+                await adminBulkUpsert({ tableName: 'HsrCharacter', jsonData: JSON.stringify(characterRows) });
+                summary.push(`HsrCharacter ${characterRows.length}`);
+
+                if (costRows.length) {
+                    await adminBulkUpsert({ tableName: 'HsrCharacterCost', jsonData: JSON.stringify(costRows) });
+                    summary.push(`HsrCharacterCost ${costRows.length}`);
+                }
+
+                if (archetypeNames.length) {
+                    const archetypePayload = archetypeNames.map(name => ({ name, description: '' }));
+                    await adminBulkUpsert({ tableName: 'Archetype', jsonData: JSON.stringify(archetypePayload) });
+                    summary.push(`Archetype ${archetypeNames.length}`);
+
+                    // Resolve name→id from the live Archetype subscription cache.
+                    const archetypeMap = new Map<string, number>();
+                    for (const row of (archetypeRows ?? []) as any[]) {
+                        archetypeMap.set(row.name, row.id);
+                    }
+
+                    let assignedCount = 0;
+                    for (const { characterName, archetypeNames: names } of assignments) {
+                        const ids = names.map(n => archetypeMap.get(n)).filter((id): id is number => id !== undefined);
+                        if (ids.length > 0) {
+                            await adminAssignCharacterArchetypes({
+                                characterName,
+                                archetypeIdsJson: JSON.stringify(ids),
+                            });
+                            assignedCount++;
+                        }
+                    }
+                    if (assignedCount > 0) summary.push(`HsrCharacterArchetype assignments ${assignedCount}`);
+                }
+            } else if (selectedTable === 'HsrLightcone') {
+                const lightconeRows = normalizeLightcones(raw as RawLightcone[]);
+                const costRows = normalizeLightconeCosts(raw as RawLightcone[]);
+
+                await adminBulkUpsert({ tableName: 'HsrLightcone', jsonData: JSON.stringify(lightconeRows) });
+                summary.push(`HsrLightcone ${lightconeRows.length}`);
+
+                if (costRows.length) {
+                    await adminBulkUpsert({ tableName: 'HsrLightconeCost', jsonData: JSON.stringify(costRows) });
+                    summary.push(`HsrLightconeCost ${costRows.length}`);
+                }
+            } else if (selectedTable === 'HsrSynergyCost') {
+                const synergyRows = normalizePairings(raw as RawPairing[]);
+                if (synergyRows.length === 0) {
+                    throw new Error('Pairing fat-shape parsed but no cost sub-blocks present — nothing to upsert.');
+                }
+                await adminBulkUpsert({ tableName: 'HsrSynergyCost', jsonData: JSON.stringify(synergyRows) });
+                summary.push(`HsrSynergyCost ${synergyRows.length}`);
+            } else {
+                throw new Error(`Fat-shape detected but no normalizer for tableName="${selectedTable}".`);
+            }
+
+            return summary.join(', ');
+        };
+
+        dispatch()
+            .then((summary) => {
+                setMessage({ type: 'success', text: `Fat-shape upsert complete: ${summary}` });
                 setJsonText('');
                 if (fileInputRef.current) fileInputRef.current.value = '';
             })
             .catch((err: any) => {
-                setMessage({ type: 'error', text: `Upsert failed: ${err.message || err}` });
+                setMessage({ type: 'error', text: `Fat-shape upsert failed: ${err.message || err}` });
             })
             .finally(() => setIsSubmitting(false));
-    }, [adminBulkUpsert, selectedTable, validation]);
+    }, [adminBulkUpsert, adminAssignCharacterArchetypes, archetypeRows, selectedTable, validation]);
 
     return (
         <div className="flex flex-col gap-4 p-4">
