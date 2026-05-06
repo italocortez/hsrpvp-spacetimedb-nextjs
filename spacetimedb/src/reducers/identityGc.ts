@@ -15,10 +15,16 @@ import { ensureModerator } from '../helpers/ensurePermissions';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const IDENTITY_TTL_DAYS = 90;  // D-11
-const IDENTITY_TTL_MICROS = BigInt(IDENTITY_TTL_DAYS * 24 * 60 * 60) * 1_000_000n;
+// Time unit conversion (the only place "micros per day" knowledge lives).
 const MICROS_PER_DAY = 86_400_000_000n;  // 24 * 60 * 60 * 1_000_000
-const SEVEN_DAYS_MICROS = BigInt(7 * 24 * 60 * 60 * 1_000_000);  // D-03: weekly
+
+// D-11: an identity becomes stale after 90 days of idle.
+const IDENTITY_TTL_DAYS = 90;
+const IDENTITY_TTL_MICROS = BigInt(IDENTITY_TTL_DAYS) * MICROS_PER_DAY;
+
+// D-03: scheduled GC runs weekly.
+const GC_INTERVAL_DAYS = 7;
+const GC_INTERVAL_MICROS = BigInt(GC_INTERVAL_DAYS) * MICROS_PER_DAY;
 
 // ─── performIdentityGc ────────────────────────────────────────────────────────
 // Shared GC logic called by both scheduled and admin-triggered reducers (Pitfall 6).
@@ -118,7 +124,7 @@ export const run_identity_gc = spacetimedb.reducer(
         // Self-requeue: next run in 7 days (D-03)
         ctx.db.IdentityGcJob.insert({
             scheduledId: 0n,
-            scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + SEVEN_DAYS_MICROS),
+            scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + GC_INTERVAL_MICROS),
         });
     }
 );
@@ -174,7 +180,7 @@ export const seed_identity_gc_job = spacetimedb.reducer((ctx) => {
     // Schedule first run 7 days from now
     ctx.db.IdentityGcJob.insert({
         scheduledId: 0n,
-        scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + SEVEN_DAYS_MICROS),
+        scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + GC_INTERVAL_MICROS),
     });
     console.log('[IDENTITY_GC] Seed complete -- first run scheduled in 7 days.');
 });
