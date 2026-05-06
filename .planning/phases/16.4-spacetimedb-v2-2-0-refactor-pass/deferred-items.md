@@ -190,40 +190,42 @@ SpacetimeDB's SQL surface is a subset of standard SQL. Workarounds:
 
 **Discovered:** `/gsd-code-review 16.4` (commit `09a31f5` — `16.4-REVIEW.md`)
 
-**Status:** **DEFERRED — to be evaluated during phase verification UAT.** Phase 16.4 fixed only items it strictly introduced (commits `88f217b`, `dfdefee`). The remaining 10 findings are pre-existing in the codebase or judgment calls about whether to fix in scope. The user will decide during `/gsd-verify-work` UAT whether each item needs a follow-up plan / quick-task / phase 16.5.
+**Resolution status (final, 2026-05-06):** UAT closed all 10 deferred items. 8 were resolved inline during UAT (4 BLs + 3 WRs fixed; 1 WR documented as intentional). 1 was closed-as-resolved with the prediction shown to be wrong (WR-01). 1 was intentionally deferred to per-page refactors (WR-09). UAT-time fix scope grew from the 4 commits originally landed in 16.4 to 11 total commits when including the 2026-05-06 batch.
 
-### What 16.4 fixed
+### Final resolution table
 
-| ID | Severity | File | Commit | What it fixed |
-|----|----------|------|--------|---------------|
-| WR-04 | warning | `tools/capture-ws-frames.ts:267` | `88f217b` | `loginAsGuest({})` → `loginAsGuest()` (matches Plan 06's new SKILL no-arg rule) |
-| WR-05 | warning | `tools/capture-ws-frames.ts:60-68` | `88f217b` | Token-equality guard now warns + continues if `SPACETIMEDB_SERVER_TOKEN` is unset (no longer fails open silently) |
-| WR-08 | warning | `TableExplorer.tsx:83`, `UserManager.tsx:36` | `dfdefee` | Destructure `[rows, isReady]` tuple; render Loading state during `enabled` flip resync (restores v2.1.0 SDK fix #4580) |
-| WR-06 | warning | `BulkUpsert.tsx:171-184` | (UAT-resolved 2026-05-04) | Surface clear error message when loaded file is not valid JSON; do not silently overwrite jsonText with raw text. Decided during /gsd-verify-work UAT — user said "fix it now, this is why we are doing UAT". |
+| ID | Severity | Origin | Resolution | Commit |
+|----|----------|--------|------------|--------|
+| WR-04 | warning | 16.4-introduced | **Fixed in 16.4** — `loginAsGuest({})` → `loginAsGuest()` (Plan 06 SKILL no-arg rule) | `88f217b` |
+| WR-05 | warning | 16.4-introduced | **Fixed in 16.4** — Token-equality guard now warns + continues when `SPACETIMEDB_SERVER_TOKEN` unset | `88f217b` |
+| WR-08 | warning | 16.4-introduced | **Fixed in 16.4** — Destructure `[rows, isReady]` tuple; Loading state during enabled-flip resync | `dfdefee` |
+| WR-06 | warning | Pre-existing | **Fixed in UAT (2026-05-04)** — Surface clear error on non-JSON file load in BulkUpsert | `80211aa` |
+| BL-01 | blocker | Pre-existing | **Fixed in UAT (2026-05-06)** — HsrLightconeCost admin delete: full 4-tuple composite PK (client + server) | `d41898e` |
+| BL-02 | blocker | Pre-existing | **Fixed in UAT (2026-05-06)** — MatchSessionStepHistory admin delete: `matchHistoryId` field + 3-tuple PK (client + server) | `d41898e` |
+| BL-03 | blocker | Pre-existing | **Fixed in UAT (2026-05-06)** — HsrCharacterCost admin delete: full 4-tuple composite PK (client + server) | `d41898e` |
+| BL-04 | blocker | Pre-existing | **Fixed in UAT (2026-05-06)** — ProfileCard `handleSave`: `Promise.all().then()` — success toast fires only after server confirms | `cbc64b5` |
+| (bonus) | n/a | Discovered during BL-04 UAT | **Fixed in UAT (2026-05-06)** — `update_username` reducer pre-checks unique-index to surface clean SenderError instead of opaque "fatal error" | `c646a2e` |
+| WR-02 | warning | Pre-existing | **Fixed in UAT (2026-05-06)** — Dead `if (!needsSync)` block at useAuth.ts:285-288 removed (cleanup already done in active branch at lines 258-259) | `edc69c5` |
+| WR-03 | warning | Pre-existing | **Fixed in UAT (2026-05-06)** — Identity GC stale-deletion log: days unit + redundant BigInt cast removed via `nowMicros: bigint` annotation; introduced `MICROS_PER_DAY` shared constant | `edc69c5` |
+| WR-07 | warning | Pre-existing | **Documented in UAT (2026-05-06)** — Hand-roll is intentional and load-bearing: `server_set_datetime`'s `createdDate` branch must override `existing.createdDate`, which `auditUpdate` would preserve. Code review's "use auditUpdate" fix path rejected with rationale. Reducer-level docstring + inline pointers added at both hand-roll sites. | `bec059d` |
+| (followup) | n/a | Surfaced reviewing WR-03 fix | **Refactored in UAT (2026-05-06)** — `identityGc.ts` time-constants rationalized: single `MICROS_PER_DAY` base; semantic gates `IDENTITY_TTL_*` + `GC_INTERVAL_*` with paired DAYS/MICROS form; replaced 3 different inline encodings of "X days in micros" | `3ac6c13` |
+| WR-01 | warning | Pre-existing | **Closed-as-resolved (2026-05-06)** — code review prediction was wrong. Live production trace (`npm run start`) shows ~6 `[useAuth] render` lines per session at distinct auth state transitions — same density as the well-placed `[AuthProvider]` / `[GameDataProvider]` / `[useAuth] View hit` lifecycle logs. The "9 consumers cascade — continuous log stream" claim was misled by React 18 StrictMode dev-mode double-renders, not production behavior. Render-log placement IS correct; serves the diagnostic intent ("see how auth pages are behaving"). NOT filed for follow-up. | (no commit) |
+| WR-09 | warning | Pre-existing | **Deferred to per-page refactor phases (2026-05-06)** — partially-real claim: `renderCell` rebuild on `selectedTable` change is real but unavoidable (handleDelete legitimately depends on selectedTable); the "search-keystroke" framing was wrong (deps are stable across keystrokes). Real perf cost lives in HeroUI Table rendering all rows (no virtualization). User decision: HeroUI removal will be done holistically when each page is refactored in its own phase, alongside design review of the user-facing cost tables. Inline patches (memoize searchable text, useDeferredValue) declined in favor of the architectural refactor. | (deferred) |
 
-### What 16.4 deferred (UAT to evaluate)
+### Summary
 
-| ID | Severity | File | Origin | Issue |
-|----|----------|------|--------|-------|
-| BL-01 | blocker | `TableExplorer.tsx:45` + `admin.ts:229-241` | Pre-existing | HsrLightconeCost delete throws SyntaxError — PK builder sends raw string but reducer JSON.parses; also 2-of-4 composite-key match |
-| BL-02 | blocker | `TableExplorer.tsx:47` + `admin.ts:294-301` | Pre-existing | MatchSessionStepHistory delete sends `row.matchId` (field doesn't exist; real field is `matchHistoryId`); JSON.parse(undefined) throws; also 2-tuple sent vs 3-tuple PK expected |
-| BL-03 | blocker | `TableExplorer.tsx:38-39` + `admin.ts:216-227` | Pre-existing | HsrCharacterCost delete silently targets wrong row — 2-of-4 composite-key match (characterName + gameMode only); breaks for non-default cost sets / non-Classic draft modes |
-| BL-04 | blocker | `ProfileCard.tsx:40-63` | Pre-existing (Plan 06 was right time to fix) | "Profile updated!" toast fires synchronously before async reducer completes — violates SKILL.md fire-and-forget rule |
-| WR-01 | warning | `useAuth.ts:62-68` | Pre-existing | Production `console.log` per render (9 consumers cascade) |
-| WR-02 | warning | `useAuth.ts:285-288` | Pre-existing | Dead code path in Discord linking effect (`!needsSync` unreachable) |
-| WR-03 | warning | `identityGc.ts:78` | Pre-existing | Misleading "Ns" log unit at 90-day-TTL scale (~7.7M seconds; should log days) |
-| ~~WR-06~~ | ~~warning~~ | ~~`BulkUpsert.tsx:171-184`~~ | ~~Pre-existing~~ | ~~Silent on non-JSON file load — falls through to raw text, user only sees generic downstream error~~ — **RESOLVED 2026-05-04 in UAT** (see "What 16.4 fixed in scope" table above) |
-| WR-07 | warning | `server.ts:283-289, 299-305` | Pre-existing | `server_set_datetime` hand-rolls audit columns instead of using `auditUpdate` helper — divergence will rot if audit schema changes |
-| WR-09 | warning | `TableExplorer.tsx:140-164` | Pre-existing | `renderCell` rebuilt on every `selectedTable` change — large tables (5000-row HsrCharacterCost) re-render fully on each search keystroke |
+- **Originally 16.4-introduced (3):** WR-04, WR-05, WR-08 — all fixed in scope before UAT.
+- **Pre-existing surfaced by code review (10):** WR-06, BL-01..04, WR-01, WR-02, WR-03, WR-07, WR-09.
+  - Fixed in UAT: WR-06, BL-01, BL-02, BL-03, BL-04, WR-02, WR-03 (7).
+  - Documented in UAT: WR-07 (1).
+  - Closed-as-resolved (prediction wrong): WR-01 (1).
+  - Deferred (intentional, per-page refactor): WR-09 (1).
+- **Discovered during UAT (2 follow-ups):**
+  - `update_username` uniqueness pre-check (latent bug exposed by BL-04 fix exposing the cryptic constraint-violation surface text).
+  - `identityGc.ts` time-constants refactor (drift surfaced reviewing WR-03 fix; cleaned up).
 
-**Fix paths if UAT decides any are blocking:**
-
-- **BL-01/02/03** (TableExplorer admin-delete) — Coordinated client + server fix: extend client PK builders to full composite keys + extend `admin.ts` delete reducer predicates. Should be a single phase 16.5 plan since they share the `admin_delete_row` contract.
-- **BL-04** (ProfileCard sync success) — Surgical inline fix per `16.4-REVIEW.md` §BL-04 (chain `.then()` after `Promise.all` of the reducer calls). Quick task / `/gsd-fast` candidate.
-- **WR-01..09** — Most are quick-task material. WR-08 was already fixed; WR-09 may want measurement (perf) before paying down. WR-03/WR-07 are doc/style pickups.
-
-**Severity:** BL-01/02 throw on every attempt (admin delete unusable for those tables); BL-03 silently corrupts data on non-default cost sets; BL-04 misleads admin UX. Warnings range Low → Medium.
+UAT closure: 13/13 functional tests passed; no follow-up phase 16.5 needed for code-review remediation. All resolved items are in the codebase at HEAD (`feature_nath_claude` branch).
 
 ---
 
-_Updated: 2026-05-03 by Phase 16.4 code-review-fix scope decision (user-authorized: "fix what this phase introduced right now and say that we will evaluate if the others need fix during the verification phase UAT")._
+_Updated: 2026-05-06 by Phase 16.4 UAT closure (user-authorized inline fixes during `/gsd-verify-work`). Original deferral decision (2026-05-03): "fix what this phase introduced right now and say that we will evaluate if the others need fix during the verification phase UAT"._
