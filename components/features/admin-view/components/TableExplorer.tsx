@@ -35,16 +35,28 @@ function getPrimaryKeyJson(tableName: PublicTableName, row: any): string {
         case 'HsrCharacter': return row.name;
         case 'HsrLightcone': return row.name;
         case 'HsrCharacterCost':
-            return JSON.stringify({ characterName: row.characterName, gameModeTag: row.gameMode.tag });
-        case 'HsrLightconeCost': return row.lightconeName;
+            return JSON.stringify({
+                characterName: row.characterName,
+                gameModeTag: row.gameMode.tag,
+                draftModeTag: row.draftMode.tag,
+                costSetId: row.costSetId,
+            });
+        case 'HsrLightconeCost':
+            return JSON.stringify({
+                lightconeName: row.lightconeName,
+                gameModeTag: row.gameMode.tag,
+                draftModeTag: row.draftMode.tag,
+                costSetId: row.costSetId,
+            });
         case 'HsrSynergyCost': return String(row.id);
         case 'Lobby': return String(row.id);
         case 'LobbyMember':
             return JSON.stringify({ lobbyId: row.lobbyId, userId: row.userId });
         case 'MatchSession': return String(row.lobbyId);
         case 'MatchSessionStep': return String(row.id);
-        case 'MatchSessionHistory': return row.id;
-        case 'MatchSessionStepHistory': return row.matchId;
+        case 'MatchSessionHistory': return String(row.id);
+        case 'MatchSessionStepHistory':
+            return JSON.stringify([row.matchHistoryId, row.gameNumber, row.sequence]);
     }
 }
 
