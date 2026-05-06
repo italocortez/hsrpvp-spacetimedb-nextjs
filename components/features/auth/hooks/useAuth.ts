@@ -281,11 +281,6 @@ export function useAuth() {
                     linkingRef.current = false; // Allow retry on failure
                 });
         }
-
-        if (!needsSync) {
-            sessionStorage.removeItem(DISCORD_INTENT_KEY);
-            sessionStorage.removeItem(DISCORD_INTENT_TIMEOUT_KEY);
-        }
     }, [nextAuthStatus, session, isActive, identity, hasMapping, hasDiscordIntent, currentUser, getConnection]);
 
     // Soft-delete detection (same logic, uses currentUser from view)

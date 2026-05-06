@@ -17,6 +17,7 @@ import { ensureModerator } from '../helpers/ensurePermissions';
 
 const IDENTITY_TTL_DAYS = 90;  // D-11
 const IDENTITY_TTL_MICROS = BigInt(IDENTITY_TTL_DAYS * 24 * 60 * 60) * 1_000_000n;
+const MICROS_PER_DAY = 86_400_000_000n;  // 24 * 60 * 60 * 1_000_000
 const SEVEN_DAYS_MICROS = BigInt(7 * 24 * 60 * 60 * 1_000_000);  // D-03: weekly
 
 // ─── performIdentityGc ────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ const SEVEN_DAYS_MICROS = BigInt(7 * 24 * 60 * 60 * 1_000_000);  // D-03: weekly
 // D-05: Log each deletion with [IDENTITY_GC] prefix.
 
 function performIdentityGc(ctx: any): { itemsScanned: number; itemsDeleted: number; orphanedCount: number; staleCount: number } {
-    const nowMicros = ctx.timestamp.microsSinceUnixEpoch;
+    const nowMicros: bigint = ctx.timestamp.microsSinceUnixEpoch;
     let itemsScanned = 0;
     let itemsDeleted = 0;
     let orphanedCount = 0;
@@ -75,7 +76,7 @@ function performIdentityGc(ctx: any): { itemsScanned: number; itemsDeleted: numb
             const idleMicros = nowMicros - ui.lastSeenAt.microsSinceUnixEpoch;
             if (idleMicros >= IDENTITY_TTL_MICROS) {
                 ctx.db.UserIdentity.identity.delete(ui.identity);
-                console.log(`[IDENTITY_GC] Deleted stale identity for user #${userId} (idle: ${BigInt(idleMicros) / 1_000_000n}s)`);  // D-05
+                console.log(`[IDENTITY_GC] Deleted stale identity for user #${userId} (idle: ${idleMicros / MICROS_PER_DAY} days)`);  // D-05
                 itemsDeleted++;
                 staleCount++;
             }
