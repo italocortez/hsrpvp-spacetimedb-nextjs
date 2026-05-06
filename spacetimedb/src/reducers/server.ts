@@ -260,6 +260,23 @@ export const server_delete_user = spacetimedb.reducer({
  *   lobby / createdDate           — lobby GC age testing
  *
  * Called via server-token connection (test harness scripts).
+ *
+ * Audit-column handling:
+ *   - `lastSeenAt` updates use `updateWithAudit(...)` — lastSeenAt is a domain
+ *     column (not an audit column), so the helper correctly bumps
+ *     `lastModified*` while preserving `createdById`/`createdDate`.
+ *   - `createdDate` updates HAND-ROLL the audit fields (spread row, override
+ *     createdDate + lastModified*). `auditUpdate` cannot be used here because
+ *     it intentionally preserves `existing.createdDate` (audit invariant) —
+ *     which is the exact field this reducer needs to overwrite. Using
+ *     `auditUpdate` would silently drop the override and the test setup would
+ *     be a no-op. Drift risk: if the audit-column set ever grows, the spread
+ *     will preserve the new field via `...row`, but a future field with
+ *     special semantics (e.g. requiring SYSTEM_USER_ID as actor) would need
+ *     a manual update here. WR-07 reviewed 2026-05-06; auditUpdate fix-path
+ *     rejected — kept as documented hand-roll. If this pattern accrues a
+ *     third site, extract a `forceAuditOverride(ctx, row, patch, userId)`
+ *     helper.
  */
 export const server_set_datetime = spacetimedb.reducer({
     tableName: t.string(),
@@ -281,6 +298,8 @@ export const server_set_datetime = spacetimedb.reducer({
                 updateWithAudit(ctx, row, { lastSeenAt: ts }, SYSTEM_USER_ID)
             );
         } else if (field === 'createdDate') {
+            // Hand-roll: auditUpdate preserves existing.createdDate (audit invariant).
+            // See reducer docstring "Audit-column handling".
             ctx.db.UserIdentity.identity.update({
                 ...row,
                 createdDate: ts,
@@ -297,6 +316,8 @@ export const server_set_datetime = spacetimedb.reducer({
         if (!row) throw new SenderError(`Lobby #${lobbyId} not found`);
 
         if (field === 'createdDate') {
+            // Hand-roll: auditUpdate preserves existing.createdDate (audit invariant).
+            // See reducer docstring "Audit-column handling".
             ctx.db.Lobby.id.update({
                 ...row,
                 createdDate: ts,
