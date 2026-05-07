@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { CharacterFilterBar } from "./CharacterFilterBar";
-import { CharacterCard } from "./CharacterCard";
+import { CharacterFilterBar } from "../filter-bar-character/CharacterFilterBar";
+import { CharacterCard } from "./character-card/CharacterCard";
 import styles from "./CharacterPool.module.css";
 import { Character, SelectedCharacter, Team, Turn } from "@/components/features/types/enums";
 import { useCharacterFilters } from "@/components/features/hooks/useCharacterFilters";

@@ -1,49 +1,40 @@
 'use client';
 
 import { useState } from 'react';
-import { Tabs, Tab } from '@heroui/tabs';
-import GlobalFilterBar from '@/components/features/costs/components/GlobalFilterBar';
-import CharacterCostTable from '@/components/features/costs/components/CharacterCostTable';
-import LightconeCostTable from '@/components/features/costs/components/LightconeCostTable';
+import GlobalFilterBar, { CostTab } from '@/components/features/costs/components/global-filter-bar/GlobalFilterBar';
+import CharacterCostTable from '@/components/features/costs/components/character-table/CharacterCostTable';
+import LightconeCostTable from '@/components/features/costs/components/lightcone-table/LightconeCostTable';
+import { LoadingSpinner } from '@/components/globals/icons';
+import { useGameData } from '@/components/features/game-data/components/GameDataProvider';
 import styles from './page.module.css';
-
-type CostTab = 'characters' | 'lightcones';
+import { DraftMode, RuleSet } from '@/components/features/types/enums';
 
 export default function CostTable() {
+    const { isReady } = useGameData();
     const [activeTab, setActiveTab] = useState<CostTab>('characters');
-    const [gameMode, setGameMode] = useState('ApocalypticShadow');
-    const [draftMode, setDraftMode] = useState<'classic' | 'auction'>('classic');
+    const [gameMode, setGameMode] = useState<RuleSet>('ApocalypticShadow');
+    const [draftMode, setDraftMode] = useState<DraftMode>('Classic');
+    const isReadyToRender = isReady; // Only render once game data arrives
 
+    if (!isReadyToRender) {
+        return (
+            <div className={styles.tableLoading}>
+                <LoadingSpinner />
+            </div>
+        );
+    }
     return (
         <div className={styles.container}>
-            <h1 className={styles.title}>Costs</h1>
-
-            <Tabs
-                selectedKey={activeTab}
-                onSelectionChange={(key) => setActiveTab(key as CostTab)}
-                variant="underlined"
-                color="primary"
-                classNames={{
-                    base: 'w-full flex justify-center',
-                    tabList: 'gap-8 border-b border-divider',
-                    cursor: 'bg-primary',
-                    tab: 'data-[hover=true]:opacity-100',
-                    tabContent: '!text-white/70 group-data-[selected=true]:!text-primary group-data-[hover=true]:!text-white/90',
-                }}
-            >
-                <Tab key="characters" title="Characters" />
-                <Tab key="lightcones" title="Lightcones" />
-            </Tabs>
-
             <GlobalFilterBar
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
                 gameMode={gameMode}
                 onGameModeChange={setGameMode}
                 draftMode={draftMode}
                 onDraftModeChange={setDraftMode}
-                showGameMode={activeTab === 'characters'}
             />
 
-            {activeTab === 'characters' ? (
+            {(activeTab === 'characters') ? (
                 <CharacterCostTable gameMode={gameMode} draftMode={draftMode} />
             ) : (
                 <LightconeCostTable draftMode={draftMode} />
