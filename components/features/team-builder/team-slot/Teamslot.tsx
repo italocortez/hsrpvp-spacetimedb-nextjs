@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, memo, useMemo, useCallback } from "react";
 import styles from "./Teamslot.module.css";
-import { ResolvedTeamMember } from "./LoadoutManager";
-import { Character, CharacterRank, Eidolons, Lightcone, LightconeRank, SuperImpositions, Synergy } from "../types/enums";
-import { iconMaps } from "../hooks/useIconMaps";
 import { ClearIcon, LoadingSpinner, SynergyIcon } from "@/components/globals/icons";
-import { LightconeSelector } from "../drafting/components/LightconeSelector";
-import { NOT_FOUND_IMAGE, handleImageError } from "@/lib/image-fallback";
+import { iconMaps } from "../../hooks/useIconMaps";
+import { LightconeSelector } from "../../drafting/components/lightcone-selector/LightconeSelector";
+import { Character, CharacterRank, Eidolons, Lightcone, LightconeRank, SuperImpositions, Synergy } from "../../types/enums";
+import { ResolvedTeamMember } from "../LoadoutManager";
 
 interface TeamSlotProps {
 	index: number;
@@ -31,12 +30,9 @@ interface TeamSlotProps {
 	onDragLeave: () => void;
 	onDragEnd: () => void;
 	onDrop: (index: number, e: React.DragEvent) => void;
-
-	// Roster-level hover signal from TeamRoster (D-06) — toggles .clearButtonVisible
-	isRosterHovered: boolean;
 }
 
-export function TeamSlot({
+export const TeamSlot = memo(function TeamSlot({
 	index,
 	member,
 	character,
@@ -54,10 +50,7 @@ export function TeamSlot({
 	onDragLeave,
 	onDragEnd,
 	onDrop,
-	isRosterHovered,
 }: TeamSlotProps) {
-	const [isHovered, setIsHovered] = useState<boolean>(false);
-
 	// ── Empty slot ──────────────────────────────────────────────────────
 	if (!member || !character) {
 		return (
@@ -67,11 +60,11 @@ export function TeamSlot({
 		);
 	}
 
-	// ── Helpers ─────────────────────────────────────────────────────────
-	const elementIconUrl = iconMaps.elements[character.element];
-	const pathIconUrl = iconMaps.paths[character.path];
+	// ── Memoized helpers ────────────────────────────────────────────────
+	const elementIconUrl = useMemo(() => iconMaps.elements[character.element], [character.element]);
+	const pathIconUrl = useMemo(() => iconMaps.paths[character.path], [character.path]);
 
-	const hasActivePairing = (() => {
+	const hasActivePairing = useMemo(() => {
 		const teamNames = resolvedTeam
 			.map((m) => characters.find((c) => c.name === m.characterName)?.name)
 			.filter((n): n is string => !!n);
@@ -80,52 +73,73 @@ export function TeamSlot({
 				(p.sourceName === character.name && teamNames.includes(p.targetName)) ||
 				(p.targetName === character.name && teamNames.includes(p.sourceName)),
 		);
-	})();
+	}, [resolvedTeam, characters, synergies, character.name]);
 
-	const slotClass = [
+	const slotClass = useMemo(() => [
 		styles.slot,
 		isDragging ? styles.dragging : "",
 		isDropTarget ? styles.dropTarget : "",
 	]
 		.filter(Boolean)
-		.join(" ");
+		.join(" "), [isDragging, isDropTarget]);
+
+	// ── Memoized event handlers ─────────────────────────────────────────
+	const handleRemove = useCallback(() => onRemove(index), [onRemove, index]);
+	const handleDragStart = useCallback((e: React.DragEvent) => onDragStart(index, e), [onDragStart, index]);
+	const handleDragOver = useCallback((e: React.DragEvent) => onDragOver(e, index), [onDragOver, index]);
+	const handleDrop = useCallback((e: React.DragEvent) => onDrop(index, e), [onDrop, index]);
+
+	const handleRankChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+		onUpdate(index, { rank: e.target.value as CharacterRank });
+		e.currentTarget.blur();
+	}, [onUpdate, index]);
+
+	const handleLightconeRankChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+		onUpdate(index, { lightconeRank: e.target.value as LightconeRank });
+		e.currentTarget.blur();
+	}, [onUpdate, index]);
+
+	const handleLightconeChange = useCallback(
+		(lcName: string | undefined, rank: LightconeRank | undefined) =>
+			onUpdate(index, { lightconeName: lcName, lightconeRank: rank }),
+		[onUpdate, index],
+	);
 
 	return (
 		<div
 			className={slotClass}
 			data-rarity={character.rarity}
+			data-component="teamSlot"
 			style={{ background: `var(--gradient-${character.rarity}star)` }}
             
-			data-slot-hover={isHovered || undefined}
 			draggable
-			onMouseEnter={() => setIsHovered(true)}
-			onMouseLeave={() => setIsHovered(false)}
-			onDragStart={(e) => onDragStart(index, e)}
-			onDragOver={(e) => onDragOver(e, index)}
+			onDragStart={handleDragStart}
+			onDragOver={handleDragOver}
 			onDragLeave={onDragLeave}
 			onDragEnd={onDragEnd}
-			onDrop={(e) => onDrop(index, e)}
+			onDrop={handleDrop}
 		>
 			{/* Path background icon */}
 			<img
-                src={pathIconUrl || NOT_FOUND_IMAGE}
-                className={styles.path}
-                alt={character.path}
-                onError={handleImageError}
-            />
+				src={pathIconUrl}
+				className={styles.path}
+				alt={character.path}
+			/>
 
 			{/* Portrait */}
 			<img
-				src={character.imageUrl || NOT_FOUND_IMAGE}
+				src={character.imageUrl || ""}
 				className={styles.portrait}
 				alt={character.displayName}
-				onError={handleImageError}
+
+                // data-portrait="" Not here. Since we want the path to appear in between background and character, which doesn't 
+                // look great if the background is declared on the character portrait itself
 			/>
 
 			{/* Remove button */}
 			<button
-				onClick={() => onRemove(index)}
-				className={`${styles.clearButton}${isRosterHovered ? ` ${styles.clearButtonVisible}` : ""}`}
+				onClick={handleRemove}
+				className={styles.clearButton}
 				title={`Remove ${character.displayName}`}
 			>
 				<ClearIcon />
@@ -135,10 +149,9 @@ export function TeamSlot({
 			<div className={styles.character}>
 				<div className={styles.icons}>
 					<img
-						src={elementIconUrl || NOT_FOUND_IMAGE}
+						src={elementIconUrl}
 						className={styles.element}
 						alt={character.element}
-						onError={handleImageError}
 					/>
 					{hasActivePairing && <SynergyIcon />}
 				</div>
@@ -147,10 +160,7 @@ export function TeamSlot({
 				<div className={styles.verticals}>
 					<select
 						value={member.rank}
-						onChange={(e) => {
-							onUpdate(index, { rank: e.target.value as CharacterRank });
-							e.currentTarget.blur();
-						}}
+						onChange={handleRankChange}
 						className={styles.eidolon}
 						name="eidolon"
 						style={{
@@ -168,12 +178,7 @@ export function TeamSlot({
 					{member.lightconeName && (
 						<select
 							value={(member.lightconeRank || "S1") as LightconeRank}
-							onChange={(e) => {
-								onUpdate(index, {
-									lightconeRank: e.target.value as LightconeRank,
-								});
-								e.currentTarget.blur();
-							}}
+							onChange={handleLightconeRankChange}
 							className={styles.imposition}
 							name="imposition"
 						>
@@ -192,9 +197,10 @@ export function TeamSlot({
 				lightcones={lightcones}
 				selectedLightconeName={member.lightconeName}
 				selectedRank={member.lightconeRank}
-				onLightconeChange={(lcName, rank) => onUpdate(index, { lightconeName: lcName, lightconeRank: rank })}
+				onLightconeChange={handleLightconeChange}
 				equippingCharacter={character}
+				size="large"
 			/>
 		</div>
 	);
-}
+});

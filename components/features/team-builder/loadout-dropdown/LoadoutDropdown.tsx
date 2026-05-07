@@ -2,11 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./LoadoutDropdown.module.css";
-import { Loadout, TEAM_SIZE, TeamMember } from "./LoadoutManager";
-import { Character } from "../types/enums";
+import { Loadout, TEAM_SIZE, TeamMember } from "../LoadoutManager";
+import { Character } from "../../types/enums";
 import { DropdownIcon } from "@/components/globals/icons";
-import { iconMaps } from "../hooks/useIconMaps";
-import { NOT_FOUND_IMAGE, handleImageError } from "@/lib/image-fallback";
+import { iconMaps } from "../../hooks/useIconMaps";
 
 interface LoadoutDropdownProps {
 	loadouts: Loadout[];
@@ -25,14 +24,6 @@ export function LoadoutDropdown({
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const triggerRef = useRef<HTMLButtonElement>(null);
 
-	// WR-06: close-on-select replaces the dual-listener pattern (mousedown outside-close +
-	// click inside-button-close). Single mousedown handles outside-click; inner buttons close
-	// the menu by calling handleSelect directly.
-	const handleSelect = (idx: number) => {
-		onSelectIndex(idx);
-		setIsOpen(false);
-	};
-
 	useEffect(() => {
 		const handleClickOutside = (e: MouseEvent) => {
 			if (
@@ -44,9 +35,20 @@ export function LoadoutDropdown({
 				setIsOpen(false);
 			}
 		};
+		const handleButtonClick = (e: MouseEvent) => {
+			if (isOpen && dropdownRef.current?.contains(e.target as Node)) {
+				const btn = (e.target as HTMLElement).closest("button");
+				if (btn && dropdownRef.current.contains(btn)) setIsOpen(false);
+			}
+		};
+
 		document.addEventListener("mousedown", handleClickOutside);
-		return () => document.removeEventListener("mousedown", handleClickOutside);
-	}, []);
+		if (isOpen) document.addEventListener("click", handleButtonClick);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+			document.removeEventListener("click", handleButtonClick);
+		};
+	}, [isOpen]);
 
 	return (
 		<div className={styles.rosters}>
@@ -70,7 +72,7 @@ export function LoadoutDropdown({
 						<button
 							key={idx}
 							disabled={idx === loadoutIndex}
-							onClick={() => handleSelect(idx)}
+							onClick={() => onSelectIndex(idx)}
 							className={styles.teamOption}
 						>
 							<h3
@@ -105,18 +107,14 @@ export function LoadoutDropdown({
 											style={{ background: `var(--gradient-${char.rarity}star)` }}
 										>
 											<img
-												src={iconMaps.elements[char.element] || NOT_FOUND_IMAGE}
+												src={iconMaps.elements[char.element]}
 												className={styles.miniElement}
 												alt={char.element}
-												decoding="async"
-												onError={handleImageError}
 											/>
 											<img
-												src={char.imageUrl || NOT_FOUND_IMAGE}
+												src={char.imageUrl}
 												className={styles.miniPortrait}
 												alt={char.displayName}
-												decoding="async"
-												onError={handleImageError}
 											/>
 										</div>
 									);

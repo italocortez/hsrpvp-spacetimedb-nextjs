@@ -8,7 +8,19 @@
 
 /* ── Root ─────────────────────────────────────────────────────────── */
 .teamBuilder {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+    width: min(94%, 90rem);
+    align-self: center;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.teamBuilderLoading {
+    width: min(94%, 90rem);
+    min-height: calc(100vh - 7rem);
+    align-self: center;
+    display: grid;
+    place-items: center;
+    padding: 3rem 0;
 }

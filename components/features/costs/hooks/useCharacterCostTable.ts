@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useGameData, HsrCharacterRow, HsrCharacterCostRow, HsrSynergyCostRow } from '@/components/features/game-data/components/GameDataProvider';
+import { type Character, type Synergy, DraftMode, Element, Path, Role, RuleSet } from '../../types/enums';
+import { UseCharacterFiltersReturn } from '../../hooks/useCharacterFilters';
 
 export interface SynergyEntry {
     targetName: string;
@@ -10,12 +11,13 @@ export interface SynergyEntry {
 export interface CharacterCostRow {
     name: string;
     displayName: string;
-    rarity: number;
-    role: string;
-    element: string;
-    path: string;
-    imageUrl: string;
     aliases: string[];
+    element: Element;
+    path: Path;
+    rarity: number;
+    role: Role;
+    imageUrl?: string;
+
     e0: number;
     e1: number;
     e2: number;
@@ -23,77 +25,61 @@ export interface CharacterCostRow {
     e4: number;
     e5: number;
     e6: number;
+    
     synergies: SynergyEntry[];
 }
 
-export interface CostTableFilters {
-    roles: string[];
-    elements: string[];
-    paths: string[];
-    search: string;
-}
-
 export interface SortDescriptor {
-    column: string;
+    column: keyof CharacterCostRow;
     direction: 'ascending' | 'descending';
 }
 
 const DEFAULT_SORT: SortDescriptor = { column: 'displayName', direction: 'ascending' };
 
 export function useCharacterCostTable(
-    gameMode: string,
-    draftMode: 'classic' | 'auction',
-    filters: CostTableFilters,
+    gameMode: RuleSet,
+    draftMode: DraftMode,
+    filters: UseCharacterFiltersReturn,
     sortDescriptor: SortDescriptor = DEFAULT_SORT,
+    charactersData: Character[] = [],
+    synergies: Synergy[] = [],
 ): CharacterCostRow[] {
-    const { characters, characterCosts, synergyCosts } = useGameData();
-
-    // Build cost lookup: characterName -> cost row for selected (gameMode, draftMode)
-    const costMap = useMemo(() => {
-        const map = new Map<string, HsrCharacterCostRow>();
-        const wantDraft = draftMode === 'classic' ? 'Classic' : 'Auction';
-        for (const cost of characterCosts) {
-            if (cost.gameMode.tag === gameMode && cost.draftMode?.tag === wantDraft) {
-                map.set(cost.characterName, cost);
-            }
-        }
-        return map;
-    }, [characterCosts, gameMode, draftMode]);
+    const { filteredCharacters } = filters;
 
     // Build synergy lookup: sourceName -> synergy entries (only for classic + selected gameMode)
     // Phase 15.4 D-31: only Classic-draftMode synergy rows render; Auction-mode display deferred.
+    // synergies is pre-filtered to Classic by GameDataProvider (synergiesData).
     const synergyMap = useMemo(() => {
-        const map = new Map<string, HsrSynergyCostRow[]>();
-        if (draftMode !== 'classic') return map;
-        for (const syn of synergyCosts) {
-            if (syn.gameMode.tag === gameMode && syn.draftMode?.tag === 'Classic') {
+        const map = new Map<string, Synergy[]>();
+        if (draftMode !== 'Classic') return map;
+
+        for (const syn of synergies) {
+            if (syn.ruleSet === gameMode) {
                 const existing = map.get(syn.sourceName) || [];
                 existing.push(syn);
                 map.set(syn.sourceName, existing);
             }
         }
         return map;
-    }, [synergyCosts, gameMode, draftMode]);
+    }, [synergies, gameMode, draftMode]);
 
-    // Build displayName lookup for synergy targets
+    // Build displayName lookup for synergy targets (needs all characters, not just filtered)
     const displayNameMap = useMemo(() => {
         const map = new Map<string, string>();
-        for (const char of characters) {
+        for (const char of charactersData) {
             map.set(char.name, char.displayName);
         }
         return map;
-    }, [characters]);
+    }, [charactersData]);
 
-    // Join, filter, sort
+    // Join and sort — filtering is already done by useCharacterFilters
     const rows = useMemo(() => {
-        let joined: CharacterCostRow[] = [];
+        const joined: CharacterCostRow[] = [];
 
-        for (const char of characters) {
-            const cost = costMap.get(char.name);
-            const eidolonCosts = cost ? cost.costs : null;
+        for (const char of filteredCharacters) {
+            const eidolonCosts = char.cost[draftMode]?.[gameMode];
 
-            const synergyRaw = synergyMap.get(char.name) || [];
-            const synergies: SynergyEntry[] = synergyRaw.map(s => ({
+            const synergyEntries: SynergyEntry[] = (synergyMap.get(char.name) || []).map(s => ({
                 targetName: s.targetName,
                 targetDisplayName: displayNameMap.get(s.targetName) || s.targetName,
                 costModifier: s.costModifier,
@@ -103,40 +89,20 @@ export function useCharacterCostTable(
                 name: char.name,
                 displayName: char.displayName,
                 rarity: char.rarity,
-                role: char.role.tag,
-                element: char.element.tag,
-                path: char.path.tag,
+                role: char.role,
+                element: char.element,
+                path: char.path,
                 imageUrl: char.imageUrl,
-                aliases: char.aliases || [],
-                e0: eidolonCosts?.e0 ?? 0,
-                e1: eidolonCosts?.e1 ?? 0,
-                e2: eidolonCosts?.e2 ?? 0,
-                e3: eidolonCosts?.e3 ?? 0,
-                e4: eidolonCosts?.e4 ?? 0,
-                e5: eidolonCosts?.e5 ?? 0,
-                e6: eidolonCosts?.e6 ?? 0,
-                synergies,
+                aliases: char.aliases,
+                e0: eidolonCosts?.E0 ?? 0,
+                e1: eidolonCosts?.E1 ?? 0,
+                e2: eidolonCosts?.E2 ?? 0,
+                e3: eidolonCosts?.E3 ?? 0,
+                e4: eidolonCosts?.E4 ?? 0,
+                e5: eidolonCosts?.E5 ?? 0,
+                e6: eidolonCosts?.E6 ?? 0,
+                synergies: synergyEntries,
             });
-        }
-
-        // Apply filters
-        const { roles, elements, paths, search } = filters;
-
-        if (roles.length > 0) {
-            joined = joined.filter(r => roles.includes(r.role));
-        }
-        if (elements.length > 0) {
-            joined = joined.filter(r => elements.includes(r.element));
-        }
-        if (paths.length > 0) {
-            joined = joined.filter(r => paths.includes(r.path));
-        }
-        if (search.trim()) {
-            const q = search.toLowerCase().trim();
-            joined = joined.filter(r =>
-                r.displayName.toLowerCase().includes(q) ||
-                r.aliases.some(a => a.toLowerCase().includes(q))
-            );
         }
 
         // Sort
@@ -157,7 +123,7 @@ export function useCharacterCostTable(
         });
 
         return joined;
-    }, [characters, costMap, synergyMap, displayNameMap, filters, sortDescriptor, draftMode]);
+    }, [filteredCharacters, synergyMap, displayNameMap, sortDescriptor, draftMode, gameMode]);
 
     return rows;
 }
