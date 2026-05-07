@@ -1,7 +1,8 @@
 import { useMemo, useEffect, useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useSpacetimeDB } from 'spacetimedb/react';
+import { useSpacetimeDB, useReducer } from 'spacetimedb/react';
+import { reducers } from '@/src/module_bindings';
 import { SPACETIMEDB_TOKEN_KEY } from '@/lib/spacetimedb';
 import { setSessionCookie, clearSessionCookie } from '@/lib/session-cookie';
 import { User } from '../types';
@@ -48,6 +49,13 @@ export function useAuth() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [profileReady, setProfileReady] = useState(false);
     const [guestLoginPending, setGuestLoginPending] = useState(false);
+
+    // Phase 16.4 Plan 06 (D-15): typed Promise-returning reducer callbacks that queue
+    // internally until the connection is ready. Replaces per-callsite getConnection()
+    // null-check + (conn.reducers as any) cast for these 2 reducers. The `_call` suffix
+    // avoids name collision with the loginGuest / deleteGuestAccount callbacks below.
+    const loginAsGuestCall = useReducer(reducers.loginAsGuest);
+    const deleteGuestAccountCall = useReducer(reducers.deleteGuestAccount);
 
     // Render-diagnostic log: shows WHICH state change triggered this render.
     // If renders look excessive, diff consecutive entries to isolate the culprit.
@@ -227,7 +235,7 @@ export function useAuth() {
         if (!hasMapping && !autoRegisteredRef.current) {
             autoRegisteredRef.current = true;
             console.log('[useAuth] Discord flow Step A: calling loginAsGuest (no mapping yet)');
-            conn.reducers.loginAsGuest({}).catch((err: any) => {
+            loginAsGuestCall().catch((err: any) => {
                 console.error('[useAuth] Discord auto-register loginAsGuest failed:', err);
                 autoRegisteredRef.current = false;
             });
@@ -273,11 +281,6 @@ export function useAuth() {
                     linkingRef.current = false; // Allow retry on failure
                 });
         }
-
-        if (!needsSync) {
-            sessionStorage.removeItem(DISCORD_INTENT_KEY);
-            sessionStorage.removeItem(DISCORD_INTENT_TIMEOUT_KEY);
-        }
     }, [nextAuthStatus, session, isActive, identity, hasMapping, hasDiscordIntent, currentUser, getConnection]);
 
     // Soft-delete detection (same logic, uses currentUser from view)
@@ -320,20 +323,15 @@ export function useAuth() {
     const isLoadingData = isLinkingDiscord || isWaitingForData;
 
     const loginGuest = useCallback(() => {
-        const conn = getConnection();
-        if (!conn) {
-            console.error("SpacetimeDB connection not active.");
-            return;
-        }
         console.log('[useAuth] guestLoginPending → true (loginAsGuest click)');
         setGuestLoginPending(true);
-        conn.reducers.loginAsGuest({}).catch((err: any) => {
+        loginAsGuestCall().catch((err: any) => {
             console.error('[useAuth] loginGuest failed:', err);
             console.log('[useAuth] guestLoginPending → false (error path)');
             setGuestLoginPending(false);
         });
         // Success path: cleared reactively by the useEffect([currentUser]) below.
-    }, [getConnection]);
+    }, [loginAsGuestCall]);
 
     const loginDiscord = useCallback(() => {
         sessionStorage.setItem(DISCORD_INTENT_KEY, '1');
@@ -349,16 +347,14 @@ export function useAuth() {
     }, []);
 
     const deleteGuestAccount = useCallback(() => {
-        const conn = getConnection();
-        if (!conn) return;
-        conn.reducers.deleteGuestAccount({}).catch((err: any) => {
+        deleteGuestAccountCall().catch((err: any) => {
             console.error('[useAuth] deleteGuestAccount failed:', err);
         });
         localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
         localStorage.removeItem(USER_ID_KEY);
         clearSessionCookie();
         signOut({ callbackUrl: '/' });
-    }, [getConnection]);
+    }, [deleteGuestAccountCall]);
 
     // Phase 16 D-03: subscription-owner coordination.
     //

@@ -5,6 +5,13 @@ import { insertWithAudit } from '../helpers/auditHelpers';
 import { ensureModerator } from '../helpers/ensurePermissions';
 import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
+// External-invocation defense for `run_lobby_gc`: SpacetimeDB v2.2.0 engine returns
+// "no such reducer" for external WS callers attempting to invoke scheduled reducers
+// (verified 2026-05-03 in 16.4-AUDIT-NOTES.md "v0.6 Update"). Application-level
+// `ctx.senderAuth.isInternal` guard was removed by Plan 07 hotfix because the SDK
+// v2.2.0 `senderAuth` factory always sets `isInternal: false`. `seed_lobby_gc_job` and
+// `admin_gc_lobbies` retain their existing project-level gates (`ServerIdentity` check
+// and `ensureModerator` respectively).
 
 // ─── hardDeleteLobby ─────────────────────────────────────────────────────────
 // Shared cascade-delete helper: removes a lobby and all associated data.

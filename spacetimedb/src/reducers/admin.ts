@@ -214,10 +214,15 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'HsrCharacterCost': {
+                // Full composite PK: (characterName, gameMode, draftMode, costSetId).
+                // Tuple-filter with enum struct unsupported (RESEARCH.md A2); use iter() with full predicate.
                 const key = JSON.parse(primaryKeyJson);
                 let found = false;
                 for (const row of ctx.db.HsrCharacterCost.iter()) {
-                    if (row.characterName === key.characterName && row.gameMode.tag === key.gameModeTag) {
+                    if (row.characterName === key.characterName &&
+                        row.gameMode.tag === key.gameModeTag &&
+                        row.draftMode.tag === key.draftModeTag &&
+                        row.costSetId === key.costSetId) {
                         ctx.db.HsrCharacterCost.delete(row);
                         found = true;
                         break;
@@ -227,10 +232,14 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'HsrLightconeCost': {
+                // Full composite PK: (lightconeName, gameMode, draftMode, costSetId).
                 const key = JSON.parse(primaryKeyJson);
                 let found = false;
                 for (const row of ctx.db.HsrLightconeCost.iter()) {
-                    if (row.lightconeName === key.lightconeName && row.gameMode.tag === key.gameModeTag) {
+                    if (row.lightconeName === key.lightconeName &&
+                        row.gameMode.tag === key.gameModeTag &&
+                        row.draftMode.tag === key.draftModeTag &&
+                        row.costSetId === key.costSetId) {
                         ctx.db.HsrLightconeCost.delete(row);
                         found = true;
                         break;
@@ -292,10 +301,10 @@ export const admin_delete_row = spacetimedb.reducer(
                 break;
             }
             case 'MatchSessionStepHistory': {
-                // Composite PK [matchHistoryId, sequence] — parse JSON array
+                // Composite PK [matchHistoryId, gameNumber, sequence] — parse JSON 3-tuple
                 const stepPK = JSON.parse(primaryKeyJson);
                 const stepRow = [...ctx.db.MatchSessionStepHistory.by_match_history.filter(stepPK[0])]
-                    .find((r: any) => r.sequence === stepPK[1]);
+                    .find((r: any) => r.gameNumber === stepPK[1] && r.sequence === stepPK[2]);
                 if (!stepRow) throw new SenderError('Row not found');
                 ctx.db.MatchSessionStepHistory.delete(stepRow);
                 break;

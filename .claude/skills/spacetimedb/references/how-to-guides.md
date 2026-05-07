@@ -177,7 +177,7 @@ spacetime publish <db-name> --server maincloud
 
 ### Deletion (irreversible!)
 ```bash
-spacetime delete <db-name> --server maincloud
+spacetime delete <db-name> --server maincloud --yes
 ```
 
 ---

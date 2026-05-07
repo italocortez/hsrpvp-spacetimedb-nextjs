@@ -9,12 +9,7 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  GameMode,
-  DraftMode,
-  SuperimpositionCost,
-} from "./types";
-
+import { GameMode, DraftMode, SuperimpositionCost } from "./types";
 
 export default __t.row({
   lightconeName: __t.string().name("lightcone_name"),

@@ -204,6 +204,61 @@ export const view_my_profile = spacetimedb.view({ name: 'view_my_profile', publi
 
 Once exported, `spacetime generate` creates typed view bindings (e.g. `view_my_profile_table.ts`). Views appear in `tablesSchema` alongside tables, accessible via `conn.db.view_my_profile` with `.count()`, `.iter()`, and row callbacks. View accessors use snake_case (matching the view name), not PascalCase like tables.
 
+### Subscription gating: layer-0 always-on, gated panels use useTable enabled
+
+`useTable(tables.X, { enabled: <boolean> })` (v2.2.0+, PR #4721) skips establishing the subscription while `enabled === false`. The SDK tears down the sub on `true → false` and re-establishes on `false → true` — no consumer remount needed.
+
+```typescript
+// GOOD — gated panel
+function AdminPanel({ isActive }: { isActive: boolean }) {
+    const [rows] = useTable(tables.User, { enabled: isActive });
+    // ...
+}
+
+// GOOD — layer-0 reference data: ALWAYS-ON, no enabled prop
+const [characters] = useTable(tables.HsrCharacter);
+
+// BAD — never gate layer-0 reference data
+const [characters] = useTable(tables.HsrCharacter, { enabled: someCondition });
+// ↑ would reintroduce "first frame missing portraits" hydration bug
+```
+
+`enabled` lives in the 2nd-arg callback object alongside `onInsert/onDelete/onUpdate` — NOT a third arg, NOT a separate options bag.
+
+**Layer-0 vs gated:**
+- **Layer-0** (GameDataProvider's 7 reference-data subs): always-on, no `enabled`. Service worker prefetch + anonymous-page hydration depend on this.
+- **Gated panels** (admin tabs, modals, conditionally-visible panels): `enabled` derived from the visibility/active-state. Recovers egress when the panel isn't visible.
+
+Reference: Phase 16.4 Plan 05; `notes/v09-frontend-subscription-strategy.md` Decision 9.
+
+### Reducer calls in React: useReducer(reducers.X), not getConnection()
+
+Inside React components or hooks, use `const callX = useReducer(reducers.X)` and call `callX(args)`. The hook (v2.2.0+, PR #4752) returns a stable typed Promise-returning callback that queues internally until the connection is ready — eliminates the per-site `getConnection()` null-check.
+
+```typescript
+import { useReducer } from 'spacetimedb/react';
+import { reducers } from '@/src/module_bindings';
+
+function MyComponent() {
+    const updateUsername = useReducer(reducers.updateUsername);
+    // ...
+    const onClick = () => {
+        updateUsername({ newUsername: 'foo' })
+            .catch((err: any) => setMessage({ type: 'error', text: err.message }));
+    };
+}
+```
+
+Empty-param reducers (no schema params) are called as `callX()`, not `callX({})` — the SDK's `ParamsType` collapses to `[]` when the reducer schema is empty (verified at `spacetimedb/node_modules/spacetimedb/dist/sdk/type_utils.d.ts:7`). Passing `{}` is a TypeScript error.
+
+Server-side Route Handlers (`getServerConnection()`) do NOT qualify — they continue calling `connection.reducers.X(...)` directly. React hooks only apply in React component / hook contexts.
+
+Use `.catch()` for errors (matches project STATE.md "v0.5 Conventions"). For try/finally lifecycle (e.g. `setIsSubmitting`), use `.then()/.catch()/.finally()` chains — the boolean toggle becomes async.
+
+The corresponding `useProcedure(procedures.X)` hook is for SpacetimeDB *procedures*; project defines zero procedures (`__procedures()` is called with no args at `src/module_bindings/index.ts:2037`), so `useProcedure` currently does not apply.
+
+Reference: Phase 16.4 Plan 06 (v2.2.0+, PR #4752) — 5 adopted sites; `notes/v09-frontend-subscription-strategy.md` Decision 10.
+
 ### Handling reducer errors on the client
 Reducers don't return data, so errors surface via callbacks. Use `_then()` to detect failures from a specific call, and `ctx.event.status` to read the `SenderError` message:
 ```typescript
@@ -248,6 +303,22 @@ ctx.db.myTable.id.delete(itemId);
 // Composite PK lookup — BEST: define a multi-column btree index, then .filter([val1, val2])
 // See "Accessor types" section below for the 3 declaration types and their APIs
 ```
+
+### Whole-table wipes — use Table.clear()
+
+For unfiltered "delete everything in this table" operations, call `ctx.db.X.clear()` instead of iter+delete. Single ABI call (v2.2.0+, PR #4729) — faster than the iter+delete round-trip and uses fewer lines.
+
+```typescript
+// GOOD — whole-table wipe
+ctx.db.LobbyMember.clear();
+
+// BAD — iter+delete loop for an unfiltered wipe
+for (const m of [...ctx.db.LobbyMember.iter()]) ctx.db.LobbyMember.delete(m);
+```
+
+Predicate filters (e.g. preserving the `username='SYSTEM'` row) MUST keep iter+filter+delete — `clear()` cannot skip rows. TS declarations do NOT surface a row count from `clear()`; use it as a statement, not as `const n = ctx.db.X.clear()` (n would be untyped).
+
+Reference: `spacetimedb/src/reducers/server.ts → server_nuke_test_data` (Phase 16.4 Plan 01) — 42 cleared sites + 3 SYSTEM-preserving filter blocks demonstrate both patterns.
 
 ### Accessor types — verified runtime behavior (2026-03-18)
 
@@ -317,6 +388,52 @@ import { SenderError } from 'spacetimedb/server';
 
 if (!item) throw new SenderError('Item not found.');
 ```
+
+### AuthCtx applicability + scheduled-reducer external-invocation defense (v2.2.0)
+
+**TL;DR:** Do NOT add `if (!ctx.senderAuth.isInternal) throw` guards to scheduled reducers on SpacetimeDB v2.2.0. The SDK's `senderAuth` accessor ALWAYS returns `isInternal: false`, including for engine-dispatched scheduler invocations — the guard rejects legitimate dispatch and breaks the reducer. The actual external-invocation defense is engine-level: SpacetimeDB v2.2.0 returns `"no such reducer"` for external WS callers attempting to invoke scheduled reducer names BEFORE any application code runs.
+
+#### Why the guard pattern doesn't work in v2.2.0
+
+Plan 02 (Phase 16.4) initially added the guard pattern below to 3 scheduled reducers (`run_user_deletion`, `run_lobby_gc`, `run_identity_gc`) as defense-in-depth:
+
+```typescript
+// ❌ DO NOT ADD THIS — rejects legitimate engine dispatch in v2.2.0
+if (!ctx.senderAuth.isInternal) {
+    throw new SenderError(
+        'Forbidden: scheduled reducer; cannot be invoked externally.'
+    );
+}
+```
+
+Plan 07's diagnostic (2026-05-03) proved this assumption wrong via SDK source-level analysis (`spacetimedb/node_modules/spacetimedb/dist/server/index.mjs:6383-6442`):
+
+- `AuthCtxImpl.internal()` is the only constructor that sets `isInternal: true` — and it is **unreachable** from any path that produces `ctx.senderAuth`.
+- `ReducerCtxImpl.senderAuth` (the only path that populates the field) calls `AuthCtxImpl.fromSystemTables(...)`, which always sets `isInternal: false`.
+- Therefore `ctx.senderAuth.isInternal` is always `false` in v2.2.0 — the guard rejects 100% of invocations including legitimate engine-dispatched scheduler calls.
+
+The guards were removed in Plan 07 hotfix; see `.planning/phases/16.4-spacetimedb-v2-2-0-refactor-pass/16.4-AUDIT-NOTES.md` (the "v0.6 Update — Plan 07 Diagnostic Reversal" section) for the full diagnostic and reversal record.
+
+#### What IS the external-invocation defense
+
+The SpacetimeDB v2.2.0 engine itself rejects external WebSocket calls to scheduled-reducer names with `"no such reducer"` BEFORE any application code runs. Verified:
+
+- The 3 scheduled reducers (`run_user_deletion`, `run_lobby_gc`, `run_identity_gc`) are intentionally absent from the generated client bindings (`src/module_bindings/index.ts`).
+- The regression sensor at `test/backend/scheduled-reducer-isInternal-rejection.test.ts` constructs a low-level `connection.callReducer(name, argsBuffer)` call — exactly what an attacker would do — and confirms the engine returns `"no such reducer"` for all 3 names.
+
+**Therefore: do NOT add application-level guards to scheduled reducers in v2.2.0.** The engine is the correct defense layer. If a future SDK version exposes scheduled-reducer names to external callers, revisit this rule and find a working internal-dispatch signal before re-adding any guard.
+
+#### `AuthCtx` is still NOT a substitute for project auth gates
+
+| Project gate | Concept | Replace with `AuthCtx`? |
+|---|---|---|
+| `requireServer(ctx)` | "Identity matches registered SERVER_TOKEN row" | NO — `post-publish.ts` is an external WebSocket client; `AuthCtx.isInternal` would always be `false` for it (and is broken in v2.2.0 anyway). The SERVER_TOKEN/`ServerIdentity` row check is orthogonal. |
+| `getAuthenticatedUser(ctx)` | "Resolve `ctx.sender → UserIdentity → User → role.tag`" | NO — project auth model is not JWT-claims-based; `AuthCtx.jwt` is for native OIDC, which the project intentionally does not use (guest-play UX, see `notes/v09-frontend-subscription-strategy.md`). |
+| `ensureModerator/Admin(ctx)` | Role-tag-based admin gates | NO — same reason as above. |
+
+Use `requireServer` / `getAuthenticatedUser` / `ensureXxx` for ALL application-level gating. Do not use `ctx.senderAuth.isInternal` until/unless a future SDK release fixes the unreachable-factory bug; the engine's "no such reducer" rejection is the operational defense for scheduled reducers in the meantime.
+
+Reference: Phase 16.4 Plan 02 + Plan 07 hotfix — `.planning/phases/16.4-spacetimedb-v2-2-0-refactor-pass/16.4-AUDIT-NOTES.md` (audit + v0.6 reversal record); regression sensor at `test/backend/scheduled-reducer-isInternal-rejection.test.ts`.
 
 ### BigInt — all u64/i64 fields
 Use `0n`, `1n`, `100n` — never plain numbers for ID/u64 fields. JavaScript `number` loses precision above 2^53, so SpacetimeDB maps 64-bit integers to BigInt. Mixing `number` and `BigInt` (e.g. `row.id === 5`) silently returns `false` — no error, just wrong behavior.
@@ -461,6 +578,23 @@ spacetime logs <name> --level warn                 # Filter by log level (warn a
 spacetime sql <name> "SELECT * FROM table_name"    # Query tables via SQL
 spacetime call <name> <reducer_name> [args...]     # Call a reducer
 ```
+
+### Publishing: use :migrate for reviewed schema deltas
+
+`npm run spacetime:publish` stays interactive — the destructive-migration confirm dialog is a safety feature, not friction. Use `npm run spacetime:publish:migrate` (v2.2.0+, PR #4885) when you have already reviewed the schema delta in a prior diff.
+
+```bash
+npm run spacetime:publish           # Interactive: confirms destructive migrations.
+npm run spacetime:publish:migrate   # Auto-confirms ONLY the migration prompt (--yes=migrate).
+```
+
+The `--yes=migrate` value must attach with `=` (per `spacetime publish --help`). Other `--yes` values (`break-clients`, `delete-data`, `remote`, `skip-login`) remain interactive in this script — opt them in explicitly only when the situation warrants.
+
+Related v2.2.0 informational notes:
+- `.withCompression('brotli')` exists on `DbConnection.builder()` as an alternative to gzip; project has not adopted it (browser-support floor too high for current users; realistic ratio gain on BSATN binary frames is 5-15% — not worth the failure mode on older browsers).
+- v2.2.0 also allows dropping empty tables during auto-migration (PR #4593) — relevant when refactoring schemas; no project-side action needed.
+
+Reference: Phase 16.4 Plan 03; `package.json` script line; `docs/smoke/contract.md` operational note.
 
 ### `spacetime sql` column name gotcha
 

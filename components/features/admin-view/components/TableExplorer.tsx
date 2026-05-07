@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { useTable, useSpacetimeDB } from 'spacetimedb/react';
-import { tables } from '@/src/module_bindings';
+import { useTable, useReducer } from 'spacetimedb/react';
+import { tables, reducers } from '@/src/module_bindings';
 import { useAuthContext } from '@/components/features/auth/components/AuthProvider';
 import { PUBLIC_TABLES, PublicTableName } from '../types';
 import DeleteConfirmModal from '@/components/globals/modals/DeleteConfirmModal';
@@ -35,16 +35,28 @@ function getPrimaryKeyJson(tableName: PublicTableName, row: any): string {
         case 'HsrCharacter': return row.name;
         case 'HsrLightcone': return row.name;
         case 'HsrCharacterCost':
-            return JSON.stringify({ characterName: row.characterName, gameModeTag: row.gameMode.tag });
-        case 'HsrLightconeCost': return row.lightconeName;
+            return JSON.stringify({
+                characterName: row.characterName,
+                gameModeTag: row.gameMode.tag,
+                draftModeTag: row.draftMode.tag,
+                costSetId: row.costSetId,
+            });
+        case 'HsrLightconeCost':
+            return JSON.stringify({
+                lightconeName: row.lightconeName,
+                gameModeTag: row.gameMode.tag,
+                draftModeTag: row.draftMode.tag,
+                costSetId: row.costSetId,
+            });
         case 'HsrSynergyCost': return String(row.id);
         case 'Lobby': return String(row.id);
         case 'LobbyMember':
             return JSON.stringify({ lobbyId: row.lobbyId, userId: row.userId });
         case 'MatchSession': return String(row.lobbyId);
         case 'MatchSessionStep': return String(row.id);
-        case 'MatchSessionHistory': return row.id;
-        case 'MatchSessionStepHistory': return row.matchId;
+        case 'MatchSessionHistory': return String(row.id);
+        case 'MatchSessionStepHistory':
+            return JSON.stringify([row.matchHistoryId, row.gameNumber, row.sequence]);
     }
 }
 
@@ -72,15 +84,15 @@ function formatCellValue(value: any): string {
     return String(value);
 }
 
-export default function TableExplorer() {
-    const { getConnection } = useSpacetimeDB();
+export default function TableExplorer({ isActive }: { isActive: boolean }) {
     const { user: currentUser } = useAuthContext();
+    const adminDeleteRow = useReducer(reducers.adminDeleteRow);
     const [selectedTable, setSelectedTable] = useState<PublicTableName>('User');
     const [searchQuery, setSearchQuery] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<{ tableName: PublicTableName; pkJson: string; label: string } | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const [rows] = useTable(TABLE_MAP[selectedTable]);
+    const [rows, isReady] = useTable(TABLE_MAP[selectedTable], { enabled: isActive });
     const allRows = (rows || []) as any[];
 
     // Get column names from the first row
@@ -126,22 +138,16 @@ export default function TableExplorer() {
 
     const confirmDelete = useCallback(() => {
         if (!deleteConfirm) return;
-        const conn = getConnection();
-        if (!conn) {
-            setMessage({ type: 'error', text: 'Not connected to SpacetimeDB' });
-            return;
-        }
-        try {
-            (conn.reducers as any).adminDeleteRow({
-                tableName: deleteConfirm.tableName,
-                primaryKeyJson: deleteConfirm.pkJson,
-            });
+        adminDeleteRow({
+            tableName: deleteConfirm.tableName,
+            primaryKeyJson: deleteConfirm.pkJson,
+        }).then(() => {
             setMessage({ type: 'success', text: `Delete requested for ${deleteConfirm.tableName} row` });
-        } catch (e: any) {
-            setMessage({ type: 'error', text: `Delete failed: ${e.message || e}` });
-        }
+        }).catch((err: any) => {
+            setMessage({ type: 'error', text: `Delete failed: ${err.message || err}` });
+        });
         setDeleteConfirm(null);
-    }, [deleteConfirm, getConnection]);
+    }, [deleteConfirm, adminDeleteRow]);
 
     const renderCell = useCallback((row: any, columnKey: React.Key) => {
         if (columnKey === '_actions') {
@@ -247,7 +253,10 @@ export default function TableExplorer() {
                         </TableColumn>
                     )}
                 </TableHeader>
-                <TableBody items={filteredRows} emptyContent={`No rows in ${selectedTable}`}>
+                <TableBody
+                    items={filteredRows}
+                    emptyContent={isActive && !isReady ? `Loading ${selectedTable}…` : `No rows in ${selectedTable}`}
+                >
                     {(row: any) => (
                         <TableRow key={getPrimaryKeyJson(selectedTable, row)}>
                             {(columnKey) => (

@@ -12,6 +12,8 @@ Bootstrap infrastructure handles the one-time setup of a freshly published Space
 
 **Purpose:** End-to-end database initialization after `spacetime publish --clear-database`
 
+For re-publishes that include schema deltas already reviewed in a prior diff, use `npm run spacetime:publish:migrate` (appends `--yes=migrate`, skips ONLY the destructive-migration confirm prompt). Default `npm run spacetime:publish` stays interactive.
+
 **Run:** `npx tsx scripts/post-publish.ts`
 
 **Flow:**
