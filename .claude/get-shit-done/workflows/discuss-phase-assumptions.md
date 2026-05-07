@@ -66,7 +66,7 @@ Phase number from argument (required).
 ```bash
 INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.phase-op "${PHASE}")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
-AGENT_SKILLS_ANALYZER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-assumptions-analyzer 2>/dev/null)
+AGENT_SKILLS_ANALYZER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-assumptions-analyzer)
 ```
 
 Parse JSON for: `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`,
@@ -619,24 +619,23 @@ Check for auto-advance trigger:
 2. Sync chain flag:
    ```bash
    if [[ ! "$ARGUMENTS" =~ --auto ]]; then
-     node .claude/get-shit-done/bin/gsd-sdk.cjs query config-set workflow._auto_chain_active false 2>/dev/null
+     node .claude/get-shit-done/bin/gsd-sdk.cjs query config-set workflow._auto_chain_active false || true
    fi
    ```
-3. Read chain flag and user preference:
+3. Read consolidated auto-mode (`active` = chain flag OR user preference):
    ```bash
-   AUTO_CHAIN=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get workflow._auto_chain_active 2>/dev/null || echo "false")
-   AUTO_CFG=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query config-get workflow.auto_advance 2>/dev/null || echo "false")
+   AUTO_MODE=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query check auto-mode --pick active 2>/dev/null || echo "false")
    ```
 
-**If `--auto` flag present AND `AUTO_CHAIN` is not true:**
+**If `--auto` flag present AND `AUTO_MODE` is not true:**
 ```bash
 node .claude/get-shit-done/bin/gsd-sdk.cjs query config-set workflow._auto_chain_active true
 ```
 
-**If `--auto` flag present OR `AUTO_CHAIN` is true OR `AUTO_CFG` is true:**
+**If `--auto` flag present OR `AUTO_MODE` is true:**
 
 Display banner:
-```
+```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  GSD ► AUTO-ADVANCING TO PLAN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

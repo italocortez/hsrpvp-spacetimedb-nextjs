@@ -45,7 +45,9 @@ Full details: `milestones/v0.5-ROADMAP.md`
 - [x] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views (completed 2026-04-13)
 - [x] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes (completed 2026-04-19)
 - [x] **Phase 16.1: CSS module hygiene (Plans 01-07 co-location + Plan 08 Link prefetch policy)** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement) (completed 2026-04-20)
-- [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20)
+- [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20; **DEFERRED behind 16.4** as of 2026-05-02 — execution order is 16.3 → 16.4 → 16.2 so the landing page is built against upgraded bindings + v3 transport)
+- [x] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02; **NEXT UP after 16.1**) (completed 2026-05-03)
+- [x] **Phase 16.4: SpacetimeDB v2.2.0 refactor pass** — Server: `Table.clear()` in `server_nuke_test_data` (Plan 01), `AuthCtx` audit + `isInternal` hardening on 3 scheduled reducers (Plan 02 — REVERTED by Plan 07 hotfix after diagnostic refutation; engine-level "no such reducer" rejection is the actual defense in v2.2.0), `:migrate` script (Plan 03). Client: v3 WebSocket transport baseline (Plan 04), `useTable({enabled})` for admin panels (Plan 05), `useReducer` adoption at 5 React component sites (Plan 06). Cross-cut verify gate (Plan 07): SC#7-9 closed; D-1 resolved within Plan 07 hotfix scope (INSERTED 2026-05-02; completed 2026-05-03)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
 - [ ] **Phase 19: Team builder — data** — Team composition state, cost budget, synergy compute, `team_builder_draft` backend + reducers
@@ -96,6 +98,7 @@ These apply to every phase; they are not phases themselves. Call them out in pla
 - Phase 28 blocks 30+ (lobby data must flow before draft can read from it).
 - Phase 31 blocks 40+ (replay reuses pedestal component in read-only mode — must exist first).
 - Phase 34 fork blocks Phase 35 (bracket library must be stripped and usable before UX builds on it).
+- **Phase 16.3 → 16.4 → 16.2 execution order** (out of numeric order — set 2026-05-02). 16.2 was inserted first (2026-04-20) but landing page work hadn't started; SDK upgrade (16.3) and refactor pass (16.4) are prerequisite-y for every subsequent phase, so 16.2 was deferred behind them. Strongly recommended: do not start any data-wiring phase (17+) until 16.3 ships at minimum — bindings regen affects every consumer.
 - All other phases run strictly in numeric order.
 
 ---
@@ -277,11 +280,76 @@ Plans:
 
 **Goal:** [Urgent work - to be planned]
 **Requirements**: TBD
-**Depends on:** Phase 16
+**Depends on:** Phase 16.4 (deferred behind v2.2.0 SDK upgrade so the landing page is built against the upgraded module bindings + v3 transport from day one)
 **Plans:** 0 plans
 
 Plans:
 - [ ] TBD (run /gsd-plan-phase 16.2 to break down)
+
+### Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade (INSERTED)
+
+**Goal**: Module manifest reflects installed reality (2.1.0 minimum), then both module and client cleanly upgraded to v2.2.0; regenerated bindings pass typecheck; maincloud republish verified clean against v2.2.0 engine fixes (autoinc, PK migration). Drift fix and version bump land as separate atomic commits so the audit trail distinguishes "fix what was wrong" from "do the planned upgrade".
+
+**Depends on:** Phase 16.1 (16.2 was inserted before 16.3 numerically but deferred behind it — landing page work hadn't started, SDK upgrade is prerequisite-y for every subsequent phase including 16.2)
+
+**Requirements**: TBD (no new feature requirements; treated as infra phase)
+
+**Success Criteria** (what must be TRUE):
+  1. `spacetimedb/package.json` declares `spacetimedb: ^2.1.0` minimum (matches lockfile reality and matches root client manifest), committed atomically before the v2.2.0 bump.
+  2. Both `spacetimedb/package.json` and root `package.json` declare `spacetimedb: ^2.2.0`; both lockfiles refreshed via `npm install`; no caret/range mismatch between the two sides.
+  3. `src/module_bindings/` regenerated via `npm run generate`; type diff reviewed (codegen fix #4709 may reorder nested types); `npm run test:typecheck` passes; full `npm test` suite passes unchanged.
+  4. Any `spacetime delete` invocation in scripts / CI / docs updated with `--yes` (the v2.2.0 confirm-by-default change, #4770) — specifically audit `scripts/post-publish.ts --clear-database` flow.
+  5. Maincloud republish to `hsrpvp-spacetimedb-nextjs-test1` succeeds; spot-check confirms autoinc sequences advance correctly post-republish (#4902 fix) and `st_table.table_primary_key` integrity preserved (#4666 fix).
+  6. ~~`spacetime lock` applied to maincloud production database `hsrpvp-spacetimedb-nextjs-test1` as final operational hardening step.~~ **OBSOLETE per phase decision D-13** — user owns this manually outside the GSD workflow; will not be planned for in this phase or any subsequent phase.
+  7. Note `.planning/notes/spacetimedb-version-drift.md` referenced in the phase plan and final commit message so future SDK bumps catch the same trap.
+
+**Plans:** 4/4 plans complete
+
+Plans:
+- [x] 16.3-01-PLAN.md — Drift fix: `spacetimedb/package.json` ^2.0.3 → ^2.1.0 + lockfile refresh (Commit A)
+- [x] 16.3-02-PLAN.md — v2.2.0 manifests + lockfiles + bindings + typecheck/test (Commit B core, no commit yet)
+- [x] 16.3-03-PLAN.md — Changelog audit (D-11) + `spacetime delete --yes` doc sweep (D-12) + audit-notes file
+- [x] 16.3-04-PLAN.md — Maincloud republish + SQL probes + human-verify push gate; finalize Commit B + push, OR D-07 rollback
+
+**UI hint**: no (backend / SDK upgrade, no rendered output change)
+
+### Phase 16.4: SpacetimeDB v2.2.0 refactor pass (INSERTED)
+
+**Goal**: Adopt v2.2.0 improvements across BOTH server and client opportunistically — replace iterate-and-delete patterns with `Table.clear()` in GC reducers; type reducer auth helpers via new `AuthCtx` / `JwtClaims` exports; verify v3 WebSocket transport negotiation (bandwidth win against the energy budget); adopt `useTable({enabled})` for gated panels and `useProcedure` for typed reducer hooks. Refactor scope is bounded to changes that simplify existing code or reduce energy/bandwidth cost — no new features.
+
+**Depends on:** Phase 16.3 (must ship clean before refactors layer on top)
+
+**Requirements**: TBD (no new feature requirements; treated as refactor phase)
+
+**Success Criteria** (what must be TRUE):
+
+  Server-side:
+  1. `LobbyGcJob`, `IdentityGcJob`, `UserDeletionJob` reducers (and any "wipe + reseed" path in `seedAll()`) audited; `Table.clear()` adopted wherever it replaces a manual iterate-and-delete loop; integration tests pass unchanged.
+  2. Reducers performing identity/role checks audited; where applicable, refactored to consume the new typed `AuthCtx` / `JwtClaims` server exports (from `spacetimedb/server` subpath) instead of ad-hoc identity unwrapping.
+  3. `npm run spacetime:publish` script (or its docs) updated to demonstrate `--yes=migrate` granular auto-confirm, leaving destructive prompts (publish-to-remote, login) interactive by default.
+
+  Client-side:
+  4. v3 WebSocket transport negotiation verified post-upgrade — DevTools Network → WS frame inspection confirms multi-message batching is active. Pre/post bandwidth measurement recorded as evidence (matters for the maincloud energy budget — egress is the dominant cost).
+  5. `useTable(t, { enabled })` adopted for subscription sites that are gated by UI state (chat panels, lobby modals, any panel that shouldn't sub when not visible) — sweep `app/` + `components/` for candidates; `enabled: false` prevents the sub from establishing without unmounting the consumer.
+  6. `useProcedure(procedures.X)` adopted for reducer call sites in React components where the current pattern is bare `await connection.reducers.X(args)` — gives stable typed callbacks that queue until connection ready.
+
+  Cross-cutting:
+  7. No behavioral regressions in tournament, draft, lobby, or auth flows (verified via existing integration suites — full `test:integration` run passes).
+  8. Energy/bandwidth deltas measured pre/post via `tools/energy-model.js` baseline — refactor must not increase energy cost; v3 transport + GC `Table.clear()` should reduce it measurably.
+  9. Bytes-key B-tree indexes (#4733) considered for any String-keyed multi-column query path; adopted only where a measurable scan-cost improvement is identified (no speculative changes).
+
+**Plans**: 7 plans
+
+Plans:
+- [x] 16.4-01-PLAN.md — Table.clear() refactor in server_nuke_test_data (SC#1) + SKILL rule
+- [x] 16.4-02-PLAN.md — AuthCtx AUDIT-NOTES + isInternal hardening on 3 scheduled reducers (SC#2) + SKILL rule
+- [x] 16.4-03-PLAN.md — spacetime:publish:migrate sibling script + docs/smoke note (SC#3) + SKILL rule
+- [x] 16.4-04-PLAN.md — tools/capture-ws-frames.ts + transport-evidence/ baseline (SC#4)
+- [x] 16.4-05-PLAN.md — useTable({ enabled }) at UserManager + TableExplorer (SC#5) + Decision 9 + SKILL rule
+- [x] 16.4-06-PLAN.md — useReducer(reducers.X) at 5 React component sites (SC#6) + Decision 10 + SKILL rule
+- [x] 16.4-07-PLAN.md — Cross-cutting verify wave 2 (SC#7-9) + maincloud republish + smoke probes (verdict: PASS; D-1 Plan 02 isInternal regression resolved via 4-commit hotfix within Plan 07 scope — see 16.4-AUDIT-NOTES.md "v0.6 Update" + deferred-items.md D-1 RESOLVED record)
+
+**UI hint**: no (refactor only — no rendered output change)
 
 ### Phase 17: Cost tables — data
 **Goal**: Cost tables page renders character/lightcone/synergy cost rows sourced from the global public subscriptions; portrait assets warm in cache before the user interacts.
@@ -595,6 +663,9 @@ Plans:
 | 15.5. Auth-Gated User Subscription | 4/4 | Complete | 2026-04-17 |
 | 16. Route + global foundation | 6/6 | Complete   | 2026-04-19 |
 | 16.1. CSS module hygiene | 8/7 | Complete    | 2026-04-20 |
+| 16.2. Home / Landing Page | 0/TBD | Not started (deferred behind 16.4) | - |
+| 16.3. SpacetimeDB v2.1.0 realign + v2.2.0 upgrade | 4/4 | Complete    | 2026-05-03 |
+| 16.4. SpacetimeDB v2.2.0 refactor pass | 7/7 | Complete    | 2026-05-03 |
 | 17. Cost tables — data | 0/TBD | Not started | - |
 | 18. Cost tables — UX | 0/TBD | Not started | - |
 | 19. Team builder — data | 0/TBD | Not started | - |

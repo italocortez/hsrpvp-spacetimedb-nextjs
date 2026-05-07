@@ -2,15 +2,29 @@ import spacetimedb from '../schema';
 import { IdentityGcJob, setRunIdentityGcReducer } from '../tables/identityGcJob';
 import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
+// External-invocation defense for `run_identity_gc`: SpacetimeDB v2.2.0 engine returns
+// "no such reducer" for external WS callers attempting to invoke scheduled reducers
+// (verified 2026-05-03 in 16.4-AUDIT-NOTES.md "v0.6 Update"). Application-level
+// `ctx.senderAuth.isInternal` guard was removed by Plan 07 hotfix because the SDK
+// v2.2.0 `senderAuth` factory always sets `isInternal: false`. `seed_identity_gc_job`
+// and `admin_gc_identities` retain their existing project-level gates (`ServerIdentity`
+// check and `ensureModerator` respectively).
 import { SYSTEM_USER_ID } from '../helpers/auditColumns';
 import { insertWithAudit } from '../helpers/auditHelpers';
 import { ensureModerator } from '../helpers/ensurePermissions';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const IDENTITY_TTL_DAYS = 90;  // D-11
-const IDENTITY_TTL_MICROS = BigInt(IDENTITY_TTL_DAYS * 24 * 60 * 60) * 1_000_000n;
-const SEVEN_DAYS_MICROS = BigInt(7 * 24 * 60 * 60 * 1_000_000);  // D-03: weekly
+// Time unit conversion (the only place "micros per day" knowledge lives).
+const MICROS_PER_DAY = 86_400_000_000n;  // 24 * 60 * 60 * 1_000_000
+
+// D-11: an identity becomes stale after 90 days of idle.
+const IDENTITY_TTL_DAYS = 90;
+const IDENTITY_TTL_MICROS = BigInt(IDENTITY_TTL_DAYS) * MICROS_PER_DAY;
+
+// D-03: scheduled GC runs weekly.
+const GC_INTERVAL_DAYS = 7;
+const GC_INTERVAL_MICROS = BigInt(GC_INTERVAL_DAYS) * MICROS_PER_DAY;
 
 // ─── performIdentityGc ────────────────────────────────────────────────────────
 // Shared GC logic called by both scheduled and admin-triggered reducers (Pitfall 6).
@@ -22,7 +36,7 @@ const SEVEN_DAYS_MICROS = BigInt(7 * 24 * 60 * 60 * 1_000_000);  // D-03: weekly
 // D-05: Log each deletion with [IDENTITY_GC] prefix.
 
 function performIdentityGc(ctx: any): { itemsScanned: number; itemsDeleted: number; orphanedCount: number; staleCount: number } {
-    const nowMicros = ctx.timestamp.microsSinceUnixEpoch;
+    const nowMicros: bigint = ctx.timestamp.microsSinceUnixEpoch;
     let itemsScanned = 0;
     let itemsDeleted = 0;
     let orphanedCount = 0;
@@ -68,7 +82,7 @@ function performIdentityGc(ctx: any): { itemsScanned: number; itemsDeleted: numb
             const idleMicros = nowMicros - ui.lastSeenAt.microsSinceUnixEpoch;
             if (idleMicros >= IDENTITY_TTL_MICROS) {
                 ctx.db.UserIdentity.identity.delete(ui.identity);
-                console.log(`[IDENTITY_GC] Deleted stale identity for user #${userId} (idle: ${BigInt(idleMicros) / 1_000_000n}s)`);  // D-05
+                console.log(`[IDENTITY_GC] Deleted stale identity for user #${userId} (idle: ${idleMicros / MICROS_PER_DAY} days)`);  // D-05
                 itemsDeleted++;
                 staleCount++;
             }
@@ -110,7 +124,7 @@ export const run_identity_gc = spacetimedb.reducer(
         // Self-requeue: next run in 7 days (D-03)
         ctx.db.IdentityGcJob.insert({
             scheduledId: 0n,
-            scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + SEVEN_DAYS_MICROS),
+            scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + GC_INTERVAL_MICROS),
         });
     }
 );
@@ -166,7 +180,7 @@ export const seed_identity_gc_job = spacetimedb.reducer((ctx) => {
     // Schedule first run 7 days from now
     ctx.db.IdentityGcJob.insert({
         scheduledId: 0n,
-        scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + SEVEN_DAYS_MICROS),
+        scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch + GC_INTERVAL_MICROS),
     });
     console.log('[IDENTITY_GC] Seed complete -- first run scheduled in 7 days.');
 });

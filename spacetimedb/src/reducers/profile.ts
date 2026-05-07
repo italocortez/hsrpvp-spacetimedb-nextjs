@@ -104,6 +104,15 @@ export const update_username = spacetimedb.reducer({
         throw new SenderError('Guest users cannot change their username. Link your Discord account first.');
     }
 
+    // Pre-check uniqueness. Without this the unique-index violation surfaces
+    // to the client as the opaque "The instance encountered a fatal error."
+    if (trimmed !== resolved.user.username) {
+        const existing = ctx.db.User.username.find(trimmed);
+        if (existing) {
+            throw new SenderError(`Username "${trimmed}" is already taken.`);
+        }
+    }
+
     ctx.db.User.id.update(updateWithAudit(ctx, resolved.user, {
         username: trimmed,
     }, resolved.user.id));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useLayoutEffect, useEffect, useCallback, useMemo } from "react";
 import LoadoutManager, { Loadout, ResolvedTeamMember, TeamMember } from "../team-builder/LoadoutManager";
 import { Character, Lightcone, RuleSet } from "../types/enums";
 
@@ -12,6 +12,7 @@ export interface UseLoadoutsReturn {
 	currentLoadout: Loadout;
 	resolvedTeam: ResolvedTeamMember[];
 	ruleSet: RuleSet;
+	isHydrated: boolean;
 
 	setLoadoutIndex: (index: number) => void;
 	setRuleSet: (ruleSet: RuleSet) => void;
@@ -59,6 +60,7 @@ export function useLoadouts(
     const [loadouts, setLoadouts] = useState<Loadout[]>(LoadoutManager.getDefaultLoadouts);
 	const [loadoutIndex, setLoadoutIndex] = useState<number>(0);
 	const [ruleSet, setRuleSet] = useState<RuleSet>("ApocalypticShadow" as RuleSet);
+	const [isHydrated, setIsHydrated] = useState<boolean>(false); // Used to gate rendering until loadouts are loaded 
 
 	const currentLoadout: Loadout = loadouts[loadoutIndex] ?? {
 		name: `Team ${loadoutIndex + 1}`,
@@ -80,13 +82,15 @@ export function useLoadouts(
 
 	// ── Hydrate from localStorage on client mount ─────────────────────
 	//
-	// This is the ONLY effect.  It reads; it never writes.
-	// No save effects exist — saves happen inside mutations below.
+	// This is the ONLY effect. It reads; it never writes.
+	// useLayoutEffect prevents initial "empty shell" UI flash by hydrating
+	// before the browser paints the first client render.
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		setLoadouts(LoadoutManager.loadLoadouts());
 		setLoadoutIndex(LoadoutManager.loadCurrentLoadoutIndex());
 		setRuleSet(LoadoutManager.loadRulesetView());
+		setIsHydrated(true);
 	}, []);
 
 	// ── Save helpers ──────────────────────────────────────────────────
@@ -213,6 +217,7 @@ export function useLoadouts(
 		currentLoadout,
 		resolvedTeam,
 		ruleSet,
+		isHydrated,
 		setLoadoutIndex: handleSetLoadoutIndex,
 		setRuleSet: handleSetRuleSet,
 		updateCurrentTeam,

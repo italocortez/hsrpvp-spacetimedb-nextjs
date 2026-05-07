@@ -9,10 +9,7 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  LobbySlot,
-} from "./types";
-
+import { LobbySlot } from "./types";
 
 export default __t.row({
   lobbyId: __t.u32().name("lobby_id"),

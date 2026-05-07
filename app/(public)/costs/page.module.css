@@ -1,12 +1,14 @@
 .container {
+    width: min(94%, 90rem);
+    align-self: center;
+
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    padding: 1.5rem 0;
 }
 
-.title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #fff;
+.tableLoading {
+    min-height: 40vh;
+    display: grid;
+    place-items: center;
 }

@@ -69,7 +69,7 @@ body > div {
     border: 1px solid var(--border-5star);
     box-shadow: var(--shadow-5star);
 }
-[data-rarity="5"] .portrait {
+[data-rarity="5"] [data-portrait] {
     background: var(--gradient-5star);
 }
 
@@ -78,7 +78,7 @@ body > div {
     border: 1px solid var(--border-4star);
     box-shadow: var(--shadow-4star);
 }
-[data-rarity="4"] .portrait {
+[data-rarity="4"] [data-portrait] {
     background: var(--gradient-4star);
 }
 

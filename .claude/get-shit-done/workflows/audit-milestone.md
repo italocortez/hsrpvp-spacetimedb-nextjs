@@ -18,7 +18,7 @@ Valid GSD subagent types (use exact names — do not fall back to 'general-purpo
 ```bash
 INIT=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query init.milestone-op)
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
-AGENT_SKILLS_CHECKER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-integration-checker 2>/dev/null)
+AGENT_SKILLS_CHECKER=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query agent-skills gsd-integration-checker)
 ```
 
 Extract from init JSON: `milestone_version`, `milestone_name`, `phase_count`, `completed_phases`, `commit_docs`.

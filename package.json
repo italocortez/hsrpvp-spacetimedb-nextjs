@@ -15,6 +15,7 @@
     "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb",
     "spacetime:publish:local": "spacetime publish --module-path spacetimedb --server local",
     "spacetime:publish": "spacetime publish --module-path spacetimedb --server maincloud",
+    "spacetime:publish:migrate": "spacetime publish --module-path spacetimedb --server maincloud --yes=migrate",
     "test": "vitest run --config test/vitest.config.ts",
     "test:watch": "vitest --config test/vitest.config.ts",
     "test:integration": "vitest run --config test/vitest.integration.config.ts",
@@ -43,14 +44,16 @@
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",
-    "spacetimedb": "^2.1.0",
+    "spacetimedb": "^2.2.0",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/ws": "^8.18.1",
     "typescript": "~5.6.2",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "ws": "^8.20.0"
   }
 }

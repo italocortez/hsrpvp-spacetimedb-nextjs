@@ -9,10 +9,7 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  TeamSide,
-} from "./types";
-
+import { TeamSide } from "./types";
 
 export default __t.row({
   matchResultId: __t.u32().name("match_result_id"),

@@ -17,7 +17,6 @@ import {
   ConcedeTrigger,
 } from "./types";
 
-
 export default __t.row({
   id: __t.u32(),
   bracketMatchId: __t.option(__t.u32()).name("bracket_match_id"),

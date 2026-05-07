@@ -42,7 +42,7 @@ If missing both ROADMAP.md and PROJECT.md: suggest `/gsd-new-project`.
 </step>
 
 <step name="load">
-**Use structured extraction from `gsd-sdk query` (or legacy gsd-tools.cjs):**
+**Use structured extraction from `node .claude/get-shit-done/bin/gsd-sdk.cjs query` (or legacy gsd-tools.cjs):**
 
 Instead of reading full files, use targeted tools to get only the data needed for the report:
 - `ROADMAP=$(node .claude/get-shit-done/bin/gsd-sdk.cjs query roadmap.analyze)`
