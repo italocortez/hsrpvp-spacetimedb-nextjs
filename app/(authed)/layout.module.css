@@ -1,0 +1,16 @@
+.layout_wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: rgb(17, 24, 39);
+}
+
+/* Footer */
+.footer {
+    padding: 1.5rem 2rem;
+    text-align: center;
+    background-color: rgb(17, 24, 39);
+    border-top: 1px solid rgb(31, 41, 55);
+    color: rgb(107, 114, 128);
+    font-size: 0.875rem;
+}

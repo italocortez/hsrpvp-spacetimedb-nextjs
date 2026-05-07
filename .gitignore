@@ -7,10 +7,16 @@
 
 # testing
 /coverage
+/tmp
+
+# test: ignore raw game data (private) but commit infra and templates
+test/data/
+!test/data-templates/
 
 # next.js
 /.next/
 /out/
+spacetimedb/.next/
 
 # production
 /build
@@ -18,6 +24,7 @@
 # misc
 .DS_Store
 *.pem
+*.log
 
 # debug
 npm-debug.log*
@@ -34,3 +41,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+#claude context
+.claude/settings.local.json
+.mcp.json
+excalidraw.log
+.claude/gsd-local-patches/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+notes
+notes/
+/notes
+.next-call-count
+
+#quell
+quell.exe
+
+# playwright-cli (dev-env local: config is per-user, session artifacts are ephemeral)
+.playwright/
+.playwright-cli/

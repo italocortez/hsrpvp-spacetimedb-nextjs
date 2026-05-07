@@ -9,20 +9,17 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  TeamLabel,
-  ActionType,
-  StepPayload,
-} from "./types";
-
+import { TeamSide, ActionType, StepPayload } from "./types";
 
 export default __t.row({
   id: __t.u32().primaryKey(),
   lobbyId: __t.u32().name("lobby_id"),
+  gameNumber: __t.u8().name("game_number"),
   sequence: __t.u32(),
-  actor: __t.identity(),
+  actorUserId: __t.u32().name("actor_user_id"),
+  anonymousLabel: __t.option(__t.string()).name("anonymous_label"),
   get actorSlot() {
-    return TeamLabel.name("actor_slot");
+    return TeamSide.name("actor_slot");
   },
   get action() {
     return ActionType;
@@ -31,4 +28,8 @@ export default __t.row({
     return StepPayload;
   },
   timestamp: __t.timestamp(),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

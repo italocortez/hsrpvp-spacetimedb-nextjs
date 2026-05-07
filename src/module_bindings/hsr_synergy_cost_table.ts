@@ -9,10 +9,7 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  GameMode,
-} from "./types";
-
+import { GameMode, DraftMode } from "./types";
 
 export default __t.row({
   id: __t.u32().primaryKey(),
@@ -21,5 +18,13 @@ export default __t.row({
   get gameMode() {
     return GameMode.name("game_mode");
   },
+  get draftMode() {
+    return DraftMode.name("draft_mode");
+  },
   costModifier: __t.f32().name("cost_modifier"),
+  costSetId: __t.u32().name("cost_set_id"),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

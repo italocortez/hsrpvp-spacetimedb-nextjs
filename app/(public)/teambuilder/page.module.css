@@ -1,0 +1,26 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TeamBuilder — CSS Module
+
+   Page-layout-only module. Component-level styles live in co-located
+   sibling modules under components/features/team-builder/.
+   Phase 16.1 swept: only rules applied in page.tsx itself remain.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Root ─────────────────────────────────────────────────────────── */
+.teamBuilder {
+    width: min(94%, 90rem);
+    align-self: center;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.teamBuilderLoading {
+    width: min(94%, 90rem);
+    min-height: calc(100vh - 7rem);
+    align-self: center;
+    display: grid;
+    place-items: center;
+    padding: 3rem 0;
+}

@@ -11,15 +11,13 @@ import {
 } from "spacetimedb";
 import {
   GameMode,
-  LobbyConfig,
   DraftMode,
-  PlayerSnapshot,
-  MatchResult,
+  MatchEndReason,
+  LobbyConfigSnapshot,
 } from "./types";
 
-
 export default __t.row({
-  id: __t.string().primaryKey(),
+  id: __t.u32().primaryKey(),
   lobbyCode: __t.string().name("lobby_code"),
   playedAt: __t.timestamp().name("played_at"),
   get draftMode() {
@@ -30,18 +28,18 @@ export default __t.row({
   },
   teamBlueAlias: __t.string().name("team_blue_alias"),
   teamRedAlias: __t.string().name("team_red_alias"),
-  get blueTeamMembers() {
-    return __t.array(PlayerSnapshot).name("blue_team_members");
-  },
-  get redTeamMembers() {
-    return __t.array(PlayerSnapshot).name("red_team_members");
-  },
   get snapshotConfig() {
-    return LobbyConfig.name("snapshot_config");
+    return LobbyConfigSnapshot.name("snapshot_config");
   },
-  get result() {
-    return MatchResult;
+  get outcome() {
+    return MatchEndReason;
   },
-  rosterBlue: __t.string().name("roster_blue"),
-  rosterRed: __t.string().name("roster_red"),
+  teamBlueSpent: __t.option(__t.f32()).name("team_blue_spent"),
+  teamRedSpent: __t.option(__t.f32()).name("team_red_spent"),
+  handicapApplied: __t.option(__t.f32()).name("handicap_applied"),
+  isPubliclyVisible: __t.bool().name("is_publicly_visible"),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

@@ -1,0 +1,32 @@
+.roster {
+    flex: 1 calc(60% - 1rem);
+    min-width: min(100%, 34rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1.25rem;
+}
+
+.charactersContainer {
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+/* Show all clear buttons when hovering over characters container */
+.charactersContainer:hover > [data-component="teamSlot"] [class*="clearButton"] {
+    opacity: 1;
+}
+
+.charactersContainer > [data-component="teamSlot"]:nth-child(2n) > [data-component="lightconeSelector"] > [class*="resultSet"] {
+    left: unset; /* Fix to LC Search results going out-of-bounds! */
+}
+
+/* Apply on mobile screens only */
+@media screen and (max-width: 800px) {
+    /* double grid column in smaller screens */
+    .charactersContainer {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

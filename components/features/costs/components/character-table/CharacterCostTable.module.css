@@ -1,0 +1,196 @@
+/* ---- Filter section separator ---- */
+.filterSection {
+    position: relative;
+}
+
+.filterSection::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -1rem;
+    height: 1px;
+    width: 100%;
+    background-color: #4b5565;
+    z-index: 1;
+}
+
+/* ---- Scrollable container ---- */
+.tableWrapper {
+    max-height: 75vh;
+    overflow: auto;
+    border-radius: 0.75rem;
+    scrollbar-width: none;
+}
+
+.tableWrapper::-webkit-scrollbar {
+    display: none;
+}
+
+/* ---- Table ---- */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    content-visibility: auto
+}
+
+/* ---- Sticky header ---- */
+.tableWrapper thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: rgb(17, 24, 39);
+}
+
+/* ---- Header row ---- */
+.theadRow {
+    border-bottom: 1px solid rgb(75, 85, 99);
+}
+
+/* ---- Header cell ---- */
+.th {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(156, 163, 175);
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: background-color 200ms;
+}
+
+.th:hover {
+    background-color: rgb(55, 65, 81);
+}
+
+.thFirst {
+    text-align: left;
+}
+
+.thActive {
+    background-color: rgb(55, 65, 81);
+}
+
+.thLabelActive {
+    color: rgb(34, 211, 238);
+}
+
+/* ---- Data row ---- */
+.tr {
+    border-bottom: 1px solid rgb(55, 65, 81);
+    transition: background-color 150ms;
+}
+
+.tr:last-child {
+    border-bottom: none;
+}
+
+.tr:hover {
+    background-color: rgb(55, 65, 81);
+}
+
+/* ---- Data cell ---- */
+.td {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    text-align: center;
+    color: rgb(209, 213, 219);
+}
+
+.tdFirst {
+    text-align: left;
+}
+
+/* ---- Rarity badge ---- */
+.rarityBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 auto;
+    filter: drop-shadow(0px 1px 2px black);
+}
+
+/* ---- Expand button ---- */
+.expandButton {
+    background: none;
+    border: none;
+    color: rgb(156, 163, 175);
+    cursor: pointer;
+    padding: 0.125rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+}
+
+.expandButton:hover {
+    color: #fff;
+}
+
+/* ---- Synergy count badge ---- */
+.synergyBadge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #c084fc;
+    background: rgba(192, 132, 252, 0.12);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.4rem;
+    white-space: nowrap;
+}
+
+/* ---- Synergy sub-rows: header ---- */
+.synergyHeaderRow {
+    background-color: rgba(17, 24, 39, 0.6);
+    border-bottom: 1px solid rgb(55, 65, 81);
+}
+
+.synergyHeaderRow:hover {
+    background-color: rgba(17, 24, 39, 0.6);
+}
+
+.synergyLabel {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgb(156, 163, 175);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ---- Synergy sub-rows: data ---- */
+.synergyDataRow {
+    background-color: rgba(17, 24, 39, 0.4);
+    border-bottom: 1px solid rgb(55, 65, 81);
+}
+
+.synergyDataRow:hover {
+    background-color: rgba(31, 41, 55, 0.5);
+}
+
+.synergyTarget {
+    font-size: 0.8rem;
+    color: rgb(156, 163, 175);
+    padding-left: 1.25rem;
+}
+
+.synergyCost {
+    font-size: 0.8rem;
+    color: #c084fc;
+    font-weight: 500;
+}
+
+/* ---- Empty state ---- */
+.emptyCell {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: rgb(156, 163, 175);
+    font-size: 1.125rem;
+    user-select: none;
+}

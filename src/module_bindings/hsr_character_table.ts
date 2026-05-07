@@ -9,12 +9,7 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  Path,
-  Element,
-  CharRole,
-} from "./types";
-
+import { Path, Element, CharRole } from "./types";
 
 export default __t.row({
   name: __t.string().primaryKey(),
@@ -31,4 +26,16 @@ export default __t.row({
     return CharRole;
   },
   imageUrl: __t.string().name("image_url"),
+  versionReleased: __t.f64().name("version_released"),
+  treatAsVersion: __t.f64().name("treat_as_version"),
+  skelUrl: __t.option(__t.string()).name("skel_url"),
+  atlasUrl: __t.option(__t.string()).name("atlas_url"),
+  atlasImgUrls: __t.array(__t.string()).name("atlas_img_urls"),
+  posX: __t.i32().name("pos_x"),
+  posY: __t.i32().name("pos_y"),
+  width: __t.i32(),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

@@ -1,35 +1,148 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+@import "./tokens.css";
+
 :root {
-  /* Tells the browser to use dark scrollbars and native inputs */
-  color-scheme: dark;
+    /* Tells the browser to use dark scrollbars and native inputs */
+    color-scheme: dark;
+
+    --color-light: rgb(230, 237, 246);
+    --color-dark: #171717;
+    --color-cost: rgb(245, 210, 126);
+
+    --gradient-5star: linear-gradient(rgba(138, 103, 0, 0.85) 0px, rgba(214, 161, 0, 0.95) 63px, rgba(214, 161, 0, 0.95) 130px);
+    --gradient-4star: linear-gradient(rgba(95, 56, 140, 0.8) 0px, rgba(159, 108, 217, 0.85) 63px, rgb(159, 108, 217, 0.85) 130px);
+
+    --border-5star: rgb(228, 168, 30);
+    --border-4star: rgb(150, 72, 230);
+    --border-3star: rgb(38, 120, 230);
+
+    --shadow-5star: 2px 2px 4px 3px rgba(251, 191, 36, 0.16);
+    --shadow-4star: 2px 2px 4px 3px rgba(168, 85, 247, 0.16);
+    --shadow-3star: 2px 2px 4px 3px rgba(46, 135, 250, 0.16);
+
+    --lc-3star: rgb(82, 150, 235);
+    --lc-4star: rgb(174, 115, 235);
+    --lc-5star: rgb(251, 201, 66);
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+.Box {
+    box-sizing: border-box;
+
+    background: rgb(27, 37, 51);
+    border: 1px solid rgb(55 65 81);
+    border-radius: 0.5rem;
+}
+
+body {
+    font-family:
+        "Inter Variable",
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        "Helvetica Neue",
+        Arial,
+        "Noto Sans",
+        sans-serif,
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Segoe UI Symbol",
+        "Noto Color Emoji";
+
+    color: var(--color-light);
+    background: rgb(15, 23, 32);
+}
+
+/* Gap between header/body/footer (please don't break in the future) */
+body > div {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* 5* Entity */
+[data-rarity="5"] {
+    border: 1px solid var(--border-5star);
+    box-shadow: var(--shadow-5star);
+}
+[data-rarity="5"] [data-portrait] {
+    background: var(--gradient-5star);
+}
+
+/* 4* Entity */
+[data-rarity="4"] {
+    border: 1px solid var(--border-4star);
+    box-shadow: var(--shadow-4star);
+}
+[data-rarity="4"] [data-portrait] {
+    background: var(--gradient-4star);
+}
+
+/* 3* Entity */
+[data-rarity="3"] {
+    border: 1px solid var(--border-3star);
+    box-shadow: var(--shadow-3star);
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #374151;
+}
+::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
 }
 
 html,
 body {
-  max-width: 100vw;
+  /* max-width: 100vw;
   overflow-x: hidden;
   background-color: rgb(17, 24, 39);
-  color: #ffffff;
+  color: #ffffff; */
   /* Font smoothing for dark backgrounds */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale; */
 }
 
 a {
-  color: inherit;
-  text-decoration: none;
+  /* color: inherit;
+  text-decoration: none; */
 }
 
 button {
-  font-family: inherit;
+  /* font-family: inherit; */
 }
 
 input,
 textarea {
-  font-family: inherit;
+  /* font-family: inherit; */
+}
+
+header {
+    /* width: 100%; */
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }

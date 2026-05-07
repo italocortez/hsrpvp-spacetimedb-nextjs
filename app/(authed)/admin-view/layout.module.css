@@ -1,0 +1,28 @@
+.admin_container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.access_denied {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    gap: 1rem;
+}
+
+.access_denied h2 {
+    color: rgb(248, 113, 113);
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.access_denied p {
+    color: rgb(107, 114, 128);
+    font-size: 0.9rem;
+    margin: 0;
+}

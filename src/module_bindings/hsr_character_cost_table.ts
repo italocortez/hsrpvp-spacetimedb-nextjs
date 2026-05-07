@@ -9,21 +9,22 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import {
-  GameMode,
-  EidolonCost,
-} from "./types";
-
+import { GameMode, DraftMode, EidolonCost } from "./types";
 
 export default __t.row({
   characterName: __t.string().name("character_name"),
   get gameMode() {
     return GameMode.name("game_mode");
   },
-  get classicCosts() {
-    return EidolonCost.name("classic_costs");
+  get draftMode() {
+    return DraftMode.name("draft_mode");
   },
-  get auctionBaseBid() {
-    return EidolonCost.name("auction_base_bid");
+  get costs() {
+    return EidolonCost;
   },
+  costSetId: __t.u32().name("cost_set_id"),
+  createdById: __t.u32().name("created_by_id"),
+  createdDate: __t.timestamp().name("created_date"),
+  lastModifiedById: __t.u32().name("last_modified_by_id"),
+  lastModifiedDate: __t.timestamp().name("last_modified_date"),
 });

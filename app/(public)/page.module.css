@@ -1,0 +1,10 @@
+/* Landing page container — CSS Modules only, zero Tailwind */
+
+.page {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--bg-page);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
