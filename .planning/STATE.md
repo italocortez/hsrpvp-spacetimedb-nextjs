@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.9
 milestone_name: Frontend — Phase Summary
 current_phase: 16.5
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Phase 16.5 Plan 01 complete (spacetimedb 2.6.1 upgrade); ready for Plan 02
-last_updated: "2026-07-04T08:03:28.214Z"
+stopped_at: Phase 16.5 Plan 02 complete (D-02 spacetimedb skill changelog audit); ready for Plan 03
+last_updated: "2026-07-04T08:16:11.039Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 37
   completed_phases: 10
   total_plans: 67
-  completed_plans: 66
-  percent: 99
+  completed_plans: 67
+  percent: 100
 ---
 
 # Session State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-04-12)
 
 **Milestone:** v0.9 Frontend (phases 15–41, plus 12 deferred MOBILE XX.1 phases)
 **Current phase:** 16.5
-**Current plan:** 2
+**Current plan:** 3
 **Status:** Executing Phase 16.5
 **Last activity:** 2026-07-04
 
-Progress: [██████████] 66/67 plans (99%) — Phase 16.5 Plan 01 complete: spacetimedb SDK/CLI 2.2.0 → 2.6.1 upgrade, 240 module_bindings files regenerated, 1 Rule 1 fix (PR #4940 optional-key annotation widening in achievementManagement.ts, 4 reducers/8 fields), typecheck + unit suite (197/197) green, atomic commit 3ab88f3, not pushed; next: Phase 16.5 Plan 02 (D-02 changelog→skill audit, Wave 1 parallel sibling)
+Progress: [██████████] 67/67 plans (100%) — Phase 16.5 Plan 02 complete: D-02 changelog→skill audit applied all 9 Skill Update Candidates (SK-1..SK-9) to the spacetimedb skill (SKILL.md + references/api-guide.md + references/how-to-guides.md), baseline corrected v2.1.0→v2.6.1, zero application code touched, atomic commit 6d8efed, not pushed; next: Phase 16.5 Plan 03
 
 ## Previous Milestone
 
@@ -204,6 +204,8 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 - [Phase 16.4-07]: Pattern — explicit-authorization carve-out for test file modifications. CLAUDE.md "Test files are the verification layer. Do not create, edit, or delete test files without an explicit task." applies. The user explicitly authorized Step F2 in the orchestrator prompt for minimum-viable text-only update (describe/it block names, comments, top-of-file docblock); assertion logic + regex semantics preserved. Pattern: orchestrator-prompt-level authorization is the right granularity for in-scope test-file text updates that flow from a hotfix; do NOT generalize this to "executor can edit tests when convenient" — the carve-out is per-instance.
 - [Phase 16.4-07]: Pattern — `spacetime sql` v2.2.0 operator gaps (D-2): no `IN (...)` (split into per-value queries); aggregate expressions require column aliases (`count(*) AS total`); no `ORDER BY ... DESC` (use ascending or omit). Documented in deferred-items.md D-2 as informational. Workarounds applied at command line during Step F6 smoke probes; SKILL.md `### spacetime sql column name gotcha` is the natural extension point for a future codification pass (out-of-scope here).
 - [Phase 16.5]: Plan 01: PR #4940 optional-key widening broke spacetime generate (module build) before test:typecheck ever ran -- same D-01/D-03 forcing break, just surfaced one step earlier. Fixed 4 reducers in achievementManagement.ts (8 fields widened to optional-key annotations matching the new SDK payload shape); zero runtime change. Reverted a stray spacetimedb/dist/bundle.js rebuild -- bundle commits ride with the publish plan (16.5-03), not this one.
+- [Phase 16.5]: Plan 02: D-02 changelog->skill audit executed as documentation-only edits (SK-1..SK-9 applied to spacetimedb skill); zero application code touched
+- [Phase 16.5]: Plan 02: SK-8 anchor correction moved skill provenance baseline v2.1.0 -> v2.6.1; SK-2/SK-6 (procedural-view onUpdate, procedures-stable + ctx.http) documented as adoption opportunities but explicitly deferred under D-01
 
 ### Roadmap Evolution
 
@@ -241,7 +243,7 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 
 ## Session Continuity
 
-Last session: 2026-07-04T08:01:15.543Z
-Stopped at: Phase 16.5 Plan 01 complete (spacetimedb 2.6.1 upgrade); ready for Plan 02
+Last session: 2026-07-04T08:16:06.702Z
+Stopped at: Phase 16.5 Plan 02 complete (D-02 spacetimedb skill changelog audit); ready for Plan 03
 Resume file: None
 Next action: Continue Phase 16.5 with Plan 02 (D-02 changelog→skill audit: apply SK-1..SK-9 to spacetimedb SKILL.md + references, Wave 1 parallel sibling to the now-complete Plan 01). Plan 03 (Wave 2) follows: maincloud test1 republish via :migrate + live integration suite + triage, behind a blocking human-verify deploy gate.

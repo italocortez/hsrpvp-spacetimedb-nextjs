@@ -257,11 +257,11 @@ Plans:
 **Goal:** SpacetimeDB toolchain + both SDK pins upgraded from v2.2.0 to v2.6.1, client bindings regenerated, and the full test suite (typecheck + unit + live-maincloud integration) green under 2.6.1 with any upgrade-introduced failure triaged to a specific 2.3-2.6 change. Upgrade-only (D-01): no application-code refactor unless a concrete break forces it (the sole repo-affecting change is the v2.6.1 optional-key codegen widening, typecheck-gated). Changelog audit (D-02) captured in the spacetimedb skill (SK-1..SK-9); maincloud test1 republished via identity migration (D-04, never --delete-data).
 **Requirements**: none mapped (inserted upgrade phase; CONTEXT D-01..D-04 are the requirement surface)
 **Depends on:** Phase 16
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 16.5-01-PLAN.md — CLI upgrade + both SDK pins to ^2.6.1 + regenerate bindings (CLI path) + typecheck (D-01 gate) + unit suite + atomic local commit (Wave 1)
-- [ ] 16.5-02-PLAN.md — D-02 changelog->skill audit: apply SK-1..SK-9 to spacetimedb SKILL.md + references (Wave 1, parallel)
+- [x] 16.5-02-PLAN.md — D-02 changelog->skill audit: apply SK-1..SK-9 to spacetimedb SKILL.md + references (Wave 1, parallel)
 - [ ] 16.5-03-PLAN.md — maincloud test1 republish via :migrate (identity migration, no --delete-data) + live integration suite + triage, behind a blocking human-verify deploy gate (Wave 2, autonomous: false)
 
 ### Phase 16.1: CSS module hygiene
