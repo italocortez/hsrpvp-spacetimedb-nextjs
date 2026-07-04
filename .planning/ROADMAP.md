@@ -44,9 +44,11 @@ Full details: `milestones/v0.5-ROADMAP.md`
 
 - [x] **Phase 15: Backend pre-work** — Spine asset columns on `hsr_character` + self-scoped historical views (completed 2026-04-13)
 - [x] **Phase 16: Route + global foundation** — Route-group migration, ViewportGate, render-tier, SW scaffold, middleware, Next 15.2.3 bump, typedRoutes (completed 2026-04-19)
-- [x] **Phase 16.1: CSS module hygiene (Plans 01-07 co-location + Plan 08 Link prefetch policy)** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement) (completed 2026-04-20)
+- [x] **Phase 16.1: CSS module hygiene (Plans 01-07 co-location + Plan 08 Link prefetch policy)** — Per-component `.module.css` refactor; eliminate component→page and cross-feature CSS imports (retroactive R8 enforcement)
+ (completed 2026-04-20)
 - [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20; **DEFERRED behind 16.4** as of 2026-05-02 — execution order is 16.3 → 16.4 → 16.2 so the landing page is built against upgraded bindings + v3 transport)
-- [x] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02; **NEXT UP after 16.1**) (completed 2026-05-03)
+- [x] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02; **NEXT UP after 16.1**)
+ (completed 2026-05-03)
 - [x] **Phase 16.4: SpacetimeDB v2.2.0 refactor pass** — Server: `Table.clear()` in `server_nuke_test_data` (Plan 01), `AuthCtx` audit + `isInternal` hardening on 3 scheduled reducers (Plan 02 — REVERTED by Plan 07 hotfix after diagnostic refutation; engine-level "no such reducer" rejection is the actual defense in v2.2.0), `:migrate` script (Plan 03). Client: v3 WebSocket transport baseline (Plan 04), `useTable({enabled})` for admin panels (Plan 05), `useReducer` adoption at 5 React component sites (Plan 06). Cross-cut verify gate (Plan 07): SC#7-9 closed; D-1 resolved within Plan 07 hotfix scope (INSERTED 2026-05-02; completed 2026-05-03)
 - [ ] **Phase 16.5: SpacetimeDB 2.6.1 upgrade + test suite validation** — Upgrade module + client from v2.2.0 to latest (2.6.1), regenerate bindings, run full test suite and triage any failures introduced by the upgrade (INSERTED 2026-07-04; **URGENT** — SDK bump is prerequisite-y for every 17+ data-wiring phase, must land before Phase 17)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
@@ -252,13 +254,15 @@ Plans:
 
 ### Phase 16.5: SpacetimeDB 2.6.1 upgrade + test suite validation (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** SpacetimeDB toolchain + both SDK pins upgraded from v2.2.0 to v2.6.1, client bindings regenerated, and the full test suite (typecheck + unit + live-maincloud integration) green under 2.6.1 with any upgrade-introduced failure triaged to a specific 2.3-2.6 change. Upgrade-only (D-01): no application-code refactor unless a concrete break forces it (the sole repo-affecting change is the v2.6.1 optional-key codegen widening, typecheck-gated). Changelog audit (D-02) captured in the spacetimedb skill (SK-1..SK-9); maincloud test1 republished via identity migration (D-04, never --delete-data).
+**Requirements**: none mapped (inserted upgrade phase; CONTEXT D-01..D-04 are the requirement surface)
 **Depends on:** Phase 16
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 16.5 to break down)
+- [ ] 16.5-01-PLAN.md — CLI upgrade + both SDK pins to ^2.6.1 + regenerate bindings (CLI path) + typecheck (D-01 gate) + unit suite + atomic local commit (Wave 1)
+- [ ] 16.5-02-PLAN.md — D-02 changelog->skill audit: apply SK-1..SK-9 to spacetimedb SKILL.md + references (Wave 1, parallel)
+- [ ] 16.5-03-PLAN.md — maincloud test1 republish via :migrate (identity migration, no --delete-data) + live integration suite + triage, behind a blocking human-verify deploy gate (Wave 2, autonomous: false)
 
 ### Phase 16.1: CSS module hygiene
 **Goal**: Every component owns its own co-located `.module.css`; no component imports styles from `app/.../page.module.css`; no cross-feature CSS imports. Enforces R8 component-hygiene rule retroactively for Phase 16 and pre-Phase-16 code.
