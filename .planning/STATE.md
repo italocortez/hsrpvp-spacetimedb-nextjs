@@ -6,7 +6,7 @@ current_phase: 16.5
 current_plan: 3
 status: executing
 stopped_at: Phase 16.5 Plan 02 complete (D-02 spacetimedb skill changelog audit); ready for Plan 03
-last_updated: "2026-07-04T08:16:11.039Z"
+last_updated: "2026-07-04T09:18:45.439Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 37
@@ -231,7 +231,7 @@ Full v0.5 decision archive in `milestones/v0.5-ROADMAP.md`.
 
 ## Blockers
 
-None at kickoff. Open items for phase-time research tracked in `.planning/research/DECISIONS.md` "Open items for phase-time research":
+at kickoff. Open items for phase-time research tracked in `.planning/research/DECISIONS.md` "Open items for phase-time research":
 
 1. Spine `skeleton.scaleY = -1` workaround (Phase 31)
 2. Cursor broadcast throttle rate lock (Phase 30)
@@ -240,10 +240,11 @@ None at kickoff. Open items for phase-time research tracked in `.planning/resear
 5. FullStory sampling strategy (Phase 31 telemetry)
 6. React 19 peer confirmation for forked bracket lib (Phase 34)
 7. Recurring availability slot algorithm + DST + overlap (Phase 26)
+- Phase 16.5 Plan 03: spacetime:publish:migrate to maincloud test1 produced a NON-EMPTY BREAKING migration delta (removes view_match_history/view_my_cost_sets/view_my_identity/view_my_lobbies/view_admin_user_private + others; creates view_my_match_session_history/view_my_mmr_history/view_my_tournament_lobbies + others). --yes=migrate rejected it (exit 1); deployed module UNCHANGED (32 users intact). Contradicts D-01. Needs human decision before any republish; do NOT use --delete-data or a broader --yes flag.
 
 ## Session Continuity
 
-Last session: 2026-07-04T08:16:06.702Z
+Last session: 2026-07-04T09:18:35.014Z
 Stopped at: Phase 16.5 Plan 02 complete (D-02 spacetimedb skill changelog audit); ready for Plan 03
 Resume file: None
 Next action: Continue Phase 16.5 with Plan 02 (D-02 changelog→skill audit: apply SK-1..SK-9 to spacetimedb SKILL.md + references, Wave 1 parallel sibling to the now-complete Plan 01). Plan 03 (Wave 2) follows: maincloud test1 republish via :migrate + live integration suite + triage, behind a blocking human-verify deploy gate.
