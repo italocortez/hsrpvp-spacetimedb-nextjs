@@ -9,10 +9,15 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import { GameMode, BracketSide, MatchResultStatus } from "./types";
+import {
+  GameMode,
+  BracketSide,
+  MatchResultStatus,
+} from "./types";
+
 
 export default __t.row({
-  id: __t.u32(),
+  id: __t.u32().primaryKey(),
   tournamentId: __t.u32().name("tournament_id"),
   roundNumber: __t.u32().name("round_number"),
   matchNumber: __t.u32().name("match_number"),

@@ -36,7 +36,7 @@ export const create_achievement = spacetimedb.reducer(
         description: string;
         rarity: any;
         isManualOnly: boolean;
-        maxAwards: number | undefined;
+        maxAwards?: number | undefined;
     }) => {
         const admin = ensureModerator(ctx);
 
@@ -76,8 +76,8 @@ export const update_achievement = spacetimedb.reducer(
     },
     (ctx, { achievementId, name, description, rarity }: {
         achievementId: number;
-        name: string | undefined;
-        description: string | undefined;
+        name?: string | undefined;
+        description?: string | undefined;
         rarity: any | undefined;
     }) => {
         const admin = ensureModerator(ctx);
@@ -171,9 +171,9 @@ export const add_achievement_criteria = spacetimedb.reducer(
         statField: string;
         operator: any;
         thresholdValue: number;
-        filterGameMode: string | undefined;
-        filterCharacterName: string | undefined;
-        filterMatchType: string | undefined;
+        filterGameMode?: string | undefined;
+        filterCharacterName?: string | undefined;
+        filterMatchType?: string | undefined;
     }) => {
         const admin = ensureModerator(ctx);
 
@@ -314,8 +314,8 @@ export const set_displayed_achievement = spacetimedb.reducer(
         achievementId: t.u32().optional(),
     },
     (ctx, { targetUserId, achievementId }: {
-        targetUserId: number | undefined;
-        achievementId: number | undefined;
+        targetUserId?: number | undefined;
+        achievementId?: number | undefined;
     }) => {
         const caller = getAuthenticatedUser(ctx);
 

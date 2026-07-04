@@ -11,7 +11,7 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  userId: __t.u32().name("user_id"),
+  userId: __t.u32().primaryKey().name("user_id"),
   discordId: __t.option(__t.string()).name("discord_id"),
   discordUsername: __t.option(__t.string()).name("discord_username"),
   email: __t.option(__t.string()),

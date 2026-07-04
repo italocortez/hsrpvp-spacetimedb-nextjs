@@ -11,7 +11,7 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  identity: __t.identity(),
+  identity: __t.identity().primaryKey(),
   userId: __t.u32().name("user_id"),
   lastSeenAt: __t.timestamp().name("last_seen_at"),
   createdById: __t.u32().name("created_by_id"),

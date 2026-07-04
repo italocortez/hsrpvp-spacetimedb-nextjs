@@ -16,8 +16,9 @@ import {
   LobbyConfigSnapshot,
 } from "./types";
 
+
 export default __t.row({
-  id: __t.u32(),
+  id: __t.u32().primaryKey(),
   lobbyCode: __t.string().name("lobby_code"),
   playedAt: __t.timestamp().name("played_at"),
   get draftMode() {

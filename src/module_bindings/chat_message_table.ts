@@ -9,7 +9,10 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import { ChatSenderType } from "./types";
+import {
+  ChatSenderType,
+} from "./types";
+
 
 export default __t.row({
   id: __t.u32().primaryKey(),

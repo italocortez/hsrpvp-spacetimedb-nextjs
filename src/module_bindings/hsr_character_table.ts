@@ -9,7 +9,12 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import { Path, Element, CharRole } from "./types";
+import {
+  Path,
+  Element,
+  CharRole,
+} from "./types";
+
 
 export default __t.row({
   name: __t.string().primaryKey(),

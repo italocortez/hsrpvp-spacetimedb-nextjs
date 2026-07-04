@@ -10,7 +10,9 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-import { ComparisonOperator } from "./types";
+import {
+  ComparisonOperator,
+} from "./types";
 
 export default {
   achievementId: __t.u32(),

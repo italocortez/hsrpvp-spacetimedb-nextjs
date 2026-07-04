@@ -19,8 +19,9 @@ import {
   LobbyStage,
 } from "./types";
 
+
 export default __t.row({
-  id: __t.u32(),
+  id: __t.u32().primaryKey(),
   joinCode: __t.string().name("join_code"),
   hostUserId: __t.u32().name("host_user_id"),
   teamBlueAlias: __t.string().name("team_blue_alias"),
@@ -70,9 +71,7 @@ export default __t.row({
   get disconnectPolicy() {
     return DisconnectPolicy.name("disconnect_policy");
   },
-  disconnectForfeitSeconds: __t
-    .option(__t.u32())
-    .name("disconnect_forfeit_seconds"),
+  disconnectForfeitSeconds: __t.option(__t.u32()).name("disconnect_forfeit_seconds"),
   get gameMode() {
     return GameMode.name("game_mode");
   },

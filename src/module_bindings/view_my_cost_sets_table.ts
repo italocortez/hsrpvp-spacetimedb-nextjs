@@ -9,10 +9,13 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
-import { GameMode } from "./types";
+import {
+  GameMode,
+} from "./types";
+
 
 export default __t.row({
-  id: __t.u32(),
+  id: __t.u32().primaryKey(),
   name: __t.string(),
   creatorId: __t.u32().name("creator_id"),
   get gameMode() {

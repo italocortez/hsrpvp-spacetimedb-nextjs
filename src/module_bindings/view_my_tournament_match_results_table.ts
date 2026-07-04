@@ -17,8 +17,9 @@ import {
   ConcedeTrigger,
 } from "./types";
 
+
 export default __t.row({
-  id: __t.u32(),
+  id: __t.u32().primaryKey(),
   bracketMatchId: __t.option(__t.u32()).name("bracket_match_id"),
   lobbyId: __t.u32().name("lobby_id"),
   isTournamentControlled: __t.bool().name("is_tournament_controlled"),
