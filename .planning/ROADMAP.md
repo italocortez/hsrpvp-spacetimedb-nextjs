@@ -48,6 +48,7 @@ Full details: `milestones/v0.5-ROADMAP.md`
 - [ ] **Phase 16.2: Home / Landing Page** — Public landing page with hero, CTAs against auth state, any landing-specific data surfaces (INSERTED 2026-04-20; **DEFERRED behind 16.4** as of 2026-05-02 — execution order is 16.3 → 16.4 → 16.2 so the landing page is built against upgraded bindings + v3 transport)
 - [x] **Phase 16.3: SpacetimeDB v2.1.0 realign + v2.2.0 upgrade** — Realign module manifest to lockfile reality (2.1.0), upgrade module + client to v2.2.0, regenerate bindings, fix `spacetime delete` script breakage, apply `spacetime lock` to maincloud prod (INSERTED 2026-05-02; **NEXT UP after 16.1**) (completed 2026-05-03)
 - [x] **Phase 16.4: SpacetimeDB v2.2.0 refactor pass** — Server: `Table.clear()` in `server_nuke_test_data` (Plan 01), `AuthCtx` audit + `isInternal` hardening on 3 scheduled reducers (Plan 02 — REVERTED by Plan 07 hotfix after diagnostic refutation; engine-level "no such reducer" rejection is the actual defense in v2.2.0), `:migrate` script (Plan 03). Client: v3 WebSocket transport baseline (Plan 04), `useTable({enabled})` for admin panels (Plan 05), `useReducer` adoption at 5 React component sites (Plan 06). Cross-cut verify gate (Plan 07): SC#7-9 closed; D-1 resolved within Plan 07 hotfix scope (INSERTED 2026-05-02; completed 2026-05-03)
+- [ ] **Phase 16.5: SpacetimeDB 2.6.1 upgrade + test suite validation** — Upgrade module + client from v2.2.0 to latest (2.6.1), regenerate bindings, run full test suite and triage any failures introduced by the upgrade (INSERTED 2026-07-04; **URGENT** — SDK bump is prerequisite-y for every 17+ data-wiring phase, must land before Phase 17)
 - [ ] **Phase 17: Cost tables — data** — Global public subs, cost-table data wiring, main-thread portrait prefetch
 - [ ] **Phase 18: Cost tables — UX** — Filter, search, sort interactions on cost tables
 - [ ] **Phase 19: Team builder — data** — Team composition state, cost budget, synergy compute, `team_builder_draft` backend + reducers
@@ -248,6 +249,16 @@ Plans:
 - [x] 16-05-viewport-primitives-PLAN.md — lib/render-tier + ViewportWriter + ViewportGate + SafariWarning + app/layout.tsx mount (FOUND-08, FOUND-09, FOUND-10, FOUND-11, FOUND-12)
 - [x] 16-06-docs-component-hygiene-PLAN.md — docs/frontend/component-hygiene.md R8 rules + docs/auth/architecture.md subscription lifecycle update
 **UI hint**: yes
+
+### Phase 16.5: SpacetimeDB 2.6.1 upgrade + test suite validation (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 16
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 16.5 to break down)
 
 ### Phase 16.1: CSS module hygiene
 **Goal**: Every component owns its own co-located `.module.css`; no component imports styles from `app/.../page.module.css`; no cross-feature CSS imports. Enforces R8 component-hygiene rule retroactively for Phase 16 and pre-Phase-16 code.
