@@ -87,6 +87,15 @@ export const create_item = spacetimedb.reducer(
 conn.reducers.createItem({ title: 'Hello' });  // camelCase on client
 ```
 
+**v2.6.1 — optional args are truly optional keys (PR #4940):** generated types for `Option<T>` params changed from a required key (`{ foo: T | undefined }`) to an optional key (`{ foo?: T | undefined }`). Callers may now **omit** an optional reducer/procedure arg entirely — not just pass `undefined` or a value:
+```typescript
+// create_season has optional endDate. All three compile after 2.6.1:
+conn.reducers.createSeason({ name: 'S1', endDate: micros });    // provided
+conn.reducers.createSeason({ name: 'S1', endDate: undefined }); // explicit undefined (still legal)
+conn.reducers.createSeason({ name: 'S1' });                     // omitted — NEW: allowed by optional key
+```
+This is a type-widening, not a required refactor — existing call sites that pass `undefined` explicitly keep compiling.
+
 ### The SpacetimeDB mindset: fire-and-forget, react to events
 SpacetimeDB is event-driven (CQRS-style), not request-response like REST. The biggest habit to break coming from web dev: **don't try to get a reference back from a reducer call.** Instead, fire the reducer and handle the result in a subscription/onInsert callback elsewhere.
 
@@ -109,6 +118,8 @@ Reducer callbacks exist in 2.0+ but don't return data about what was created. Wh
 If you genuinely need immediate response data (rare once you adopt the pattern), two alternatives:
 1. **Procedures** — can return data directly to the caller. See `references/api-guide.md` section 9.
 2. **Event tables** — reducer inserts into an event table, client gets it via onInsert. Event tables auto-delete after delivery (insert + delete), acting as ephemeral response channels. This project uses this pattern with `LobbyCursorEvent`.
+
+**Why reducers can't do this (v2.4.0):** reducers run on a dedicated **synchronous WASM runtime** — a single OS thread that never yields — while procedures run on a separate async runtime. This is the engine-level reason reducers are deterministic with no async/network: the runtime they execute on is physically incapable of yielding mid-call. Procedures get the async runtime, which is why `ctx.http` (outbound HTTP) lives there instead.
 
 ### High latency? Disable confirmed reads
 If reducer round-trips feel slow (200ms+ even locally), the likely cause is confirmed reads. As of v2.1.0, the TypeScript SDK defaults to confirmed reads enabled (previously opt-in on the client side). Add `.withConfirmedReads(false)` to the connection builder for games and real-time apps. This applies to both local dev and maincloud. See `references/how-to-guides.md` § Confirmed Reads for the full trade-off.
@@ -204,6 +215,8 @@ export const view_my_profile = spacetimedb.view({ name: 'view_my_profile', publi
 
 Once exported, `spacetime generate` creates typed view bindings (e.g. `view_my_profile_table.ts`). Views appear in `tablesSchema` alongside tables, accessible via `conn.db.view_my_profile` with `.count()`, `.iter()`, and row callbacks. View accessors use snake_case (matching the view name), not PascalCase like tables.
 
+**v2.4.1 + v2.6.0 — procedural views can declare `.primaryKey()`:** column-level `.primaryKey()` on a procedural view's return row type unlocks client-side `onUpdate` (previously views only fired `onInsert`/`onDelete`). This project's ~35 procedural views currently emit insert/delete only — adopting view PKs for `onUpdate` is a real opportunity but is **deferred under D-01** (not applied this phase). See `references/api-guide.md` § 7 Views for the full note.
+
 ### Subscription gating: layer-0 always-on, gated panels use useTable enabled
 
 `useTable(tables.X, { enabled: <boolean> })` (v2.2.0+, PR #4721) skips establishing the subscription while `enabled === false`. The SDK tears down the sub on `true → false` and re-establishes on `false → true` — no consumer remount needed.
@@ -250,6 +263,8 @@ function MyComponent() {
 ```
 
 Empty-param reducers (no schema params) are called as `callX()`, not `callX({})` — the SDK's `ParamsType` collapses to `[]` when the reducer schema is empty (verified at `spacetimedb/node_modules/spacetimedb/dist/sdk/type_utils.d.ts:7`). Passing `{}` is a TypeScript error.
+
+Reducers with **optional** params: as of v2.6.1 those keys are optional (`foo?:`), so `callX({ requiredArg })` — omitting the optional key entirely — is also legal. See "Client reducer calls" above for the full omit/optional/2.6.1 note.
 
 Server-side Route Handlers (`getServerConnection()`) do NOT qualify — they continue calling `connection.reducers.X(...)` directly. React hooks only apply in React component / hook contexts.
 
@@ -507,10 +522,12 @@ These operations **destroy all existing data** and require `--clear-database` to
 - **Dropping a column** from a published table
 - **Adding a column in the middle** of an existing table (not at the end)
 
+**Exception — event tables (v2.5.0, broadened further in v2.6.0):** the above list applies to regular tables only. Event tables (`event: true`, e.g. this project's `LobbyCursorEvent`) get broadened automigration support and permit column drop / reorder / type-change without requiring `--clear-database` — because event-table rows never persist past delivery, there is no existing data for the migration to destroy.
+
 Safe schema changes (no data loss):
 - **Adding a column at the end** of a table — but it **must have a default value**, otherwise the publish will fail for existing rows.
 
-Before making any of these dangerous changes, always confirm with the user that a full database reset is acceptable.
+Before making any of these dangerous changes, always confirm with the user that a full database reset is acceptable (this does not apply to the event-table exception above).
 
 ## Critical "do nots"
 
@@ -544,7 +561,7 @@ When implementing a feature that spans backend and client:
 1. **Backend:** Define table(s) in `tables/` folder (one file per table), then import in `schema.ts`
 2. **Backend:** Define reducer(s) in `reducers/` folder (grouped by domain), then re-export in `index.ts`
 3. **Backend:** Publish module (`spacetime publish`)
-4. **Backend:** Generate bindings (`spacetime generate`)
+4. **Backend:** Generate bindings — use the CLI path, `npm run spacetime:generate` (this repo has **no local Cargo workspace / `gen-bindings` crate**, so the cargo-based `npm run generate` script fails or is stale; `spacetime:generate` always uses the currently-installed `spacetime` CLI version)
 5. **Client:** Subscribe to the table(s)
 6. **Client:** Call the reducer(s) from UI
 7. **Client:** Render data from `useTable(tables.tableName)`
@@ -578,6 +595,8 @@ spacetime logs <name> --level warn                 # Filter by log level (warn a
 spacetime sql <name> "SELECT * FROM table_name"    # Query tables via SQL
 spacetime call <name> <reducer_name> [args...]     # Call a reducer
 ```
+
+**v2.5.0 CLI changes:** `spacetime publish --delete-data` no longer forces a positional db name — it falls back to the name in `spacetime.json` if omitted. `spacetime call` now accepts **hex strings for `Identity` params** (e.g. `spacetime call <name> <reducer> <hex-identity>`) — no more manual byte-array construction for identity args.
 
 ### Publishing: use :migrate for reviewed schema deltas
 
@@ -846,7 +865,7 @@ When proposing any design that adds tables, columns, or changes visibility:
 
 ## Updating docs from SpacetimeDB GitHub
 
-The skill references are currently based on **SpacetimeDB v2.1.0**. When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped past this version:
+The skill references are currently based on **SpacetimeDB v2.6.1**. When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped past this version:
 
 1. **Check the latest release** — fetch `https://github.com/clockworklabs/SpacetimeDB/releases/latest` and compare the version against what's documented in our references
 2. **Fetch upstream how-to docs** — each reference file has `<!-- Sources: ... -->` comments at the top with the exact GitHub URLs. Fetch the raw versions of those URLs (swap `github.com/.../blob/` to `raw.githubusercontent.com/.../`) and compare against our current content

@@ -766,6 +766,24 @@ conn.subscriptionBuilder().subscribe([
 ]);
 ```
 
+### Procedural views + `.primaryKey()` → client `onUpdate` (v2.4.1, finalized v2.6.0)
+
+Procedural views (TypeScript) can now declare a `.primaryKey()` on a column of the return row type, e.g.:
+```typescript
+export const my_player = spacetimedb.view(
+  { name: 'my_player', public: true },
+  t.object({ id: t.u64().primaryKey(), name: t.string(), score: t.u32() }),
+  (ctx) => { /* ... */ }
+);
+```
+Before this, views only ever fired `onInsert`/`onDelete` on the client — every change looked like a delete-then-insert. With a declared `.primaryKey()`, the client can now fire **`onUpdate`** for views, same shape as regular tables:
+```typescript
+conn.db.my_player.onUpdate((ctx, oldRow, newRow) => {
+  console.log('View row updated:', oldRow, '->', newRow);
+});
+```
+This project's ~35 procedural views do not declare `.primaryKey()` yet and only emit insert/delete — adopting this is a real opportunity, deferred under D-01 (not applied this phase).
+
 ---
 
 ## 8) React Integration
@@ -965,6 +983,8 @@ This project uses `LobbyCursorEvent` as an event table for real-time cursor broa
 **Procedures are for side effects (HTTP requests, etc.) that reducers can't do.**
 
 ⚠️ Procedures are currently in beta. API may change.
+
+**v2.5.0 — procedures graduated to stable:** procedures no longer require `features: ["unstable"]` in `spacetime.json` to use. Also in v2.5.0, **`ctx.http` (outbound HTTP) was stabilized** — it is the explicit exception to "reducers are deterministic / no network": outbound HTTP is available **in procedures only**, never in reducers. This project still defines zero procedures.
 
 ### Defining a procedure
 **Procedure name comes from the export — NOT from a string argument.** Use `procedure(params, ret, fn)` or `procedure(ret, fn)`.

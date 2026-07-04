@@ -159,6 +159,10 @@ spacetime login show --token
 
 ## Maincloud Deployment
 
+### Transport: v3 protocol (v2.3.0)
+
+The WebSocket client transport uses the **v3 protocol**, which **batches and pipelines** responses — significantly reducing per-message overhead under high load compared to sending one message per update. This project already runs on the v3 baseline (adopted Phase 16.4 Plan 04); it's the reason egress dominates the energy budget less per-message than a naive one-frame-per-update transport would, and it matters directly for the maincloud energy/egress budget (see SKILL.md "Energy budget & bandwidth rules").
+
 ### Publishing
 ```bash
 spacetime publish <db-name> --server maincloud
