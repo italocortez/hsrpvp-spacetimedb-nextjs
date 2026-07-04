@@ -598,6 +598,8 @@ spacetime call <name> <reducer_name> [args...]     # Call a reducer
 
 **v2.5.0 CLI changes:** `spacetime publish --delete-data` no longer forces a positional db name — it falls back to the name in `spacetime.json` if omitted. `spacetime call` now accepts **hex strings for `Identity` params** (e.g. `spacetime call <name> <reducer> <hex-identity>`) — no more manual byte-array construction for identity args.
 
+**v2.6.1 SQL parser — no constant projections (verified live 2026-07-04):** the `spacetime sql` parser rejects literal/constant SELECT projections — `SELECT 1 AS ok` fails with `Error: Unsupported projection expression: 1` (HTTP 400). A connectivity smoke-test must project a real column from a real table, e.g. `spacetime sql <name> "SELECT COUNT(*) AS n FROM user"`, not `SELECT 1`. (Behavior change in the 2.3–2.6 line; caught during the Phase 16.5 upgrade.)
+
 ### Publishing: use :migrate for reviewed schema deltas
 
 `npm run spacetime:publish` stays interactive — the destructive-migration confirm dialog is a safety feature, not friction. Use `npm run spacetime:publish:migrate` (v2.2.0+, PR #4885) when you have already reviewed the schema delta in a prior diff.
