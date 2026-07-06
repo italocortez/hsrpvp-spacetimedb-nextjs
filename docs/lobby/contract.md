@@ -52,6 +52,8 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | disconnectForfeitSeconds | u32 | Yes | Auto-forfeit timeout (0 = not set) |
 | teamBlueAlias | string | Yes | Blue team display name |
 | teamRedAlias | string | Yes | Red team display name |
+| bestOf | u8 | Yes | Series length (0 → 1; 1 = single game, 3/5/7 = series) |
+| refereeControlsShelving | bool | Yes | Referee controls shelve/continue in BetweenGames |
 
 **Flow:**
 1. Authenticate caller via `getAuthenticatedUser`
@@ -142,19 +144,23 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | lobbyId | u32 | Yes | Lobby to leave |
 
 **Flow:**
-1. Authenticate caller
-2. `ensureLobbyMember` — validate membership
-3. Delete LobbyMember row
-4. Decrement `currentPlayerCount`
-5. If count reaches 0 and stage is Waiting: auto-close via `_hardDeleteLobby`
+1. Authenticate caller; `ensureLobbyMember` — validate membership; load lobby
+2. **Active-stage branch** (Drafting / Equipping / Scoring / BetweenGames):
+   - D-29 spectators & coaches: delete their LobbyMemberAccount rows, delete LobbyMember row, decrement `currentPlayerCount`, return
+   - D-31 players: delete LobbyMemberAccount rows; delete + reinsert LobbyMember with `voluntarilyLeft=true`, `isOnline=false` — **row is kept for finalization, count NOT decremented**
+   - D-34/35/36: `transferCaptain`, `transferReferee`, `transferHost` to the next eligible online team member
+   - D-31/D-82: if the leaver's team has no remaining non-left members, `performConcede` (their team loses, reason VoluntaryLeave) — UNLESS `refereeExclusiveConcede` + a third-party referee is present (then blocked; referee decides)
+   - Insert system ChatMessage "{name} left the match."; return
+3. **Normal branch** (Waiting / AwaitingResult / Finished): delete LobbyMemberAccount rows; delete LobbyMember row; compute new count
+4. If new count reaches 0 and stage is Waiting: auto-close via `hardDeleteLobby`
+5. D-19: if new count reaches 0 and stage is Shelved: set count to 0, do NOT delete (preserved for return)
 6. Otherwise: update Lobby activity timestamp and insert system ChatMessage "{name} left the lobby."
 
 **Expected State Changes:**
-- LobbyMember row deleted
-- Lobby.currentPlayerCount decremented
-- Lobby.lastActivityAt updated
-- ChatMessage system row inserted
-- (If empty + Waiting: full cascade delete of lobby and all associated rows)
+- Normal branch: LobbyMember + LobbyMemberAccount rows deleted, `currentPlayerCount` decremented, `lastActivityAt` updated, system ChatMessage inserted
+- Active-stage player leave: LobbyMember row kept (`voluntarilyLeft=true`, `isOnline=false`), LobbyMemberAccount rows deleted, captain/referee/host flags transferred, count unchanged; possible auto-concede
+- (If empty + Waiting: full cascade delete of lobby and all associated rows via `hardDeleteLobby`)
+- (If empty + Shelved: count set to 0, lobby preserved for later return)
 
 **Error Cases:**
 | Condition | Error Message |
@@ -180,17 +186,20 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 2. Find lobby
 3. D-21: `ensureHostOrAbove` — host, moderator, or admin
 4. D-20: `ensureStageIs(Waiting, Finished)` — only closeable in these stages
-5. D-19: `_hardDeleteLobby` cascade:
-   1. Delete all ChatMessage rows
-   2. Delete all LobbyMember rows
-   3. Delete all LobbyBan rows
-   4. Delete LobbyPassword (if exists)
-   5. Delete all MatchSessionStep rows
-   6. Delete MatchSession (if exists)
-   7. Delete Lobby row
+5. D-19: `hardDeleteLobby` cascade (in order):
+   1. Delete MatchResultParticipant → MatchResultGame → MatchResultRecord rows
+   2. Delete all ChatMessage rows
+   3. Delete all LobbyMemberAccount rows (D-28)
+   4. Delete all LobbyMember rows
+   5. Delete all LobbyBan rows
+   6. Delete LobbyPassword (if exists)
+   7. Delete all MatchSessionStep rows
+   8. Delete MatchSession (if exists)
+   9. Delete Lobby row
+   (LobbyCursorEvent is an event table — auto-expires, no explicit delete)
 
 **Expected State Changes:**
-- All associated rows cascade-deleted (ChatMessage, LobbyMember, LobbyBan, LobbyPassword, MatchSessionStep, MatchSession, Lobby)
+- All associated rows cascade-deleted (MatchResult*, ChatMessage, LobbyMemberAccount, LobbyMember, LobbyBan, LobbyPassword, MatchSessionStep, MatchSession, Lobby)
 
 **Error Cases:**
 | Condition | Error Message |
@@ -658,7 +667,7 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 ### Leave Lobby (Auto-Close Empty)
 **Given:** User #5 is the only member of lobby #10 (Waiting stage)
 **When:** User #5 calls `leave_lobby(lobbyId=10)`
-**Then:** Lobby auto-closed via `_hardDeleteLobby`. All associated rows cascade-deleted. No system chat (lobby is deleted).
+**Then:** Lobby auto-closed via `hardDeleteLobby`. All associated rows cascade-deleted. No system chat (lobby is deleted).
 
 ### Close Lobby (Host)
 **Given:** Lobby #10 in Waiting stage, user #5 is host
@@ -913,7 +922,8 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | Create private lobby with empty password | No LobbyPassword row inserted | Password length check: `password.length > 0` |
 | Join code collision after 10 retries | Throws "Could not generate a unique join code" | Extremely unlikely with 36^6 = ~2.2B codes |
 | Reconnect to Drafting lobby when already online | No-op (silently returns) | Prevents duplicate member rows |
-| Leave non-Waiting lobby (last member) | Leave succeeds, no auto-close | Auto-close only triggers in Waiting stage |
+| Leave active-stage lobby (last non-left player on a team) | Auto-concede via `performConcede` (team loses, VoluntaryLeave) unless a 3rd-party referee holds exclusive concede | D-31/D-82: no hardDelete; row kept with voluntarilyLeft=true |
+| Leave Shelved lobby (last member) | Count set to 0, lobby preserved (no auto-close) | D-19: Shelved lobbies persist for later return |
 | Ban user who is already banned | Duplicate LobbyBan insert (may fail on PK) | Edge: should check existing ban first |
 | set_team_slot during Drafting | Rejected by stage guard | Slots frozen once draft begins |
 | unconfirm_ready during Drafting | Rejected by stage guard | Ready state locked during draft |
@@ -924,9 +934,11 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | Preset name 51 chars | Rejected | "Preset name must be between 1 and 50 characters." |
 | Moderator editing another moderator's preset | Allowed | Mods can edit mod/TO presets (not system) |
 | Host is auto-referee | LobbyMember.isReferee=true at creation | No explicit set_referee reducer needed |
-| lobby_gc on Waiting lobby idle > 30 min | Hard-deleted via `_hardDeleteLobby` | `lastActivityAt` compared to current time |
-| lobby_gc on Finished lobby idle > 30 min | Hard-deleted via `_hardDeleteLobby` | Safety net for abandoned closed lobbies |
-| lobby_gc on Drafting/Equipping/Scoring/AwaitingResult | NOT touched — GC skips active stages | Active lobbies cleaned by finalization cascade, not GC |
+| lobby_gc on Waiting lobby idle > 30 min | Hard-deleted via `hardDeleteLobby` | `lastActivityAt` compared to current time |
+| lobby_gc on Finished lobby idle > 30 min | Hard-deleted via `hardDeleteLobby` | Safety net for abandoned closed lobbies |
+| lobby_gc on Drafting/Equipping/Scoring while any member online | NOT touched — skipped while a member is `isOnline && !voluntarilyLeft` | D-17/D-47 |
+| lobby_gc on Drafting/Equipping/Scoring with ALL members offline > 30 min | Hard-deleted via `hardDeleteLobby` | D-47: active stages ARE collected once fully offline |
+| lobby_gc on AwaitingResult | NOT touched — always skipped | D-48: finalization cascade owns this stage, not GC |
 | Tournament with countTowardsMmr=true | Lobby matchType=Ranked | D-67: matchType derived from tournament flag |
 | Tournament with countTowardsMmr=false | Lobby matchType=Casual | D-67: matchType derived from tournament flag |
 | Duplicate bracketMatchId (non-Finished lobby exists) | Throws "A lobby already exists for this bracket match." | D-45: iterates all lobbies checking bracketMatchId + stage |
@@ -944,7 +956,7 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | LobbyPreset.creatorUserId | User.id | FK for permission hierarchy | Reads |
 | create_lobby (presetId) | LobbyPreset.id | Validates preset exists | Reads |
 | join_lobby (system chat) | ChatMessage table | Inserts system messages | Writes |
-| close_lobby (_hardDeleteLobby) | ChatMessage, MatchSession, MatchSessionStep | Cascade deletes | Writes |
+| close_lobby (hardDeleteLobby) | ChatMessage, MatchSession, MatchSessionStep | Cascade deletes | Writes |
 | set_captain (isCaptain) | Draft reducers (pick/ban/bid) | Captain is the only actor for draft actions | Reads |
 | Lobby.stage | start_draft (draftControl) | Transitions Waiting → Drafting | Writes |
 | TournamentStandIn | BracketMatch, User | Approves non-registered stand-in players | Reads/Writes |
@@ -1000,8 +1012,9 @@ The lobby system manages the lifecycle of match rooms where players assemble, co
 | Stand-in TPA snapshot at join_lobby: if TournamentStandIn row exists and no TPA entries yet, snapshot all accounts into TPA then create LMA (D-26) | Phase 10.4 execution | 2026-04-04 |
 | Full hydration from codebase | Phase 13 normalization | 2026-04-09 |
 | Phase 16 route-group rename: client-facing lobby URL remains `/lobby` (no URL change) but the file path moved `app/(authenticated)/lobby/` → `app/(authed)/lobby/`. No backend reducer, view, table, or behavior change. Acceptance scenarios and edge cases in this contract remain valid as-is | Phase 16 execution | 2026-04-18 |
+| Doc-alignment correction (no new decisions): reconciled leave_lobby flow (active-stage voluntarilyLeft/concede/flag-transfer branch) and hardDeleteLobby cascade (MatchResult* + LobbyMemberAccount) with shipped code; fixed GC edge-case rows to match D-47/D-48; added missing create_lobby params (bestOf, refereeControlsShelving); corrected `_hardDeleteLobby` → `hardDeleteLobby`. Prose now matches code + this contract's own Phase 10/10.4 history | Doc correction | 2026-07-05 |
 
 ---
 
-*Last updated: 2026-04-18*
+*Last updated: 2026-07-05*
 *Feature owner: Phase 10 / Phase 16*
