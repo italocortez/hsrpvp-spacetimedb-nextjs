@@ -43,9 +43,12 @@ Core change is small; the rest is decisions + follow-through.
    `tournamentManagement.ts` (create L99-100 + update L263-264) and the error
    string to "defaultBestOf must be 1 or 3." This alone caps tournaments,
    bracket matches, and tournament lobbies.
-2. **DECISION — cap standalone lobbies?** To enforce bo3 in non-tournament
-   lobbies, ADD a validation in `create_lobby` rejecting `bestOf ∉ {1,3}`
-   (currently unbounded). This is an addition, not a lowering. Confirm intent.
+2. **Cap standalone lobbies (CONFIRMED).** ADD a validation in `create_lobby`
+   rejecting `bestOf ∉ {1,3}` — currently unbounded, so this is a NEW check, not
+   a lowering. Standalone lobbies get the same options as tournaments (user
+   decision 2026-07-06). Mirror the tournament error style, e.g. "bestOf must be
+   1 or 3." Note the `0 → 1` sentinel still applies (validate the resolved
+   value, or accept 0 as an alias for 1).
 3. **Preset backdoor.** Cross-reference the preset todo
    ([[2026-07-06-add-bestof-and-refereecontrolsshelving-to-lobby-preset-syste]]):
    if presets start storing `bestOf`, `create_lobby_preset` /
