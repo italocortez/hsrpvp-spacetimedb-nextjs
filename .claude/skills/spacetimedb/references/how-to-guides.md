@@ -1,10 +1,14 @@
-<!-- Sources:
-  - Logging: https://github.com/clockworklabs/SpacetimeDB/blob/1a1fe7859e43ce1372139b6b868b51fa44aec065/docs/docs/00300-resources/00100-how-to/00300-logging.md
-  - Reject connections: https://github.com/clockworklabs/SpacetimeDB/blob/1a1fe7859e43ce1372139b6b868b51fa44aec065/docs/docs/00300-resources/00100-how-to/00500-reject-client-connections.md
-  - Migration 2.0: https://github.com/clockworklabs/SpacetimeDB/blob/1a1fe7859e43ce1372139b6b868b51fa44aec065/docs/docs/00300-resources/00100-how-to/00600-migrating-to-2.0.md
-  - PG Wire: https://github.com/clockworklabs/SpacetimeDB/blob/1a1fe7859e43ce1372139b6b868b51fa44aec065/docs/docs/00300-resources/00100-how-to/00200-pg-wire.md
-  - Maincloud deploy: https://github.com/clockworklabs/SpacetimeDB/blob/1a1fe7859e43ce1372139b6b868b51fa44aec065/docs/docs/00300-resources/00100-how-to/00100-deploy/00100-maincloud.md
-  - Row Level Security: https://github.com/clockworklabs/SpacetimeDB/blob/1a1fe7859e43ce1372139b6b868b51fa44aec065/docs/docs/00300-resources/00100-how-to/00400-row-level-security.md
+<!-- Sources (v2.14.1 tag commit a0bf6be10a146b03acbe3f4f9ad7fe20f114988d — upstream moved how-to docs from 00300-resources/00100-how-to/ to 00250-how-to/ after 1a1fe78):
+  - Logging: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00250-how-to/00300-logging.md
+  - Reject connections: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00250-how-to/00500-reject-client-connections.md
+  - Migration 2.0: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00250-how-to/00600-migrating-to-2.0.md
+  - PG Wire: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00250-how-to/00200-pg-wire.md
+  - Maincloud deploy: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00250-how-to/00100-deploy/00100-maincloud.md
+  - Row Level Security: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00250-how-to/00400-row-level-security.md
+  - Unit testing: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00250-how-to/00900-unit-testing.md
+  - MCP: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00300-resources/00150-mcp.md
+  - TS client reference (reconnect): https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00200-core-concepts/00600-clients/00700-typescript-reference.md
+  - Official skills (typescript-client, typescript-server, mcp) at master 17a3f3a649a3ad55e1520353a53ec5de8ea97b0a: https://github.com/clockworklabs/SpacetimeDB/tree/17a3f3a649a3ad55e1520353a53ec5de8ea97b0a/skills
 
   To update: fetch the raw GitHub URLs above and compare against this file.
 -->
@@ -21,6 +25,9 @@
 7. [Reconnection](#reconnection)
 8. [Row Level Security (deprecated)](#row-level-security)
 9. [v2.1.0 Bug Fixes](#v210-bug-fixes-relevant-to-clients)
+10. [Known 2.6.1 TS SDK bugs fixed upstream](#known-261-ts-sdk-bugs-fixed-upstream)
+11. [MCP (agent access to a live database)](#mcp-agent-access-to-a-live-database)
+12. [Module Unit Testing (v2.12+)](#module-unit-testing-v212)
 
 ---
 
@@ -57,10 +64,10 @@ spacetime logs <db-name> --since "2023-01-01 00:00:00"  # Filter by time
 
 ## Rejecting Client Connections
 
-Throw an error in the `clientConnected` lifecycle hook to reject a connection:
+Throw an error in the `clientConnected` lifecycle hook to reject a connection. The hook must be **exported** — a bare `spacetimedb.clientConnected(...)` call never registers (see `api-guide.md` § 4):
 
 ```typescript
-spacetimedb.clientConnected((ctx) => {
+export const onConnect = spacetimedb.clientConnected((ctx) => {
   // Example: reject if server is in maintenance mode
   const config = ctx.db.serverConfig.id.find(0n);
   if (config?.maintenanceMode) {
@@ -167,9 +174,10 @@ The WebSocket client transport uses the **v3 protocol**, which **batches and pip
 ```bash
 spacetime publish <db-name> --server maincloud
 ```
+- `spacetime login` authenticates with GitHub or Google; databases then appear on the dashboard
 - Compiles module, uploads, runs `init` reducer
-- Subsequent deploys **hot-swap code without disconnecting clients**
-- Reset data: `spacetime publish <db-name> --server maincloud --delete-data`
+- Subsequent deploys **hot-swap code without disconnecting clients** (some migrations, e.g. removing a table, do disconnect clients so they reconnect against the new schema)
+- Reset data: `spacetime publish <db-name> --server maincloud --delete-data` (2.6.1 CLI: `--delete-data[=always|on-conflict|never]`; `on-conflict` wipes only when the schema change is breaking; short form `-c`)
 
 ### Dashboard
 - URL: `https://spacetimedb.com/<db-name>` or `https://spacetimedb.com/@<username>/<db-name>`
@@ -188,7 +196,7 @@ spacetime delete <db-name> --server maincloud --yes
 
 ## Reconnection
 
-SpacetimeDB's reconnect story is being improved, but currently the only reliable way is to unmount and remount the `SpacetimeDBProvider` by toggling a key prop:
+**Current (SDK 2.6.1):** there is no built-in reconnect; the only reliable way is to unmount and remount the `SpacetimeDBProvider` by toggling a key prop:
 
 ```typescript
 const [connectionKey, setConnectionKey] = useState(0);
@@ -202,7 +210,24 @@ setTimeout(() => setConnectionKey(k => k + 1), 2000);
 </SpacetimeDBProvider>
 ```
 
-This is a known rough edge — expect a better API for this soon.
+This is a known rough edge on 2.6.1.
+
+**Post-upgrade (v2.12.0+, PR #5927 — project SDK is 2.6.1; don't use until the upgrade lands):** reconnection is built into `DbConnection`, and the key-remount workaround above should be removed when adopting it.
+```typescript
+const builder = DbConnection.builder()
+  .withUri(SPACETIMEDB_URI)
+  .withDatabaseName(MODULE_NAME)
+  .withToken(storedToken)
+  .withAutomaticReconnect()                  // optional { minDelayMs (≥500, default 1000), maxDelayMs (≥1000, default 30000) }
+  .withTokenProvider(() => refreshToken())   // only for expiring credentials; must return a token for the SAME identity
+  .onConnect((conn, identity, token) => persistToken(token));
+```
+- The same connection object, client cache, table handles, subscriptions, and row callbacks survive the outage; each attempt gets a fresh `ConnectionId`; the stored token keeps the `Identity` (including anonymous ones). Exponential backoff with jitter; initial connection failures are **not** retried.
+- **React:** the `SpacetimeDBProvider` enables automatic reconnect itself. `useSpacetimeDB().isActive` is `false` during the outage, and `useTable`'s `isReady` stays `false` until its subscription is replayed. Cached rows stay visible but may be stale.
+- Register subscriptions and row callbacks **once**, not inside a per-connect callback; the SDK replays subscriptions in one batch and emits only net row changes. `onApplied` fires again after replay.
+- `onDisconnect` / `onConnectError` gain `(ctx, error, nextReconnectAttempt?, nextReconnectDelayMs?)` — both `undefined` when no retry is scheduled. Direct connections expose `conn.isReconnecting`.
+- While disconnected, reducer/procedure calls fail immediately (`DisconnectedError`); calls in flight when the socket dropped reject with `UnknownCallResultError` — they **may have executed**, so never auto-retry non-idempotent reducers on that error.
+- Uncertain: the v2.14.1 TS reference says `onConnect` does not fire on automatic reconnect (use `onAutomaticReconnect(conn, identity, token)` for per-reconnect work), while the official client skill and PR #5927 say `onConnect` re-fires. Verify against the installed version before relying on either.
 
 ---
 
@@ -210,7 +235,13 @@ This is a known rough edge — expect a better API for this soon.
 
 **Deprecated.** Use Views instead. See `api-guide.md` section 7 for the recommended view pattern.
 
-RLS is experimental/unstable and requires special pragma flags. Views are simpler, more performant, and provide full row/column access control.
+RLS is experimental/unstable. Rust/C# need an explicit opt-in; TypeScript needs none — the API (present in 2.6.1) is an exported filter:
+```typescript
+export const accountFilter = spacetimedb.clientVisibilityFilter.sql(
+  'SELECT * FROM account WHERE account.identity = :sender'
+);
+```
+Mutually dependent rules still publish, but client queries on those tables then fail with a cyclic-dependency error. Views are simpler, more performant, and provide full row/column access control — don't introduce RLS in this repo.
 
 ---
 
@@ -227,3 +258,75 @@ These fixes landed in v2.1.0 (released 2026-03-24). No client code changes requi
 - **Query column name correctness** (#4627) — `ColumnExpression` now carries both the TS accessor name and the DB column name. SQL generation uses the DB column name. Fixes a correctness issue for projects where TS accessors differ from DB column names (e.g., camelCase TS vs snake_case DB). For this project, no visible impact since the generated bindings handle the mapping.
 
 - **JS reducer execution throughput** (#4663) — JS reducers now execute on a single dedicated FIFO worker per module instead of a thread pool. Performance improvement from ~50K to ~85K TPS. Primarily affects JS modules, but related infrastructure improvements may benefit Rust modules too.
+
+---
+
+## Known 2.6.1 TS SDK bugs fixed upstream
+
+If you hit one of these symptoms on the current SDK, it is a known upstream bug, not app logic. Each fix ships only with the SDK upgrade (module rebuild and/or client bump):
+
+| Symptom on 2.6.1 | Fixed in |
+|---|---|
+| One-column prefix scan on a multi-column btree index (`idx.filter(firstColValue)`) throws `serializeTerm is not a function` | v2.7.0 (#5428) |
+| `.primaryKey()` / `.index()` on an object-form `t.enum('X', {...})` column → `TypeError: ... is not a function` | v2.7.0 (#4389) |
+| `Uuid` values rejected as literals in query-builder `.where()` | v2.7.0 (#5075) |
+| `ctx.random.fill()` mishandles empty and 32-bit typed arrays | v2.7.0 (#5115) |
+| Prefix + `Range` filter/delete on a composite btree index returns wrong rows | v2.8.0 (#5479) |
+| A decoded `t.array(t.u8())` value silently changes later (it aliased a reused scan buffer) | v2.8.1 (#5491) |
+| Connection silently stalls on WebKit/iOS after a gzip frame fails to decompress | v2.8.1 (#5668) |
+| Mid-session WebSocket error fires `onConnectError` instead of `onDisconnect`, disables sends, and never recovers | v2.10.0 (#5707) |
+| Burst of compressed messages → client out-of-memory | v2.10.2 (#5845) |
+| `procedure` HTTP header values split at commas; nonstandard status codes throw | v2.13.0 (#6140) |
+| `t.result()` builder shape doesn't match the serializer | v2.13.0 (#6148) |
+| Generated bindings fail to typecheck (`never` reducers) under `exactOptionalPropertyTypes` | v2.14.0 (#6096) |
+| `Uuid` / branded primitive columns infer as structural records | v2.14.1 (#5971) |
+
+Also SDK-side: from v2.7.1 (#5525) the browser client listens for `visibilitychange`/`focus`/`online`/`pageshow` to tear down dead sockets and reset stalled reconnect backoff. Server-side fixes (maincloud's server version governs these, not the SDK): WebSocket idle-timeout handling (#5517, v2.9.0), JWT impersonation vulnerability (patched v2.10.0, disclosed v2.11.0), HS256 JWTs rejected (v2.12.0).
+
+---
+
+## MCP (agent access to a live database)
+
+SpacetimeDB speaks the Model Context Protocol. Status for this repo:
+
+| Path | Requires | Available here? |
+|---|---|---|
+| `POST /v1/mcp` (host-wide) and `POST /v1/database/<name>/mcp` (scoped) over HTTP | Server v2.10.0+ on maincloud (server-side) | Yes on the maincloud side — MCP is **unstable** |
+| `spacetime mcp` stdio bridge (what the official Claude Code plugin registers) | CLI v2.8.1+ | **No** — the active CLI is 2.6.1 (`spacetime --version`; do not `spacetime version use` just for MCP) |
+
+Tools: `list_databases` (host-wide only; databases owned by your identity), `get_schema`, `sql` (optional `confirmed`), `call` (`reducer`, `args` as a positional JSON array), `ping`. Errors come back in-band (`isError: true`) — read the text before retrying.
+- Host-wide servers need a `database` argument on every data tool; scoped servers reject it. Check `tools/list` first.
+- Tools run as the CLI's saved identity — the same caveat as `spacetime call`: that identity is not an app user, so authenticated reducers will reject it (see SKILL.md top note).
+- `sql` reads public tables; SQL writes need DB ownership. A `no such table` error usually means the table is private for that identity.
+- MCP tool calls are egress-tracked on maincloud (v2.10.0) — they count toward the energy budget like any other query.
+
+---
+
+## Module Unit Testing (v2.12+)
+
+**v2.12.0+ (PRs #5558, #6139) — project SDK is 2.6.1; don't use until the upgrade lands.** Also: this repo's `test/` directory is the verification layer — don't create or change tests without an explicit task (CLAUDE.md).
+
+Tests run module logic against an in-memory datastore, with no publish (unlike `npm run test:integration`, which republishes maincloud). Run from the module project (`spacetimedb/`) with Node 22+, `"type": "module"` in its `package.json`, and `vitest@^3.2.4`:
+
+```typescript
+// vitest.config.ts
+import { defineConfig, type Plugin } from 'vitest/config';
+import { spacetimedbModuleTestPlugin } from 'spacetimedb/server/test-utils/vitest';
+export default defineConfig({ plugins: [spacetimedbModuleTestPlugin() as unknown as Plugin], test: { environment: 'node' } });
+
+// src/example.test.ts
+import { expect, it } from 'vitest';
+import { createModuleTestHarness, TestAuth } from 'spacetimedb/server/test-utils';
+import spacetimedb, * as moduleExports from './index';
+
+it('inserts a record', () => {
+  const test = createModuleTestHarness(spacetimedb, moduleExports);   // fresh DB per call
+  test.withReducerTx(TestAuth.internal(), ctx => {
+    moduleExports.add_record(ctx, { value: 1 });                        // exported reducers are callable
+  });
+  expect(test.db.Record.count()).toBe(1n);
+});
+```
+- `withReducerTx` commits on normal return and rolls back + rethrows on throw — don't catch inside it if you expect rollback. Callbacks must be synchronous.
+- `TestAuth.internal()` represents the database itself; use `TestAuth.fromJwtPayload(JSON.stringify({ iss: 'test', sub: 'alice' }), connectionId)` for client callers. The optional third harness argument sets `clock` (`TestClock`), `rngSeed`, and identity.
+- It does **not** simulate subscriptions, RLS, lifecycle hooks, or the scheduler — call lifecycle/scheduled reducers explicitly and keep live integration tests for those behaviors.

@@ -1,10 +1,14 @@
 <!-- Sources:
-  - SpacetimeDB CLI reference: https://github.com/clockworklabs/SpacetimeDB/blob/1a1fe7859e43ce1372139b6b868b51fa44aec065/docs/docs/00300-resources/01000-reference/00100-cli-reference/00300-spacetime-json.md
+  - SpacetimeDB CLI reference (v2.14.1 tag; upstream moved it from 00300-resources/01000-reference/ after 1a1fe78): https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00300-resources/00100-cli-reference/00300-spacetime-json.md
+  - Environment-variable config: https://github.com/clockworklabs/SpacetimeDB/blob/a0bf6be10a146b03acbe3f4f9ad7fe20f114988d/docs/docs/00200-core-concepts/00100-databases/00700-environment-variables.md
+  - Publish flags cross-checked against the installed 2.6.1 CLI (`spacetime publish --help`)
 -->
 
 # spacetime.json Configuration Reference
 
-The `spacetime.json` file provides project-level configuration for the SpacetimeDB CLI, eliminating repetitive flags for `publish`, `generate`, and `dev`.
+The `spacetime.json` file provides project-level configuration for the SpacetimeDB CLI, eliminating repetitive flags for `publish`, `generate`, and `dev`. Commands that act on an already-published database (`spacetime call`, `sql`, `logs`) also resolve their database/server from it. From CLI v2.10.1 (#5883), `spacetime list`, `rename`, and `mcp` use the config's `server` too, when it is unambiguous; before that they fell back to the CLI's global default server. This repo's active CLI is 2.6.1, so pass `-s maincloud` explicitly to those commands.
+
+**Version tags:** fields and flags marked `(vX+)` are post-2.6.1. The CLI rejects or ignores them until the CLI is upgraded — don't add them to `spacetime.json` yet.
 
 ---
 
@@ -25,6 +29,9 @@ The `spacetime.json` file provides project-level configuration for the Spacetime
 | `generate` | array | No | Bindings generation targets |
 | `children` | array | No | Child database entities |
 | `dev` | object | No | Dev server config (root-level only) |
+| `parent` | string | Yes | Existing database (name/identity) to make this one's parent at creation (post-2.6.1) |
+| `dependencies` | array | No | Receiver-binding inputs for async inter-database calls — `{ name, module-path \| database, out-dir? }` (v2.14+) |
+| `env` | object | Yes (merged by key) | Non-secret defaults for declared database environment values (v2.12+). Secrets go in process env or `spacetime.local.json`, never the checked-in file |
 
 *`module-path`, `bin-path`, and `js-path` are mutually exclusive. When a child specifies one, the others don't inherit from parent.
 
@@ -40,12 +47,14 @@ Language-specific options:
 - **C#**: `namespace`
 - **Unreal C++**: `unreal-module-name`, `uproject-dir`
 - **All**: `include-private` (boolean — include private tables in generated bindings)
+- **TypeScript**: `import-extension`: `none` (default) | `js` | `ts` (v2.14+). Only for `moduleResolution: "nodenext"` or direct TS execution in Node, Bun, or Deno; not needed for Next.js
+- **All**: `bindings`: `client` (default) | `module` (post-2.6.1). `module` generates receiver bindings for async inter-database calls; dependencies listed under `dependencies` get module bindings automatically, defaulting to `<module-path>/src/remote_bindings`
 
 ---
 
 ## Children and Inheritance
 
-Child databases inherit all fields marked "Yes" above. Never inherited: `database`, `generate`, `children`, `dev`.
+Child databases inherit all fields marked "Yes" above. Never inherited: `database`, `generate`, `children`, `dev`, `dependencies`.
 
 ### Source conflict rule
 When a child specifies `module-path`, `bin-path`, or `js-path`, the other two sources don't inherit from parent.
@@ -86,7 +95,7 @@ When `spacetime.json` exists, the database name argument selects targets:
 
 | Scope | Flags |
 |-------|-------|
-| **Global** (all databases) | `--server`, `--break-clients`, `--delete-data`, `--yes`/`--force` |
+| **Global** (all databases) | `--server`, `--break-clients`, `--delete-data[=always\|on-conflict\|never]`, `--yes[=all\|remote\|migrate\|break-clients\|skip-login\|delete-data]` (there is **no** `--force` flag; older docs listed one by mistake) |
 | **Per-database** (error if multiple selected) | `--module-path`, `--bin-path`, `--js-path`, `--build-options`, `--num-replicas` |
 | **Per-generate-entry** (error if multiple entries) | `--lang`, `--out-dir`, `--namespace`, `--unreal-module-name`, `--uproject-dir` |
 

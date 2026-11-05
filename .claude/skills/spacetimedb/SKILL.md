@@ -21,6 +21,8 @@ Read `references/api-guide.md` when you need detailed syntax for any of:
 - Views (procedural and query-builder)
 - Scheduled tables and timestamps
 - Common mistakes table (server-side and client-side)
+- Reducer context surface (`ctx.random`, `ctx.newUuidV4/V7`, nullable `ctx.connectionId`)
+- § 12 post-2.6.1 features (env vars, views with arguments, submodules, async IDC). Recognise them in upstream examples, but don't use them until the SDK upgrade lands
 
 **Module bindings** — read the generated files directly (always up-to-date, never stale):
 
@@ -45,6 +47,9 @@ Read `references/how-to-guides.md` for operational topics:
 - Confirmed reads toggle for latency-sensitive apps
 - PostgreSQL wire protocol for admin/debugging queries
 - Maincloud deployment (hot-swap, dashboard, database states)
+- Known 2.6.1 TS SDK bugs fixed upstream (check here before debugging an odd SDK symptom)
+- MCP access to a live database (server-side on maincloud; `spacetime mcp` needs CLI 2.8.1+)
+- Module unit testing (v2.12+, post-upgrade)
 
 Read `references/multiplayer-sync-patterns.md` when implementing:
 - Real-time multiplayer features (movement, projectiles, combat)
@@ -125,7 +130,7 @@ If you genuinely need immediate response data (rare once you adopt the pattern),
 If reducer round-trips feel slow (200ms+ even locally), the likely cause is confirmed reads. As of v2.1.0, the TypeScript SDK defaults to confirmed reads enabled (previously opt-in on the client side). Add `.withConfirmedReads(false)` to the connection builder for games and real-time apps. This applies to both local dev and maincloud. See `references/how-to-guides.md` § Confirmed Reads for the full trade-off.
 
 ### Reconnection workaround (temporary)
-SpacetimeDB's reconnect API is being improved. For the current workaround (unmount/remount provider via key prop), see `references/how-to-guides.md` § Reconnection.
+SDK 2.6.1 has no built-in reconnect. For the current workaround (unmount/remount provider via key prop), see `references/how-to-guides.md` § Reconnection. **v2.12.0+ (project SDK is 2.6.1; don't use until the upgrade lands):** `DbConnection.builder().withAutomaticReconnect()` (+ `withTokenProvider()`) keeps the connection, cache, subscriptions, and callbacks alive across outages, and the React provider turns it on automatically. Remove the key-remount workaround when adopting it. Same section has the details.
 
 ### Data access in React
 **v2.1.0 fix:** `useTable`'s `isReady` previously could revert to `false` after initial sync due to a stale closure in `useSyncExternalStore`. Fixed in v2.1.0 — no code changes needed on your side.
@@ -213,9 +218,18 @@ export const view_my_profile = spacetimedb.view({ name: 'view_my_profile', publi
 // Then in index.ts: export { view_my_profile } from './views/securityViews';
 ```
 
-Once exported, `spacetime generate` creates typed view bindings (e.g. `view_my_profile_table.ts`). Views appear in `tablesSchema` alongside tables, accessible via `conn.db.view_my_profile` with `.count()`, `.iter()`, and row callbacks. View accessors use snake_case (matching the view name), not PascalCase like tables.
+Once exported, `spacetime generate` creates typed view bindings (e.g. `view_my_profile_table.ts`). Views appear in `tablesSchema` alongside tables, accessible via `conn.db.view_my_profile` with `.count()`, `.iter()`, and row callbacks. View accessors use snake_case (matching the view name), not PascalCase like tables. **v2.7.0+ (PR #5286; the project's codegen/SDK is 2.6.1):** generated client handles become camelCase (`conn.db.viewMyProfile`, `conn.db.user`). The current spellings stay available as deprecated aliases, so existing code keeps compiling. Prefer the camelCase form only after the upgrade.
 
-**v2.4.1 + v2.6.0 — procedural views can declare `.primaryKey()`:** column-level `.primaryKey()` on a procedural view's return row type unlocks client-side `onUpdate` (previously views only fired `onInsert`/`onDelete`). This project's ~35 procedural views currently emit insert/delete only — adopting view PKs for `onUpdate` is a real opportunity but is **deferred under D-01** (not applied this phase). See `references/api-guide.md` § 7 Views for the full note.
+**Lifecycle hooks follow the same rule (CRITICAL, verified on 2.6.1).** `spacetimedb.init(...)`, `clientConnected(...)`, and `clientDisconnected(...)` return a module export that registers only when exported. A bare call is silently dropped: no error, and no lifecycle reducer in the schema.
+```typescript
+// ❌ WRONG — never runs
+spacetimedb.clientConnected((ctx) => { /* ... */ });
+// ✅ CORRECT
+export const onConnect = spacetimedb.clientConnected((ctx) => { /* ... */ });
+```
+**This repo, as of 2026-11-05:** `spacetimedb/src/index.ts` (~L113 and ~L154) declares both hooks as bare calls, and the live maincloud schema lists **0 lifecycle reducers** out of 156. The `isOnline`, `lastSeenAt`, ban-on-reconnect, and lobby-disconnect logic inside them does not execute. Fixing it is an app-code change (add `export const`) for a planned task. Don't assume those side effects happen when debugging presence or disconnect features. Conversely, every *named* export of the module entry must be a SpacetimeDB export; a plain helper exported from `index.ts` throws "exporting something that is not a spacetime export".
+
+**v2.4.1 + v2.6.0 — procedural views can declare `.primaryKey()`:** column-level `.primaryKey()` on a procedural view's return row type unlocks client-side `onUpdate` (previously views only fired `onInsert`/`onDelete`). This project's ~35 procedural views currently emit insert/delete only — adopting view PKs for `onUpdate` is a real opportunity but is **deferred under D-01** (not applied this phase). Declare the return row with `t.row('Name', { id: t.u64().primaryKey(), ... })`, not `t.object(...)`. See `references/api-guide.md` § 7 Views for the full note.
 
 ### Subscription gating: layer-0 always-on, gated panels use useTable enabled
 
@@ -354,6 +368,8 @@ Each column declaration type produces a different accessor with a different API.
 
 Single-column btree with `.filter([val])` (one-element array) auto-coerces to scalar and works, but prefer `.filter(scalar)` for clarity.
 
+**Version notes:** on 2.6.1 a bare scalar on a **multi-column** index (`by_tournament_and_user.filter(tid)`) throws `serializeTerm is not a function`. From v2.7.0 (PR #5428) it becomes a valid one-column prefix scan, and prefix+`Range` composite scans are fixed from v2.8.0 (PR #5479). Until the upgrade, keep using the full-tuple array or the single-column-index fallback. Also on 2.6.1, chaining `.primaryKey()` / `.index()` directly on an object-form `t.enum(...)` column throws a TypeError (fixed v2.7.0). Index enum columns through `indexes: [...]` in table options, as this repo already does.
+
 **Multi-column `primaryKey: [...]` declarations are a no-op (verified 2026-04-14, v2.1.0):**
 
 Declaring composite PK at the `table()` options level produces **no engine enforcement and no accessor**:
@@ -437,6 +453,8 @@ The SpacetimeDB v2.2.0 engine itself rejects external WebSocket calls to schedul
 - The regression sensor at `test/backend/scheduled-reducer-isInternal-rejection.test.ts` constructs a low-level `connection.callReducer(name, argsBuffer)` call — exactly what an attacker would do — and confirms the engine returns `"no such reducer"` for all 3 names.
 
 **Therefore: do NOT add application-level guards to scheduled reducers in v2.2.0.** The engine is the correct defense layer. If a future SDK version exposes scheduled-reducer names to external callers, revisit this rule and find a working internal-dispatch signal before re-adding any guard.
+
+**Still true on 2.6.1** (re-verified 2026-11-05: `AuthCtxImpl.fromSystemTables` is the only producer of `ctx.senderAuth`). **v2.14.0 changes this (PR #5892, breaking; project SDK is 2.6.1, so don't act on it until the upgrade lands):** `isInternal` becomes `ctx.sender === ctx.databaseIdentity` in every module language. In TypeScript it is then **true for scheduled reducers and procedures**, `init` is **no longer** internal (its sender is the database owner), and `senderAuth.jwt` is none whenever `isInternal` is true. A module keeps the old behavior until it is rebuilt against the new library. After the upgrade, an `isInternal` guard on scheduled reducers becomes a working defense-in-depth option, but re-verify with the regression sensor before adding one. The project gates in the table below still don't change.
 
 #### `AuthCtx` is still NOT a substitute for project auth gates
 
@@ -527,6 +545,8 @@ These operations **destroy all existing data** and require `--clear-database` to
 Safe schema changes (no data loss):
 - **Adding a column at the end** of a table — but it **must have a default value**, otherwise the publish will fail for existing rows.
 
+Migration rules are enforced by the **server** (maincloud's version), not the project SDK. **Adding `.unique()` / `.primaryKey()` to an existing column:** the v2.14.1 automatic-migrations doc still lists it as forbidden. The v2.7.0 release notes (PR #4465) say it is allowed when existing rows have no duplicates, and that it fails safely while naming the duplicates otherwise. Treat it as unsupported until a reviewed publish proves otherwise. **Renaming a schema key (accessor) while keeping `name:`** is allowed by current servers but breaks code that uses the old accessor. Renaming a table accessor panicked at runtime before server v2.8.2 (#5544).
+
 Before making any of these dangerous changes, always confirm with the user that a full database reset is acceptable (this does not apply to the event-table exception above).
 
 ## Critical "do nots"
@@ -551,8 +571,12 @@ These are APIs that don't exist — LLMs hallucinate them frequently:
 | `ctx.db.Table.pkCol.filter(val)` | `ctx.db.Table.pkCol.find(val)` — PK/unique columns only have `.find()`, not `.filter()` (TypeError) |
 | `{ microsSinceUnixEpoch: BigInt }` in server insert/update | `new Timestamp(BigInt)` — plain objects lack the internal `__timestamp_micros_since_unix_epoch__` property, causing PANIC |
 | `null` / `undefined` for optional struct fields | Use sentinel values (e.g. `255` for u8, `new Timestamp(0n)` for timestamp) — optional inside `t.object()` can't serialize null/undefined |
-| `conn.db.ViewMyProfile.iter()` (PascalCase view accessor) | View accessors use snake_case matching the view name: `conn.db.view_my_profile.iter()`. Views must be exported from the module for bindings to generate |
+| `conn.db.ViewMyProfile.iter()` (PascalCase view accessor) | View accessors use snake_case matching the view name: `conn.db.view_my_profile.iter()`. Views must be exported from the module for bindings to generate. (v2.7.0+ adds camelCase `conn.db.viewMyProfile`; snake_case stays as a deprecated alias) |
 | `subscribe([...]).onApplied(() => read all tables)` | Combined array subscribe fires `onApplied` before all table data arrives — use separate subscriptions with individual `onApplied` callbacks per table |
+| Bare `spacetimedb.clientConnected(...)` / `clientDisconnected(...)` / `init(...)` | `export const onConnect = spacetimedb.clientConnected(...)` — unexported hooks never register (silent) |
+| `new Range(new Bound.Inclusive(a), new Bound.Inclusive(b))` | `new Range({ tag: 'included', value: a }, { tag: 'included', value: b })` — `Bound` is a type, not a class |
+| `Math.random()` / `crypto.randomUUID()` in a reducer | `ctx.random()`, `ctx.random.integerInRange(min, max)`, `ctx.newUuidV4()` — deterministic, available on 2.6.1 |
+| `spacetimedb.reducer({ onSchedule: table }, ...)` / `.withAutomaticReconnect()` / `ctx.env.X` / `spacetimedb/server/test-utils` on this repo | Real APIs, but post-2.6.1 (v2.7 / v2.12 / v2.12 / v2.12) — they don't exist in the installed SDK. See api-guide § 12 |
 
 ## Feature implementation checklist
 
@@ -597,6 +621,8 @@ spacetime call <name> <reducer_name> [args...]     # Call a reducer
 ```
 
 **v2.5.0 CLI changes:** `spacetime publish --delete-data` no longer forces a positional db name — it falls back to the name in `spacetime.json` if omitted. `spacetime call` now accepts **hex strings for `Identity` params** (e.g. `spacetime call <name> <reducer> <hex-identity>`) — no more manual byte-array construction for identity args.
+
+**CLI is 2.6.1 too** (`spacetime --version` → `spacetimedb tool version 2.6.1`; a 2.14.1 toolchain is installed side-by-side but not active, and switching is part of the upgrade, not ad-hoc). Commands added after 2.6.1, which won't exist until the CLI is upgraded: `spacetime sql --format json`, `spacetime lock` / `unlock` (v2.7.0, guards against accidental `delete`), `spacetime mcp` (v2.8.1), human-readable `spacetime describe` (v2.11.0), `spacetime env list/get` + `publish --env-only/--unset-env/--replace-env` (v2.12.0), `spacetime auth` for SpacetimeAuth management (v2.13.0), `generate --import-extension` (v2.14.0). From v2.11.0 failed publishes print the full error chain, and from v2.12.0 local schema-validation errors are spelled out. On 2.6.1, expect terse failures.
 
 **v2.6.1 SQL parser — no constant projections (verified live 2026-07-04):** the `spacetime sql` parser rejects literal/constant SELECT projections — `SELECT 1 AS ok` fails with `Error: Unsupported projection expression: 1` (HTTP 400). A connectivity smoke-test must project a real column from a real table, e.g. `spacetime sql <name> "SELECT COUNT(*) AS n FROM user"`, not `SELECT 1`. (Behavior change in the 2.3–2.6 line; caught during the Phase 16.5 upgrade.)
 
@@ -757,9 +783,11 @@ const row = ctx.db.UserIdentity.identity.find(identity);  // O(1) PK lookup
 
 **`ctx: any` in helper functions** — The SpacetimeDB SDK exports `ReducerCtx` but it's generic and requires the full schema type parameter. Using `any` for `ctx` in standalone helper functions (`ensureAdmin`, `getAuthenticatedUser`, `auditInsert`) is the accepted pattern. Do NOT try to import or construct the generic context type.
 
+*Upstream note (not a rule change):* the official Clockwork `typescript-server` skill now recommends `type Ctx = ReducerCtx<InferSchema<typeof spacetimedb>>` for helpers and warns that `any` erases row types and can let `bigint` math infer as `number`. Both `ReducerCtx` and `InferSchema` are exported from `spacetimedb/server` in **2.6.1**, and a type-only import of `typeof spacetimedb` adds no runtime cycle. Switching is a repo-wide convention decision for the user. Keep `ctx: any` unless that decision is made.
+
 **`as any` on enum values** — When constructing enum values from runtime strings (e.g. `{ tag: roleTag, value: {} } as any`), the `as any` cast is necessary because TypeScript can't narrow a `string` variable to the specific literal union the enum type expects. This is expected.
 
-**`export let` for scheduled table reducers** — The `userDeletionJob.ts` pattern (`export let _reducer: any` + setter function) is the documented way to avoid circular dependencies between scheduled tables and their reducers. Do not refactor this.
+**`export let` for scheduled table reducers** — The `userDeletionJob.ts` pattern (`export let _reducer: any` + setter function) is the documented way to avoid circular dependencies between scheduled tables and their reducers. Do not refactor this. (v2.7.0+, PR #5435: the reducer-side `spacetimedb.reducer({ onSchedule: table }, params, fn)` option removes the cycle at its source and is upstream's recommended form. It is the natural replacement **after** the SDK upgrade. See api-guide § 5.)
 
 ## User table special fields
 
@@ -867,14 +895,23 @@ When proposing any design that adds tables, columns, or changes visibility:
 
 ## Updating docs from SpacetimeDB GitHub
 
-The skill references are currently based on **SpacetimeDB v2.6.1**. When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped past this version:
+The skill references are synced to **SpacetimeDB v2.14.1** (released 2026-11-04). Upstream docs are pinned at tag commit `a0bf6be10a146b03acbe3f4f9ad7fe20f114988d`, and the official agent skills at master `17a3f3a649a3ad55e1520353a53ec5de8ea97b0a`. **The project's SDK and CLI are still 2.6.1** (`package.json` `spacetimedb: ^2.6.1`, `spacetime --version` 2.6.1). Untagged guidance is valid on 2.6.1. Anything newer carries an inline `(v2.X+ …)` tag and must not be used until the upgrade lands. Server-side behavior (migration rules, HTTP API, scheduler, MCP endpoint) follows maincloud's server version, so those notes may apply already. Last audit: 2026-11-05, items SK-10..SK-29 (previous: Phase 16.5 SK-1..SK-9).
 
-1. **Check the latest release** — fetch `https://github.com/clockworklabs/SpacetimeDB/releases/latest` and compare the version against what's documented in our references
-2. **Fetch upstream how-to docs** — each reference file has `<!-- Sources: ... -->` comments at the top with the exact GitHub URLs. Fetch the raw versions of those URLs (swap `github.com/.../blob/` to `raw.githubusercontent.com/.../`) and compare against our current content
-3. **Update reference files** — rewrite any sections that have changed, keeping the TypeScript focus. Update the source comment URLs to the new commit hash
-4. **Update SKILL.md** if new patterns, APIs, or breaking changes affect the cheat sheet
+When the user asks to update the skill docs (e.g. "update spacetimedb docs", "check for new SpacetimeDB changes", "sync with upstream"), or when you notice `spacetimedb` in `package.json` has been bumped:
 
-Key upstream doc paths:
-- How-to guides: `docs/docs/00300-resources/00100-how-to/`
-- CLI reference: `docs/docs/00300-resources/01000-reference/00100-cli-reference/`
+1. **Check the latest release:** `gh api "repos/clockworklabs/SpacetimeDB/releases?per_page=30"` (gh CLI: `"/c/Program Files/GitHub CLI/gh.exe"`). Read every release body after the synced version; TS-relevant items live under TypeScript/SDK, Breaking Changes, and Bug Fixes.
+2. **Fetch upstream docs:** each reference file has `<!-- Sources: ... -->` comments at the top with the exact GitHub URLs. Fetch the raw versions of those URLs (swap `github.com/.../blob/` to `raw.githubusercontent.com/.../`), at both the old and new commit, and diff them. Paths move between releases (see below). If a URL 404s, list `git/trees/<tag-commit>?recursive=1`.
+3. **Diff the official agent skills:** Clockwork publishes generic skills in `skills/` (`typescript-server`, `typescript-client`, `concepts`, `cli`, `mcp`). Diff them between the pinned commit and current master, and pull in anything more current or more correct, with attribution. Our skill stays the project skill. The official one has no project rules, and it targets the latest SDK.
+4. **Verify against the installed SDK before writing "current" guidance:** check `node_modules/spacetimedb/dist/**/*.d.ts` and `dist/server/index.mjs`. Upstream examples target the newest release. The 2026-11-05 audit also used this check to find several long-standing claims in this skill that were wrong even for the installed SDK (SK-10..SK-17).
+5. **Update reference files**, keeping the TypeScript focus and the version-tag convention. Update the source comment URLs to the new commit hash.
+6. **Update SKILL.md** if new patterns, APIs, or breaking changes affect the cheat sheet. Move the baseline line above.
+
+Key upstream doc paths (as of v2.14.1):
+- How-to guides: `docs/docs/00250-how-to/` (was `docs/docs/00300-resources/00100-how-to/` at 1a1fe78)
+- CLI reference + spacetime.json: `docs/docs/00300-resources/00100-cli-reference/` (was `00300-resources/01000-reference/...` / `00200-reference/...`)
+- HTTP API: `docs/docs/00300-resources/00200-http-api/`; MCP: `docs/docs/00300-resources/00150-mcp.md`
+- Core concepts (views, indexes, schedule tables, env vars, TS client reference): `docs/docs/00200-core-concepts/`
+- Official agent skills: `skills/` (Claude plugin manifest: `.claude-plugin/marketplace.json`; agent setup: `https://spacetimedb.com/agent-setup.md`; `https://spacetimedb.com/llms.txt`)
 - Releases: `https://github.com/clockworklabs/SpacetimeDB/releases`
+
+**Official plugin vs this skill:** `claude plugin install spacetimedb@spacetimedb-plugins` (marketplace `clockworklabs/SpacetimeDB`, shipped v2.8.2) bundles the generic skills plus a `spacetime mcp` server entry. That server needs CLI 2.8.1+, and the active CLI here is 2.6.1. Its skills target the latest SDK, use different conventions (camelCase index accessors, inline `.index('btree')`, typed `ctx`), and teach post-2.6.1 APIs (`onSchedule`, `withAutomaticReconnect`). If both are loaded, **this skill wins** for anything project-specific or version-sensitive.

@@ -1,6 +1,10 @@
 <!-- Sources:
   - SpacetimeDB TypeScript SDK docs: https://spacetimedb.com/docs
   - SpacetimeDB v2.1.0 release: https://github.com/clockworklabs/SpacetimeDB/releases/tag/v2.1.0
+  - Release notes v2.7.0-hotfix3 .. v2.14.1: https://github.com/clockworklabs/SpacetimeDB/releases
+  - Core-concepts docs at v2.14.1 (a0bf6be10a146b03acbe3f4f9ad7fe20f114988d): docs/docs/00200-core-concepts/ (views, indexes, schedule-tables, reducer-context, environment-variables, automatic-migrations, clients/typescript-reference)
+  - Official agent skills (Clockwork Labs, Apache-2.0) at master 17a3f3a649a3ad55e1520353a53ec5de8ea97b0a: skills/typescript-server/SKILL.md, skills/typescript-client/SKILL.md, skills/concepts/SKILL.md
+  - 2.6.1-correctness of every "current" claim checked against the installed SDK: node_modules/spacetimedb@2.6.1 (dist/*.d.ts + dist/server/index.mjs)
 -->
 
 # SpacetimeDB Rules (All Languages)
@@ -11,24 +15,27 @@
 |---|---------|-------------|
 | — | [Core Concepts](#core-concepts) | 5 fundamental rules |
 | — | [Hallucinated APIs](#-hallucinated-apis--do-not-use) | Wrong imports, wrong methods, correct patterns |
-| 1 | [Common Mistakes Table](#1-common-mistakes-table) | 37 server + client errors with fixes |
+| 1 | [Common Mistakes Table](#1-common-mistakes-table) | Server + client errors with fixes |
 | 2 | [Table Definition](#2-table-definition-critical) | `table(OPTIONS, COLUMNS)`, column types, schema export, exported columns pattern |
 | 3 | [Index Access](#3-index-access) | find vs filter, naming, multi-column indexes, ranged filtering |
-| 4 | [Reducers](#4-reducers) | Definition syntax, update/delete patterns, lifecycle hooks |
-| 5 | [Scheduled Tables](#5-scheduled-tables) | Scheduled reducers, ScheduleAt |
+| 4 | [Reducers](#4-reducers) | Definition syntax, update/delete patterns, lifecycle hooks (must be exported), `ctx` surface (random, uuid, connectionId) |
+| 5 | [Scheduled Tables](#5-scheduled-tables) | Scheduled reducers, ScheduleAt, `onSchedule` (v2.7+), server-side scheduler changes |
 | 6 | [Timestamps](#6-timestamps) | Server and client timestamp handling |
 | 7 | [Data Visibility & Subscriptions](#7-data-visibility--subscriptions) | Public/private tables, views, query builder, subscription handles, semantics & cache guarantees |
 | 8 | [React Integration](#8-react-integration) | Provider, useTable, useReducer, callbacks, event tables |
-| 9 | [Procedures (Beta)](#9-procedures-beta) | HTTP/side effects, ctx.withTx(), timeouts |
+| 9 | [Procedures](#9-procedures) | HTTP/side effects, ctx.withTx(), timeouts |
 | 10 | [Project Structure & Commands](#10-project-structure--commands) | Defers to SKILL.md (always in context) |
-| 11 | [Hard Requirements](#11-hard-requirements) | 12 TypeScript-specific rules |
+| 11 | [Hard Requirements](#11-hard-requirements) | 13 TypeScript-specific rules |
+| 12 | [Post-2.6.1 features (version-gated)](#12-post-261-features-version-gated) | Env vars, views with args, submodules, async IDC, unit tests — **not usable until the SDK upgrade lands** |
+
+> **Version tags:** Anything marked `(v2.X+ — project SDK is 2.6.1; don't use until the upgrade lands)` is post-2.6.1 and will not compile or behave as described on this repo's current SDK. Untagged content is valid on 2.6.1.
 
 ---
 
 ## Core Concepts
 
 1. **Reducers are transactional** — they do not return data to callers
-2. **Reducers must be deterministic** — no filesystem, network, timers, or random
+2. **Reducers must be deterministic** — no filesystem, network, timers, or *external* randomness (`Math.random`, `crypto`). Use the context's deterministic sources instead: `ctx.timestamp`, `ctx.random()` (seeded from `ctx.timestamp`), `ctx.newUuidV4()` / `ctx.newUuidV7()` — all present in 2.6.1 (see § 4 "Reducer context")
 3. **Read data via tables/subscriptions** — not reducer return values
 4. **Auto-increment IDs are not sequential** — gaps are normal, don't use for ordering
 5. **`ctx.sender` is the authenticated principal** — never trust identity args
@@ -49,7 +56,7 @@ SpacetimeDB automatically creates indexes for:
 
 You can add explicit indexes on non-unique columns for query performance.
 
-**Index names must be unique across your entire module (all tables).** If two tables have indexes with the same declared name → conflict error.
+**Explicit index `name`s must be unique across your entire module (all tables)** — two tables declaring the same `name` → "name is used for multiple entities". Index **`accessor`s are scoped per table**: when `name` is omitted (this repo's convention) the engine derives a table-qualified canonical name, so the same accessor can repeat across tables (this repo reuses `user_id` in 11 tables).
 
 **Schema ↔ Code coupling:**
 - Your query code references indexes by name
@@ -99,7 +106,8 @@ tables.user.filter(u => u.name === 'alice');  // No .filter() on tables object!
 ```typescript
 // ✅ CORRECT IMPORTS
 import { DbConnection, tables } from './module_bindings';  // Generated!
-import { SpacetimeDBProvider, useTable, Identity } from 'spacetimedb/react';
+import { SpacetimeDBProvider, useTable } from 'spacetimedb/react';
+import { Identity } from 'spacetimedb';  // NOT from 'spacetimedb/react' — it only exports the provider + hooks
 
 // ✅ CORRECT REDUCER CALLS — object syntax, not positional!
 conn.reducers.doSomething({ value: 'test' });
@@ -144,10 +152,15 @@ These cause the most wasted time in this project. If you're working with reducer
 | `const id = table.insert(...)` | `const row = table.insert(...)` | `.insert()` returns ROW, not ID |
 | `.unique()` + explicit index | Just use `.unique()` | "name is used for multiple entities" |
 | Index on `.primaryKey()` column | Don't — already indexed | "name is used for multiple entities" |
-| Same index name in multiple tables | Prefix with table name | "name is used for multiple entities" |
+| Same explicit index `name` in multiple tables | Omit `name` (accessor-only; repo convention) or make it unique | "name is used for multiple entities" |
+| Bare `spacetimedb.clientConnected(fn)` / `clientDisconnected` / `init` call | `export const onConnect = spacetimedb.clientConnected(fn)` | **Silent** — hook never registers (no error, no lifecycle reducer in the schema) |
+| Non-SpacetimeDB named export from the module entry (`index.ts`) | Keep helpers/constants unexported from the entry | "exporting something that is not a spacetime export" |
+| `new Range(new Bound.Inclusive(a), ...)` | `new Range({ tag: 'included', value: a }, { tag: 'included', value: b })` | `Bound` is a type, not a value — TypeError |
+| `Math.random()` / `crypto.getRandomValues()` in a reducer | `ctx.random()`, `ctx.random.integerInRange(min, max)`, `ctx.newUuidV4()` | Non-deterministic reducer |
+| `.primaryKey()` / `.index()` chained on an object-form enum column (`t.enum('X', { A: t.unit(), ... })`) | Index the column via `indexes: [...]` in table OPTIONS (repo pattern) | TypeError on 2.6.1 (fixed v2.7.0, PR #4389) |
 | `.indexName.filter()` after removing index | Use `.iter()` + manual filter | "Cannot read properties of undefined" |
 | Import spacetimedb from index.ts | Import from schema.ts | "Cannot access before initialization" |
-| Multi-column index `.filter(singleVal)` | `.filter([val1, val2])` — positional array matching columns order | PANIC or silent empty results |
+| Multi-column index `.filter(singleVal)` | `.filter([val1, val2])` — positional array matching columns order | PANIC on 2.6.1 (`serializeTerm is not a function`); one-column prefix scans work from v2.7.0 (PR #5428) |
 | `.filter({col1, col2})` (object arg) | `.filter(scalar)` for single-col, `.filter([val1, val2])` for multi-col | Silently returns 0 rows (no error!) |
 | `.filter([val1, val2])` on single-col btree | `.filter(scalar)` — only single-element arrays auto-coerce | Silently returns 0 rows (no error!) |
 | `ctx.db.Table.btreeIdx.find(val)` | `[...ctx.db.Table.btreeIdx.filter(val)]` | TypeError — btree only has `.filter()` |
@@ -181,6 +194,9 @@ These cause the most wasted time in this project. If you're working with reducer
 | Optimistic UI updates | Let subscriptions drive state | Desync issues |
 | `<SpacetimeDBProvider builder={...}>` | `connectionBuilder={...}` | Wrong prop name |
 | `onUpdate`/`onDelete` on event table | Only `onInsert` exists for event tables | No callback fires (rows never persist) |
+| `rows.sort(...)` on `useTable` result | `[...rows].sort(...)` — rows are `readonly T[]` | Type error |
+| `{row.id}` in JSX for a `u64`/`i64` column | `{String(row.id)}` or `{Number(row.id)}` | React can't render `bigint` |
+| `import { Identity } from 'spacetimedb/react'` | `import { Identity } from 'spacetimedb'` | Not exported |
 
 ---
 
@@ -263,10 +279,20 @@ const Point = t.object('Point', { x: t.i32(), y: t.i32() });
 const Shape = t.enum('Shape', { circle: t.i32(), rectangle: Point });
 // Values use { tag: 'circle', value: 10 } or { tag: 'rectangle', value: { x: 1, y: 2 } }
 
+// Row types (e.g. a procedural view's return row) — use t.row, which accepts column modifiers
+const MyRow = t.row('MyRow', { id: t.u64().primaryKey(), name: t.string() });  // name arg optional
+// t.object REQUIRES the name as 1st arg and is a plain product type (no .primaryKey() on its fields)
+
 // Modifiers
-t.string().optional()           // Nullable
+t.string().optional()           // Nullable (same as t.option(t.string()))
 t.u64().primaryKey()            // Primary key
 t.u64().primaryKey().autoInc()  // Auto-increment primary key
+t.u64().index('btree')          // Inline single-column index; accessor = column name. Exists in 2.6.1,
+                                // but this repo's convention is explicit `indexes: [...]` with snake_case accessors
+
+// Result type — values are { ok: T } | { err: E }. The TS builder/serializer shapes were inconsistent
+// before v2.13.0 (PR #6148) — avoid t.result() on 2.6.1 (repo currently has none)
+t.result(t.unit(), t.string())
 ```
 
 > ⚠️ **BIGINT SYNTAX:** All `u64`, `i64`, and ID fields use JavaScript BigInt.
@@ -338,21 +364,22 @@ export const Message = table({
 
 ### Naming conventions
 
-**Table names — automatic transformation:**
-- Schema: `table({ name: 'my_messages' })` 
-- Access: `ctx.db.myMessages` (automatic snake_case → camelCase)
+**Table accessors (server) — the `schema({...})` key, verbatim:**
+- `table({ name: 'lobby_member' }, ...)` sets the canonical SQL name only
+- `schema({ LobbyMember, ... })` → `ctx.db.LobbyMember` (this repo uses PascalCase keys: `ctx.db.User`, `ctx.db.UserIdentity`)
+- The accessor is NOT derived from `name` — `table({ name: 'my_messages' })` does not create `ctx.db.myMessages` unless the schema key is `myMessages`
 
-**Index names — NO transformation, use EXACTLY as defined:**
+**Index accessors — NO transformation, use EXACTLY as defined:**
 ```typescript
-// Schema definition
+// Schema definition (table registered as schema({ canvasMember }))
 indexes: [{ accessor: 'canvas_id', algorithm: 'btree', columns: ['canvasId'] }]
 
-// ❌ WRONG — don't assume camelCase transformation
-ctx.db.canvasMember.canvasMember_canvas_id.filter(...)  // WRONG!
-ctx.db.canvasMember.canvasMemberCanvasId.filter(...)    // WRONG!
+// ❌ WRONG — don't assume camelCase or a table prefix
+ctx.db.canvasMember.canvasId.filter(...)                // WRONG!
+ctx.db.canvasMember.canvas_member_canvas_id.filter(...) // WRONG!
 
-// ✅ RIGHT — use exact name from schema
-ctx.db.canvasMember.canvas_member_canvas_id.filter(...)
+// ✅ RIGHT — the accessor string as declared
+ctx.db.canvasMember.canvas_id.filter(...)
 ```
 
 > ⚠️ **Index accessors are used VERBATIM** — this project uses `snake_case` for all accessors (e.g. `owner_id`, `lobby_id`).
@@ -368,8 +395,9 @@ indexes: [{ name: 'message_room_id_idx_btree', accessor: 'room_id', ... }]
 ```
 
 **Client-side table names:**
-- Check generated `module_bindings/index.ts` for exact export names
-- Usage: `useTable(tables.MyMessages)` or `tables.myMessages` (varies by SDK version)
+- Check generated `module_bindings/index.ts` (`tablesSchema` keys) for exact handle names
+- **2.6.1 (current):** handles are the server accessor verbatim — tables PascalCase (`conn.db.User`, `tables.HsrCharacter`), views snake_case (`conn.db.view_my_profile`)
+- **v2.7.0+ (PR #5286 — project SDK is 2.6.1; don't use until the upgrade lands):** codegen camelCases handles (`conn.db.user`, `tables.hsrCharacter`, `conn.db.viewMyProfile`) and keeps the old spellings as **deprecated aliases**, so existing call sites keep compiling. Code that enumerates `conn.db` / `tables` (`Object.keys`, `for...in`) will see both names. Canonical SQL names (`'view_my_profile'`) are unchanged.
 
 ### Filter vs Find
 ```typescript
@@ -403,8 +431,11 @@ const participant = [...ctx.db.TournamentParticipant.by_tournament_and_user.filt
 // ❌ Object arg — silently returns 0 rows (no error!)
 ctx.db.TournamentParticipant.by_tournament_and_user.filter({ tournamentId: tid, userId: uid }); // WRONG
 
-// ❌ Single value on multi-column index — PANIC or silent empty results
-ctx.db.TournamentParticipant.by_tournament_and_user.filter(tid); // WRONG
+// ❌ Single value on multi-column index — PANIC on 2.6.1 ("serializeTerm is not a function")
+ctx.db.TournamentParticipant.by_tournament_and_user.filter(tid); // WRONG on 2.6.1
+// v2.7.0+ (PR #5428 — project SDK is 2.6.1; don't use until the upgrade lands): a bare leading value
+// is a valid one-column PREFIX scan — returns all rows for `tid`. Composite range scans
+// (prefix + trailing Range) were also broken until v2.8.0 (PR #5479).
 
 // ❌ DON'T iterate entire table and manually check — O(n) full scan
 for (const other of ctx.db.character_position.iter()) {
@@ -413,16 +444,21 @@ for (const other of ctx.db.character_position.iter()) {
 ```
 
 ### Ranged index filtering (since 2.0.5)
-`Range` and `Bound` are exported from `spacetimedb/server` for ranged queries on btree indexes:
+`Range` (a class) is exported from `spacetimedb/server`. `Bound` is a **type only** — bounds are plain tagged objects. There is no `Bound.Inclusive(...)` constructor (verified in the 2.6.1 `dist/server/range.d.ts`):
 
 ```typescript
-import { Range, Bound } from 'spacetimedb/server';
+import { Range } from 'spacetimedb/server';
 
-// Range filter on a btree index — find scores between 100 and 500
+// Range filter on a single-column btree index — find scores between 100 and 500
 const rows = [...ctx.db.leaderboard.by_score.filter(
-  new Range(new Bound.Inclusive(100), new Bound.Inclusive(500))
+  new Range({ tag: 'included', value: 100 }, { tag: 'included', value: 500 })
 )];
+
+// Other bound shapes: { tag: 'excluded', value: x } and { tag: 'unbounded' }
+const atLeast18 = new Range({ tag: 'included', value: 18 }, { tag: 'unbounded' });
 ```
+
+Single-column ranges are safe on 2.6.1. Avoid prefix-plus-Range on **multi-column** indexes until v2.8.0 (see above).
 
 ---
 
@@ -475,17 +511,40 @@ ctx.db.task.id.delete(taskId);          // taskId is the u64 value
 ctx.db.player.identity.delete(ctx.sender);  // delete by identity
 ```
 
-### Lifecycle hooks
+### Lifecycle hooks — MUST be exported
+`init`, `clientConnected`, and `clientDisconnected` return a module export, exactly like `reducer()` and `view()`. The runtime registers them only while walking the entry module's exports (`Schema[moduleHooks]` → `moduleExport[registerExport]` in 2.6.1 `dist/server/index.mjs`). A bare call is **silently ignored** — no error, and no lifecycle reducer appears in the published schema.
+
 ```typescript
-spacetimedb.clientConnected((ctx) => {
+// ✅ CORRECT — exported (from index.ts, or re-exported into it)
+export const onConnect = spacetimedb.clientConnected((ctx) => {
   // ctx.sender is the connecting identity
   // Create/update user record, set online status, etc.
 });
 
-spacetimedb.clientDisconnected((ctx) => {
+export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
   // Clean up: set offline status, remove ephemeral data, etc.
 });
+
+export const init = spacetimedb.init((ctx) => { /* runs on first publish / --delete-data */ });
+
+// ❌ WRONG — never registers
+spacetimedb.clientConnected((ctx) => { /* ... */ });
 ```
+
+**Repo status (verified 2026-11-05):** `spacetimedb/src/index.ts` currently declares both hooks as bare calls, and the live maincloud schema (`GET /v1/database/<db>/schema?version=9`) lists 0 lifecycle reducers out of 156 — the `isOnline` / disconnect-tracking / ban-on-reconnect logic in those hooks does not run. Fixing it is an app-code change for a planned task, not a skill edit; adding the `export const` is a new reducer export (non-destructive publish).
+
+### Reducer context (`ctx`) — 2.6.1 surface
+| Member | Notes |
+|---|---|
+| `ctx.sender` | Caller `Identity` — the only trustworthy identity |
+| `ctx.connectionId` | `ConnectionId \| null` — null for scheduled/`init`/some internal calls; null-check before use. One Identity can hold several connections |
+| `ctx.timestamp` | Deterministic per call |
+| `ctx.databaseIdentity` | The module's identity (`ctx.identity` is the deprecated alias) |
+| `ctx.random()` / `.integerInRange(min, max)` / `.bigintInRange(min, max)` / `.uint32()` / `.fill(typedArray)` | Deterministic RNG seeded from `ctx.timestamp` — use instead of `Math.random()` |
+| `ctx.newUuidV4()` / `ctx.newUuidV7()` | Deterministic UUIDs |
+| `ctx.senderAuth` | `AuthCtx` — see SKILL.md "AuthCtx applicability" (`isInternal` is always `false` on 2.6.1) |
+
+`ctx.random.shuffle(array)` (in-place) is **v2.13.0+ — project SDK is 2.6.1; don't use until the upgrade lands.**
 
 ### Snake_case to camelCase conversion
 - Server: `export const do_something = spacetimedb.reducer(...)` — name from export
@@ -533,6 +592,26 @@ ctx.db.cleanupJob.insert({
 // Cancel a job by deleting the row
 ctx.db.cleanupJob.scheduledId.delete(jobId);
 ```
+
+Upstream writes the forward reference as `scheduled: (): any => run_cleanup` — the cast is needed because the forward reference defeats type inference. When the table and reducer live in different files, this repo uses the `export let _reducer: any` + setter pattern (see SKILL.md "TypeScript patterns") to avoid a circular import.
+
+**`onSchedule` (v2.7.0+, PR #5435 — project SDK is 2.6.1; don't use until the upgrade lands):** the binding moves onto the reducer (or a `t.unit()`-returning procedure), so the table no longer references it and table/reducer can sit in separate files without a cycle — this would retire the `export let` workaround:
+```typescript
+const cleanupJob = table({ name: 'cleanup_job' }, {
+  scheduledId: t.u64().primaryKey().autoInc(),
+  scheduledAt: t.scheduleAt(),
+  targetId: t.u64(),
+});
+
+export const run_cleanup = spacetimedb.reducer(
+  { onSchedule: cleanupJob },        // 1st arg: options
+  { arg: cleanupJob.rowType },       // 2nd arg: params
+  (ctx, { arg }) => { /* ... */ }
+);
+// A schedule table can bind to at most one reducer/procedure. The scheduled reducer must be exported.
+```
+
+**Server-side scheduler changes (maincloud's server version governs these, not the project SDK):** interval drift fixed (v2.7.1 #5574, v2.8.3 #5735 — schedules anchor to the intended time, missed ticks are skipped); from v2.10.1 (#5736) scheduled calls dispatch concurrently, so **already-expired** jobs are no longer guaranteed to run in strict `scheduledAt` order (timestamps seen inside reducers stay monotonic); v2.12.0 (#5951) updating an interval row without changing its schedule no longer enqueues a duplicate call.
 
 ---
 
@@ -768,14 +847,19 @@ conn.subscriptionBuilder().subscribe([
 
 ### Procedural views + `.primaryKey()` → client `onUpdate` (v2.4.1, finalized v2.6.0)
 
-Procedural views (TypeScript) can now declare a `.primaryKey()` on a column of the return row type, e.g.:
+Procedural views (TypeScript) can now declare a `.primaryKey()` on a column of the return row type. Declare the row with **`t.row(...)`** (it accepts column modifiers); `t.object` requires a name and is a plain product type, so `t.object({ id: t.u64().primaryKey(), ... })` is wrong twice over:
 ```typescript
+const MyPlayerRow = t.row('MyPlayerRow', { id: t.u64().primaryKey(), name: t.string(), score: t.u32() });
+
 export const my_player = spacetimedb.view(
   { name: 'my_player', public: true },
-  t.object({ id: t.u64().primaryKey(), name: t.string(), score: t.u32() }),
+  t.option(MyPlayerRow),
   (ctx) => { /* ... */ }
 );
 ```
+Name the row type something other than the view handle's generated PascalCase name (e.g. not `ViewMyProfileRow` for `view_my_profile`) to avoid a binding-name collision.
+
+Per the v2.14.1 views doc, a view that returns `t.array(SomeTable.rowType)` for a table whose column is `.primaryKey()` also gets PK semantics. In this repo's **2.6.1** bindings, views that do this (`view_my_lobbies`, `view_my_cost_sets`) still show `constraints: []` — re-check `src/module_bindings/index.ts` after the upgrade before assuming `onUpdate` fires.
 Before this, views only ever fired `onInsert`/`onDelete` on the client — every change looked like a delete-then-insert. With a declared `.primaryKey()`, the client can now fire **`onUpdate`** for views, same shape as regular tables:
 ```typescript
 conn.db.my_player.onUpdate((ctx, oldRow, newRow) => {
@@ -812,6 +896,8 @@ const memoized = useMemo(() => builder, []);
   {children}
 </SpacetimeDBProvider>
 ```
+
+On 2.6.1 the provider does **not** reconnect on its own — see `references/how-to-guides.md` § Reconnection for the current workaround and the v2.12.0+ built-in replacement (`withAutomaticReconnect()`; the React provider enables it automatically).
 
 ### useTable — subscribe and read rows
 ```typescript
@@ -978,11 +1064,11 @@ This project uses `LobbyCursorEvent` as an event table for real-time cursor broa
 
 ---
 
-## 9) Procedures (Beta)
+## 9) Procedures
 
 **Procedures are for side effects (HTTP requests, etc.) that reducers can't do.**
 
-⚠️ Procedures are currently in beta. API may change.
+**Callbacks are synchronous** — do not mark a procedure `async` or `await` inside it; `ctx.http.fetch(url, options)` returns the response directly (verified 2.6.1). There are no `get()`/`post()` helpers — pass `{ method, headers, body }` in options; the response (`SyncResponse`) exposes `status`, `statusText`, `headers.get(name)`, `text()`, and `json()`. A `t.unit()` procedure returns `{}`. Do network I/O **before** `ctx.withTx(...)`; only database work belongs inside the transaction.
 
 **v2.5.0 — procedures graduated to stable:** procedures no longer require `features: ["unstable"]` in `spacetime.json` to use. Also in v2.5.0, **`ctx.http` (outbound HTTP) was stabilized** — it is the explicit exception to "reducers are deterministic / no network": outbound HTTP is available **in procedures only**, never in reducers. This project still defines zero procedures.
 
@@ -1031,6 +1117,8 @@ spacetimedb.procedure({ url: t.string() }, t.unit(), (ctx, { url }) => {
 ### Procedure timeouts (HTTP calls)
 Default timeout: **30s**. Maximum ceiling: **180s** (3 minutes). These limits apply to `ctx.http.fetch()` calls within procedures. Sufficient for LLM API calls and most external services.
 
+**Server-side outbound-HTTP changes (apply on maincloud regardless of SDK):** v2.10.2 (#5698) transparently advertises/decodes gzip + Brotli — don't hand-roll `Accept-Encoding` + decompression; v2.12.0 (#6012) negotiates HTTP/2 when the remote supports it. **v2.13.0 SDK fix (#6140 — project SDK is 2.6.1):** on 2.6.1, TS request/response header values are split at commas (breaks webhook signatures, HTTP dates, cookies with `Expires`) and nonstandard status codes throw — work around or upgrade.
+
 ### Key differences from reducers
 | Reducers | Procedures |
 |----------|------------|
@@ -1065,7 +1153,26 @@ index.ts  → imports spacetimedb from ./schema, defines reducers
 6. **Indexes go in OPTIONS (1st arg)** — not in COLUMNS (2nd arg) of `table()`
 7. **Use BigInt for u64/i64 fields** — `0n`, `1n`, not `0`, `1`
 8. **Reducers are transactional** — they do not return data
-9. **Reducers must be deterministic** — no filesystem, network, timers, random
+9. **Reducers must be deterministic** — no filesystem, network, timers, or external randomness; use `ctx.timestamp` / `ctx.random()` / `ctx.newUuidV4()`
 10. **Views should use index lookups** — `.iter()` causes severe performance issues. Return `t.array()` for multiple rows, `t.option()` for at-most-one
 11. **Procedures need `ctx.withTx()`** — `ctx.db` doesn't exist in procedures
 12. **Sum type values** — use `{ tag: 'variant', value: payload }` not `{ variant: payload }`
+13. **Export everything that must register** — reducers, views, procedures, AND lifecycle hooks (`init` / `clientConnected` / `clientDisconnected`) must be named exports of the module entry; bare calls are silently dropped
+
+---
+
+## 12) Post-2.6.1 features (version-gated)
+
+**None of this works on this repo's SDK (2.6.1).** It is here so agents recognise these APIs in upstream docs/examples and don't port them back, and so the post-upgrade work has a starting point. Source: release notes + v2.14.1 docs + official `typescript-server` skill (see header).
+
+| Feature | Since | Shape (TS) | Notes for this repo |
+|---|---|---|---|
+| Typed database environment variables | v2.12.0 | `schema({ ...tables }, { env: { API_KEY: t.string(), MODE: t.enum('Mode', ['dev','prod']), LOG_LEVEL: t.string().optional() } })` → `ctx.env.API_KEY` (string), optional → `string \| undefined`; `ctx.env.get('KEY')` → `string \| null` | Values are read-only strings supplied at publish time (process env → config `env` map → stored value), preserved across publishes, cleared by `--delete-data`. Never return or log them. CLI: `--env-only`, `--unset-env`, `--replace-env`, `spacetime env list/get`; HTTP: see `references/http-api.md` |
+| Views with arguments | v2.13.0 (per official skill; not called out in the 2.13 release notes) | `spacetimedb.view(opts, { level: t.u64() }, t.array(Row), (ctx, { level }) => ...)` | Subscribe via raw SQL only: `SELECT * FROM view_name(42)` (no WHERE/joins); TS query builder can't express them; `subscribeToAllTables` skips them; they cannot have a primary key. Each argument set must be unsubscribed when obsolete |
+| Module unit tests (in-memory datastore) | v2.12.0 | `spacetimedb/server/test-utils` + `spacetimedb/server/test-utils/vitest` plugin | See `references/how-to-guides.md` § Module Unit Testing. Does NOT simulate subscriptions, RLS, lifecycle hooks, or the scheduler |
+| Submodules (mount another TS module under a namespace) | v2.8.0 (reusable `@spacetimedb/*` packages need 2.12+) | `schema({ ...tables, myAuth: { name: 'auth_data', module: authLib } })` → `ctx.db.myAuth.<table>`, client `conn.db.myAuth.<table>` | Official packages: `@spacetimedb/cron`, `@spacetimedb/retry`, `@spacetimedb/rate-limit`, `@spacetimedb/crypto`, `@spacetimedb/resend` (v2.13.0). Changing a namespace's canonical `name` drops its tables + data |
+| Async inter-database calls (outbox tables) | v2.14.0 | `table({ outbox: { receiver: gw.reducers.admitPlayer } }, { msgId: t.u64().primaryKey().autoInc(), world: gw.identity().target(), ...params })`; optional `spacetimedb.reducer({ onResult: outbox }, ...)` | Requires `dependencies` in `spacetime.json` + generated `src/remote_bindings/`; both DBs on the same server. Not relevant until the project splits databases |
+| `isInternal` = `sender === databaseIdentity` | v2.14.0 (breaking) | `ctx.senderAuth.isInternal` is **true** for scheduled reducers/procedures; `init` is no longer internal; `jwt` is none when internal | See SKILL.md "AuthCtx applicability" — the 2.6.1 "never guard on isInternal" rule stays until the upgrade, and old behavior persists until the module is rebuilt with the new library |
+| HTTP handlers get a real sender | v2.14.0 | `ctx.sender` inside `spacetimedb.httpHandler(...)` (HTTP handlers are still unstable) | Repo defines no HTTP handlers |
+| `ctx.random.shuffle(array)` | v2.13.0 | In-place; copy first | — |
+| Generated TS bindings `--import-extension none\|js\|ts` | v2.14.0 (CLI) | `spacetime generate --import-extension js` or per-entry in `spacetime.json` | Only needed for `moduleResolution: "nodenext"` / Node-Bun-Deno direct TS execution; Next.js doesn't need it |
