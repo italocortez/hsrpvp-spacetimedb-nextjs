@@ -238,7 +238,7 @@ hsrpvp-spacetimedb-nextjs/
 **`docs/` (19 feature directories + `docs/_templates`):**
 - Each feature directory contains `architecture.md` and `contract.md`
 - `docs/_templates/` contains blank templates for new features (added in Phase 13)
-- `ERD.excalidraw` — Excalidraw entity-relationship diagram (view at localhost:4000)
+- `ERD.excalidraw` — Excalidraw entity-relationship diagram (open at excalidraw.com)
 
 ## Key File Locations
 
