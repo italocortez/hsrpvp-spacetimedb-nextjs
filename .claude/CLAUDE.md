@@ -47,14 +47,14 @@ Recovery procedure (if it happens anyway): see `memory/feedback_never_force_add_
 
 Any UI edit that changes rendered output MUST be followed by a Playwright CLI screenshot + Read before reporting the task as complete. Code typechecks prove syntax; screenshots prove the user actually sees what the task intended.
 
-Tool: `rtk proxy playwright-cli` (installed globally, `.playwright/cli.config.json` sets msedge default).
+Tool: `playwright-cli` (installed globally via `npm i -g @playwright/cli`, `.playwright/cli.config.json` sets msedge default).
 
 Loop:
 1. Ensure `npm run dev` is running (foreground or background).
-2. `rtk proxy playwright-cli open http://localhost:3000/<route>` (once per session).
-3. After UI edit: `rtk proxy playwright-cli screenshot --filename tmp/pw/<name>.png`.
+2. `playwright-cli open http://localhost:3000/<route>` (once per session).
+3. After UI edit: `playwright-cli screenshot --filename tmp/pw/<name>.png`.
 4. `Read tmp/pw/<name>.png`. Compare to UI-SPEC.md (if exists) or task intent.
-5. Iterate if wrong. `rtk proxy playwright-cli close` at end of session.
+5. Iterate if wrong. `playwright-cli close` at end of session.
 
 Path rules: `tmp/pw/` is ephemeral (gitignored). Durable audit screenshots written by `/gsd-ui-review` land under `.planning/phases/{N}/screenshots/` and ARE committed.
 

@@ -25,7 +25,7 @@ empty/missing.
 ```markdown
 <acceptance_criteria>
 - [ ] Hero component renders at `/` without console errors
-      `rtk proxy playwright-cli goto / && rtk proxy playwright-cli screenshot --filename tmp/pw/16.2-hero.png && test -s tmp/pw/16.2-hero.png`
+      `playwright-cli goto / && playwright-cli screenshot --filename tmp/pw/16.2-hero.png && test -s tmp/pw/16.2-hero.png`
 - [ ] Hero meets UI-SPEC dimensions (visual diff check — executor must Read PNG and compare against spec Section "Hero")
       `Read tmp/pw/16.2-hero.png`
 </acceptance_criteria>
@@ -37,8 +37,8 @@ One `open` per plan, not per task. The browser session persists across
 `playwright-cli` invocations via its default named session. In PLAN.md use a
 plan-level pre/post:
 
-- **Plan pre-step** (before Task 1): `rtk proxy playwright-cli open http://localhost:3000/`
-- **Plan post-step** (after last task): `rtk proxy playwright-cli close`
+- **Plan pre-step** (before Task 1): `playwright-cli open http://localhost:3000/`
+- **Plan post-step** (after last task): `playwright-cli close`
 
 Dev server assumption: `npm run dev` already running in background. Document
 this as a plan prerequisite, not a task.

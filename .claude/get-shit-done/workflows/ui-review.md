@@ -166,10 +166,10 @@ If `HAS_CLI=true` OR `HAS_MCP=true`:
 
 1. Start the dev server if not already running (`npm run dev` in background).
 2. Open a browser session:
-   - **CLI (preferred):** `rtk proxy playwright-cli open <base-url>` — opens once, reused across components
+   - **CLI (preferred):** `playwright-cli open <base-url>` — opens once, reused across components
    - **MCP:** `mcp__playwright__navigate` per component
 3. For each component described in UI-SPEC.md, navigate and screenshot:
-   - **CLI:** `rtk proxy playwright-cli goto <route>` then `rtk proxy playwright-cli screenshot --filename {phase_dir}/screenshots/{component}.png`
+   - **CLI:** `playwright-cli goto <route>` then `playwright-cli screenshot --filename {phase_dir}/screenshots/{component}.png`
    - **MCP:** `mcp__playwright__screenshot` per component
 4. `Read` each PNG. Compare against the spec's visual requirements — dimensions,
    color palette, layout, spacing scale, and typography.
@@ -178,7 +178,7 @@ If `HAS_CLI=true` OR `HAS_MCP=true`:
 6. Flag items that require human judgment (brand feel, content tone) as
    `needs_human_review: true` — surfaced to the user separately after the
    automated pass.
-7. **CLI only:** close the session with `rtk proxy playwright-cli close` at audit end.
+7. **CLI only:** close the session with `playwright-cli close` at audit end.
 
 If NEITHER backend is available, this section is skipped entirely and the audit
 falls back to the standard code-only review. No configuration change is required
