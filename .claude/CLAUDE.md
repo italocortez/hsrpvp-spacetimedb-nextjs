@@ -71,7 +71,7 @@ When working on ANY task in this project, use the appropriate skill:
 | Area | Skill | When |
 |------|-------|------|
 | **Backend** (spacetimedb/) | `/spacetimedb` | Any work touching tables, reducers, schema, indexes, views, procedures, publishing, or generating bindings |
-| **Frontend** (app/, components/) | `/frontend-design` | Any work on UI components, pages, layouts, styling, or React features |
+| **Frontend** (app/, components/) | `/frontend-design:frontend-design` (plugin) | Any work on UI components, pages, layouts, styling, or React features |
 
 Always load the relevant skill before writing code. The skills contain project-specific patterns, API references, and guardrails that prevent common mistakes.
 
@@ -80,8 +80,8 @@ Always load the relevant skill before writing code. The skills contain project-s
 | Skill | Purpose |
 |-------|---------|
 | `spacetimedb` | SpacetimeDB backend development, multiplayer sync patterns, module bindings reference |
-| `frontend-design` | Production-grade frontend interfaces with high design quality |
-| `skill-creator` | Create, improve, and benchmark skills |
+| `frontend-design:frontend-design` | Plugin (auto-updates): distinctive, intentional visual design for UI work |
+| `skill-creator:skill-creator` | Plugin (auto-updates): create, improve, and benchmark skills |
 | `vercel-deploy` | Deploy to Vercel |
 | `vercel-logs` | View Vercel deployment logs |
 | `vercel-setup` | Set up Vercel CLI and project config |
