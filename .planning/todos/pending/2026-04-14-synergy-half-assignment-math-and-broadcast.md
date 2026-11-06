@@ -46,3 +46,31 @@ Questions to resolve in the dedicated phase:
 - Replay: `MatchSessionStep` logs `ArrangeLineup` / `ConfirmLineup` payloads — is that sufficient, or do we need a separate history snapshot?
 
 Triggering context: Phase 15.1 discussion (2026-04-14), GA-2 clarification that synergy math lives in a future Match-Data phase.
+
+## Decided design (user, 2026-11-06), supersedes the open questions above
+
+Depends on the scoring foundation todo: `2026-11-06-server-computed-scoring-handicaps-and-lineup-format.md`.
+
+**Synergies are unordered pairs, not directions.**
+- Rename `sourceName`/`targetName` in the rewrite (e.g. `characterA`/`characterB`). Store them in canonical (alphabetical) order.
+- The admin bulk upsert and the cost-set editor reject a pair that already exists in either order.
+- Verified 2026-11-06: today's 10 pairs in the local seed data have no reverse duplicates.
+
+**Groups:** halves (8-character lobbies, 4v4 + 4v4) or thirds (12-character lobbies, 3 × 4v4). Each group is 4 characters.
+
+**Surcharge:** every synergy pair placed in the **same group** adds its `costModifier` once.
+- Example: The Herta + Argenti + Tribbie in one group = Herta–Argenti (+4) + Herta–Tribbie (+4) = **+8**. Argenti–Tribbie isn't a pair.
+
+**Who arranges:** **only the captain or a referee** can move characters between groups and confirm. A referee can do it for either team.
+- *This tightens today's `arrange_lineup`, which allows any non-coach team member.*
+
+**State and broadcast**
+- A "current lineup" row per team per game, visible live to everyone in the lobby, including spectators and the opponent.
+- The final arrangement goes into the match log (`ConfirmLineup` step) for replay.
+- Throttle moves: it's a fan-out reducer (see the SKILL.md "Fan-out reducers" rule).
+
+**Classic:** the surcharge raises the team's roster cost, which feeds the handicaps.
+
+**Auction:** the surcharge comes out of the remaining light cone budget.
+- While arranging, an over-budget lineup is allowed but shown red.
+- **Confirming is blocked** until light cone spend + surcharge fits the budget.

@@ -104,3 +104,12 @@ preset round-trip in one pass, sharing the `{1,3}` guard helper.
 
 Triggering context: surfaced 2026-07-07 during a lobby-settings editability
 review (what can/cannot be edited after room creation, before the game starts).
+
+## Update (user, 2026-11-06): add `lineupFormat`
+
+The new lobby setting **`lineupFormat`** (8 characters in halves, or 12 in thirds; see
+`2026-11-06-server-computed-scoring-handicaps-and-lineup-format.md`) follows the same rules as
+`bestOf` / `refereeControlsShelving`:
+- editable in Waiting through `update_lobby_settings`
+- **locked for tournament-controlled lobbies** (`isTournamentControlled`, Phase 10.1)
+- resets confirmations like the other settings changes

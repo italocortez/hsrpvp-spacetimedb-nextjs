@@ -60,3 +60,24 @@ calculation is a game-design decision, not just code.
 Triggering context: Auction economy review 2026-07-06 — leftover LC budget
 confirmed inert; user wants unused budget to translate into a boss-score/cycle
 advantage.
+
+## Decided design (user, 2026-11-06): no separate mechanic
+
+This todo folds into the scoring foundation todo,
+`2026-11-06-server-computed-scoring-handicaps-and-lineup-format.md`.
+
+**Roster cost in Auction = total budget actually spent** (character bids + light cones + synergy surcharges). The existing handicap knobs then reward efficient drafting, the same way as in Classic:
+- **Roster Diff Advantage:** the cheaper team gets `rate × cost gap`. Example: Blue spends 880 and Red 980, at 0.02 cycles per point, so Blue gets 2 cycles off.
+- **Under-Threshold Advantage:** rewards absolute frugality ("spent under X").
+
+**Why not a separate "leftover × rate" bonus:** for deciding a winner, a linear per-team leftover bonus gives the same net gap as Roster Diff Advantage. In the example, 2.4 − 0.4 = 2.0. It would only add a second, overlapping setting that could double-count.
+
+- **Answers to the original questions:**
+  - Currency: the game mode's unit (cycles for Memory of Chaos / Anomaly Arbitration, points for Apocalyptic Shadow).
+  - Which budget counts: total spent, so nothing is counted twice.
+  - Where it plugs in: the server-computed adjusted result.
+  - Classic: uses cost-table values instead.
+  - Bo3 advantage: series-level, so it composes.
+- **Still to do:** tune the numbers in play. Auction bids and Classic cost values are on different scales, so presets need per-draft-mode values.
+
+**Status:** design closed. Implementation lives in the scoring foundation todo.

@@ -65,3 +65,10 @@ frontend preset picker populates `bestOf` / `refereeControlsShelving` /
 Sequencing: land the `bestOfNAdvantage` feature todo first (adds the enum +
 `Lobby` column + start_draft seeding), then this preset todo extends all three
 create-time series fields into `LobbyPreset`. Cleanest if executed as one phase.
+
+## Update (user, 2026-11-06): presets also store `lineupFormat`
+
+Presets also save the new **`lineupFormat`** setting (8 characters in halves, or 12 in thirds; see
+`2026-11-06-server-computed-scoring-handicaps-and-lineup-format.md`). Because Auction bids and
+Classic cost values live on different scales, handicap values in presets are effectively
+**per draft mode**: a preset carries values tuned for its own draft mode.
