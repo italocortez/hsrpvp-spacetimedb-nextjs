@@ -531,7 +531,7 @@ export const init = spacetimedb.init((ctx) => { /* runs on first publish / --del
 spacetimedb.clientConnected((ctx) => { /* ... */ });
 ```
 
-**Repo status (verified 2026-11-05):** `spacetimedb/src/index.ts` currently declares both hooks as bare calls, and the live maincloud schema (`GET /v1/database/<db>/schema?version=9`) lists 0 lifecycle reducers out of 156 — the `isOnline` / disconnect-tracking / ban-on-reconnect logic in those hooks does not run. Fixing it is an app-code change for a planned task, not a skill edit; adding the `export const` is a new reducer export (non-destructive publish).
+**Repo status (fixed in source 2026-11-05):** `spacetimedb/src/index.ts` used to declare both hooks as bare calls, and the live maincloud schema (`GET /v1/database/<db>/schema?version=9`) listed 0 lifecycle reducers out of 156. Until then the `isOnline`, disconnect-tracking, and ban-on-reconnect logic never ran. They are now `export const client_connected` / `client_disconnected`, named in snake_case per the reducer convention. Codegen leaves lifecycle reducers out of the client bindings, so the regenerated bindings are unchanged. A database only picks up the hooks once a build containing the fix is published to it (a non-destructive publish). Until then that database still has no lifecycle reducers, so check its schema before debugging presence or disconnect behavior there.
 
 ### Reducer context (`ctx`) — 2.6.1 surface
 | Member | Notes |

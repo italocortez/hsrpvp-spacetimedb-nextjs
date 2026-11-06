@@ -76,15 +76,18 @@ BanRecord (id: u32 autoInc PK)  [PRIVATE -- public: false]
    - **Case 1c**: Identity -> verified user, refresh -- update timestamps, upsert `UserPrivate`
 5. Write/upsert `UserPrivate` (discordId, discordUsername, email), set `User.hasDiscordLinked=true`
 
-### clientConnected() -- lifecycle hook
+### clientConnected() -- lifecycle hook (exported as `client_connected`)
+> Both lifecycle hooks register only because `index.ts` exports them. Before 2026-11-05 they were bare `spacetimedb.clientConnected(...)` calls, which the SDK silently drops, so neither hook ever ran on a published database. Behavior below is the spec; it takes effect on the first publish that includes the fix.
+
 1. Find `UserIdentity.identity.find(ctx.sender)`
 2. If found: set `User.isOnline=true`, update `UserIdentity.lastSeenAt`
 3. D-08 point 2: if `UserPrivate.discordId` is in BanRecord -> soft-delete user immediately
 4. Phase 15.2 D-10: insert `UserDeletionJob` (scheduled 5s out) after ban-reconnect soft-delete (R1 fix)
 
-### clientDisconnected() -- lifecycle hook
+### clientDisconnected() -- lifecycle hook (exported as `client_disconnected`)
 1. Find `UserIdentity.identity.find(ctx.sender)`
 2. If found: set `User.isOnline=false`
+3. Lobby memberships: mark `LobbyMember.isOnline=false`; in Drafting/Equipping/Scoring under Standard/Deferred policy also set `disconnectedAt`, transfer captain/referee/host, and auto-pause an unpaused draft (see `docs/lobby/contract.md`)
 
 ### admin_ban_user(banTypeTag, providerId, reason)
 1. `ensureAdmin(ctx)` -- requires Admin role

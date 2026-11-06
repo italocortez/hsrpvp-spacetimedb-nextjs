@@ -110,7 +110,11 @@ export { advance_to_next_game, shelve_series, resume_series } from './reducers/s
 export { admin_force_finalize, admin_void_match, admin_set_bracket_winner } from './reducers/adminMatchTools';
 export { select_match_account, deselect_match_account } from './reducers/accountSelection';
 
-spacetimedb.clientConnected((ctx) => {
+// Lifecycle hooks MUST be exported: the SDK only registers a hook when it walks the
+// module's exports. A bare `spacetimedb.clientConnected(...)` call is silently dropped
+// (no error, no lifecycle reducer in the schema). Export names follow the snake_case
+// reducer convention.
+export const client_connected = spacetimedb.clientConnected((ctx) => {
   console.log(`Client connected: ${ctx.sender.toHexString()}`);
 
   // Set isOnline = true for the connected user
@@ -151,7 +155,7 @@ spacetimedb.clientConnected((ctx) => {
   }
 });
 
-spacetimedb.clientDisconnected((ctx) => {
+export const client_disconnected = spacetimedb.clientDisconnected((ctx) => {
   console.log(`Client disconnected: ${ctx.sender.toHexString()}`);
 
   // Set isOnline = false for the disconnected user
