@@ -97,18 +97,22 @@ conn.reducers.createItem({ title: 'Hello' })._then((ctx) => {
 
 ### Event tables (recommended)
 For cross-client notifications. Event tables:
-- Must be explicitly subscribed to (excluded from blanket subscriptions)
+- **Are included in blanket subscriptions.** `subscribeToAllTables()` subscribes to every table in the bindings, event tables included (verified: 2.6.1 `dist/index.mjs:5464`; 2.14.1 skips only views that take arguments; the upstream TS reference says "including public event tables"). An earlier version of this skill wrongly said they were excluded. A blanket subscriber receives **every** lobby's events.
 - Remain empty outside transactions — never accumulate rows in client caches
 - Only `onInsert` callbacks are generated
 - Are transactionally consistent with the reducer that wrote them
 
 ```typescript
-// Subscribe to event tables explicitly
-conn.subscriptionBuilder().subscribe([
-  'SELECT * FROM lobby',
-  'SELECT * FROM lobby_cursor_event',  // Event table — explicit!
-]);
+// Subscribe to event tables FILTERED by their addressing column, so each client only gets its own events
+conn.subscriptionBuilder().subscribe(
+  tables.LobbyCursorEvent.where(r => r.lobbyId.eq(lobbyId))
+);
+// High-rate events (cursors): prefer a row callback over useTable. useTable re-snapshots
+// and re-renders React on every event (2.6.1 dist/react/index.mjs:1827-1835).
+conn.db.LobbyCursorEvent.onInsert((ctx, ev) => { /* move the cursor */ });
 ```
+
+**A filter is not access control.** It cuts egress, but any SDK client can subscribe without it, views can't wrap event tables, and RLS isn't available. Never put data meant only for specific recipients in a public event table; anything in it is readable by every connected client that asks.
 
 This project uses `LobbyCursorEvent` as an event table.
 

@@ -737,7 +737,9 @@ indexes: [{ name: 'my_table_owner_id_idx_btree', accessor: 'owner_id', algorithm
 
 ## Audit columns policy (this repo — ENFORCED)
 
-Every table MUST have these 4 columns at the end of its column definition (exception: `ServerIdentity`):
+Every table MUST have these 4 columns at the end of its column definition. Exceptions:
+- `ServerIdentity`
+- **event tables** (`event: true`, e.g. `LobbyCursorEvent`). Their rows are delivered once and never persist, so audit columns are pure per-event egress. User decision, 2026-11-06; the `LobbyCursorEvent` cleanup lands in the new repo's backend reset.
 
 ```typescript
 createdById: t.u32(),
@@ -841,7 +843,7 @@ SpacetimeDB does NOT support FK constraints. Referential integrity must be enfor
 
 ## Energy budget & bandwidth rules (ENFORCED)
 
-This project runs on SpacetimeDB maincloud with a **40,000 energy/month budget**. Egress is the dominant cost driver (~99% of energy in growth scenarios). Every table and reducer decision must consider bandwidth impact.
+This project runs on SpacetimeDB maincloud with a **100,000 energy/month budget** (the user's plan maximum, confirmed 2026-11-06; earlier text said 40,000, and `tools/energy-model.js:19` still says 90,000). "Energy" here is maincloud's TeV: the 200-per-GB egress rate below matches the pricing page. Egress is the dominant cost driver (~99% of energy in growth scenarios). Every table and reducer decision must consider bandwidth impact.
 
 **Energy rates:**
 - 1M reducer calls = 840 energy
@@ -868,7 +870,24 @@ This project runs on SpacetimeDB maincloud with a **40,000 energy/month budget**
 | Use transactional tables (row exists = pending, delete = resolved) | Fewer rows = less storage and egress |
 | Minimize string columns on high-row-count tables | Strings have 4-byte overhead + content; use enums or u8 codes where possible |
 | Split large tables by access pattern | History/audit data separate from live data users always subscribe to |
-| Keep audit columns (24 bytes/row) — they're tiny vs string columns | Don't remove audit for "savings" — the overhead is negligible |
+| Keep audit columns (24 bytes/row) — they're tiny vs string columns | Don't remove audit for "savings" — the overhead is negligible. Exception: event tables, where they're paid on every delivery (see Audit columns policy) |
+
+### Fan-out reducers are egress amplifiers (ENFORCED)
+
+A reducer whose writes reach many subscribers costs **writes × subscribers** in egress. Any client can call it in a loop with the SDK; there's no website in between. Every such reducer needs:
+- **A per-identity rate limit.** Store the last-accepted time per user and drop calls that come too fast. A manual throttle works on any version. **(v2.13+, post-upgrade)** the reusable `@spacetimedb/rate-limit` submodule is an option.
+- **Input bounds:** clamp or reject out-of-range values and cap payload sizes.
+- **Membership and state checks** before inserting.
+
+Example: `broadcast_cursor` (`reducers/cursor.ts`) checks lobby membership but has **no rate limit and no x/y bounds**, as of 2026-11-06. Put tunable thresholds (cursor Hz, spam limits) in a config singleton row the reducers read, like `elo_config`, so they change without a redeploy. Seed that row in the post-publish bootstrap, not in `init`, which only runs on first publish or a wipe.
+
+### Measuring egress in the app (dev-only)
+
+To see which subscription costs what:
+- **Bytes on the wire:** subclass or wrap `globalThis.WebSocket` **before** `DbConnection.builder()...build()` runs, and count received bytes. These are compressed bytes, as billed.
+- **Cache size per table:** serialize each cached row with `AlgebraicType.makeSerializer(Row.algebraicType)` into a `BinaryWriter` and read `.offset`.
+
+Both APIs exist on 2.6.1 and 2.14.1 (`dist/index.d.ts`, `lib/algebraic_type.d.ts`, `lib/binary_writer.d.ts`). Reference implementation: `clockworklabs/spacetimedb-cookbook` `wikiwatch/src/debug/wireStats.ts`. Keep it out of production bundles.
 
 ### When to run the energy model
 

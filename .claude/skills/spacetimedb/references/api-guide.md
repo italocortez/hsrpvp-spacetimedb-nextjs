@@ -702,6 +702,12 @@ conn.subscriptionBuilder().subscribe(
     .rightSemijoin(tables.playerLevel, (p, pl) => p.id.eq(pl.playerId))
     .where(pl => pl.level.gte(10))
 );
+// ⚠ useTable + semijoin TRAP (verified 2.6.1 dist/react/index.mjs:1473,1796; 2.14.1 :1507-1516,1905-1927):
+// useTable re-filters the SHARED client cache using only the query's own `whereClause`.
+// A semijoin query has none, and a post-join .where is ignored too. So useTable returns EVERY cached
+// row of the result table, including rows another subscription brought in. Each useTable call also
+// opens its own subscription. If several subscriptions feed one table, filter rows in JS after reading,
+// or subscribe the join with subscriptionBuilder and read the cache yourself.
 
 // Handle subscription lifecycle
 conn.subscriptionBuilder()
@@ -742,6 +748,16 @@ handle.unsubscribeThen((ctx) => {
 **Multiple active subscriptions:**
 - Updates across all active subscription sets are bundled into a single `TransactionUpdate` message
 - No duplicate row deliveries across overlapping subscriptions
+
+### Views have no clock: use a server-maintained flag for time-based visibility
+`ViewCtx` is only `{ sender, db, from }`, and `AnonymousViewCtx` is `{ db, from }` (verified: 2.6.1 `dist/server/views.d.ts:13-21`; 2.14.1 `:15-25`). A subscription query is also fixed once it's made. So **neither a view nor a subscription can express "last N minutes", "currently live" or "online recently".**
+
+The pattern that works, on any version:
+1. Add a boolean flag column (e.g. `live: t.bool()`) with a **btree index**.
+2. Set it in the reducer that writes the row; clear it in a **scheduled reducer** when the row ages out.
+3. Clients subscribe with `tables.X.where(r => r.live.eq(true))`. When the flag flips, the row leaves the subscription and arrives as a delete, with no resubscribe.
+
+The same trick covers filters SQL can't express: compute the flag in the reducer that touches the row. Reference: `clockworklabs/spacetimedb-cookbook` `wikiwatch` (the `live` and `in_argument` flags). In this project it fits open lobbies, recent matches and recently online users.
 
 ### Private table + view pattern (RECOMMENDED)
 
